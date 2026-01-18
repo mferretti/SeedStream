@@ -1,7 +1,12 @@
+import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
+
 plugins {
     java
     id("io.freefair.lombok") version "8.4" apply false
     id("com.diffplug.spotless") version "6.25.0" apply false
+    id("com.github.spotbugs") version "6.0.7" apply false
+    id("org.owasp.dependencycheck") version "9.0.9" apply false
 }
 
 allprojects {
@@ -17,6 +22,9 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "io.freefair.lombok")
     apply(plugin = "com.diffplug.spotless")
+    apply(plugin = "jacoco")
+    apply(plugin = "com.github.spotbugs")
+    apply(plugin = "org.owasp.dependencycheck")
 
     java {
         toolchain {
@@ -66,5 +74,45 @@ subprojects {
 
     tasks.test {
         useJUnitPlatform()
+        finalizedBy("jacocoTestReport")
+    }
+
+    tasks.named<JacocoReport>("jacocoTestReport") {
+        dependsOn(tasks.test)
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+            csv.required.set(false)
+        }
+    }
+
+    tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+        violationRules {
+            rule {
+                limit {
+                    minimum = "0.70".toBigDecimal()
+                }
+            }
+        }
+    }
+
+    configure<com.github.spotbugs.snom.SpotBugsExtension> {
+        effort.set(com.github.spotbugs.snom.Effort.MAX)
+        reportLevel.set(com.github.spotbugs.snom.Confidence.LOW)
+        excludeFilter.set(file("$rootDir/config/spotbugs-exclude.xml"))
+        ignoreFailures.set(true)
+    }
+
+    tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
+        reports.create("html") {
+            required.set(true)
+        }
+    }
+
+    configure<org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension> {
+        analyzers.assemblyEnabled = false
+        failBuildOnCVSS = 7.0f
+        suppressionFile = "$rootDir/config/dependency-check-suppressions.xml"
+        nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
     }
 }

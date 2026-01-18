@@ -1,0 +1,15 @@
+name: company
+geolocation: italy
+data:
+  name:
+    datatype: char[10..50]
+    alias: "ragione_sociale"
+  vat_number:
+    datatype: char[11..11]
+    alias: "partita_iva"
+  address:
+    datatype: char[20..100]
+    alias: "indirizzo"
+  city:
+    datatype: char[3..40]
+    alias: "citta"

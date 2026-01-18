@@ -1,0 +1,9 @@
+source: invoice.yaml
+type: file
+structures_path: config/structures/
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: output/invoices
+  format: json

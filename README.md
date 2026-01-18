@@ -4,6 +4,9 @@
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
 [![Gradle](https://img.shields.io/badge/Gradle-8.5-brightgreen.svg)](https://gradle.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
+![Coverage](https://img.shields.io/badge/coverage-70%25-yellowgreen.svg)
+![SpotBugs](https://img.shields.io/badge/SpotBugs-passing-brightgreen.svg)
+![Security](https://img.shields.io/badge/security-checked-blue.svg)
 
 A high-performance, configurable test data generator for enterprise applications.
 

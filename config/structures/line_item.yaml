@@ -1,0 +1,10 @@
+name: line_item
+data:
+  description:
+    datatype: char[5..100]
+  quantity:
+    datatype: int[1..100]
+  unit_price:
+    datatype: decimal[0.01..9999.99]
+  vat_rate:
+    datatype: enum[0.04,0.10,0.22]

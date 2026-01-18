@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!-- Add specific CVE suppressions here if needed -->
+    <!-- Example:
+    <suppress>
+        <notes>False positive for test dependency</notes>
+        <packageUrl regex="true">^pkg:maven/org\.example/.*$</packageUrl>
+        <cve>CVE-2023-12345</cve>
+    </suppress>
+    -->
+</suppressions>

@@ -1,0 +1,27 @@
+name: invoice
+geolocation: italy
+data:
+  invoice_number:
+    datatype: int[1..999999]
+    alias: "numero_fattura"
+  invoice_date:
+    datatype: date[2024-01-01..2026-12-31]
+    alias: "data_fattura"
+  issuer:
+    datatype: object[company]
+    alias: "emittente"
+  recipient:
+    datatype: object[company]
+    alias: "destinatario"
+  line_items:
+    datatype: array[object[line_item], 1..20]
+    alias: "righe"
+  gross_total:
+    datatype: decimal[10.00..50000.00]
+    alias: "totale_lordo"
+  total_vat:
+    datatype: decimal[1.00..10000.00]
+    alias: "totale_iva"
+  net_total:
+    datatype: decimal[9.00..45000.00]
+    alias: "totale_netto"

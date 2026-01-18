@@ -1,0 +1,11 @@
+source: address.yaml
+type: database
+seed:
+  type: env
+  name: DB_SEED
+conf:
+  url: jdbc:postgresql://localhost:5432/testdb
+  username: dbuser
+  password: path/to/db_password
+  table: addresses
+  batch_size: 5000

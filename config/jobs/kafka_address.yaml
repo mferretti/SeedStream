@@ -1,0 +1,13 @@
+source: address.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 12345
+conf:
+  bootstrap: localhost:9092
+  topic: addresses
+  auth: sasl_ssl
+  cert: path/to/cert.crt
+  username: kafka_user
+  password: path/to/password
+  batch_size: 1000

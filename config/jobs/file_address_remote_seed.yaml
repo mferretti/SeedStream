@@ -1,0 +1,10 @@
+source: address.yaml
+type: file
+seed:
+  type: remote
+  url: https://seed-api.example.com/generate
+  auth:
+    type: bearer
+    token: ${SEED_API_TOKEN}
+conf:
+  path: output/addresses_dynamic
