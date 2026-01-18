@@ -16,11 +16,12 @@ bin/
 
 # Java
 *.class
-*.jar
 *.war
 *.ear
 hs_err_pid*
 replay_pid*
+*.jar
+!gradle/wrapper/*.jar
 
 # Logs
 *.log
