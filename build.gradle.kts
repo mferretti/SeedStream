@@ -5,7 +5,7 @@ plugins {
     java
     id("io.freefair.lombok") version "8.4" apply false
     id("com.diffplug.spotless") version "6.25.0" apply false
-    id("com.github.spotbugs") version "6.0.7" apply false
+    id("com.github.spotbugs") version "6.4.8" apply false
     id("org.owasp.dependencycheck") version "9.0.9" apply false
 }
 
