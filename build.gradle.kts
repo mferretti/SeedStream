@@ -55,7 +55,7 @@ subprojects {
 
         // Logging
         implementation("org.slf4j:slf4j-api:2.0.9")
-        runtimeOnly("ch.qos.logback:logback-classic:1.4.14")
+        runtimeOnly("ch.qos.logback:logback-classic:1.5.25")
 
         // Testing - JUnit 5
         testImplementation(platform("org.junit:junit-bom:5.10.1"))
