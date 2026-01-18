@@ -6,7 +6,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 ![Coverage](https://img.shields.io/badge/coverage-70%25-yellowgreen.svg)
 ![SpotBugs](https://img.shields.io/badge/SpotBugs-passing-brightgreen.svg)
-![Security](https://img.shields.io/badge/security-checked-blue.svg)
 
 A high-performance, configurable test data generator for enterprise applications.
 
