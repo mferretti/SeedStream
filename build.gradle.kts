@@ -65,8 +65,8 @@ subprojects {
         testRuntimeOnly("org.junit.platform:junit-platform-launcher") // For VSCode test runner
 
         // Mockito
-        testImplementation("org.mockito:mockito-core:5.8.0")
-        testImplementation("org.mockito:mockito-junit-jupiter:5.8.0")
+        testImplementation("org.mockito:mockito-core:5.21.0")
+        testImplementation("org.mockito:mockito-junit-jupiter:5.21.0")
 
         // AssertJ
         testImplementation("org.assertj:assertj-core:3.24.2")
