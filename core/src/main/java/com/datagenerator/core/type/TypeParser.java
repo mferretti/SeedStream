@@ -1,0 +1,99 @@
+package com.datagenerator.core.type;
+
+import com.datagenerator.core.exception.TypeParseException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Parses datatype strings from YAML into DataType objects. Supports all type syntax: primitives,
+ * enums, objects, arrays, references.
+ */
+public class TypeParser {
+  private static final Pattern PRIMITIVE_PATTERN =
+      Pattern.compile("^(char|int|decimal|date|timestamp)\\[([^\\]]+?)\\.\\.([^\\]]+)\\]$");
+  private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");
+  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[([a-z_]+)\\]$");
+  private static final Pattern ARRAY_PATTERN =
+      Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+  private static final Pattern REF_PATTERN = Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+)\\]$");
+
+  /**
+   * Parse a datatype string into a DataType object.
+   *
+   * @param typeString the type string (e.g., "char[3..15]", "array[int[1..100], 5..10]")
+   * @return the parsed DataType
+   * @throws TypeParseException if the type string is invalid
+   */
+  public DataType parse(String typeString) {
+    if (typeString == null || typeString.isBlank()) {
+      throw new TypeParseException("Type string cannot be null or empty");
+    }
+
+    String trimmed = typeString.trim();
+
+    // Boolean (no brackets)
+    if ("boolean".equals(trimmed)) {
+      return new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null);
+    }
+
+    // Primitives with ranges
+    Matcher primitiveMatcher = PRIMITIVE_PATTERN.matcher(trimmed);
+    if (primitiveMatcher.matches()) {
+      String kind = primitiveMatcher.group(1);
+      String min = primitiveMatcher.group(2);
+      String max = primitiveMatcher.group(3);
+      return new PrimitiveType(
+          PrimitiveType.Kind.valueOf(kind.toUpperCase()), min.trim(), max.trim());
+    }
+
+    // Enum
+    Matcher enumMatcher = ENUM_PATTERN.matcher(trimmed);
+    if (enumMatcher.matches()) {
+      String valuesStr = enumMatcher.group(1).trim();
+      if (valuesStr.isEmpty()) {
+        throw new TypeParseException("Enum must have at least one value: " + typeString);
+      }
+      List<String> values =
+          Arrays.stream(valuesStr.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+      if (values.isEmpty()) {
+        throw new TypeParseException("Enum must have at least one value: " + typeString);
+      }
+      return new EnumType(values);
+    }
+
+    // Object
+    Matcher objectMatcher = OBJECT_PATTERN.matcher(trimmed);
+    if (objectMatcher.matches()) {
+      String structureName = objectMatcher.group(1);
+      return new ObjectType(structureName);
+    }
+
+    // Reference
+    Matcher refMatcher = REF_PATTERN.matcher(trimmed);
+    if (refMatcher.matches()) {
+      String targetStructure = refMatcher.group(1);
+      String targetField = refMatcher.group(2);
+      return new ReferenceType(targetStructure, targetField);
+    }
+
+    // Array (recursive)
+    Matcher arrayMatcher = ARRAY_PATTERN.matcher(trimmed);
+    if (arrayMatcher.matches()) {
+      String innerTypeStr = arrayMatcher.group(1).trim();
+      int minLength = Integer.parseInt(arrayMatcher.group(2));
+      int maxLength = Integer.parseInt(arrayMatcher.group(3));
+
+      if (minLength < 0 || maxLength < minLength) {
+        throw new TypeParseException(
+            "Invalid array length constraints: min=" + minLength + ", max=" + maxLength);
+      }
+
+      DataType innerType = parse(innerTypeStr); // Recursive parse
+      return new ArrayType(innerType, minLength, maxLength);
+    }
+
+    throw new TypeParseException("Unsupported type syntax: " + typeString);
+  }
+}
