@@ -35,6 +35,8 @@ subprojects {
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         java {
             googleJavaFormat()
+            // Keep braces on same line (override Google style)
+            replaceRegex("Move opening brace to same line", """\n(\s*)\{""", " {")
             removeUnusedImports()
             trimTrailingWhitespace()
             endWithNewline()
