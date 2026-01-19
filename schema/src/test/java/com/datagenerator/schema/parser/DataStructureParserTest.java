@@ -75,7 +75,8 @@ class DataStructureParserTest {
 
   @Test
   void shouldFailWhenDataIsEmpty() throws Exception {
-    String yaml = """
+    String yaml =
+        """
             name: test
             data: {}
             """;
