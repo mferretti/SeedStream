@@ -9,6 +9,13 @@
 
 A high-performance, configurable test data generator for enterprise applications.
 
+---
+
+**📚 Documentation**  
+[Architecture & Design](DESIGN.md) · [Code Quality Guide](QUALITY.md) · [Roadmap & Backlog](BACKLOG.md)
+
+---
+
 ## Overview
 
 Data Generator is a Java-based tool designed to generate large volumes of realistic test data for various destinations (Kafka, databases, files) with reproducible results using seed-based pseudo-random generation.
