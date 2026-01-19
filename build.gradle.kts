@@ -58,7 +58,7 @@ subprojects {
         runtimeOnly("ch.qos.logback:logback-classic:1.5.25")
 
         // Testing - JUnit 5
-        testImplementation(platform("org.junit:junit-bom:5.10.1"))
+        testImplementation(platform("org.junit:junit-bom:6.0.2"))
         testImplementation("org.junit.jupiter:junit-jupiter-api")
         testImplementation("org.junit.jupiter:junit-jupiter-params")
         testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
