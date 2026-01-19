@@ -10,8 +10,8 @@ dependencies {
     implementation(project(":destinations"))
     
     // CLI framework
-    implementation("info.picocli:picocli:4.7.5")
-    annotationProcessor("info.picocli:picocli-codegen:4.7.5")
+    implementation("info.picocli:picocli:4.7.7")
+    annotationProcessor("info.picocli:picocli-codegen:4.7.7")
 }
 
 application {
