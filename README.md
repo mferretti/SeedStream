@@ -12,7 +12,7 @@ A high-performance, configurable test data generator for enterprise applications
 ---
 
 **📚 Documentation**  
-[Architecture & Design](DESIGN.md) · [Code Quality Guide](QUALITY.md) · [Roadmap & Backlog](BACKLOG.md)
+[Architecture & Design](DESIGN.md) · [Code Quality Guide](QUALITY.md) · [Roadmap & Backlog](BACKLOG.md) · [License Discussion](LICENSE-DISCUSSION.md)
 
 ---
 
