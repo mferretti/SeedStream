@@ -3,7 +3,7 @@ dependencies {
     implementation(project(":formats"))
     
     // Kafka
-    implementation("org.apache.kafka:kafka-clients:3.6.1")
+    implementation("org.apache.kafka:kafka-clients:4.1.1")
     
     // Database
     implementation("com.zaxxer:HikariCP:7.0.2")
