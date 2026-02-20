@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/mferretti/SeedStream/actions/workflows/build.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/build.yml)
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-[![Gradle](https://img.shields.io/badge/Gradle-8.5-brightgreen.svg)](https://gradle.org)
+[![Gradle](https://img.shields.io/badge/Gradle-9.3-brightgreen.svg)](https://gradle.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 ![Coverage](https://img.shields.io/badge/coverage-70%25-yellowgreen.svg)
 ![SpotBugs](https://img.shields.io/badge/SpotBugs-passing-brightgreen.svg)
@@ -23,11 +23,13 @@ Data Generator is a Java-based tool designed to generate large volumes of realis
 ## Features
 
 - 🚀 **High Performance**: Multi-threaded generation with batching and streaming
-- 🔄 **Reproducible**: Same seed generates identical data across runs
+- 🔄 **Reproducible**: Same seed generates identical data across runs (verified with SHA-256)
 - 🌍 **Locale-Aware**: Generate realistic data for specific geolocations
 - 🔌 **Pluggable Architecture**: Extensible destinations and formats
-- 📊 **Statistical Distributions**: Support for normal, uniform, and Zipfian distributions
 - ⚙️ **YAML Configuration**: Simple, declarative data structure and job definitions
+- 📝 **Multiple Formats**: JSON (NDJSON), CSV with RFC 4180 compliance
+- 💾 **File Destinations**: NIO-based file writing with gzip compression support
+- 🖥️ **CLI Interface**: Picocli-based command-line tool with intuitive options
 
 ## Requirements
 
@@ -114,12 +116,25 @@ brew install gradle
 # Build the project
 ./gradlew build
 
-# Run a job (defaults: json format, 100 records, seed from config or 0)
-./gradlew :cli:run --args="execute --job config/jobs/kafka_address.yaml"
+# Run a job (defaults: json format, 100 records, seed from config)
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml"
 
-# Run with custom parameters
-./gradlew :cli:run --args="execute --job config/jobs/kafka_address.yaml --format json --count 10000 --seed 99999"
+# Generate CSV format with custom count
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --format csv --count 10000"
+
+# Override seed for different data set
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 99999"
+
+# Verbose output for debugging
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --verbose"
 ```
+
+**Available Options:**
+- `--job`: Path to job configuration file (required)
+- `--format`: Output format: `json` or `csv` (default: `json`)
+- `--count`: Number of records to generate (default: `100`)
+- `--seed`: Seed override for deterministic generation (optional)
+- `--verbose`: Enable detailed logging (optional)
 
 ## Configuration
 
@@ -150,14 +165,33 @@ data:
 
 ### Job Definition
 
-Define how and where to generate data (e.g., `config/jobs/kafka_address.yaml`):
+Define how and where to generate data (e.g., `config/jobs/file_address.yaml`):
+
+```yaml
+source: address.yaml
+type: file
+seed:
+  type: embedded    # embedded, remote, file, or env
+  value: 12345      # for embedded type
+conf:
+  path: cli/output/addresses
+  compress: false     # set to true for gzip compression
+  append: false       # set to true to append to existing file
+```
+
+**Note**: File extension (`.json` or `.csv`) is automatically added based on `--format` CLI parameter.
+
+For other destination types (in development):
+
+<details>
+<summary>Kafka Destination (coming soon)</summary>
 
 ```yaml
 source: address.yaml
 type: kafka
 seed:
-  type: embedded    # embedded, remote, file, or env
-  value: 12345      # for embedded type
+  type: embedded
+  value: 12345
 conf:
   bootstrap: localhost:9092
   topic: addresses
@@ -166,6 +200,7 @@ conf:
   username: user
   password: path/to/password
 ```
+</details>
 
 #### Seed Configuration
 
@@ -215,10 +250,32 @@ datagenerator/
 ├── core/           # Generation engine, type system, seeding, deterministic randomization
 ├── schema/         # YAML parsing, configuration management
 ├── generators/     # Data generators (primitives + Datafaker integration)
-├── formats/        # Output serializers (JSON, CSV, Protobuf)
-├── destinations/   # Destination adapters (Kafka, Database, File)
-└── cli/           # Command-line interface
+├── formats/        # Output serializers (JSON ✅, CSV ✅, Protobuf 🔜)
+├── destinations/   # Destination adapters (File ✅, Kafka 🔜, Database 🔜)
+└── cli/            # Picocli-based command-line interface ✅
 ```
+
+### Current Implementation Status
+
+**Implemented (v0.1):**
+- ✅ Core modules: type system, seed management, random provider
+- ✅ Schema parsing: YAML-based configuration
+- ✅ Generators: Primitive types (int, char, enum) and composite types (object, array)
+- ✅ Formats: JSON (newline-delimited), CSV (RFC 4180 compliant)
+- ✅ Destinations: File output with compression and append modes
+- ✅ CLI: Full command-line interface with all options
+- ✅ Tests: 165+ unit tests with comprehensive coverage
+
+**In Progress:**
+- 🔜 Multi-threading engine for parallel generation
+- 🔜 Datafaker integration for realistic data
+- 🔜 Kafka destination adapter
+- 🔜 Database destination adapter (PostgreSQL, MySQL)
+
+**Planned:**
+- 📋 Protobuf and Avro format support
+- 📋 Statistical distributions (normal, Zipfian)
+- 📋 REST/gRPC API module
 
 ### Reproducibility & Multi-Threading
 
@@ -259,8 +316,30 @@ For technical details, see [DESIGN.md](DESIGN.md).
 
 ## License
 
-[To be determined]
+Copyright 2024-2026
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+See [LICENSE](LICENSE) for the full license text.
 
 ## Contributing
 
-Contributions welcome! This project is intended to be open source.
+Contributions are welcome! This is an open-source project licensed under Apache 2.0.
+
+Please ensure:
+- All tests pass: `./gradlew test`
+- Code is formatted: `./gradlew spotlessApply`
+- New features include tests
+- Follow the existing code style (Google Java Style Guide)
+
+For major changes, please open an issue first to discuss what you would like to change.
