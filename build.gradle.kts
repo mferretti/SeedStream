@@ -4,7 +4,7 @@ import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 plugins {
     java
     id("io.freefair.lombok") version "9.2.0" apply false
-    id("com.diffplug.spotless") version "8.1.0" apply false
+    id("com.diffplug.spotless") version "8.2.1" apply false
     id("com.github.spotbugs") version "6.4.8" apply false
     id("org.owasp.dependencycheck") version "12.2.0" apply false
 }
