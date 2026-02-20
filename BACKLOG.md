@@ -62,8 +62,8 @@
 
 ## Phase 1: Core Foundation
 
-- [ ] **Add open source license**
-  - Choose and add appropriate license (Apache 2.0 or MIT) for GitHub publication
+- [x] **Add open source license**
+  - Added Apache 2.0 license for GitHub publication and enterprise use
 
 ## Phase 2: Data Generation
 
@@ -116,13 +116,18 @@
 
 ## Phase 3: Output Formats
 
-- [ ] **Formats module - JSON serializer**
-  - Implement JSON format serializer with field alias support
-  - Newline-delimited JSON for streaming
+- [x] **Formats module - JSON serializer**
+  - FormatSerializer interface for pluggable serialization
+  - JsonSerializer with Jackson (newline-delimited JSON)
+  - ISO-8601 date/time formatting, compact output
+  - Tests: 16 tests passing
 
-- [ ] **Formats module - CSV serializer**
-  - Implement CSV format serializer with alias support
-  - Proper escaping and quoting
+- [x] **Formats module - CSV serializer**
+  - CsvSerializer with OpenCSV (always-quoted fields)
+  - Proper escaping for quotes, commas, newlines
+  - Nested objects/arrays serialized as JSON strings
+  - Header row generation with serializeHeader()
+  - Tests: 17 tests passing
 
 - [ ] **Formats module - Protobuf serializer**
   - Implement Protobuf format serializer
@@ -130,11 +135,15 @@
 
 ## Phase 4: Destinations
 
-- [ ] **Destinations module - File adapter**
-  - Implement file destination with Java NIO for fast I/O
-  - Support multiple formats (JSON, CSV, Protobuf)
-  - Optional compression (gzip)
+- [x] **Destinations module - File adapter**
+  - DestinationAdapter interface for pluggable destinations
+  - FileDestination with Java NIO for fast I/O
+  - Support JSON and CSV formats with automatic header for CSV
+  - Optional gzip compression
   - Append mode support
+  - Automatic parent directory creation
+  - Configurable buffer size for performance
+  - Tests: 16 tests passing
 
 - [ ] **Destinations module - Kafka adapter**
   - Implement Kafka destination with connection pooling
@@ -150,12 +159,14 @@
 
 ## Phase 5: CLI & Execution
 
-- [ ] **CLI module - Command interface**
-  - Implement CLI using Picocli
-  - Commands: `execute --job <path> [--format json] [--count 100] [--seed <value>]`
-  - Config directory scanning
-  - Verbose and debug logging modes
-  - Progress reporting
+- [x] **CLI module - Command interface**
+  - Picocli-based command-line interface
+  - ExecuteCommand with options: --job, --format, --count, --seed, --verbose
+  - Intelligent path resolution (relative to job file location)
+  - Seed resolution from config or CLI override
+  - Progress logging and performance metrics
+  - End-to-end execution: parse → generate → serialize → write
+  - Tested with JSON and CSV formats
 
 - [ ] **Core - Multi-threading engine**
   - Implement parallel generation workers with configurable thread pools
