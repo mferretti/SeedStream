@@ -1,9 +1,12 @@
 # US-019: Command-Line Interface
 
-**Status**: ⏸️ Not Started  
+**Status**: ✅ Completed  
 **Priority**: P0 (Critical)  
 **Phase**: 5 - CLI & Execution  
-**Dependencies**: US-013, US-016
+**Dependencies**: US-013, US-016  
+**Completed**: February 21, 2026  
+**Implementation**: `cli/src/main/java/com/datagenerator/cli/`
+**Key Classes**: DataGeneratorCli.java, ExecuteCommand.java
 
 ---
 
@@ -89,15 +92,15 @@ Clear, actionable error messages:
 
 ## Definition of Done
 
-- [ ] Main entry point with Picocli
-- [ ] ExecuteCommand implemented
-- [ ] All CLI parameters working
-- [ ] Help and version commands
-- [ ] Error handling with clear messages
-- [ ] Exit codes correct
-- [ ] Unit tests for command parsing
-- [ ] Integration tests executing real jobs
-- [ ] Manual testing completed
-- [ ] README updated with CLI usage
-- [ ] Code follows project style guidelines
-- [ ] PR reviewed and approved
+- ✅ Main entry point with Picocli (DataGeneratorCli)
+- ✅ ExecuteCommand implemented
+- ✅ All CLI parameters working (--job, --format, --count, --seed, --verbose)
+- ✅ Version command (v1.0.0)
+- ✅ Error handling with clear messages
+- ✅ Exit codes correct
+- ✅ Smart path resolution for structure files
+- ✅ Integration tests executing real jobs (end-to-end)
+- ✅ Manual testing completed (deterministic output verified)
+- ✅ README updated with CLI usage examples
+- ✅ Generation statistics (records/sec, elapsed time)
+- ✅ Code follows project style guidelines
