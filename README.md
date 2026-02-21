@@ -266,6 +266,10 @@ datagenerator/
 - ✅ CLI: Full command-line interface with all options
 - ✅ Tests: 165+ unit tests with comprehensive coverage
 
+**Partially Implemented:**
+- 🔄 Licensing: Apache 2.0 LICENSE file and README badge (missing: source file headers, NOTICE file)
+- 🔄 Verbose logging: `--verbose` flag with progress logging (missing: `--debug` flag, dynamic log levels)
+
 **In Progress:**
 - 🔜 Multi-threading engine for parallel generation
 - 🔜 Datafaker integration for realistic data

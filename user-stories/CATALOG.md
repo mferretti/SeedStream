@@ -8,8 +8,9 @@ This document provides a quick overview of all user stories for sprint planning 
 
 - **Total Stories**: 38
 - **Completed**: 13 ✅
+- **Partially Complete**: 2 🔄
 - **In Progress**: 0 🚧
-- **Not Started**: 24 ⏸️
+- **Not Started**: 22 ⏸️
 - **Blocked**: 1 🔒
 
 ---
@@ -101,7 +102,8 @@ Nice to have for v1.0 but not blocking.
 | US-020 | Threading Engine | P0 | 8-10h | US-007, US-008 |
 | US-021 | Progress Reporting | P1 | 2-3h | US-019, US-020 |
 
-**Completed**: US-019 (CLI Commands)
+**Completed**: US-019 (CLI Commands)  
+**Partially Complete**: US-032 (CLI Logging - --verbose flag)
 
 ---
 
@@ -129,12 +131,12 @@ Nice to have for v1.0 but not blocking.
 #### Phase 8: Licensing & Security
 | ID | Title | Priority | Effort | Dependencies | Notes |
 |----|-------|----------|--------|--------------|-------|
-| US-031 | Licensing | P2 | 2-3h | None | **Requires Human Decision** |
-| US-032 | CLI Logging | P1 | 2-3h | US-019 | |
 | US-033 | Error Handling | P1 | 4-5h | US-019 | |
 | US-034 | Secret Management | P1 | 4-5h | US-017, US-018 | **Requires Human Review** |
 | US-035 | Dependency Scanning | P2 | 2-3h | None | |
 | US-036 | File Permissions | P2 | 2-3h | US-016 | |
+
+**Partially Complete**: US-031 (Licensing - LICENSE file and README), US-032 (CLI Logging - --verbose)
 
 ---
 
