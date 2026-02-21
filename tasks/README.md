@@ -69,11 +69,11 @@ Each task lists dependencies on other tasks. Always complete dependencies before
 - [TASK-017: Destinations Module - Kafka Adapter](TASK-017-destinations-kafka.md) ⏸️
 - [TASK-018: Destinations Module - Database Adapter](TASK-018-destinations-database.md) ⏸️
 
-### Phase 5: CLI & Execution (🔄 33% Complete)
+### Phase 5: CLI & Execution (🔄 50% Complete)
 - [TASK-019: CLI Module - Command Interface](TASK-019-cli-commands.md) ✅
+- [TASK-032: CLI Module - Verbose Logging Modes](TASK-032-cli-logging.md) 🔄 (partial)
 - [TASK-020: Core Module - Multi-Threading Engine](TASK-020-core-threading-engine.md) ⏸️
 - [TASK-021: CLI Module - Progress Reporting](TASK-021-cli-progress.md) 🔒 (depends on TASK-019, TASK-020)
-- [TASK-032: CLI Module - Verbose Logging Modes](TASK-032-cli-logging.md) ⏸️ (depends on TASK-019)
 
 ### Phase 6: Testing & Quality (⏸️ Not Started)
 - [TASK-022: Testing - Integration Tests Setup](TASK-022-testing-integration-setup.md) ⏸️
@@ -89,8 +89,8 @@ Each task lists dependencies on other tasks. Always complete dependencies before
 - [TASK-029: Documentation - Example Configurations](TASK-029-docs-examples.md) ⏸️
 - [TASK-030: Documentation - JavaDoc Completion](TASK-030-docs-javadoc.md) ⏸️
 
-### Phase 8: Licensing & Open Source (⏸️ Not Started)
-- [TASK-031: Licensing - Choose and Apply License](TASK-031-licensing.md) ⏸️ (requires human decision)
+### Phase 8: Licensing & Open Source (🔄 50% Complete)
+- [TASK-031: Licensing - Choose and Apply License](TASK-031-licensing.md) 🔄 (partial)
 
 ### Phase 9: Security & Compliance (⏸️ Not Started)
 - [TASK-034: Security - Secret Management](TASK-034-security-secrets.md) ⏸️

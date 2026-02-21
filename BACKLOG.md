@@ -62,8 +62,10 @@
 
 ## Phase 1: Core Foundation
 
-- [x] **Add open source license**
-  - Added Apache 2.0 license for GitHub publication and enterprise use
+- [~] **Add open source license** (Partially Complete)
+  - ✅ Added Apache 2.0 LICENSE file
+  - ✅ Added license badge to README
+  - ❌ Missing: Source file headers, NOTICE file, build.gradle.kts metadata, Spotless enforcement
 
 ## Phase 2: Data Generation
 
@@ -167,6 +169,11 @@
   - Progress logging and performance metrics
   - End-to-end execution: parse → generate → serialize → write
   - Tested with JSON and CSV formats
+
+- [~] **CLI module - Verbose logging** (Partially Complete)
+  - ✅ --verbose flag implemented with progress logging every 100 records
+  - ✅ Basic INFO level logging throughout
+  - ❌ Missing: --debug flag, programmatic log level switching (DEBUG/TRACE levels)
 
 - [ ] **Core - Multi-threading engine**
   - Implement parallel generation workers with configurable thread pools

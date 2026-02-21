@@ -8,8 +8,9 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 - **Total Tasks**: 31
 - **Completed**: 13 ✅
+- **Partially Complete**: 2 🔄
 - **In Progress**: 0
-- **Not Started**: 17 ⏸️
+- **Not Started**: 15 ⏸️
 - **Blocked**: 1 (waiting for dependencies)
 
 ---
@@ -21,6 +22,10 @@ This document provides a quick overview of all tasks. For detailed implementatio
 - ✅ TASK-014: CSV Serializer (17 tests)
 - ✅ TASK-016: File Destination (16 tests)
 - ✅ TASK-019: CLI Commands (end-to-end pipeline)
+
+**Partially Completed Today:**
+- 🔄 TASK-031: Licensing (LICENSE file, README badge)
+- 🔄 TASK-032: Verbose Logging (--verbose flag)
 
 **Impact:** End-to-end pipeline now functional (parse → generate → serialize → write)
 
@@ -95,16 +100,17 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 5: CLI & Execution (🔄 33% Complete)
+## Phase 5: CLI & Execution (🔄 50% Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-019 | CLI Command Interface | 4-5h | Medium | TASK-013, TASK-016 | ✅ Complete |
+| TASK-032 | Verbose Logging Modes | 2-3h | Low | TASK-019 | 🔄 Partial |
 | TASK-020 | Multi-Threading Engine | 8-10h | High | TASK-007, TASK-008 | ⏸️ Not Started |
 | TASK-021 | Progress Reporting | 2-3h | Low | TASK-019, TASK-020 | 🔒 Blocked |
 
-**Completed**: CLI interface (Picocli-based, all options)  
-**Remaining**: Multi-threading engine and progress reporting
+**Completed**: CLI interface (Picocli-based, all options), basic verbose logging  
+**Remaining**: Full debug logging, multi-threading engine, progress reporting
 
 ---
 
@@ -131,11 +137,14 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 8: Licensing & Open Source
+## Phase 8: Licensing & Open Source (🔄 50% Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Human Supervision | Status |
 |------|-------|--------|------------|--------------|-------------------|--------|
-| TASK-031 | Choose and Apply License | 2-3h | Low | None | **HIGH** | ⏸️ Not Started |
+| TASK-031 | Choose and Apply License | 2-3h | Low | None | **HIGH** | 🔄 Partial |
+
+**Completed**: LICENSE file (Apache 2.0), README badge  
+**Remaining**: Source file headers, NOTICE file, build.gradle.kts metadata, Spotless enforcement
 
 ---
 
