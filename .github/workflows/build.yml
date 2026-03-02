@@ -39,28 +39,28 @@ jobs:
     # Run locally: ./gradlew dependencyCheckAnalyze
     
     - name: Upload test results
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: test-results
         path: '**/build/test-results/test/*.xml'
     
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: coverage-reports
         path: '**/build/reports/jacoco/**'
     
     - name: Upload SpotBugs reports
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: spotbugs-reports
         path: '**/build/reports/spotbugs/**'
     
     - name: Upload build reports
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: build-reports
