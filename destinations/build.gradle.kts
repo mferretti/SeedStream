@@ -2,8 +2,9 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":formats"))
     
-    // Kafka
-    implementation("org.apache.kafka:kafka-clients:4.2.0")
+    // Kafka (compileOnly - users provide at runtime)
+    compileOnly("org.apache.kafka:kafka-clients:4.2.0")
+    testImplementation("org.apache.kafka:kafka-clients:4.2.0")
     
     // Database
     implementation("com.zaxxer:HikariCP:7.0.2")
