@@ -6,8 +6,8 @@ seed:
 conf:
   bootstrap: localhost:9092
   topic: addresses
-  auth: sasl_ssl
-  cert: path/to/cert.crt
-  username: kafka_user
-  password: path/to/password
   batch_size: 1000
+  linger_ms: 10
+  compression: gzip
+  acks: "1"
+  sync: false
