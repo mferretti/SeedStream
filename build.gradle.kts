@@ -52,7 +52,7 @@ subprojects {
         "testAnnotationProcessor"(lombok)
 
         // Logging
-        implementation("org.slf4j:slf4j-api:2.0.9")
+        implementation("org.slf4j:slf4j-api:2.0.17")
         runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 
         // Testing - JUnit 5
