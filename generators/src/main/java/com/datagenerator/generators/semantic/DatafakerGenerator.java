@@ -5,6 +5,7 @@ import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.LocaleMapper;
 import java.util.Locale;
 import java.util.Random;
 import lombok.extern.slf4j.Slf4j;
@@ -58,9 +59,9 @@ public class DatafakerGenerator implements DataGenerator {
       throw new GeneratorException("DatafakerGenerator does not support type: " + kind);
     }
 
-    // Get geolocation from context
+    // Get geolocation from context and map to locale
     String geolocation = GeneratorContext.getGeolocation();
-    Locale locale = parseGeolocation(geolocation);
+    Locale locale = LocaleMapper.map(geolocation);
 
     // Create Faker with seeded random for determinism
     Faker faker = new Faker(locale, random);
@@ -82,7 +83,7 @@ public class DatafakerGenerator implements DataGenerator {
       case FIRST_NAME -> faker.name().firstName();
       case LAST_NAME -> faker.name().lastName();
       case FULL_NAME -> faker.name().fullName();
-      case USERNAME -> faker.name().username();
+      case USERNAME -> generateUsername(faker);
       case TITLE -> faker.name().title();
       case OCCUPATION -> faker.job().title();
 
@@ -103,7 +104,7 @@ public class DatafakerGenerator implements DataGenerator {
       case COMPANY -> faker.company().name();
       case CREDIT_CARD -> faker.finance().creditCard();
       case IBAN -> faker.finance().iban();
-      case CURRENCY -> faker.currency().code();
+      case CURRENCY -> faker.money().currencyCode();
       case PRICE -> faker.commerce().price();
 
       // Internet types
@@ -164,80 +165,16 @@ public class DatafakerGenerator implements DataGenerator {
   }
 
   /**
-   * Parse human-readable geolocation name to Java Locale.
+   * Generate a username without using deprecated methods.
    *
-   * @param geolocation Geolocation name (e.g., "italy", "usa", "france") or null
-   * @return Java Locale (defaults to English if unknown)
+   * <p>Creates username from first name + random number (e.g., "john1234")
+   *
+   * @param faker Datafaker instance
+   * @return Generated username
    */
-  private Locale parseGeolocation(String geolocation) {
-    if (geolocation == null || geolocation.isBlank()) {
-      log.debug("No geolocation specified, defaulting to English");
-      return Locale.ENGLISH;
-    }
-
-    Locale locale =
-        switch (geolocation.toLowerCase().trim()) {
-          // European locales
-          case "italy", "italian" -> Locale.ITALY;
-          case "usa", "us", "english", "united states" -> Locale.US;
-          case "uk", "united kingdom", "britain" -> Locale.UK;
-          case "france", "french" -> Locale.FRANCE;
-          case "germany", "german" -> Locale.GERMANY;
-          case "spain", "spanish" -> new Locale("es", "ES");
-          case "portugal", "portuguese" -> new Locale("pt", "PT");
-          case "netherlands", "dutch" -> new Locale("nl", "NL");
-          case "belgium" -> new Locale("nl", "BE");
-          case "austria" -> new Locale("de", "AT");
-          case "switzerland" -> new Locale("de", "CH");
-          case "sweden", "swedish" -> new Locale("sv", "SE");
-          case "norway", "norwegian" -> new Locale("no", "NO");
-          case "denmark", "danish" -> new Locale("da", "DK");
-          case "finland", "finnish" -> new Locale("fi", "FI");
-          case "poland", "polish" -> new Locale("pl", "PL");
-          case "czech", "czechia" -> new Locale("cs", "CZ");
-          case "hungary", "hungarian" -> new Locale("hu", "HU");
-          case "romania", "romanian" -> new Locale("ro", "RO");
-          case "greece", "greek" -> new Locale("el", "GR");
-          case "turkey", "turkish" -> new Locale("tr", "TR");
-
-          // Americas
-          case "brazil", "brazilian" -> new Locale("pt", "BR");
-          case "mexico", "mexican" -> new Locale("es", "MX");
-          case "argentina" -> new Locale("es", "AR");
-          case "colombia" -> new Locale("es", "CO");
-          case "chile" -> new Locale("es", "CL");
-          case "peru" -> new Locale("es", "PE");
-          case "canada" -> Locale.CANADA;
-
-          // Asia-Pacific
-          case "china", "chinese" -> Locale.CHINA;
-          case "japan", "japanese" -> Locale.JAPAN;
-          case "korea", "korean", "south korea" -> Locale.KOREA;
-          case "india", "indian" -> new Locale("en", "IN");
-          case "indonesia", "indonesian" -> new Locale("id", "ID");
-          case "vietnam", "vietnamese" -> new Locale("vi", "VN");
-          case "thailand", "thai" -> new Locale("th", "TH");
-          case "singapore" -> new Locale("en", "SG");
-          case "malaysia" -> new Locale("ms", "MY");
-          case "philippines" -> new Locale("en", "PH");
-          case "australia", "australian" -> new Locale("en", "AU");
-          case "new zealand" -> new Locale("en", "NZ");
-
-          // Middle East & Africa
-          case "russia", "russian" -> new Locale("ru", "RU");
-          case "ukraine", "ukrainian" -> new Locale("uk", "UA");
-          case "israel", "hebrew" -> new Locale("he", "IL");
-          case "saudi arabia", "arabic" -> new Locale("ar", "SA");
-          case "egypt" -> new Locale("ar", "EG");
-          case "south africa" -> new Locale("en", "ZA");
-
-          default -> {
-            log.warn("Unknown geolocation '{}', defaulting to English", geolocation);
-            yield Locale.ENGLISH;
-          }
-        };
-
-    log.debug("Mapped geolocation '{}' to locale '{}'", geolocation, locale);
-    return locale;
+  private String generateUsername(Faker faker) {
+    String firstName = faker.name().firstName().toLowerCase().replaceAll("[^a-z]", "");
+    int number = faker.number().numberBetween(1, 10000);
+    return firstName + number;
   }
 }
