@@ -11,6 +11,7 @@ import com.datagenerator.generators.primitive.DecimalGenerator;
 import com.datagenerator.generators.primitive.EnumGenerator;
 import com.datagenerator.generators.primitive.IntegerGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
+import com.datagenerator.generators.semantic.DatafakerGenerator;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,9 @@ public class DataGeneratorFactory {
     STATELESS_GENERATORS.add(new DateGenerator());
     STATELESS_GENERATORS.add(new TimestampGenerator());
     STATELESS_GENERATORS.add(new EnumGenerator());
+
+    // Register semantic generators (Datafaker-based)
+    STATELESS_GENERATORS.add(new DatafakerGenerator());
 
     // Register composite generators (stateless)
     STATELESS_GENERATORS.add(new ArrayGenerator());
