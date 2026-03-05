@@ -60,14 +60,19 @@
   - Added import rules to copilot-instructions.md
   - Zero unused imports or variables
 
-## Phase 1: Core Foundation
-
-- [~] **Add open source license** (Partially Complete)
-  - ✅ Added Apache 2.0 LICENSE file
-  - ✅ Added license badge to README
-  - ❌ Missing: Source file headers, NOTICE file, build.gradle.kts metadata, Spotless enforcement
-
 ## Phase 2: Data Generation
+
+- [x] **Generators module - Locale-specific data (Datafaker 2.5.4 integration)**
+  - ✅ Integrated Datafaker 2.5.4 (latest stable as of March 2026)
+  - ✅ Extended PrimitiveType.Kind with 28 semantic types (person, address, contact, finance, internet, code)
+  - ✅ Updated TypeParser to support no-bracket syntax for semantic types (name, email, phone, etc.)
+  - ✅ Created DatafakerGenerator with locale support (62+ locales: en, it, es, fr, de, pt, ru, zh, ja, ko, ar...)
+  - ✅ Added geolocation field to GeneratorContext for locale propagation
+  - ✅ Deterministic generation: Seeded Random passed to Faker for reproducible data
+  - ✅ Fallback to English for unknown geolocations with warning log
+  - ✅ Tests: 25+ unit tests + 8 integration tests passing
+  - **Example**: `geolocation: italy` + `datatype: name` → "Mario Rossi", `datatype: city` → "Milano"
+  - **Supported types**: NAME, FIRST_NAME, LAST_NAME, EMAIL, PHONE_NUMBER, ADDRESS, CITY, COMPANY, URL, UUID, IBAN, and more
 
 - [ ] **Generators module - ReferenceGenerator (deferred)**
   - **Rationale**: Deferred until database destinations are implemented (no immediate use case)
@@ -79,37 +84,6 @@
     - Performance optimization needed for large datasets (potential memory concerns)
   - **Complexity**: High - requires significant infrastructure beyond simple value generation
   - **When to implement**: Before Phase 4 database adapter implementation
-
-- [ ] **Generators module - Locale-specific data (Datafaker 2.1.0 integration)**
-  - **Library Analysis**: Datafaker (Apache 2.0, 256 providers, actively maintained) vs Mimesis (MIT, 20+ providers, Python)
-  - **Datafaker Base Providers** (everyday data - ~40 core types):
-    - **Person**: name, first_name, last_name, full_name, username, email, phone_number, password, title, occupation
-    - **Address**: address, street_name, street_number, city, state, postal_code, country, coordinates (lat/long)
-    - **Finance**: bank, company, company_type, credit_card_number, cvv, iban, bitcoin_address, price, currency
-    - **DateTime**: date, time, datetime, timestamp, century, day_of_week, month, year, timezone, duration
-    - **Internet**: domain, url, ip_v4, ip_v6, mac_address, user_agent, http_method, http_status_code, email
-    - **Commerce**: product_name, department, price, promotion_code, color, material
-    - **Business**: company, industry, buzzword, catch_phrase, bs (business speak)
-    - **Code**: isbn, ean, imei, issn, barcode
-    - **Text**: word, sentence, paragraph, title, quote
-    - **Food**: dish, drink, fruit, vegetable, spices
-    - **File**: file_name, extension, mime_type
-    - **Job**: title, field, position, key_skill
-    - **Medical**: disease, hospital, diagnosis
-    - **Number**: digit, integer_number, float_number, decimal_number
-    - **Color**: name, hex, rgb
-    - **Science**: dna_sequence, element, scientist
-    - **Book**: title, author, publisher, genre
-    - **Animal**: name, species, scientific_name
-  - **Support Matrix**: 62 locales (en, it, es, fr, de, pt, ru, zh, ja, ko, ar...)
-  - **Implementation Plan**:
-    1. Extend PrimitiveType.Kind enum with semantic types (NAME, EMAIL, PHONE, etc.)
-    2. Create DatafakerGenerator using net.datafaker.Faker with locale support
-    3. Pass geolocation context from YAML config → type system → generator
-    4. Map semantic types to Datafaker providers (NAME → faker.name().fullName())
-    5. Update TypeParser to support semantic type syntax (no brackets): 'name', 'email', 'address'
-    6. Update DataStructureParser to propagate geolocation to field types
-  - **Testing**: Locale-specific output validation, deterministic seeding, fallback for unsupported locales
 
 - [ ] **Generators module - Distribution support (future)**
   - Implement statistical distributions (normal, uniform, Zipfian)
@@ -267,6 +241,14 @@
   - Foreign key relationship handling between structures
   - Plugin marketplace for custom generators and destinations
   - Metrics and monitoring integration (Prometheus, Grafana)
+
+## Before Going Public 🚀
+
+- [ ] **Complete open source licensing** (Partially Complete)
+  - ✅ Added Apache 2.0 LICENSE file
+  - ✅ Added license badge to README
+  - ❌ Missing: Source file headers, NOTICE file, build.gradle.kts metadata, Spotless enforcement
+  - Task: TASK-031-licensing.md
 
 ---
 
