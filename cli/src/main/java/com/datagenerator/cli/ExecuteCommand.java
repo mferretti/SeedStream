@@ -123,7 +123,7 @@ public class ExecuteCommand implements Callable<Integer> {
     DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
 
     // 7. Generate and write records
-    try (var ctx = GeneratorContext.enter(factory)) {
+    try (var ctx = GeneratorContext.enter(factory, dataStructure.getGeolocation())) {
       destination.open();
 
       RandomProvider randomProvider = new RandomProvider(seed);

@@ -2,5 +2,5 @@ dependencies {
     implementation(project(":core"))
     
     // Fake data generation
-    implementation("net.datafaker:datafaker:2.5.3")
+    implementation("net.datafaker:datafaker:2.5.4")
 }

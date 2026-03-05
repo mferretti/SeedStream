@@ -1,19 +1,20 @@
 package com.datagenerator.generators;
 
 /**
- * ThreadLocal context for accessing DataGeneratorFactory during nested generation.
+ * ThreadLocal context for accessing DataGeneratorFactory and geolocation during nested generation.
  *
  * <p><b>Design Rationale:</b> Composite generators (ArrayGenerator, ObjectGenerator) need access to
- * the factory for recursive generation. Passing factory through all method signatures would pollute
- * the API. ThreadLocal provides clean access without parameter pollution.
+ * the factory for recursive generation. Semantic type generators (DatafakerGenerator) need
+ * geolocation for locale-specific data. ThreadLocal provides clean access without parameter
+ * pollution.
  *
  * <p><b>Usage Pattern:</b>
  *
  * <pre>
  * DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
- * try (var ctx = GeneratorContext.enter(factory)) {
+ * try (var ctx = GeneratorContext.enter(factory, "italy")) {
  *   DataGenerator gen = factory.create(dataType);
- *   Object value = gen.generate(random, dataType); // Nested generators access factory via context
+ *   Object value = gen.generate(random, dataType); // Nested generators access factory/geolocation via context
  * }
  * </pre>
  *
@@ -21,20 +22,23 @@ package com.datagenerator.generators;
  */
 public class GeneratorContext implements AutoCloseable {
   private static final ThreadLocal<DataGeneratorFactory> FACTORY = new ThreadLocal<>();
+  private static final ThreadLocal<String> GEOLOCATION = new ThreadLocal<>();
 
   private GeneratorContext() {}
 
   /**
-   * Enter a new generator context with the given factory.
+   * Enter a new generator context with the given factory and geolocation.
    *
    * @param factory the factory to use for nested generation
+   * @param geolocation the geolocation for locale-specific data (can be null)
    * @return AutoCloseable context (use with try-with-resources)
    */
-  public static GeneratorContext enter(DataGeneratorFactory factory) {
+  public static GeneratorContext enter(DataGeneratorFactory factory, String geolocation) {
     if (FACTORY.get() != null) {
       throw new IllegalStateException("GeneratorContext already active in this thread");
     }
     FACTORY.set(factory);
+    GEOLOCATION.set(geolocation);
     return new GeneratorContext();
   }
 
@@ -53,6 +57,15 @@ public class GeneratorContext implements AutoCloseable {
     return factory;
   }
 
+  /**
+   * Get the current geolocation from context.
+   *
+   * @return the geolocation for this thread (may be null)
+   */
+  public static String getGeolocation() {
+    return GEOLOCATION.get();
+  }
+
   /** Check if a context is currently active. */
   public static boolean isActive() {
     return FACTORY.get() != null;
@@ -61,5 +74,6 @@ public class GeneratorContext implements AutoCloseable {
   @Override
   public void close() {
     FACTORY.remove();
+    GEOLOCATION.remove();
   }
 }

@@ -94,6 +94,63 @@ public class TypeParser {
       return new ArrayType(innerType, minLength, maxLength);
     }
 
-    throw new TypeParseException("Unsupported type syntax: " + typeString);
+    // Semantic types (no brackets) - try before throwing error
+    return parseSemanticType(trimmed);
+  }
+
+  /**
+   * Parse semantic type (Datafaker-based types without brackets).
+   *
+   * @param typeString the type string (e.g., "name", "email", "address")
+   * @return PrimitiveType with semantic kind
+   * @throws TypeParseException if not a valid semantic type
+   */
+  private PrimitiveType parseSemanticType(String typeString) {
+    PrimitiveType.Kind kind =
+        switch (typeString.toLowerCase()) {
+          // Person types
+          case "name" -> PrimitiveType.Kind.NAME;
+          case "first_name", "firstname" -> PrimitiveType.Kind.FIRST_NAME;
+          case "last_name", "lastname" -> PrimitiveType.Kind.LAST_NAME;
+          case "full_name", "fullname" -> PrimitiveType.Kind.FULL_NAME;
+          case "username" -> PrimitiveType.Kind.USERNAME;
+          case "title" -> PrimitiveType.Kind.TITLE;
+          case "occupation" -> PrimitiveType.Kind.OCCUPATION;
+
+          // Address types
+          case "address" -> PrimitiveType.Kind.ADDRESS;
+          case "street_name", "streetname" -> PrimitiveType.Kind.STREET_NAME;
+          case "street_number", "streetnumber" -> PrimitiveType.Kind.STREET_NUMBER;
+          case "city" -> PrimitiveType.Kind.CITY;
+          case "state" -> PrimitiveType.Kind.STATE;
+          case "postal_code", "postalcode", "zipcode", "zip" -> PrimitiveType.Kind.POSTAL_CODE;
+          case "country" -> PrimitiveType.Kind.COUNTRY;
+
+          // Contact types
+          case "email" -> PrimitiveType.Kind.EMAIL;
+          case "phone_number", "phonenumber", "phone" -> PrimitiveType.Kind.PHONE_NUMBER;
+
+          // Finance types
+          case "company" -> PrimitiveType.Kind.COMPANY;
+          case "credit_card", "creditcard" -> PrimitiveType.Kind.CREDIT_CARD;
+          case "iban" -> PrimitiveType.Kind.IBAN;
+          case "currency" -> PrimitiveType.Kind.CURRENCY;
+          case "price" -> PrimitiveType.Kind.PRICE;
+
+          // Internet types
+          case "domain" -> PrimitiveType.Kind.DOMAIN;
+          case "url" -> PrimitiveType.Kind.URL;
+          case "ipv4" -> PrimitiveType.Kind.IPV4;
+          case "ipv6" -> PrimitiveType.Kind.IPV6;
+          case "mac_address", "macaddress" -> PrimitiveType.Kind.MAC_ADDRESS;
+
+          // Code types
+          case "isbn" -> PrimitiveType.Kind.ISBN;
+          case "uuid" -> PrimitiveType.Kind.UUID;
+
+          default -> throw new TypeParseException("Unsupported type syntax: " + typeString);
+        };
+
+    return new PrimitiveType(kind, null, null); // No range for semantic types
   }
 }
