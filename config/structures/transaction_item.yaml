@@ -1,0 +1,17 @@
+name: transaction_item
+geolocation: usa
+data:
+  item_id:
+    datatype: uuid
+  product_name:
+    datatype: char[5..50]
+    alias: "product"
+  sku:
+    datatype: char[8..12]
+  quantity:
+    datatype: int[1..10]
+    alias: "qty"
+  unit_price:
+    datatype: price
+  line_total:
+    datatype: price

@@ -1,0 +1,19 @@
+name: product
+geolocation: usa
+data:
+  product_id:
+    datatype: uuid
+  sku:
+    datatype: char[8..12]
+  product_name:
+    datatype: char[5..50]
+    alias: "name"
+  manufacturer:
+    datatype: company
+  category:
+    datatype: char[5..30]
+  unit_price:
+    datatype: price
+  barcode:
+    datatype: isbn
+    alias: "ean"
