@@ -38,7 +38,7 @@ class ObjectGeneratorTest {
 
   /** Helper to generate with context (reduces boilerplate). */
   private Object generateWithContext(ObjectType objectType, Random random) {
-    try (var ctx = GeneratorContext.enter(factory)) {
+    try (var ctx = GeneratorContext.enter(factory, null)) {
       return generator.generate(random, objectType);
     }
   }
@@ -242,7 +242,7 @@ class ObjectGeneratorTest {
     Random random = new Random(42);
 
     // Generate twice
-    try (var ctx = GeneratorContext.enter(factory)) {
+    try (var ctx = GeneratorContext.enter(factory, null)) {
       generator.generate(random, objectType);
       generator.generate(random, objectType);
     }
