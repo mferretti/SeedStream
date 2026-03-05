@@ -40,3 +40,6 @@ output/
 config/
 !config/spotbugs-exclude.xml
 !config/dependency-check-suppressions.xml
+
+# Performance tests (local only, not run in CI)
+**/DatafakerPerformanceTest.java
