@@ -1,0 +1,28 @@
+name: passport
+geolocation: usa
+data:
+  passport_number:
+    datatype: char[8..9]
+    alias: "number"
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  full_name:
+    datatype: full_name
+  date_of_birth:
+    datatype: date[1950-01-01..2006-12-31]
+    alias: "dob"
+  nationality:
+    datatype: country
+  place_of_birth:
+    datatype: city
+  issue_date:
+    datatype: date[2015-01-01..2024-12-31]
+  expiry_date:
+    datatype: date[2025-01-01..2034-12-31]
+  issuing_authority:
+    datatype: company
+    alias: "authority"
+  sex:
+    datatype: char[1..1]

@@ -1,0 +1,26 @@
+name: store_movement
+geolocation: usa
+data:
+  movement_id:
+    datatype: uuid
+  timestamp:
+    datatype: timestamp[2024-01-01T00:00:00..2024-12-31T23:59:59]
+  product:
+    datatype: object[product]
+  movement_type:
+    datatype: char[3..10]
+    alias: "type"
+  quantity:
+    datatype: int[1..1000]
+    alias: "qty"
+  warehouse_location:
+    datatype: char[1..10]
+    alias: "location"
+  from_warehouse:
+    datatype: city
+  to_warehouse:
+    datatype: city
+  operator:
+    datatype: full_name
+  notes:
+    datatype: char[0..100]

@@ -1,0 +1,24 @@
+name: shop_transaction
+geolocation: usa
+data:
+  transaction_id:
+    datatype: uuid
+    alias: "txn_id"
+  timestamp:
+    datatype: timestamp[2024-01-01T00:00:00..2024-12-31T23:59:59]
+    alias: "txn_time"
+  customer:
+    datatype: object[customer]
+  items:
+    datatype: array[object[transaction_item], 1..15]
+  subtotal:
+    datatype: price
+  tax:
+    datatype: price
+  total:
+    datatype: price
+  payment_method:
+    datatype: credit_card
+    alias: "card_number"
+  currency:
+    datatype: currency

@@ -1,0 +1,24 @@
+name: customer
+geolocation: usa
+data:
+  customer_id:
+    datatype: uuid
+    alias: "id"
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  email:
+    datatype: email
+  phone:
+    datatype: phone_number
+  billing_address:
+    datatype: address
+  city:
+    datatype: city
+  state:
+    datatype: state
+  postal_code:
+    datatype: postal_code
+  country:
+    datatype: country
