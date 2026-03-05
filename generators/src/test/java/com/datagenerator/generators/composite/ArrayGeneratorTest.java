@@ -32,7 +32,7 @@ class ArrayGeneratorTest {
 
   /** Helper to generate with context. */
   private Object generateWithContext(ArrayType arrayType, Random random) {
-    try (var ctx = GeneratorContext.enter(factory)) {
+    try (var ctx = GeneratorContext.enter(factory, null)) {
       return generator.generate(random, arrayType);
     }
   }
