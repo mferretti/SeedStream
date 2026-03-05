@@ -125,6 +125,9 @@ brew install gradle
 # Override seed for different data set
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 99999"
 
+# Parallel generation with 8 worker threads
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --count 1000000 --threads 8"
+
 # Verbose output for debugging
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --verbose"
 ```
@@ -134,6 +137,7 @@ brew install gradle
 - `--format`: Output format: `json` or `csv` (default: `json`)
 - `--count`: Number of records to generate (default: `100`)
 - `--seed`: Seed override for deterministic generation (optional)
+- `--threads`: Number of worker threads for parallel generation (default: CPU cores, use 1 for single-threaded)
 - `--verbose`: Enable detailed logging (optional)
 
 ## Configuration
@@ -263,15 +267,15 @@ datagenerator/
 - ✅ Generators: Primitive types (int, char, enum) and composite types (object, array)
 - ✅ Formats: JSON (newline-delimited), CSV (RFC 4180 compliant)
 - ✅ Destinations: File output with compression and append modes
-- ✅ CLI: Full command-line interface with all options
-- ✅ Tests: 165+ unit tests with comprehensive coverage
+- ✅ Multi-threading engine: Parallel generation with deterministic seeding and backpressure handling
+- ✅ CLI: Full command-line interface with all options including --threads
+- ✅ Tests: 172+ unit tests with comprehensive coverage
 
 **Partially Implemented:**
 - 🔄 Licensing: Apache 2.0 LICENSE file and README badge (missing: source file headers, NOTICE file)
 - 🔄 Verbose logging: `--verbose` flag with progress logging (missing: `--debug` flag, dynamic log levels)
 
 **In Progress:**
-- 🔜 Multi-threading engine for parallel generation
 - 🔜 Datafaker integration for realistic data
 - 🔜 Kafka destination adapter
 - 🔜 Database destination adapter (PostgreSQL, MySQL)
@@ -299,6 +303,12 @@ Data Generator guarantees **bit-identical output** across runs when using the sa
 - System thread scheduling
 - Garbage collector threads
 - Other background threads
+
+**Performance Optimization**: The engine automatically uses single-threaded mode for small jobs (< 1000 records) to avoid threading overhead. For larger jobs, it uses a configurable worker pool with:
+- **Bounded queue** for backpressure handling (prevents memory overflow)
+- **Single writer thread** for ordered writes to the destination
+- **Progress tracking** with throughput metrics (records/sec)
+- **Linear scaling** with worker count for large data sets
 
 For technical details, see [DESIGN.md](DESIGN.md).
 
