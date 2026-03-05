@@ -121,17 +121,14 @@
   - Configurable buffer size for performance
   - Tests: 16 tests passing
 
-- [ ] **Destinations module - Kafka adapter**
-  - Implement Kafka destination with connection pooling
+- [x] **Destinations module - Kafka adapter**
+  - KafkaDestination with KafkaProducer
+  - Async/sync send modes
   - SASL/SSL authentication support
-  - Configurable batching for performance
-  - Producer reuse and proper resource management
-
-- [ ] **Destinations module - Database adapter**
-  - Implement JDBC destination with HikariCP connection pooling
-  - Batch inserts for performance
-  - Support PostgreSQL and MySQL (drivers as compileOnly)
-  - Transaction management
+  - Configurable batching, compression (gzip, snappy, lz4, zstd)
+  - Idempotent producer for exactly-once semantics
+  - Producer lifecycle management
+  - Tests: 8 tests passing
 
 ## Phase 5: CLI & Execution
 
@@ -241,6 +238,19 @@
   - Foreign key relationship handling between structures
   - Plugin marketplace for custom generators and destinations
   - Metrics and monitoring integration (Prometheus, Grafana)
+
+## Phase 8: Database Destinations (Deferred - Requires Careful Design)
+
+- [ ] **Destinations module - Database adapter**
+  - Implement JDBC destination with HikariCP connection pooling
+  - Batch inserts for performance
+  - Support PostgreSQL and MySQL (drivers as compileOnly)
+  - Transaction management
+  - Auto-table creation from structure definitions
+  - Complex type mapping (arrays, nested objects)
+  - **Complexity**: High - requires SQL generation, schema management, type conversion
+  - **Design decisions needed**: Schema auto-creation vs manual, complex type handling, migration strategy
+  - Task: TASK-018-destinations-database.md
 
 ## Before Going Public 🚀
 

@@ -1,6 +1,6 @@
 package com.datagenerator.cli;
 
-import com.datagenerator.core.seed.RandomProvider;
+import com.datagenerator.core.engine.GenerationEngine;
 import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
@@ -9,6 +9,8 @@ import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.file.FileDestination;
 import com.datagenerator.destinations.file.FileDestinationConfig;
+import com.datagenerator.destinations.kafka.KafkaDestination;
+import com.datagenerator.destinations.kafka.KafkaDestinationConfig;
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
@@ -23,7 +25,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.Callable;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -72,6 +73,11 @@ public class ExecuteCommand implements Callable<Integer> {
       names = {"-v", "--verbose"},
       description = "Enable verbose output")
   private boolean verbose;
+
+  @Option(
+      names = {"-t", "--threads"},
+      description = "Number of worker threads (default: # of CPU cores)")
+  private Integer threads;
 
   @Override
   public Integer call() throws Exception {
@@ -122,28 +128,36 @@ public class ExecuteCommand implements Callable<Integer> {
     StructureRegistry registry = createStructureRegistry(structuresPath);
     DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
 
-    // 7. Generate and write records
+    // 7. Generate and write records using GenerationEngine
     try (var ctx = GeneratorContext.enter(factory, dataStructure.getGeolocation())) {
       destination.open();
-
-      RandomProvider randomProvider = new RandomProvider(seed);
-      Random random = randomProvider.getRandom();
 
       ObjectType objectType = new ObjectType(dataStructure.getName());
       DataGenerator generator = factory.create(objectType);
 
+      // Determine number of worker threads
+      int workerThreads = threads != null ? threads : Runtime.getRuntime().availableProcessors();
+
+      // Create generation engine
+      GenerationEngine engine =
+          GenerationEngine.builder()
+              .recordGenerator(
+                  (random) -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> record =
+                        (Map<String, Object>) generator.generate(random, objectType);
+                    return record;
+                  })
+              .recordWriter(destination::write)
+              .masterSeed(seed)
+              .workerThreads(workerThreads)
+              .build();
+
       log.info("Generating {} records...", count);
       long startTime = System.currentTimeMillis();
 
-      for (int i = 0; i < count; i++) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> record = (Map<String, Object>) generator.generate(random, objectType);
-        destination.write(record);
-
-        if (verbose && (i + 1) % 100 == 0) {
-          log.info("Generated {} records", i + 1);
-        }
-      }
+      // Generate records
+      engine.generate(count);
 
       destination.flush();
 
@@ -199,8 +213,7 @@ public class ExecuteCommand implements Callable<Integer> {
 
     return switch (type.toLowerCase()) {
       case "file" -> createFileDestination(conf, serializer);
-      case "kafka" ->
-          throw new UnsupportedOperationException("Kafka destination not yet implemented");
+      case "kafka" -> createKafkaDestination(conf, serializer);
       case "database" ->
           throw new UnsupportedOperationException("Database destination not yet implemented");
       default -> throw new IllegalArgumentException("Unsupported destination type: " + type);
@@ -220,6 +233,56 @@ public class ExecuteCommand implements Callable<Integer> {
             .build();
 
     return new FileDestination(config, serializer);
+  }
+
+  private KafkaDestination createKafkaDestination(JsonNode conf, FormatSerializer serializer) {
+    String bootstrap = conf.get("bootstrap").asText();
+    String topic = conf.get("topic").asText();
+
+    KafkaDestinationConfig.KafkaDestinationConfigBuilder configBuilder =
+        KafkaDestinationConfig.builder().bootstrap(bootstrap).topic(topic);
+
+    // Optional configuration
+    if (conf.has("sync")) {
+      configBuilder.sync(conf.get("sync").asBoolean());
+    }
+    if (conf.has("batch_size")) {
+      configBuilder.batchSize(conf.get("batch_size").asInt());
+    }
+    if (conf.has("linger_ms")) {
+      configBuilder.lingerMs(conf.get("linger_ms").asInt());
+    }
+    if (conf.has("compression")) {
+      configBuilder.compression(conf.get("compression").asText());
+    }
+    if (conf.has("acks")) {
+      configBuilder.acks(conf.get("acks").asText());
+    }
+
+    // SASL/SSL configuration
+    if (conf.has("security_protocol")) {
+      configBuilder.securityProtocol(conf.get("security_protocol").asText());
+    }
+    if (conf.has("sasl_mechanism")) {
+      configBuilder.saslMechanism(conf.get("sasl_mechanism").asText());
+    }
+    if (conf.has("sasl_jaas_config")) {
+      configBuilder.saslJaasConfig(conf.get("sasl_jaas_config").asText());
+    }
+    if (conf.has("ssl_truststore_location")) {
+      configBuilder.sslTruststoreLocation(conf.get("ssl_truststore_location").asText());
+    }
+    if (conf.has("ssl_truststore_password")) {
+      configBuilder.sslTruststorePassword(conf.get("ssl_truststore_password").asText());
+    }
+    if (conf.has("ssl_keystore_location")) {
+      configBuilder.sslKeystoreLocation(conf.get("ssl_keystore_location").asText());
+    }
+    if (conf.has("ssl_keystore_password")) {
+      configBuilder.sslKeystorePassword(conf.get("ssl_keystore_password").asText());
+    }
+
+    return new KafkaDestination(configBuilder.build(), serializer);
   }
 
   private StructureRegistry createStructureRegistry(Path structuresPath) {
