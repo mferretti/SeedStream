@@ -146,11 +146,15 @@
   - ✅ Basic INFO level logging throughout
   - ❌ Missing: --debug flag, programmatic log level switching (DEBUG/TRACE levels)
 
-- [ ] **Core - Multi-threading engine**
-  - Implement parallel generation workers with configurable thread pools
-  - Batching strategy for optimal performance
-  - Streaming pipeline: generate → serialize → send
-  - Backpressure handling
+- [x] **Core - Multi-threading engine**
+  - GenerationEngine class with worker pool architecture
+  - Single-threaded optimization for small jobs (< 1000 records)
+  - Multi-threaded mode with configurable worker pool (default: CPU cores)
+  - Bounded queue for backpressure handling (capacity: 1000)
+  - Deterministic generation with thread-local Random instances
+  - CLI integration with --threads option
+  - Progress logging with throughput metrics (records/sec)
+  - Tests: 7 comprehensive tests passing
 
 ## Phase 6: Quality & Performance
 
