@@ -10,7 +10,7 @@
 
 ## Objective
 
-Integrate Datafaker 2.1.0 library to generate realistic locale-specific data (names, addresses, emails, phone numbers, etc.) for 62+ geolocations. Extend the type system to support semantic types beyond simple primitives.
+Integrate Datafaker 2.5.4 library (latest stable as of March 2026) to generate realistic locale-specific data (names, addresses, emails, phone numbers, etc.) for 62+ geolocations. Extend the type system to support semantic types beyond simple primitives.
 
 ---
 
@@ -37,8 +37,8 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":schema"))
     
-    // Add Datafaker
-    implementation("net.datafaker:datafaker:2.1.0")
+    // Add Datafaker (latest stable version as of March 2026)
+    implementation("net.datafaker:datafaker:2.5.4")
 }
 ```
 
