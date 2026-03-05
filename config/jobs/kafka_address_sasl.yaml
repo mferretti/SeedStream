@@ -1,0 +1,21 @@
+source: address.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 12345
+conf:
+  bootstrap: kafka.example.com:9093
+  topic: addresses
+  batch_size: 1000
+  linger_ms: 10
+  compression: gzip
+  acks: all
+  sync: false
+  security_protocol: SASL_SSL
+  sasl_mechanism: SCRAM-SHA-512
+  sasl_jaas_config: |
+    org.apache.kafka.common.security.scram.ScramLoginModule required
+    username="user"
+    password="secret";
+  ssl_truststore_location: /path/to/truststore.jks
+  ssl_truststore_password: truststore-password

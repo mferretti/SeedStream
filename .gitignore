@@ -36,10 +36,10 @@ output/
 *.crt
 *.pem
 
-# Config exclusions (allow quality tool configs)
-config/
-!config/spotbugs-exclude.xml
-!config/dependency-check-suppressions.xml
+# Config directory is included (contains example configurations)
+# But exclude any actual secrets/credentials if accidentally placed there
+config/**/*.secret
+config/**/*.credentials
 
 # Performance tests (local only, not run in CI)
 **/DatafakerPerformanceTest.java
