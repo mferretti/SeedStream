@@ -62,17 +62,20 @@
 
 ## Phase 2: Data Generation
 
-- [x] **Generators module - Locale-specific data (Datafaker 2.5.4 integration)**
+- [x] **Generators module - Datafaker integration and locale-specific data**
   - ✅ Integrated Datafaker 2.5.4 (latest stable as of March 2026)
   - ✅ Extended PrimitiveType.Kind with 28 semantic types (person, address, contact, finance, internet, code)
   - ✅ Updated TypeParser to support no-bracket syntax for semantic types (name, email, phone, etc.)
   - ✅ Created DatafakerGenerator with locale support (62+ locales: en, it, es, fr, de, pt, ru, zh, ja, ko, ar...)
+  - ✅ Created LocaleMapper for geolocation → Java Locale conversion
   - ✅ Added geolocation field to GeneratorContext for locale propagation
   - ✅ Deterministic generation: Seeded Random passed to Faker for reproducible data
   - ✅ Fallback to English for unknown geolocations with warning log
   - ✅ Tests: 25+ unit tests + 8 integration tests passing
+  - ✅ Fixed Java 21 deprecations (Locale.of() instead of deprecated constructors)
   - **Example**: `geolocation: italy` + `datatype: name` → "Mario Rossi", `datatype: city` → "Milano"
   - **Supported types**: NAME, FIRST_NAME, LAST_NAME, EMAIL, PHONE_NUMBER, ADDRESS, CITY, COMPANY, URL, UUID, IBAN, and more
+  - **Completion**: March 2026 (TASK-010, TASK-011)
 
 - [ ] **Generators module - ReferenceGenerator (deferred)**
   - **Rationale**: Deferred until database destinations are implemented (no immediate use case)

@@ -33,7 +33,7 @@
 
 **SeedStream** is a high-performance, enterprise-grade test data generator for Java applications. It generates large volumes of realistic, reproducible test data to multiple destinations (Kafka, databases, files) using declarative YAML-based configuration.
 
-### Current Implementation Status (v0.1 - February 2026)
+### Current Implementation Status (v0.2 - March 2026)
 
 **Completed Core Features:**
 - ✅ Primitive data types (char, int, decimal, boolean, date, timestamp, enum)
@@ -44,15 +44,16 @@
 - ✅ JSON serialization (NDJSON, field aliases, 16 tests)
 - ✅ CSV serialization (RFC 4180, always-quoted, 17 tests)
 - ✅ File destination (NIO, gzip compression, append mode, 16 tests)
-- ✅ CLI interface (Picocli with --job, --format, --count, --seed, --verbose)
+- ✅ Kafka destination (async/sync, SASL/SSL, batching, 8 tests)
+- ✅ Multi-threading engine (worker pool, backpressure, 7 tests)
+- ✅ Datafaker integration (realistic data, 62+ locales)
+- ✅ CLI interface (Picocli with --job, --format, --count, --seed, --threads, --verbose)
 
-**In Development:**
-- 🔄 Datafaker integration for realistic locale-specific data
-- 🔄 Multi-threading engine for parallel generation
-- 🔄 Kafka destination with connection pooling
-- 🔄 Database destination with JDBC and HikariCP
+**Deferred to Phase 8:**
+- ⏸️ Database destination with JDBC and HikariCP (requires careful design)
+- ⏸️ Reference generator for foreign keys
 
-**Test Coverage**: 165 tests passing across 6 modules (70%+ coverage)
+**Test Coverage**: 276 tests passing across 6 modules (75%+ coverage)
 
 ### Key Differentiators
 
@@ -176,7 +177,7 @@ line_items:
 
 #### FR-3: Realistic Data (Datafaker Integration)
 **Priority**: P1 (High)  
-**Status**: 🔄 Planned
+**Status**: ✅ Implemented
 
 The system SHALL generate realistic locale-specific data using Datafaker library:
 
@@ -2021,6 +2022,7 @@ public long resolveEmbedded(EmbeddedSeed seed) {
 |---------|------|--------|---------|
 | 1.0 | 2026-01-20 | Marco | Initial comprehensive requirements document |
 | 1.1 | 2026-02-21 | Marco | Updated implementation status: FR-9, FR-12, FR-13, FR-15, FR-16 completed; Phases 3-5 progress updated; 165 tests passing |
+| 1.2 | 2026-03-05 | Marco | Updated implementation status: FR-3 (Datafaker), FR-10 (Multi-threading), FR-13 (Kafka) completed; 276 tests passing; Version bumped to v0.2 |
 
 **Approval**:
 - Project Owner: Marco Ferretti
