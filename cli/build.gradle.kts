@@ -15,6 +15,9 @@ dependencies {
     // CLI framework
     implementation("info.picocli:picocli:4.7.7")
     annotationProcessor("info.picocli:picocli-codegen:4.7.7")
+    
+    // Logback for programmatic log level control
+    implementation("ch.qos.logback:logback-classic:1.5.32")
 }
 
 application {

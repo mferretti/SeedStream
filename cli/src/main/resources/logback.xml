@@ -6,11 +6,17 @@
         </encoder>
     </appender>
 
-    <!-- Production logging: WARN and ERROR only -->
-    <root level="WARN">
+    <!-- Default logging: INFO (can be changed programmatically) -->
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
     
-    <!-- All modules set to WARN (production mode) -->
-    <logger name="com.datagenerator" level="WARN"/>
+    <!-- Application modules inherit from root (allows programmatic control) -->
+    <logger name="com.datagenerator" level="INFO" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    
+    <!-- Reduce noise from third-party libraries -->
+    <logger name="org.hibernate.validator" level="WARN"/>
+    <logger name="org.jboss" level="WARN"/>
 </configuration>
