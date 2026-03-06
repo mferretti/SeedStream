@@ -1,0 +1,37 @@
+name: order
+geolocation: usa
+data:
+  order_id:
+    datatype: uuid
+  order_number:
+    datatype: char[10..15]
+  customer_id:
+    datatype: uuid
+  customer_email:
+    datatype: email
+  order_date:
+    datatype: timestamp[2024-01-01T00:00:00..2026-03-06T23:59:59]
+  status:
+    datatype: enum[pending,processing,shipped,delivered,cancelled,refunded]
+  items:
+    datatype: array[object[order_item], 1..15]
+  subtotal:
+    datatype: decimal[10.00..9999.99]
+  tax:
+    datatype: decimal[0.50..999.99]
+  shipping:
+    datatype: decimal[0.00..50.00]
+  total:
+    datatype: decimal[10.50..10999.99]
+  payment_method:
+    datatype: enum[credit_card,debit_card,paypal,bank_transfer,cash_on_delivery]
+  shipping_address:
+    datatype: address
+  shipping_city:
+    datatype: city
+  shipping_state:
+    datatype: state
+  shipping_zip:
+    datatype: postal_code
+  tracking_number:
+    datatype: char[15..25]

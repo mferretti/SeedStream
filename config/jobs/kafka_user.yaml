@@ -1,0 +1,13 @@
+source: user.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 77777
+conf:
+  bootstrap: kafka-cluster.example.com:9093
+  topic: users
+  batch_size: 1000
+  linger_ms: 10
+  compression: snappy
+  acks: "all"
+  sync: true

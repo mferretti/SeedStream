@@ -1,0 +1,25 @@
+name: event_log
+geolocation: usa
+data:
+  event_id:
+    datatype: uuid
+  timestamp:
+    datatype: timestamp[now-30d..now]
+  event_type:
+    datatype: enum[login,logout,page_view,button_click,form_submit,error,warning,info]
+  user_id:
+    datatype: uuid
+  session_id:
+    datatype: uuid
+  ip_address:
+    datatype: ip_address
+  user_agent:
+    datatype: char[20..150]
+  url:
+    datatype: url
+  status_code:
+    datatype: int[200..599]
+  response_time_ms:
+    datatype: int[10..5000]
+  country:
+    datatype: country

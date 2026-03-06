@@ -1,0 +1,13 @@
+source: event_log.yaml
+type: kafka
+seed:
+  type: env
+  name: EVENT_SEED
+conf:
+  bootstrap: localhost:9092
+  topic: application_events
+  batch_size: 5000
+  linger_ms: 5
+  compression: lz4
+  acks: "all"
+  sync: false

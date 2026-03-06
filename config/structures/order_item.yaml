@@ -1,0 +1,16 @@
+name: order_item
+data:
+  product_id:
+    datatype: uuid
+  product_name:
+    datatype: char[10..100]
+  sku:
+    datatype: char[8..15]
+  quantity:
+    datatype: int[1..10]
+  unit_price:
+    datatype: decimal[0.99..999.99]
+  discount_percent:
+    datatype: decimal[0.00..50.00]
+  subtotal:
+    datatype: decimal[0.99..9999.99]
