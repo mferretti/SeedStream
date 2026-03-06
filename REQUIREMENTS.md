@@ -44,7 +44,7 @@
 - ✅ JSON serialization (NDJSON, field aliases, 16 tests)
 - ✅ CSV serialization (RFC 4180, always-quoted, 17 tests)
 - ✅ File destination (NIO, gzip compression, append mode, 16 unit + 6 integration tests)
-- ✅ Kafka destination (async/sync, SASL/SSL, batching, compression, 8 unit + 12 integration tests)
+- ✅ Kafka destination (async/sync, SASL/SSL, batching, compression, 8 unit + 18 integration tests)
 - ✅ Multi-threading engine (worker pool, backpressure, 7 tests)
 - ✅ Datafaker integration (realistic data, 62+ locales, 28 semantic types)
 - ✅ CLI interface (Picocli with --job, --format, --count, --seed, --threads, --verbose)
@@ -55,7 +55,7 @@
 - ⏸️ Database destination with JDBC and HikariCP (requires careful design)
 - ⏸️ Reference generator for foreign keys
 
-**Test Coverage**: 304 tests passing (267 unit + 37 integration) across 6 modules (80%+ coverage)
+**Test Coverage**: 309 tests passing (276 unit + 33 integration) across 6 modules (80%+ coverage)
 
 ### Key Differentiators
 
