@@ -79,12 +79,12 @@ jobs:
         name: spotbugs-reports
         path: '**/build/reports/spotbugs/**'
     
-    - name: Upload Dependency-Check report
+    - name: Upload Dependency-Check reports
       uses: actions/upload-artifact@v7
       if: always()
       with:
-        name: dependency-check-report
-        path: 'build/reports/dependency-check-report.html'
+        name: dependency-check-reports
+        path: '**/build/reports/dependency-check-report.html'
     
     - name: Upload build reports
       uses: actions/upload-artifact@v7
