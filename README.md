@@ -12,7 +12,7 @@ A high-performance, configurable test data generator for enterprise applications
 ---
 
 **📚 Documentation**  
-[Architecture & Design](DESIGN.md) · [Code Quality Guide](QUALITY.md) · [Roadmap & Backlog](BACKLOG.md) · [Performance Benchmarks](benchmarks/README.md) · [License Discussion](LICENSE-DISCUSSION.md)
+[Architecture & Design](docs/DESIGN.md) · [Code Quality Guide](docs/QUALITY.md) · [Roadmap & Backlog](docs/BACKLOG.md) · [Performance Benchmarks](benchmarks/README.md) · [License Discussion](docs/LICENSE-DISCUSSION.md)
 
 ---
 
@@ -344,7 +344,7 @@ Data Generator guarantees **bit-identical output** across runs when using the sa
 - **Progress tracking** with throughput metrics (records/sec)
 - **Linear scaling** with worker count for large data sets
 
-For technical details, see [DESIGN.md](DESIGN.md).
+For technical details, see [DESIGN.md](docs/DESIGN.md).
 
 ## Development
 
@@ -981,17 +981,17 @@ A: All generated data is **synthetic** and not real PII. However:
 - 📋 Metrics and monitoring (Prometheus, Grafana)
 - 📋 Web UI
 
-See [BACKLOG.md](BACKLOG.md) for detailed task tracking.
+See [BACKLOG.md](docs/BACKLOG.md) for detailed task tracking.
 
 ## Contributing
 
 Contributions are welcome! Whether it's bug reports, feature requests, or pull requests, we appreciate your help.
 
 **Before contributing:**
-1. Check [BACKLOG.md](BACKLOG.md) for planned features
+1. Check [BACKLOG.md](docs/BACKLOG.md) for planned features
 2. Open an issue to discuss major changes
-3. Read [DESIGN.md](DESIGN.md) for architectural context
-4. Follow [QUALITY.md](QUALITY.md) for code standards
+3. Read [DESIGN.md](docs/DESIGN.md) for architectural context
+4. Follow [QUALITY.md](docs/QUALITY.md) for code standards
 
 **Development setup:**
 ```bash
