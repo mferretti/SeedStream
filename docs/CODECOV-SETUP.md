@@ -9,9 +9,23 @@ This project uses [Codecov](https://codecov.io) for dynamic code coverage report
 1. Go to [https://codecov.io](https://codecov.io)
 2. Sign in with your GitHub account
 3. Enable Codecov for the `mferretti/SeedStream` repository
-4. No API token required - Codecov automatically integrates with public GitHub repositories
+4. **Get your upload token**:
+   - Click on your repository in Codecov dashboard
+   - Go to Settings → General
+   - Copy the "Repository Upload Token"
 
-### 2. Verify Integration (After First Push)
+### 2. Add Token to GitHub Secrets
+
+**Required since 2024**: Codecov now requires upload tokens even for public repositories.
+
+1. Go to your GitHub repository: `https://github.com/mferretti/SeedStream`
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Name: `CODECOV_TOKEN`
+5. Value: Paste the upload token from Codecov
+6. Click **Add secret**
+
+### 3. Verify Integration (After First Push)
 
 Once you push commits to the `main` branch:
 
@@ -65,10 +79,16 @@ open generators/build/reports/jacoco/test/html/index.html
 
 ## Troubleshooting
 
+**Upload failing with "missing token" error?**
+- Ensure you've added `CODECOV_TOKEN` to GitHub repository secrets
+- Token name must be exactly `CODECOV_TOKEN` (case-sensitive)
+- Verify the token is from the correct repository in Codecov dashboard
+
 **Badge not updating?**
 - Ensure workflow runs successfully on GitHub Actions
 - Check Codecov dashboard for upload errors
 - Verify repository is enabled in Codecov settings
+- First upload may take 2-3 minutes to appear
 
 **Coverage lower than expected?**
 - Check `codecov.yml` ignore patterns
@@ -82,7 +102,4 @@ The README badge URL:
 [![codecov](https://codecov.io/gh/mferretti/SeedStream/branch/main/graph/badge.svg)](https://codecov.io/gh/mferretti/SeedStream)
 ```
 
-Optional: Add token to badge URL for private repositories (not needed for public repos):
-```markdown
-[![codecov](https://codecov.io/gh/mferretti/SeedStream/branch/main/graph/badge.svg?token=YOUR_TOKEN)](https://codecov.io/gh/mferretti/SeedStream)
-```
+The upload token (for GitHub Actions) is different from the badge token. Badge display works without additional tokens for public repositories.
