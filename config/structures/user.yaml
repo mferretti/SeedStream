@@ -1,0 +1,29 @@
+name: user
+geolocation: usa
+data:
+  user_id:
+    datatype: uuid
+    alias: "id"
+  username:
+    datatype: char[5..20]
+  email:
+    datatype: email
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  date_of_birth:
+    datatype: date[1960-01-01..2005-12-31]
+    alias: "dob"
+  phone:
+    datatype: phone_number
+  created_at:
+    datatype: timestamp[2020-01-01T00:00:00..2024-12-31T23:59:59]
+  last_login:
+    datatype: timestamp[2025-01-01T00:00:00..2026-03-06T23:59:59]
+  is_active:
+    datatype: boolean
+  role:
+    datatype: enum[admin,user,guest,moderator]
+  profile_url:
+    datatype: url

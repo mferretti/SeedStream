@@ -1,0 +1,9 @@
+source: order.yaml
+type: file
+seed:
+  type: embedded
+  value: 54321
+conf:
+  path: output/orders
+  compress: true
+  append: false

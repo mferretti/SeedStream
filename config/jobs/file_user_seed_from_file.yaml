@@ -1,0 +1,9 @@
+source: user.yaml
+type: file
+seed:
+  type: file
+  path: /secrets/user-seed.txt
+conf:
+  path: output/users
+  compress: false
+  append: false
