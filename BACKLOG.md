@@ -229,7 +229,7 @@
 - [ ] **Testing - Unit tests foundation**
   - Set up JUnit 5, Mockito, AssertJ ✅ (already configured)
   - Unit tests for core components (seeding, type system ✅, parsers ✅)
-  - High code coverage for critical paths (Current: 276 tests passing)
+  - High code coverage for critical paths (Current: 267 tests passing)
   - **Target**: Maintain 70%+ unit test coverage
 
 ## Phase 7: Documentation (After Performance Validation)
