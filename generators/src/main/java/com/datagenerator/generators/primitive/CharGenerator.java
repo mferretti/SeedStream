@@ -52,7 +52,7 @@ public class CharGenerator implements DataGenerator {
 
     if (minLength > maxLength) {
       throw new GeneratorException(
-          "Invalid char range: minValue (" + minLength + ") > maxValue (" + maxLength + ")");
+          "Invalid char range: minValue (%d) > maxValue (%d)".formatted(minLength, maxLength));
     }
 
     // Generate random length in range [minLength, maxLength]
@@ -76,7 +76,7 @@ public class CharGenerator implements DataGenerator {
 
   private int parseLength(String value, String fieldName) {
     if (value == null) {
-      throw new GeneratorException("Missing required field: " + fieldName + " for char type");
+      throw new GeneratorException("Missing required field: %s for char type".formatted(fieldName));
     }
     try {
       int length = Integer.parseInt(value);

@@ -62,7 +62,7 @@ public class DateGenerator implements DataGenerator {
 
     if (startDate.isAfter(endDate)) {
       throw new GeneratorException(
-          "Invalid date range: minValue (" + startDate + ") > maxValue (" + endDate + ")");
+          "Invalid date range: minValue (%s) > maxValue (%s)".formatted(startDate, endDate));
     }
 
     // Calculate days between dates
@@ -86,7 +86,7 @@ public class DateGenerator implements DataGenerator {
 
   private LocalDate parseDate(String value, String fieldName) {
     if (value == null) {
-      throw new GeneratorException("Missing required field: " + fieldName + " for date type");
+      throw new GeneratorException("Missing required field: %s for date type".formatted(fieldName));
     }
     try {
       return LocalDate.parse(value, FORMATTER);

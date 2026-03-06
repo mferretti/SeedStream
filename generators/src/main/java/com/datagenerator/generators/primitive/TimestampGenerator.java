@@ -103,7 +103,8 @@ public class TimestampGenerator implements DataGenerator {
 
   private Instant parseTimestamp(String value, String fieldName) {
     if (value == null) {
-      throw new GeneratorException("Missing required field: " + fieldName + " for timestamp type");
+      throw new GeneratorException(
+          "Missing required field: %s for timestamp type".formatted(fieldName));
     }
 
     // Try relative format first: "now", "now-30d", "now+7d"

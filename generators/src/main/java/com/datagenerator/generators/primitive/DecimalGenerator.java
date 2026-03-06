@@ -80,7 +80,8 @@ public class DecimalGenerator implements DataGenerator {
 
   private BigDecimal parseDecimal(String value, String fieldName) {
     if (value == null) {
-      throw new GeneratorException("Missing required field: " + fieldName + " for decimal type");
+      throw new GeneratorException(
+          "Missing required field: %s for decimal type".formatted(fieldName));
     }
     try {
       return new BigDecimal(value);
