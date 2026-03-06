@@ -155,9 +155,9 @@
   - Configurable batching, compression (gzip, snappy, lz4, zstd)
   - Idempotent producer for exactly-once semantics (acks="all" default)
   - Producer lifecycle management
-  - Tests: 8 tests passing
+  - Tests: 8 unit + 18 integration tests passing
   - **Testcontainers**: Upgraded to 1.21.4 (latest stable) for Docker 29.x compatibility
-  - **Integration tests**: 12 comprehensive tests covering all configurations
+  - **Integration tests**: 18 comprehensive tests (12 configuration/compression + 6 error scenarios)
 
 ## Phase 5: CLI & Execution
 
@@ -223,17 +223,18 @@
 
 - [x] **Testing - Integration tests** ✅ **COMPLETE (March 6, 2026)**
   - Testcontainers infrastructure set up (version 1.21.4 - latest stable)
-  - **Kafka integration tests**: 12 tests with real Kafka container (confluentinc/cp-kafka:7.5.0)
-    - All compression types: gzip, snappy, lz4, zstd, none
+  - **Kafka integration tests**: 18 tests with real Kafka container (confluentinc/cp-kafka:7.5.0)
+    - 12 configuration/compression tests: gzip, snappy, lz4, zstd, none
     - Sync/async modes, custom batching, acks settings
     - Security protocol configuration, minimal config defaults
+    - 6 error scenario tests: invalid broker, write after close, serialization, empty/large records
   - **File integration tests**: 6 tests (JSON, CSV, compression, append mode)
   - **Seed resolution integration tests**: 10 tests (file, env, error handling)
   - Separate `integrationTest` Gradle task (excludes from default test runs)
   - **Docker compatibility**: Fixed for Docker Engine 29.x (API 1.54)
-  - **Total integration tests**: 37 tests (was 20, now 28 with enhanced Kafka tests)
+  - **Total integration tests**: 43 tests (was 37, now 43 with error scenarios)
   - **Run**: `./gradlew integrationTest`
-  - **Completion**: March 6, 2026 (TASK-022, TASK-023 enhanced, TASK-025)
+  - **Completion**: March 6, 2026 (TASK-022, TASK-023 enhanced with error scenarios, TASK-025)
 
 - [ ] **Testing - Unit tests foundation**
   - Set up JUnit 5, Mockito, AssertJ ✅ (already configured)

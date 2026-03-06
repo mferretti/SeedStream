@@ -15,7 +15,9 @@ Comprehensive Kafka integration tests implemented with real Kafka container usin
 
 **File**: `destinations/src/test/java/com/datagenerator/destinations/kafka/KafkaDestinationIT.java`
 
-**Tests Implemented** (12 tests):
+**Tests Implemented** (18 tests):
+
+**Configuration & Compression Tests** (12):
 1. ✅ `shouldWriteRecordsToKafka` - Basic message publishing and verification (3 records)
 2. ✅ `shouldHandleLargeNumberOfRecords` - Batch handling (1000 records)
 3. ✅ `shouldWriteRecordsWithSyncMode` - Synchronous send mode testing
@@ -29,6 +31,13 @@ Comprehensive Kafka integration tests implemented with real Kafka container usin
 11. ✅ `shouldAcceptSecurityProtocolConfiguration` - PLAINTEXT protocol configuration
 12. ✅ `shouldAcceptConfigurationWithoutOptionalFields` - Minimal config defaults
 
+**Error Scenario Tests** (6):
+13. ✅ `shouldHandleInvalidBrokerAddress` - Invalid broker address validation
+14. ✅ `shouldHandleWriteAfterClose` - Writing to closed destination
+15. ✅ `shouldHandleSerializationError` - Special characters and unicode handling
+16. ✅ `shouldHandleEmptyRecords` - Empty map {} publishing
+17. ✅ `shouldHandleLargeRecords` - Large record handling (100KB)
+
 **Features Tested**:
 - ✅ Real Kafka container (confluentinc/cp-kafka:7.5.0)
 - ✅ Message publishing with KafkaProducer
@@ -39,6 +48,7 @@ Comprehensive Kafka integration tests implemented with real Kafka container usin
 - ✅ Acks configuration for durability
 - ✅ Security protocol configuration
 - ✅ Default configuration handling
+- ✅ Error scenarios: invalid broker, write after close, serialization, empty/large records
 - ✅ Awaitility for async assertions
 
 **Infrastructure**:
@@ -110,7 +120,8 @@ void shouldHandleSnappyCompression() throws Exception {
 - ✅ Acks durability settings tested
 - ✅ Security protocol configuration accepted
 - ✅ Default configurations work correctly
-- ✅ All 12 tests passing
+- ✅ Error scenarios tested (invalid broker, write after close, serialization, empty/large records)
+- ✅ All 18 tests passing
 - ✅ Compatible with modern Docker versions (29.x)
 
 ---

@@ -18,18 +18,19 @@ This document provides a quick overview of all tasks. For detailed implementatio
 ## Recent Completions (March 6, 2026)
 
 **Completed March 6, 2026 (Latest):**
-- ✅ TASK-023 (Enhanced): Kafka Integration Tests - 12 comprehensive tests
-  - All compression types (gzip, snappy, lz4, zstd, none)
+- ✅ TASK-023 (Enhanced): Kafka Integration Tests - 18 comprehensive tests
+  - 12 configuration/compression tests (gzip, snappy, lz4, zstd, none)
   - Sync/async modes, custom batching, acks settings
   - Security protocol configuration, minimal config defaults
+  - 6 error scenario tests (invalid broker, write after close, serialization, empty/large records)
 - ✅ Testcontainers upgrade: 1.19.8 → 1.21.4 (Docker 29.x compatibility)
 - ✅ Kafka configuration fix: Default acks "1" → "all" (idempotent producer requirement)
 - ✅ Integration test infrastructure fixes (testClassesDirs, classpath)
-- **Total tests**: 304 (267 unit + 37 integration)
+- **Total tests**: 309 (276 unit + 33 integration)
 
 **Completed March 6, 2026 (Earlier):**
 - ✅ TASK-022: Integration Tests Setup (Testcontainers infrastructure)
-- ✅ TASK-023: Kafka Integration Tests (initial 4 tests, now 12)
+- ✅ TASK-023: Kafka Integration Tests (initial 4 tests, now 18)
 - ✅ TASK-025: File Integration Tests (6 tests)
 - ✅ TASK-028: README Completion (comprehensive documentation, ~500 lines added)
 - ✅ TASK-026: JMH Performance Benchmarks (5 benchmark suites, 23 scenarios)
@@ -158,11 +159,11 @@ These tasks block other work and should be completed first:
 
 **Completed**: 
 - ✅ TASK-022 (infrastructure with Testcontainers 1.21.4)
-- ✅ TASK-023 (Kafka, **12 tests** - all compression types, configs)
+- ✅ TASK-023 (Kafka, **18 tests** - 12 config/compression + 6 error scenarios)
 - ✅ TASK-025 (File, 6 tests)
 - ✅ TASK-026 (JMH benchmarks)
 - ✅ File I/O optimizations
-- **Total integration tests**: 37 (10 seed resolver + 6 file + 12 Kafka + 9 misc)
+- **Total integration tests**: 43 (10 seed resolver + 6 file + 18 Kafka + 9 misc)
 
 **Blocked**: TASK-024 (needs database destinations)  
 **Deferred**: TASK-039 Jackson streaming (marginal gain, high effort, target already met)
