@@ -42,6 +42,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
     
     # Dependency-Check disabled in CI (requires NVD API key)
     # Run locally: ./gradlew dependencyCheckAnalyze
