@@ -52,7 +52,7 @@ public class DatafakerGeneratorsBenchmark {
   public void setup() {
     random = new Random(12345L);
     datafakerGenerator = new DatafakerGenerator();
-    
+
     // Create registry with empty loader (not needed for Datafaker)
     StructureRegistry registry = new StructureRegistry((name, path, reg) -> Map.of());
     factory = new DataGeneratorFactory(registry, null);
