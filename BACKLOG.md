@@ -158,6 +158,10 @@
   - CLI integration with --threads option
   - Progress logging with throughput metrics (records/sec)
   - Tests: 7 comprehensive tests passing
+  - **Bug Fix (March 6, 2026)**: Fixed GeneratorContext not available in worker threads
+    - Issue: ObjectGenerator failed with "No GeneratorContext active" in multi-threaded mode
+    - Solution: Initialize GeneratorContext in RecordGenerator lambda (per-worker context)
+    - Tested: 100,000 complex Datafaker records, 10 threads, 6,923 rec/sec (14.4s)
 
 ## Phase 6: Quality & Performance
 
@@ -177,6 +181,11 @@
   - Measure records/second for various data types
   - Benchmark different destinations (file, Kafka, DB)
   - Memory profiling and optimization
+  - **Initial findings (March 6, 2026)**:
+    - Complex Datafaker objects: 6,923 rec/sec (100K records, 10 threads)
+    - File I/O throughput: ~2.1 MB/sec (below 500 MB/sec target)
+    - Recommendation: Focus on primitive-only benchmarks and JSON serializer optimization
+    - Target: Validate 10M rec/sec for in-memory primitives, 100K rec/sec for Kafka
 
 ## Phase 7: Documentation
 
