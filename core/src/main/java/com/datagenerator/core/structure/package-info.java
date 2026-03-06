@@ -17,8 +17,8 @@
 /**
  * Structure loading and registry for managing nested object references.
  *
- * <p>This package provides infrastructure for loading data structure definitions from YAML files and
- * maintaining a registry of structures for resolving nested object references.
+ * <p>This package provides infrastructure for loading data structure definitions from YAML files
+ * and maintaining a registry of structures for resolving nested object references.
  *
  * <p><b>Core Components:</b>
  *

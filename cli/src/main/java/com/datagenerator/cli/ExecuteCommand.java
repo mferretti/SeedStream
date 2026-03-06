@@ -52,9 +52,9 @@ import picocli.CommandLine.Option;
 /**
  * Execute command for running data generation jobs.
  *
- * <p>This command is the primary entry point for generating test data. It reads a job
- * configuration file, loads the data structure definition, and generates the specified number of
- * records using configured generators and destinations.
+ * <p>This command is the primary entry point for generating test data. It reads a job configuration
+ * file, loads the data structure definition, and generates the specified number of records using
+ * configured generators and destinations.
  *
  * <p><b>Basic Usage:</b>
  *
@@ -126,8 +126,8 @@ public class ExecuteCommand implements Callable<Integer> {
    *
    * <p><b>Example:</b> {@code config/jobs/file_user.yaml}
    *
-   * <p>Paths are resolved relative to the CLI working directory. Use {@code ../} for relative
-   * paths when running from Gradle (working directory is cli/).
+   * <p>Paths are resolved relative to the CLI working directory. Use {@code ../} for relative paths
+   * when running from Gradle (working directory is cli/).
    *
    * @see com.datagenerator.schema.model.JobConfig
    */

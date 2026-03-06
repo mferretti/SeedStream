@@ -18,8 +18,8 @@
  * Semantic type generators using Datafaker for realistic, locale-aware test data.
  *
  * <p>This package provides generators for realistic data like names, addresses, phone numbers,
- * emails, and other domain-specific values. Datafaker generates locale-appropriate data based on the
- * geolocation setting in the data structure definition.
+ * emails, and other domain-specific values. Datafaker generates locale-appropriate data based on
+ * the geolocation setting in the data structure definition.
  *
  * <p><b>Generator:</b>
  *
@@ -39,9 +39,9 @@
  *   <li><b>Codes:</b> isbn, uuid
  * </ul>
  *
- * <p><b>Locale Support:</b> The generator uses {@link
- * com.datagenerator.generators.LocaleMapper} to convert geolocation strings (e.g., "italy", "brazil",
- * "japan") into Java Locale objects for Datafaker.
+ * <p><b>Locale Support:</b> The generator uses {@link com.datagenerator.generators.LocaleMapper} to
+ * convert geolocation strings (e.g., "italy", "brazil", "japan") into Java Locale objects for
+ * Datafaker.
  *
  * <p><b>Determinism:</b> Datafaker is seeded with the provided Random instance to ensure
  * reproducibility (same seed → same names, addresses, etc.).

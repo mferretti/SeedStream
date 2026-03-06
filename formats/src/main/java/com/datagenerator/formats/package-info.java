@@ -18,14 +18,15 @@
  * Output format serializers for converting generated records to various formats.
  *
  * <p>This package provides serializers that convert Map&lt;String, Object&gt; records (generated
- * data) into formatted strings for writing to destinations. Serializers are on the hot path and must
- * be optimized for performance.
+ * data) into formatted strings for writing to destinations. Serializers are on the hot path and
+ * must be optimized for performance.
  *
  * <p><b>Core Components:</b>
  *
  * <ul>
  *   <li>{@link com.datagenerator.formats.FormatSerializer} - Base interface for all serializers
- *   <li>{@link com.datagenerator.formats.json.JsonSerializer} - JSON serialization (newline-delimited)
+ *   <li>{@link com.datagenerator.formats.json.JsonSerializer} - JSON serialization
+ *       (newline-delimited)
  *   <li>{@link com.datagenerator.formats.csv.CsvSerializer} - CSV serialization with headers
  * </ul>
  *
@@ -64,7 +65,7 @@
  *   <li>All serializers should be stateless for thread safety
  * </ul>
  *
- * <p><b>Thread Safety:</b> All serializers must be thread-safe for concurrent use by multiple worker
- * threads.
+ * <p><b>Thread Safety:</b> All serializers must be thread-safe for concurrent use by multiple
+ * worker threads.
  */
 package com.datagenerator.formats;

@@ -57,8 +57,8 @@
  *     token: ${API_TOKEN}
  * </pre>
  *
- * <p><b>Deterministic Generation:</b> The {@link com.datagenerator.core.seed.RandomProvider} ensures
- * reproducibility in parallel generation by:
+ * <p><b>Deterministic Generation:</b> The {@link com.datagenerator.core.seed.RandomProvider}
+ * ensures reproducibility in parallel generation by:
  *
  * <ol>
  *   <li>Using a master seed from configuration

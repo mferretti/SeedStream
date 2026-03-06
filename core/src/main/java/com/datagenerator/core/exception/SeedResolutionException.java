@@ -25,7 +25,7 @@ package com.datagenerator.core.exception;
  * <p><b>Common Causes:</b>
  *
  * <ul>
-   *   <li><b>File seed:</b> Seed file doesn't exist or isn't readable
+ *   <li><b>File seed:</b> Seed file doesn't exist or isn't readable
  *   <li><b>Environment seed:</b> Environment variable not set or empty
  *   <li><b>Remote seed:</b> API endpoint unreachable, authentication failure, or invalid response
  *   <li><b>Format errors:</b> Seed value not parseable as a long integer

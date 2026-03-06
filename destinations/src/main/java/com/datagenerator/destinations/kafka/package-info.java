@@ -63,7 +63,7 @@
  *   <li>Use async sends with callbacks for highest performance
  * </ul>
  *
- * <p><b>Thread Safety:</b> KafkaProducer is thread-safe, but this implementation uses single-threaded
- * writes for ordered delivery within partitions.
+ * <p><b>Thread Safety:</b> KafkaProducer is thread-safe, but this implementation uses
+ * single-threaded writes for ordered delivery within partitions.
  */
 package com.datagenerator.destinations.kafka;

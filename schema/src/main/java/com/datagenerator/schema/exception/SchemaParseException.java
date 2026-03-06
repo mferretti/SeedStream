@@ -29,8 +29,8 @@ package com.datagenerator.schema.exception;
  *   <li><b>Invalid YAML syntax:</b> Indentation errors, missing colons, unmatched quotes
  *   <li><b>Missing required fields:</b> {@code source}, {@code type}, or {@code conf} missing from
  *       job config
- *   <li><b>Validation failures:</b> Hibernate Validator constraints violated (e.g., {@code @NotNull},
- *       {@code @Min})
+ *   <li><b>Validation failures:</b> Hibernate Validator constraints violated (e.g.,
+ *       {@code @NotNull}, {@code @Min})
  *   <li><b>Type mismatches:</b> Expected string but found number, or vice versa
  * </ul>
  *
