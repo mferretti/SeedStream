@@ -169,8 +169,7 @@ public class ExecuteCommand implements Callable<Integer> {
 
     log.info("Generation complete!");
     log.info("Total records: {}", count);
-    log.info(
-        "Time elapsed: {} ms ({} records/sec)", elapsed, String.format("%.2f", recordsPerSec));
+    log.info("Time elapsed: {} ms ({} records/sec)", elapsed, String.format("%.2f", recordsPerSec));
 
     destination.close();
 

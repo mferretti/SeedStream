@@ -1,5 +1,28 @@
 # Project Backlog
 
+## ⚡ Current Priority Recommendation (March 6, 2026)
+
+**Phase 6 (Performance Validation) should be executed BEFORE completing Phase 3 (Protobuf) or Phase 7 (Documentation).**
+
+**Rationale:**
+- Performance validation is critical for production readiness (NFR-1 requirements)
+- Current file I/O (2.1 MB/sec) is significantly below target (500 MB/sec)
+- Must validate 10M rec/sec primitives claim before public release
+- Integration tests may reveal issues requiring code changes
+- Documentation should reflect actual validated performance, not estimates
+
+**Recommended Order:**
+1. ✅ Complete Phase 5 (CLI & Multi-threading) - **DONE**
+2. ⚡ **Phase 6: Performance Validation** - **START HERE**
+   - JMH benchmarks (TASK-026)
+   - JSON serializer optimization
+   - Integration tests
+3. Phase 7: Documentation (with validated performance numbers)
+4. Phase 3: Protobuf (optional enhancement)
+5. Phase 8: Database destinations (deferred, complex design)
+
+---
+
 ## Completed
 
 - [x] **Project scaffolding and build setup**
@@ -108,9 +131,10 @@
   - Header row generation with serializeHeader()
   - Tests: 17 tests passing
 
-- [ ] **Formats module - Protobuf serializer**
+- [ ] **Formats module - Protobuf serializer (LOW PRIORITY - after Phase 6)**
   - Implement Protobuf format serializer
   - Schema generation from data structure definitions
+  - **Priority**: Low - JSON/CSV sufficient for most use cases, complete after performance validation
 
 ## Phase 4: Destinations
 
@@ -165,40 +189,63 @@
 
 ## Phase 6: Quality & Performance
 
-- [ ] **Testing - Unit tests foundation**
-  - Set up JUnit 5, Mockito, AssertJ ✅ (already configured)
-  - Unit tests for core components (seeding, type system ✅, parsers ✅)
-  - High code coverage for critical paths (Current: 40 tests passing across schema + core)
+### 🔥 HIGH PRIORITY - Performance Validation (Next Sprint)
+
+- [ ] **Performance benchmarking (TASK-026)** ⚡ **IMMEDIATE PRIORITY**
+  - Add JMH benchmarks for generation speed validation against NFR-1 requirements
+  - **Critical Tests**:
+    - Primitive-only generation: Validate 10M rec/sec target (in-memory, single-threaded)
+    - Complex Datafaker objects: Baseline established at 6,923 rec/sec (multi-threaded)
+    - Kafka throughput: Validate 100K rec/sec with batching and compression
+    - File I/O: Measure raw write throughput (JSON, CSV, Gzip)
+  - Memory profiling and optimization
+  - **Initial findings (March 6, 2026)**:
+    - Complex Datafaker objects: 6,923 rec/sec (100K records, 10 threads)
+    - File I/O throughput: ~2.1 MB/sec (30 MB in 14.4s) - **BELOW TARGET**
+    - **Blocker**: Must validate primitive performance before claiming production-ready
+  - **Target**: Validate 10M rec/sec for in-memory primitives, 100K rec/sec for Kafka
+
+- [ ] **Optimize JSON serializer** ⚡ **HIGH PRIORITY**
+  - **Issue**: File I/O at 2.1 MB/sec vs. 500 MB/sec requirement (NFR-1)
+  - **Root cause analysis**: Identify bottleneck (serialization vs. I/O vs. formatting)
+  - **Optimization strategies**:
+    - Batch writes (write multiple records per I/O call)
+    - StringBuilder pooling (reduce allocations in hot path)
+    - Buffer size tuning (current: default)
+    - Consider streaming JSON writer (Jackson streaming API)
+  - **Target**: Achieve 100+ MB/sec for JSON file writes (sufficient for most use cases)
+  - **Measurement**: JMH benchmark with primitive-only data (no Datafaker overhead)
+
+### MEDIUM PRIORITY - Quality Foundation
 
 - [ ] **Testing - Integration tests**
   - Add integration tests with Testcontainers (Kafka, PostgreSQL, MySQL)
   - File system tests with temporary directories
   - Seed resolution tests (all types: embedded/file/env/remote)
   - End-to-end job execution tests
+  - **Priority**: After performance validation (may reveal integration issues)
 
-- [ ] **Performance benchmarking**
-  - Add JMH benchmarks for generation speed
-  - Measure records/second for various data types
-  - Benchmark different destinations (file, Kafka, DB)
-  - Memory profiling and optimization
-  - **Initial findings (March 6, 2026)**:
-    - Complex Datafaker objects: 6,923 rec/sec (100K records, 10 threads)
-    - File I/O throughput: ~2.1 MB/sec (below 500 MB/sec target)
-    - Recommendation: Focus on primitive-only benchmarks and JSON serializer optimization
-    - Target: Validate 10M rec/sec for in-memory primitives, 100K rec/sec for Kafka
+- [ ] **Testing - Unit tests foundation**
+  - Set up JUnit 5, Mockito, AssertJ ✅ (already configured)
+  - Unit tests for core components (seeding, type system ✅, parsers ✅)
+  - High code coverage for critical paths (Current: 276 tests passing)
+  - **Target**: Maintain 70%+ unit test coverage
 
-## Phase 7: Documentation
+## Phase 7: Documentation (After Performance Validation)
+
+**Note**: Documentation should be completed AFTER Phase 6 performance validation to include accurate, validated performance numbers.
 
 - [x] **Documentation - Example configurations (partial)**
   - Created complex nested structure examples: company, line_item, invoice
   - Italian locale with field aliases demonstration
   - Still needed: examples for all destination types and seed types
 
-- [ ] **Documentation - README**
+- [ ] **Documentation - README (LOW PRIORITY until Phase 6 complete)**
   - Comprehensive README with architecture overview
   - Installation and quick start guide
   - Configuration format documentation
   - Usage examples for all features
+  - **Include**: Validated performance numbers from TASK-026 benchmarks
 
 - [ ] **Documentation - Example configurations (complete)**
   - Create example data structures (users, orders, events, transactions)
