@@ -18,10 +18,21 @@ package com.datagenerator.destinations;
 
 /** Exception thrown when destination operations fail. */
 public class DestinationException extends RuntimeException {
+  /**
+   * Constructs a new destination exception with the specified detail message.
+   *
+   * @param message the detail message
+   */
   public DestinationException(String message) {
     super(message);
   }
 
+  /**
+   * Constructs a new destination exception with the specified detail message and cause.
+   *
+   * @param message the detail message
+   * @param cause the cause of the exception
+   */
   public DestinationException(String message, Throwable cause) {
     super(message, cause);
   }

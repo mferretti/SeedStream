@@ -40,20 +40,28 @@ import java.util.Random;
  * <p><b>Example:</b>
  *
  * <pre>
- * array[int[1..100], 5..10] → List of 5-10 integers, each in range [1, 100]
- * array[object[line_item], 1..50] → List of 1-50 nested line_item objects
+ * ArrayType type = new ArrayType(new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"), 5, 10);
+ * ArrayGenerator generator = new ArrayGenerator();
+ * List result = (List) generator.generate(random, type);
+ * // Returns List with 5-10 integer elements
  * </pre>
  *
- * <p><b>Memory Consideration:</b> Large arrays can consume significant memory. For 1M records × 50
- * items average = 50M items. Consider streaming for large-scale generation.
- *
- * <p><b>Determinism:</b> Same Random state → same array length and same element sequence.
- *
- * <p><b>Factory Context:</b> Uses GeneratorContext ThreadLocal to access factory for nested object
- * generation.
+ * <p><b>Thread Safety:</b> Thread-safe (stateless, Random passed as parameter).
  */
 public class ArrayGenerator implements DataGenerator {
+  /** Constructs a new ArrayGenerator instance. */
+  public ArrayGenerator() {
+    // Default constructor
+  }
 
+  /**
+   * Generates a variable-length array with elements of the specified inner type.
+   *
+   * @param random Random instance for deterministic generation
+   * @param dataType Array type definition (must be ArrayType)
+   * @return List of generated elements
+   * @throws GeneratorException if dataType is not ArrayType or generation fails
+   */
   @Override
   public Object generate(Random random, DataType dataType) {
     if (!(dataType instanceof ArrayType arrayType)) {

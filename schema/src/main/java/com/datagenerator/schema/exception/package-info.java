@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package com.datagenerator.core.type;
-
 /**
- * Base class for all data types in the generation system. Each type knows how to validate and
- * describe itself.
+ * Schema parsing exceptions.
+ *
+ * <p>This package contains exceptions thrown during YAML parsing and validation of data structures
+ * and job configurations.
+ *
+ * <p><b>Exception Types:</b>
+ *
+ * <ul>
+ *   <li>{@link com.datagenerator.schema.exception.SchemaParseException} - YAML parsing and
+ *       validation errors
+ * </ul>
  */
-public sealed interface DataType
-    permits PrimitiveType, EnumType, ObjectType, ArrayType, ReferenceType {
-  /**
-   * Returns a human-readable description of this type (e.g., "char[3..15]", "array[int, 5..10]").
-   *
-   * @return human-readable type description
-   */
-  String describe();
-}
+package com.datagenerator.schema.exception;
