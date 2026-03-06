@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>Supports 62+ locales including: - European: Italy, France, Germany, Spain, UK, etc. -
  * Americas: USA, Brazil, Mexico, Canada, Argentina, etc. - Asia-Pacific: China, Japan, Korea,
- * India, Thailand, etc. - Middle East & Africa: Russia, Saudi Arabia, Israel, South Africa, etc.
+ * India, Thailand, etc. - Middle East &amp; Africa: Russia, Saudi Arabia, Israel, South Africa, etc.
  *
  * <p><b>Usage:</b>
  *

@@ -18,10 +18,21 @@ package com.datagenerator.formats;
 
 /** Exception thrown when serialization fails. */
 public class SerializationException extends RuntimeException {
+  /**
+   * Constructs a new serialization exception with the specified detail message.
+   *
+   * @param message the detail message
+   */
   public SerializationException(String message) {
     super(message);
   }
 
+  /**
+   * Constructs a new serialization exception with the specified detail message and cause.
+   *
+   * @param message the detail message
+   * @param cause the cause of the exception
+   */
   public SerializationException(String message, Throwable cause) {
     super(message, cause);
   }

@@ -27,6 +27,10 @@ import java.util.regex.Pattern;
  * enums, objects, arrays, references.
  */
 public class TypeParser {
+  /** Constructs a new TypeParser instance. */
+  public TypeParser() {
+    // Default constructor
+  }
   private static final Pattern PRIMITIVE_PATTERN =
       Pattern.compile("^(char|int|decimal|date|timestamp)\\[([^\\]]+?)\\.\\.([^\\]]+)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");

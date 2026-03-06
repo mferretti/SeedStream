@@ -93,7 +93,7 @@ public class GenerationEngine {
   /**
    * Generate specified number of records.
    *
-   * <p>For small counts (< singleThreadedThreshold), uses single thread to avoid overhead. For
+   * <p>For small counts (&lt; singleThreadedThreshold), uses single thread to avoid overhead. For
    * large counts, uses parallel workers.
    *
    * @param count Total number of records to generate
