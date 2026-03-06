@@ -266,12 +266,23 @@ interface RecordWriter {
 
 ```mermaid
 graph LR
-    W0[Worker 0<br/>Thread-local RNG<br/>Seed: derive(master,0)] --> Q[Bounded Queue<br/>Capacity: 1000<br/>Backpressure]
-    W1[Worker 1<br/>Thread-local RNG<br/>Seed: derive(master,1)] --> Q
-    W2[Worker 2<br/>Thread-local RNG<br/>Seed: derive(master,2)] --> Q
+    W0["Worker 0
+    (thread-local RNG
+    seed: derive master,0)"] --> Q["Bounded Queue
+    (capacity: 1000
+    backpressure)"]
+    W1["Worker 1
+    (thread-local RNG
+    seed: derive master,1)"] --> Q
+    W2["Worker 2
+    (thread-local RNG
+    seed: derive master,2)"] --> Q
     W3[Worker N...] -.-> Q
-    Q --> WT[Writer Thread<br/>Single thread<br/>Ordered writes]
-    WT --> DEST[Destination<br/>Kafka/File/DB]
+    Q --> WT["Writer Thread
+    (single thread
+    ordered writes)"]
+    WT --> DEST["Destination
+    (Kafka/File/DB)"]
     
     style W0 fill:#e1f5e1
     style W1 fill:#e1f5e1
