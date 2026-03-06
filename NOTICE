@@ -1,0 +1,97 @@
+SeedStream
+Copyright 2026 Marco Ferretti
+
+This product includes software developed by Marco Ferretti.
+
+================================================================================
+
+This product includes the following third-party libraries:
+
+--------------------------------------------------------------------------------
+Datafaker
+Copyright 2023 Datafaker Contributors
+Licensed under the Apache License 2.0
+https://github.com/datafaker-net/datafaker
+
+--------------------------------------------------------------------------------
+Jackson (Core, Databind, Dataformat YAML)
+Copyright 2007- FasterXML, LLC
+Licensed under the Apache License 2.0
+https://github.com/FasterXML/jackson
+
+--------------------------------------------------------------------------------
+Picocli
+Copyright 2017 Remko Popma
+Licensed under the Apache License 2.0
+https://github.com/remkop/picocli
+
+--------------------------------------------------------------------------------
+Apache Kafka Clients
+Copyright 2012-2024 The Apache Software Foundation
+Licensed under the Apache License 2.0
+https://kafka.apache.org/
+
+--------------------------------------------------------------------------------
+OpenCSV
+Copyright 2005 Bytecode Pty Ltd.
+Licensed under the Apache License 2.0
+https://opencsv.sourceforge.net/
+
+--------------------------------------------------------------------------------
+SLF4J
+Copyright 2004-2024 QOS.ch
+Licensed under the MIT License
+https://www.slf4j.org/
+
+--------------------------------------------------------------------------------
+Logback
+Copyright 1999-2024 QOS.ch
+Licensed under the Eclipse Public License v1.0 and LGPL 2.1
+https://logback.qos.ch/
+
+--------------------------------------------------------------------------------
+Lombok
+Copyright 2009-2024 The Project Lombok Authors
+Licensed under the MIT License
+https://projectlombok.org/
+
+--------------------------------------------------------------------------------
+JUnit 5 (Jupiter)
+Copyright 2015-2024 JUnit Team
+Licensed under the Eclipse Public License v2.0
+https://junit.org/junit5/
+
+--------------------------------------------------------------------------------
+Mockito
+Copyright 2007 Mockito Contributors
+Licensed under the MIT License
+https://github.com/mockito/mockito
+
+--------------------------------------------------------------------------------
+AssertJ
+Copyright 2014-2024 AssertJ
+Licensed under the Apache License 2.0
+https://assertj.github.io/doc/
+
+--------------------------------------------------------------------------------
+Testcontainers
+Copyright 2015-2024 Testcontainers Contributors
+Licensed under the MIT License
+https://www.testcontainers.org/
+
+--------------------------------------------------------------------------------
+Awaitility
+Copyright 2010-2024 Awaitility Contributors
+Licensed under the Apache License 2.0
+https://github.com/awaitility/awaitility
+
+--------------------------------------------------------------------------------
+HikariCP (optional, runtime dependency)
+Copyright 2013-2024 Brett Wooldridge
+Licensed under the Apache License 2.0
+https://github.com/brettwooldridge/HikariCP
+
+================================================================================
+
+For complete license texts, see the LICENSE file in the root directory 
+of this distribution.
