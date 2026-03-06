@@ -85,12 +85,12 @@ public class SeedResolver {
   private long resolveEnv(SeedConfig.EnvSeed envSeed) {
     String varName = envSeed.getName();
     String value = System.getenv(varName);
-    
+
     // Fallback to system property if environment variable not found (useful for testing)
     if (value == null || value.isBlank()) {
       value = System.getProperty(varName);
     }
-    
+
     if (value == null || value.isBlank()) {
       throw new SeedResolutionException("Environment variable not set or empty: " + varName);
     }
