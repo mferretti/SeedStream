@@ -53,12 +53,14 @@ Please provide as much detail as possible:
 
 We aim to respond to security reports within:
 
-- **Initial Response**: 48 hours (acknowledgment)
-- **Assessment**: 5 business days (severity evaluation)
+- **Initial Response**: 96 hours / 4 days (acknowledgment)
+- **Assessment**: 7 business days (severity evaluation)
 - **Fix Timeline**: 
-  - **Critical**: Within 7 days
-  - **High**: Within 14 days
+  - **Critical**: Within 14 days
+  - **High**: Within 28 days
   - **Medium/Low**: Next scheduled release
+
+**Note**: SeedStream is currently maintained by a single developer as a side project. Response times may be longer during holidays or personal commitments. For urgent security issues, please include "URGENT" in the subject line.
 
 ### Disclosure Policy
 
