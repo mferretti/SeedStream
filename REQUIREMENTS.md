@@ -1,11 +1,11 @@
 # SeedStream - System Requirements Document
 
-**Version**: 1.1  
-**Last Updated**: February 21, 2026  
+**Version**: 1.2  
+**Last Updated**: March 6, 2026  
 **Status**: Living Document  
 **Purpose**: Comprehensive requirements specification for multi-developer collaboration
 
-**Implementation Progress**: ✅ 9/16 Functional Requirements Complete (56%)
+**Implementation Progress**: ✅ 11/16 Functional Requirements Complete (69%)
 
 ---
 
@@ -43,17 +43,19 @@
 - ✅ YAML configuration (structures and jobs)
 - ✅ JSON serialization (NDJSON, field aliases, 16 tests)
 - ✅ CSV serialization (RFC 4180, always-quoted, 17 tests)
-- ✅ File destination (NIO, gzip compression, append mode, 16 tests)
-- ✅ Kafka destination (async/sync, SASL/SSL, batching, 8 tests)
+- ✅ File destination (NIO, gzip compression, append mode, 16 unit + 6 integration tests)
+- ✅ Kafka destination (async/sync, SASL/SSL, batching, compression, 8 unit + 12 integration tests)
 - ✅ Multi-threading engine (worker pool, backpressure, 7 tests)
-- ✅ Datafaker integration (realistic data, 62+ locales)
+- ✅ Datafaker integration (realistic data, 62+ locales, 28 semantic types)
 - ✅ CLI interface (Picocli with --job, --format, --count, --seed, --threads, --verbose)
+- ✅ Integration tests infrastructure (Testcontainers 1.21.4, Docker 29.x compatible)
+- ✅ Performance benchmarks (JMH, 5 suites, 23 scenarios, NFR-1 validated)
 
 **Deferred to Phase 8:**
 - ⏸️ Database destination with JDBC and HikariCP (requires careful design)
 - ⏸️ Reference generator for foreign keys
 
-**Test Coverage**: 267 tests passing across 6 modules (75%+ coverage)
+**Test Coverage**: 304 tests passing (267 unit + 37 integration) across 6 modules (80%+ coverage)
 
 ### Key Differentiators
 
