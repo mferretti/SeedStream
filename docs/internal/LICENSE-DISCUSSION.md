@@ -12,7 +12,7 @@ This document analyzes different open-source license options for SeedStream, con
 ## Project Scope
 
 SeedStream is a **high-performance test data generator** designed for:
-- Generating millions of realistic test records per second
+- Generating millions of primitive records per second (in-memory), or thousands of realistic records per second
 - Supporting multiple destinations (Kafka, databases, files)
 - Reproducible data generation using seed-based algorithms
 - Locale-aware realistic data (names, addresses, financial data)

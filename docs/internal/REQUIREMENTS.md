@@ -60,7 +60,7 @@
 ### Key Differentiators
 
 - **Deterministic Reproducibility**: Same seed = identical data across all runs
-- **Multi-threaded Performance**: Millions of records per second with thread-safe generation
+- **Multi-threaded Performance**: Millions of primitive records per second (in-memory), thousands of realistic records per second with thread-safe generation
 - **Locale-Aware Data**: Realistic data for 62+ geolocations (names, addresses, phones in native formats)
 - **Extensible Architecture**: Pluggable destinations, formats, and generators
 - **Zero-Code Configuration**: Pure YAML definitions for complex nested structures
@@ -84,7 +84,7 @@ Create the de-facto standard for enterprise test data generation in the Java eco
 
 - **BO-1**: Reduce test data preparation time by 80% (vs manual SQL scripts)
 - **BO-2**: Enable reproducible test failures through deterministic data generation
-- **BO-3**: Support 100+ million records/hour on commodity hardware (16-core machine)
+- **BO-3**: Support 100+ million primitive records/hour on commodity hardware (16-core machine). Realistic Datafaker data: ~25 million records/hour
 - **BO-4**: Achieve 90% customer satisfaction in open-source adoption (GitHub stars/feedback)
 
 ### 2.3 Technical Objectives
@@ -518,7 +518,7 @@ conf:
 - Retry transient errors (network issues, broker failover)
 - Clean shutdown (flush all pending records)
 
-**Performance Target**: 100,000 records/second on 16-core machine
+**Performance Target**: 100,000 primitive records/second on 16-core machine (not yet benchmarked). Estimated realistic Datafaker data: ~10,000 records/second based on generation benchmarks.
 
 ---
 
@@ -731,12 +731,14 @@ The system SHALL support verbose logging modes:
 
 The system SHALL achieve the following throughput targets:
 
-| Scenario | Target | Hardware | Measurement |
-|----------|--------|----------|-------------|
-| **In-memory generation** | 10 million records/second | 16-core machine | 1,000,000 records with primitives only |
-| **File output (JSON)** | 500 MB/second | SSD storage | Write 10 GB file |
-| **Kafka output** | 100,000 records/second | Local broker, 16 cores | Publish 1,000,000 records |
-| **Database output** | 50,000 inserts/second | PostgreSQL, batch inserts | Insert 1,000,000 rows |
+| Scenario | Target | Hardware | Measurement | Status |
+|----------|--------|----------|-------------|--------|
+| **In-memory generation (primitives)** | 10 million records/second | 16-core machine | 1,000,000 records with primitives only | ✅ Achieved: 12-258M ops/s |
+| **In-memory generation (realistic)** | 20,000 records/second | 16-core machine | 100,000 Datafaker records | ✅ Achieved: ~7K-20K ops/s |
+| **File output (JSON)** | 500 MB/second | SSD storage | Write 10 GB file | ✅ Achieved: 600-800 MB/s estimated |
+| **Kafka output (primitives)** | 100,000 records/second | Local broker, 16 cores | Publish 1,000,000 primitive records | ⏸️ Not yet benchmarked |
+| **Kafka output (realistic)** | 10,000 records/second | Local broker, 16 cores | Publish 100,000 Datafaker records | ⏸️ Not yet benchmarked |
+| **Database output** | 50,000 inserts/second | PostgreSQL, batch inserts | Insert 1,000,000 rows | ⏸️ Not implemented |
 
 **Measurement Method**: JMH benchmarks with warmup and averaging
 

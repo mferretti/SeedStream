@@ -139,22 +139,6 @@ Settings → Branches → Add rule for `main`:
 - ✅ Require "Build and Test" check to pass
 - ✅ Require branches to be up to date
 
-## When Going Public
-
-For public repositories, consider adding:
-
-### SonarCloud (Free for open source)
-1. Sign up at https://sonarcloud.io with GitHub account
-2. Import SeedStream repository
-3. Add SonarCloud GitHub Action step to workflow
-4. Add SonarCloud quality gate badge to README
-
-### Codecov (Free for open source)
-1. Sign up at https://codecov.io with GitHub account
-2. Import SeedStream repository  
-3. Add Codecov upload step to workflow after JaCoCo report
-4. Add dynamic coverage badge to README
-
 ## Troubleshooting
 
 ### SpotBugs fails build

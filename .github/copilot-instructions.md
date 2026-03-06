@@ -4,7 +4,7 @@
 High-performance test data generator for enterprise applications. Generates realistic, reproducible test data to multiple destinations (Kafka, databases, files) using YAML-based configuration.
 
 **Key Design Goals:**
-- **Performance**: Multi-threaded generation with batching for millions of records/second
+- **Performance**: Multi-threaded generation with batching - millions of primitive records/second (in-memory), thousands of realistic records/second
 - **Reproducibility**: Seed-based pseudo-random generation for deterministic output
 - **Extensibility**: Plugin architecture for destinations, formats, and data generators
 - **Enterprise-ready**: Locale-aware data, statistical distributions, connection pooling
