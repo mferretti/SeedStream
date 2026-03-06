@@ -17,9 +17,19 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Recent Completions (March 6, 2026)
 
-**Completed March 6, 2026:**
+**Completed March 6, 2026 (Latest):**
+- ✅ TASK-023 (Enhanced): Kafka Integration Tests - 12 comprehensive tests
+  - All compression types (gzip, snappy, lz4, zstd, none)
+  - Sync/async modes, custom batching, acks settings
+  - Security protocol configuration, minimal config defaults
+- ✅ Testcontainers upgrade: 1.19.8 → 1.21.4 (Docker 29.x compatibility)
+- ✅ Kafka configuration fix: Default acks "1" → "all" (idempotent producer requirement)
+- ✅ Integration test infrastructure fixes (testClassesDirs, classpath)
+- **Total tests**: 304 (267 unit + 37 integration)
+
+**Completed March 6, 2026 (Earlier):**
 - ✅ TASK-022: Integration Tests Setup (Testcontainers infrastructure)
-- ✅ TASK-023: Kafka Integration Tests (4 tests)
+- ✅ TASK-023: Kafka Integration Tests (initial 4 tests, now 12)
 - ✅ TASK-025: File Integration Tests (6 tests)
 - ✅ TASK-028: README Completion (comprehensive documentation, ~500 lines added)
 - ✅ TASK-026: JMH Performance Benchmarks (5 benchmark suites, 23 scenarios)
@@ -42,7 +52,7 @@ This document provides a quick overview of all tasks. For detailed implementatio
 - 🔄 TASK-031: Licensing (LICENSE file, README badge)
 - 🔄 TASK-032: Verbose Logging (--verbose flag)
 
-**Impact:** Full parallel generation with Kafka support, realistic locale-specific data
+**Impact:** Full Kafka producer configuration validated with real broker
 
 ---
 
@@ -73,7 +83,7 @@ These tasks block other work and should be completed first:
 | TASK-009 | Code Quality - Import Refactoring | 2-3h | Low | ✅ Complete |
 
 **Total Phase 1 Effort**: ~40-50 hours  
-**Tests Written**: 267 tests passing (updated March 6, 2026)
+**Tests Written**: 267 unit tests + 37 integration tests = **304 total tests** (updated March 6, 2026)
 
 ---
 
@@ -102,7 +112,7 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 4: Destinations (✅ 33% Complete)
+## Phase 4: Destinations (✅ 67% Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
@@ -110,7 +120,12 @@ These tasks block other work and should be completed first:
 | TASK-017 | Kafka Destination Adapter | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
 | TASK-018 | Database Destination Adapter | 6-8h | High | TASK-013, TASK-014 | ⏸️ Deferred |
 
-**Completed**: File destination (16 tests), Kafka destination (8 tests)  
+**Completed**: 
+- ✅ File destination (16 tests, 6 integration tests)
+- ✅ Kafka destination (8 unit tests, 12 integration tests)
+- ✅ All compression types tested (gzip, snappy, lz4, zstd)
+- ✅ Idempotent producer with acks="all" default
+
 **Deferred**: Database destination (moved to Phase 8)
 
 ---
@@ -129,21 +144,28 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 6: Testing & Quality
+## Phase 6: Testing & Quality (✅ 71% Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-022 | Integration Tests Setup | 3-4h | Medium | TASK-016 | ✅ Complete |
-| TASK-023 | Kafka Integration Tests | 4-5h | Medium | TASK-017, TASK-022 | ✅ Complete |
+| TASK-023 | Kafka Integration Tests | 4-5h | Medium | TASK-017, TASK-022 | ✅ Complete (Enhanced) |
 | TASK-024 | Database Integration Tests | 4-5h | Medium | TASK-018, TASK-022 | 🔒 Blocked |
 | TASK-025 | File Integration Tests | 2-3h | Low | TASK-016, TASK-022 | ✅ Complete |
 | TASK-026 | JMH Benchmarks | 4-6h | Medium | TASK-020 | ✅ Complete |
 | TASK-027 | Memory Profiling | 3-4h | Medium | TASK-020 | ⏸️ Not Started |
 | TASK-039 | Jackson Streaming Optimization | 4-6h | High | TASK-026 | ⏸️ Deferred (Low Priority) |
 
-**Completed**: TASK-022 (infrastructure), TASK-023 (Kafka, 4 tests), TASK-025 (File, 6 tests), TASK-026 (benchmarks), File I/O optimizations  
+**Completed**: 
+- ✅ TASK-022 (infrastructure with Testcontainers 1.21.4)
+- ✅ TASK-023 (Kafka, **12 tests** - all compression types, configs)
+- ✅ TASK-025 (File, 6 tests)
+- ✅ TASK-026 (JMH benchmarks)
+- ✅ File I/O optimizations
+- **Total integration tests**: 37 (10 seed resolver + 6 file + 12 Kafka + 9 misc)
+
 **Blocked**: TASK-024 (needs database destinations)  
-**Deferred**: TASK-039 Jackson streaming (marginal 10-20% gain, high effort, 500 MB/s target already met)
+**Deferred**: TASK-039 Jackson streaming (marginal gain, high effort, target already met)
 
 ---
 
