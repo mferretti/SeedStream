@@ -12,6 +12,7 @@ plugins {
 allprojects {
     group = "com.datagenerator"
     version = "0.1.0-SNAPSHOT"
+    description = "High-performance test data generator for enterprise applications"
 
     repositories {
         mavenCentral()
@@ -34,6 +35,8 @@ subprojects {
 
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         java {
+            // Apply Apache 2.0 license header
+            licenseHeaderFile(rootProject.file("config/license-header.txt"))
             googleJavaFormat()
             // Keep braces on same line (override Google style)
             replaceRegex("Move opening brace to same line", """\n(\s*)\{""", " {")
