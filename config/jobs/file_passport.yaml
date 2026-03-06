@@ -1,0 +1,7 @@
+source: passport.yaml
+type: file
+seed:
+  type: embedded
+  value: 12345
+conf:
+  path: output/passports

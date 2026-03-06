@@ -25,4 +25,4 @@ data:
     datatype: company
     alias: "authority"
   sex:
-    datatype: char[1..1]
+    datatype: enum[M,F,X]
