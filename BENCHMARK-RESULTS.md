@@ -7,62 +7,62 @@ PRIMITIVE GENERATORS
 ----------------------------------------------------------------------------------------------------
 Target: Target: 10M ops/s (10,000,000)
 
-  benchmarkBooleanGenerator                                   258,483,682 ops/s  (± 14,591,792)
-  benchmarkIntegerGenerator                                    56,807,284 ops/s  (± 2,674,722)
-  benchmarkCharGenerator                                       12,259,499 ops/s  (± 5,187,256)
-  benchmarkTimestampGenerator                                   4,489,751 ops/s  (± 962,497)
-  benchmarkDecimalGenerator                                     3,564,937 ops/s  (± 317,046)
-  benchmarkDateGenerator                                        2,316,774 ops/s  (± 347,526)
+  benchmarkBooleanGenerator                                   258,431,292 ops/s  (± 25,132,942)
+  benchmarkIntegerGenerator                                    56,966,472 ops/s  (± 138,966)
+  benchmarkCharGenerator                                       12,323,079 ops/s  (± 2,737,608)
+  benchmarkTimestampGenerator                                   4,457,093 ops/s  (± 493,806)
+  benchmarkDecimalGenerator                                     2,964,394 ops/s  (± 251,442)
+  benchmarkDateGenerator                                        2,405,481 ops/s  (± 175,734)
 
 
 DATAFAKER GENERATORS (Realistic Data)
 ----------------------------------------------------------------------------------------------------
 Target: Expected: ~10K ops/s
 
-  benchmarkCompanyGeneration                                       55,272 ops/s  (± 236,714)
-  benchmarkCityGeneration                                          21,648 ops/s  (± 8,904)
-  benchmarkNameGeneration                                          17,004 ops/s  (± 16,836)
-  benchmarkEmailGeneration                                         15,613 ops/s  (± 48,455)
-  benchmarkAddressGeneration                                       11,351 ops/s  (± 10,603)
-  benchmarkPhoneGeneration                                          9,447 ops/s  (± 14,095)
+  benchmarkCompanyGeneration                                      153,816 ops/s  (± 24,776)
+  benchmarkEmailGeneration                                         24,143 ops/s  (± 23,320)
+  benchmarkNameGeneration                                          23,168 ops/s  (± 13,822)
+  benchmarkAddressGeneration                                       17,576 ops/s  (± 28,501)
+  benchmarkCityGeneration                                          14,222 ops/s  (± 7,571)
+  benchmarkPhoneGeneration                                         12,759 ops/s  (± 2,369)
 
 
 COMPOSITE GENERATORS (Objects & Arrays)
 ----------------------------------------------------------------------------------------------------
-  benchmarkSmallArray                                           5,849,835 ops/s  (± 1,705,072)
-  benchmarkLargeArray                                             721,229 ops/s  (± 65,121)
-  benchmarkSimpleObject                                           117,290 ops/s  (± 70,966)
+  benchmarkSmallArray                                           6,165,393 ops/s  (± 183,921)
+  benchmarkSimpleObject                                         3,964,006 ops/s  (± 290,525)
+  benchmarkLargeArray                                             728,062 ops/s  (± 62,186)
 
 
 SERIALIZERS (JSON & CSV)
 ----------------------------------------------------------------------------------------------------
-  benchmarkJsonSimpleRecord                                     2,624,203 ops/s  (± 309,714)
-  benchmarkCsvSimpleRecord                                      2,570,277 ops/s  (± 120,647)
-  benchmarkJsonComplexRecord                                      945,583 ops/s  (± 435,030)
-  benchmarkCsvComplexRecord                                       922,937 ops/s  (± 48,903)
-  benchmarkJsonNestedRecord                                       579,748 ops/s  (± 98,832)
-  benchmarkCsvNestedRecord                                        204,835 ops/s  (± 172,636)
+  benchmarkJsonSimpleRecord                                     3,018,144 ops/s  (± 36,459)
+  benchmarkCsvSimpleRecord                                      2,566,864 ops/s  (± 1,250,090)
+  benchmarkJsonComplexRecord                                    1,082,541 ops/s  (± 36,845)
+  benchmarkCsvComplexRecord                                       941,707 ops/s  (± 367,574)
+  benchmarkJsonNestedRecord                                       699,324 ops/s  (± 123,788)
+  benchmarkCsvNestedRecord                                        218,262 ops/s  (± 11,459)
 
 
 DESTINATIONS (File I/O)
 ----------------------------------------------------------------------------------------------------
 Target: Target: Enable 500 MB/s file writes
 
-  benchmarkRawFileWrite                                         4,660,417 ops/s  (± 1,243,284)
-  benchmarkFileDestinationWrite                                   761,076 ops/s  (± 387,454)
+  benchmarkRawFileWrite                                         5,076,728 ops/s  (± 375,296)
+  benchmarkFileDestinationWrite                                   821,233 ops/s  (± 119,948)
 
 
 ====================================================================================================
 ANALYSIS SUMMARY
 ====================================================================================================
 
-✓ Fastest primitive generator: 258,483,682 ops/s
+✓ Fastest primitive generator: 258,431,292 ops/s
   ✓ PASSED NFR-1 requirement (10M ops/s)
 
-✓ Average Datafaker throughput: 21,722 ops/s
+✓ Average Datafaker throughput: 40,947 ops/s
   (Expected: Lower than primitives due to realistic data generation overhead)
 
-✓ Average JSON serialization: 1,383,178 ops/s
+✓ Average JSON serialization: 1,600,003 ops/s
 
 ✓ File I/O benchmarks completed: 2 tests
   (Results show raw I/O vs serialization+I/O comparison)
