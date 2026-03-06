@@ -4,7 +4,7 @@
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
 [![Gradle](https://img.shields.io/badge/Gradle-9.3-brightgreen.svg)](https://gradle.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
-![Coverage](https://img.shields.io/badge/coverage-70%25-yellowgreen.svg)
+[![codecov](https://codecov.io/gh/mferretti/SeedStream/branch/main/graph/badge.svg)](https://codecov.io/gh/mferretti/SeedStream)
 ![SpotBugs](https://img.shields.io/badge/SpotBugs-passing-brightgreen.svg)
 
 A high-performance, configurable test data generator for enterprise applications.
@@ -219,10 +219,7 @@ conf:
 
 **Note**: File extension (`.json` or `.csv`) is automatically added based on `--format` CLI parameter.
 
-For other destination types (in development):
-
-<details>
-<summary>Kafka Destination (coming soon)</summary>
+**Kafka destination example** (`config/jobs/kafka_address.yaml`):
 
 ```yaml
 source: address.yaml
@@ -233,12 +230,16 @@ seed:
 conf:
   bootstrap: localhost:9092
   topic: addresses
-  auth: sasl_ssl
-  cert: path/to/cert.crt
-  username: user
-  password: path/to/password
+  batch_size: 1000
+  linger_ms: 10
+  compression: gzip  # gzip, snappy, lz4, zstd, none
+  acks: "1"          # "0", "1", or "all"
+  sync: false        # false for async, true for sync
 ```
-</details>
+
+See [Kafka Integration](#kafka-integration) section for full configuration options.
+
+**Database destination** (planned for Phase 8).
 
 #### Seed Configuration
 
@@ -289,7 +290,7 @@ datagenerator/
 ├── schema/         # YAML parsing, configuration management
 ├── generators/     # Data generators (primitives + Datafaker integration)
 ├── formats/        # Output serializers (JSON ✅, CSV ✅, Protobuf 🔜)
-├── destinations/   # Destination adapters (File ✅, Kafka 🔜, Database 🔜)
+├── destinations/   # Destination adapters (File ✅, Kafka ✅, Database 🔜)
 └── cli/            # Picocli-based command-line interface ✅
 ```
 
@@ -301,10 +302,10 @@ datagenerator/
 - ✅ Generators: Primitive types (int, char, enum) and composite types (object, array)
 - ✅ Datafaker integration: Realistic data generation with 62+ locales (name, email, address, phone, company, etc.)
 - ✅ Formats: JSON (newline-delimited), CSV (RFC 4180 compliant)
-- ✅ Destinations: File output with compression and append modes, Kafka with SASL/SSL auth
+- ✅ Destinations: File (NIO with compression/append), Kafka (async/sync with SASL/SSL, batching, compression)
 - ✅ Multi-threading engine: Parallel generation with deterministic seeding and backpressure handling
 - ✅ CLI: Full command-line interface with all options including --threads
-- ✅ Tests: 276+ unit tests with comprehensive coverage
+- ✅ Tests: 276+ unit tests, 43 integration tests (Testcontainers), 70%+ coverage
 
 **Partially Implemented:**
 - 🔄 Licensing: Apache 2.0 LICENSE file and README badge (missing: source file headers, NOTICE file)
@@ -768,7 +769,9 @@ shasum -a 256 cli/output/addresses.json
 - **CSV**: Smaller files, faster serialization (~2.6M ops/s)
 - **Tip**: Use CSV for simple tabular data, JSON for nested structures
 
-### Kafka Integration (Coming Soon)
+### Kafka Integration
+
+**Status**: ✅ Fully implemented with comprehensive testing (43 integration tests).
 
 **Configuration example**:
 ```yaml
@@ -778,25 +781,30 @@ seed:
   type: embedded
   value: 12345
 conf:
-  bootstrap: localhost:9092
-  topic: addresses
-  batch_size: 1000
-  compression: gzip  # gzip, snappy, lz4, zstd
-  auth: sasl_ssl
-  sasl_mechanism: PLAIN
-  security_protocol: SASL_SSL
-  username: ${KAFKA_USERNAME}
-  password: ${KAFKA_PASSWORD}
+  bootstrap: localhost:9092        # Kafka broker(s), comma-separated
+  topic: addresses                 # Target topic
+  batch_size: 1000                 # Records per batch (default: 100)
+  linger_ms: 10                    # Wait time for batching (default: 0)
+  compression: gzip                # gzip, snappy, lz4, zstd, none (default: none)
+  acks: "all"                      # "0" (no ack), "1" (leader), "all" (all replicas)
+  sync: false                      # false=async (default), true=sync
+  # Optional SASL/SSL authentication:
+  sasl_mechanism: PLAIN            # PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
+  security_protocol: SASL_SSL      # PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL
+  username: ${KAFKA_USERNAME}      # Environment variable reference
+  password: ${KAFKA_PASSWORD}      # Environment variable reference
 ```
 
 **Features**:
-- Async/sync send modes
-- Batching and compression
-- SASL/SSL authentication
-- Idempotent producer (exactly-once semantics)
-- Configurable acks, retries, timeouts
+- ✅ **Async/sync send modes**: Choose between throughput (async) or reliability (sync)
+- ✅ **Batching**: Configurable batch size and linger time for optimal throughput
+- ✅ **Compression**: Support for gzip, snappy, lz4, zstd (70-90% size reduction)
+- ✅ **SASL/SSL authentication**: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512 mechanisms
+- ✅ **Idempotent producer**: Exactly-once semantics with `acks=all`
+- ✅ **Error handling**: Retries, timeouts, delivery guarantees
+- ✅ **Performance**: Tested with 100K+ records/sec throughput
 
-**Status**: ✅ Implemented, tests passing. Requires running Kafka instance.
+**Requirements**: Running Kafka instance (local, Docker, or cloud). See config examples in `config/jobs/kafka_*.yaml`.
 
 ### Database Integration (Planned)
 
@@ -955,17 +963,18 @@ A: All generated data is **synthetic** and not real PII. However:
 
 ## Roadmap
 
-**Current Version**: v0.2-alpha (March 2026)
+**Current Version**: v0.2.0 (March 2026)
 
-**Phase 6 (Current)** - Performance Validation:
-- ✅ JMH benchmarks (TASK-026)
+**Phase 6** - Performance Validation: ✅ **COMPLETE**
+- ✅ JMH benchmarks (TASK-026) - NFR-1 validated
 - ✅ File I/O optimization (600-800 MB/s achieved)
-- 🔄 Integration tests (TASK-022-025)
+- ✅ Memory profiling (TASK-027) - No leaks, linear scaling
+- ✅ Integration tests (TASK-022-025) - 43 tests passing
 
-**Phase 7 (Next)** - Documentation:
-- 🔄 README completion (TASK-028) - **IN PROGRESS**
-- 📋 Example configurations (TASK-029)
-- 📋 JavaDoc completion (TASK-030)
+**Phase 7** - Documentation: ✅ **COMPLETE**
+- ✅ README completion (TASK-028)
+- ✅ Example configurations (TASK-029)
+- ✅ JavaDoc completion (TASK-030)
 
 **Phase 8 (Future)** - Database & Advanced Features:
 - 📋 Database destination adapter (PostgreSQL, MySQL)
@@ -1012,20 +1021,6 @@ cd SeedStream
 ## License
 
 Copyright 2024-2026 Marco Ferretti
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-See [LICENSE](LICENSE) for the full license text.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
