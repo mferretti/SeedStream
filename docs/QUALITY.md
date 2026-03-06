@@ -95,7 +95,8 @@ Coverage reports are generated automatically after tests run.
 Configuration: `build.gradle.kts`
 - **Fail build on CVSS**: 7.0+ (high severity)
 - **Suppressions**: `config/dependency-check-suppressions.xml`
-- **NVD API Key**: Set `NVD_API_KEY` env var for faster updates
+- **NVD API Key**: Optional - set `NVD_API_KEY` env var for faster updates (automatically used in CI if set)
+- **CI Integration**: Runs automatically on every push/PR with cached NVD database
 
 To suppress false positives, add to `config/dependency-check-suppressions.xml`:
 ```xml
@@ -149,11 +150,14 @@ If SpotBugs finds critical issues, either:
 
 ### Dependency-Check is slow
 The first run downloads the NVD database (~200MB). Subsequent runs are faster.
-Set `NVD_API_KEY` environment variable to speed up updates:
+
+**Local development**: Set `NVD_API_KEY` environment variable to speed up updates:
 ```bash
 export NVD_API_KEY=your-api-key-here
 ```
-Request API key: https://nvd.nist.gov/developers/request-an-api-key
+Request free API key: https://nvd.nist.gov/developers/request-an-api-key
+
+**CI/CD**: The NVD database is automatically cached between workflow runs. First run on new cache will be slower (~2-3 minutes), subsequent runs are fast (~30 seconds).
 
 ### False positive vulnerabilities
 Add suppressions to `config/dependency-check-suppressions.xml` with justification.

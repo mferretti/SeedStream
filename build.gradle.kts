@@ -154,9 +154,12 @@ subprojects {
         analyzers.assemblyEnabled = false
         failBuildOnCVSS = 7.0f
         suppressionFile = "$rootDir/config/dependency-check-suppressions.xml"
-        // Skip NVD updates - requires API key since 2023
-        // Run manually with: ./gradlew dependencyCheckUpdate dependencyCheckAnalyze
-        autoUpdate = false
-        skip = System.getenv("CI") == "true"  // Disable in CI
+        
+        // NVD updates: Use cached data in CI, auto-update locally
+        autoUpdate = System.getenv("CI") != "true"
+        
+        // Optional: Use NVD_API_KEY for faster updates
+        // Get free key at: https://nvd.nist.gov/developers/request-an-api-key
+        nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
     }
 }

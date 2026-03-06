@@ -44,8 +44,19 @@ jobs:
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
     
-    # Dependency-Check disabled in CI (requires NVD API key)
-    # Run locally: ./gradlew dependencyCheckAnalyze
+    - name: Cache NVD Database
+      uses: actions/cache@v4
+      with:
+        path: ~/.gradle/dependency-check-data
+        key: nvd-${{ hashFiles('**/build.gradle.kts') }}
+        restore-keys: |
+          nvd-
+    
+    - name: Run OWASP Dependency-Check
+      run: ./gradlew dependencyCheckAggregate
+      env:
+        NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      continue-on-error: true
     
     - name: Upload test results
       uses: actions/upload-artifact@v7
@@ -67,6 +78,13 @@ jobs:
       with:
         name: spotbugs-reports
         path: '**/build/reports/spotbugs/**'
+    
+    - name: Upload Dependency-Check report
+      uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: dependency-check-report
+        path: 'build/reports/dependency-check-report.html'
     
     - name: Upload build reports
       uses: actions/upload-artifact@v7
