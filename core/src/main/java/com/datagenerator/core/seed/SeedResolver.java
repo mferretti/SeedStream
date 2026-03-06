@@ -108,7 +108,8 @@ public class SeedResolver {
     }
 
     if (value == null || value.isBlank()) {
-      throw new SeedResolutionException("Environment variable not set or empty: " + varName);
+      throw new SeedResolutionException(
+          "Environment variable not set or empty: %s".formatted(varName));
     }
 
     try {

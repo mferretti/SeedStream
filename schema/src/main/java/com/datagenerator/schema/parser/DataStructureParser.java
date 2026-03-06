@@ -68,14 +68,15 @@ public class DataStructureParser {
             violations.stream()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining(", "));
-        throw new SchemaParseException("Validation failed for " + filePath + ": " + errors);
+        throw new SchemaParseException("Validation failed for %s: %s".formatted(filePath, errors));
       }
 
       log.info("Successfully parsed data structure: {}", structure.getName());
       return structure;
 
     } catch (IOException e) {
-      throw new SchemaParseException("Failed to read data structure file: " + filePath, e);
+      throw new SchemaParseException(
+          "Failed to read data structure file: %s".formatted(filePath), e);
     }
   }
 }

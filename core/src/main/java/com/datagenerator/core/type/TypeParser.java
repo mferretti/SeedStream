@@ -74,12 +74,12 @@ public class TypeParser {
     if (enumMatcher.matches()) {
       String valuesStr = enumMatcher.group(1).trim();
       if (valuesStr.isEmpty()) {
-        throw new TypeParseException("Enum must have at least one value: " + typeString);
+        throw new TypeParseException("Enum must have at least one value: %s".formatted(typeString));
       }
       List<String> values =
           Arrays.stream(valuesStr.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
       if (values.isEmpty()) {
-        throw new TypeParseException("Enum must have at least one value: " + typeString);
+        throw new TypeParseException("Enum must have at least one value: %s".formatted(typeString));
       }
       return new EnumType(values);
     }

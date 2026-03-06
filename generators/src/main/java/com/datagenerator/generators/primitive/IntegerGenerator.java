@@ -54,7 +54,7 @@ public class IntegerGenerator implements DataGenerator {
 
     if (min > max) {
       throw new GeneratorException(
-          "Invalid int range: minValue (" + min + ") > maxValue (" + max + ")");
+          "Invalid int range: minValue (%d) > maxValue (%d)".formatted(min, max));
     }
 
     // Generate random integer in range [min, max]
@@ -76,7 +76,7 @@ public class IntegerGenerator implements DataGenerator {
 
   private int parseInt(String value, String fieldName) {
     if (value == null) {
-      throw new GeneratorException("Missing required field: " + fieldName + " for int type");
+      throw new GeneratorException("Missing required field: %s for int type".formatted(fieldName));
     }
     try {
       return Integer.parseInt(value);

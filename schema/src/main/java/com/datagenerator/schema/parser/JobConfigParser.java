@@ -68,7 +68,7 @@ public class JobConfigParser {
             violations.stream()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining(", "));
-        throw new SchemaParseException("Validation failed for " + filePath + ": " + errors);
+        throw new SchemaParseException("Validation failed for %s: %s".formatted(filePath, errors));
       }
 
       log.info(

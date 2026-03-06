@@ -75,16 +75,13 @@ public class ArrayGenerator implements DataGenerator {
 
     if (minLength < 0 || maxLength < 0) {
       throw new GeneratorException(
-          "Array length must be non-negative: [" + minLength + ", " + maxLength + "]");
+          "Array length must be non-negative: [%d, %d]".formatted(minLength, maxLength));
     }
 
     if (minLength > maxLength) {
       throw new GeneratorException(
-          "Invalid array length range: minLength ("
-              + minLength
-              + ") > maxLength ("
-              + maxLength
-              + ")");
+          "Invalid array length range: minLength (%d) > maxLength (%d)"
+              .formatted(minLength, maxLength));
     }
 
     int length = minLength + random.nextInt(maxLength - minLength + 1);
