@@ -24,7 +24,8 @@
  * <p><b>Core Components:</b>
  *
  * <ul>
- *   <li>{@link com.datagenerator.destinations.DestinationAdapter} - Base interface for all destinations
+ *   <li>{@link com.datagenerator.destinations.DestinationAdapter} - Base interface for all
+ *       destinations
  *   <li>{@link com.datagenerator.destinations.file.FileDestination} - Write to local files with NIO
  *   <li>{@link com.datagenerator.destinations.kafka.KafkaDestination} - Stream to Kafka topics
  * </ul>

@@ -25,8 +25,8 @@
  * <ul>
  *   <li>{@link com.datagenerator.generators.composite.ArrayGenerator} - Variable-length arrays with
  *       inner type generation
- *   <li>{@link com.datagenerator.generators.composite.ObjectGenerator} - Nested structure references
- *       with recursive field generation
+ *   <li>{@link com.datagenerator.generators.composite.ObjectGenerator} - Nested structure
+ *       references with recursive field generation
  * </ul>
  *
  * <p><b>Recursive Generation:</b> Composite generators delegate to the factory to create inner
@@ -38,8 +38,8 @@
  * </pre>
  *
  * <p><b>Circular Reference Prevention:</b> ObjectGenerator uses the {@link
- * com.datagenerator.core.structure.StructureRegistry} which detects and prevents circular references
- * during initialization.
+ * com.datagenerator.core.structure.StructureRegistry} which detects and prevents circular
+ * references during initialization.
  *
  * <p><b>Thread Safety:</b> Generators are stateless and thread-safe. Context is passed per-call.
  */

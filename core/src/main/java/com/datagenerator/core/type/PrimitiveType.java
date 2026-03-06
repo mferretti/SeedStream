@@ -28,9 +28,7 @@ public class PrimitiveType implements DataType {
   String minValue; // String to support dates, numbers, etc.
   String maxValue;
 
-  /**
-   * Primitive type kinds including standard types and semantic (Datafaker) types.
-   */
+  /** Primitive type kinds including standard types and semantic (Datafaker) types. */
   public enum Kind {
     /** Character string type with length range. */
     CHAR,

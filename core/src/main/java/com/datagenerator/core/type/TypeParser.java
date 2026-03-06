@@ -31,6 +31,7 @@ public class TypeParser {
   public TypeParser() {
     // Default constructor
   }
+
   private static final Pattern PRIMITIVE_PATTERN =
       Pattern.compile("^(char|int|decimal|date|timestamp)\\[([^\\]]+?)\\.\\.([^\\]]+)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");

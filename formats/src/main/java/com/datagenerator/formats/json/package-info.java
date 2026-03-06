@@ -23,8 +23,8 @@
  * <p><b>Components:</b>
  *
  * <ul>
- *   <li>{@link com.datagenerator.formats.json.JsonSerializer} - Serializes records to newline-delimited
- *       JSON
+ *   <li>{@link com.datagenerator.formats.json.JsonSerializer} - Serializes records to
+ *       newline-delimited JSON
  * </ul>
  *
  * <p><b>Format:</b> Newline-delimited JSON (JSONL) - one JSON object per line, no root array. This

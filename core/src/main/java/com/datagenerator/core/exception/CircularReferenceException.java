@@ -55,8 +55,8 @@ package com.datagenerator.core.exception;
  * <p><b>Resolution Strategies:</b>
  *
  * <ol>
- *   <li><b>Use foreign keys instead of nested objects:</b> Replace {@code object[user]} with
- *       {@code ref[user.user_id]} or {@code uuid} to reference by ID
+ *   <li><b>Use foreign keys instead of nested objects:</b> Replace {@code object[user]} with {@code
+ *       ref[user.user_id]} or {@code uuid} to reference by ID
  *   <li><b>Use arrays for one-to-many:</b> Instead of bidirectional nesting, use {@code
  *       array[object[child], 0..5]} in parent only
  *   <li><b>Flatten structure:</b> Generate parent and child as separate structures, link via IDs

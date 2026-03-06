@@ -67,15 +67,15 @@
  *   <li><b>References:</b> Foreign key references to other records
  * </ul>
  *
- * <p><b>Determinism:</b> All generators use the provided {@link java.util.Random} instance for value
- * generation, ensuring the same Random state produces the same values. Never use {@link
+ * <p><b>Determinism:</b> All generators use the provided {@link java.util.Random} instance for
+ * value generation, ensuring the same Random state produces the same values. Never use {@link
  * Math#random()} or create new Random instances internally.
  *
  * <p><b>Thread Safety:</b> Generators are stateless and thread-safe. Random instances are provided
  * per-call and are thread-local.
  *
- * <p><b>Locale Support:</b> Semantic generators respect the geolocation setting from data structures
- * to produce locale-appropriate data (e.g., Italian names for geolocation="italy").
+ * <p><b>Locale Support:</b> Semantic generators respect the geolocation setting from data
+ * structures to produce locale-appropriate data (e.g., Italian names for geolocation="italy").
  *
  * @see com.datagenerator.core.type.DataType
  * @see com.datagenerator.core.seed.RandomProvider

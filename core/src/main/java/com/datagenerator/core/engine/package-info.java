@@ -18,8 +18,8 @@
  * Multi-threaded data generation engine with parallel workers and deterministic seeding.
  *
  * <p>This package provides the core generation engine that orchestrates parallel data production,
- * coordinating multiple worker threads while maintaining deterministic output and efficient resource
- * utilization.
+ * coordinating multiple worker threads while maintaining deterministic output and efficient
+ * resource utilization.
  *
  * <p><b>Architecture:</b>
  *

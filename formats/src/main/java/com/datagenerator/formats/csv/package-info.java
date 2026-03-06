@@ -17,7 +17,8 @@
 /**
  * CSV serialization support.
  *
- * <p>This package provides CSV serialization using Apache Commons CSV for RFC 4180-compliant output.
+ * <p>This package provides CSV serialization using Apache Commons CSV for RFC 4180-compliant
+ * output.
  *
  * <p><b>Components:</b>
  *
