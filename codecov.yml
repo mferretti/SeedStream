@@ -1,0 +1,48 @@
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "60...90"
+  
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 2%
+        if_ci_failed: error
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+
+comment:
+  layout: "header, diff, files, footer"
+  behavior: default
+  require_changes: false
+  require_base: no
+  require_head: yes
+
+ignore:
+  - "**/build/**"
+  - "**/test/**"
+  - "**/*Test.java"
+  - "**/*IT.java"
+  - "**/GeneratorDemo.java"
+  - "benchmarks/**"
+  - "docs/**"
+  - "config/**"
+
+flags:
+  unittests:
+    paths:
+      - core/src/main/
+      - schema/src/main/
+      - generators/src/main/
+      - formats/src/main/
+      - destinations/src/main/
+      - cli/src/main/
+    carryforward: true

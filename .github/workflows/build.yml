@@ -35,6 +35,14 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew test jacocoTestReport
     
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        files: '**/build/reports/jacoco/test/jacocoTestReport.xml'
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
     # Dependency-Check disabled in CI (requires NVD API key)
     # Run locally: ./gradlew dependencyCheckAnalyze
     
