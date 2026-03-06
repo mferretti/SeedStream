@@ -14,7 +14,7 @@
 Memory profiling infrastructure implemented and executed. Manual profiling script created using JVM Flight Recorder with **4 comprehensive test scenarios** covering 100K to 10M records in both single-threaded and multi-threaded modes.
 
 **Deliverables:**
-1. ✅ **profile-memory.sh** - JFR profiling script (fixed for Java 21 compatibility)
+1. ✅ **utils/profile-memory.sh** - JFR profiling script (fixed for Java 21 compatibility)
 2. ✅ **docs/MEMORY-PROFILING.md** - Real test results and analysis (4 tests)
 3. ✅ **.gitignore** - Added profiling-output/ directory
 4. ✅ **cli/src/main/resources/logback.xml** - Production-like logging configuration
@@ -47,7 +47,7 @@ Memory profiling infrastructure implemented and executed. Manual profiling scrip
 
 ### Profiling Tools
 - JVM Flight Recorder (JFR) - Built into JDK 21
-- Shell script for automated profiling: `./profile-memory.sh`
+- Shell script for automated profiling: `./utils/profile-memory.sh`
 - GC logging for garbage collection analysis
 - Fixed deprecated Java 8 GC flags for Java 21 compatibility
 
@@ -55,12 +55,12 @@ Memory profiling infrastructure implemented and executed. Manual profiling scrip
 
 **Usage:**
 ```bash
-./profile-memory.sh <job-file> <record-count> [threads]
+./utils/profile-memory.sh <job-file> <record-count> [threads]
 ```
 
 **Example:**
 ```bash
-./profile-memory.sh config/jobs/file_address.yaml 1000000 4
+./utils/profile-memory.sh config/jobs/file_address.yaml 1000000 4
 ```
 
 **Output:**

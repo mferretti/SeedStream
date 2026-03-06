@@ -209,7 +209,7 @@
   - **Completion**: March 6, 2026 (Task: TASK-026)
 
 - [x] **Memory profiling (TASK-027)** ✅ **COMPLETE (March 6, 2026)**
-  - JFR profiling script (profile-memory.sh)
+  - JFR profiling script (utils/profile-memory.sh)
   - Comprehensive profiling documentation (docs/MEMORY-PROFILING.md)
   - **Results**:
     - ✅ No memory leaks detected in repeated generation cycles

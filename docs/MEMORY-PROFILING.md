@@ -238,19 +238,19 @@ Memory profiling conducted using JVM Flight Recorder (JFR) with 3 test scenarios
 ## Testing Methodology
 
 ### Profiling Script
-Script: `profile-memory.sh`
+Script: `utils/profile-memory.sh`
 - Uses Java Flight Recorder (JFR) with profile settings
 - Captures allocation rates, GC activity, heap usage
 - Generates `.jfr` recording and GC logs
 
 **Usage:**
 ```bash
-./profile-memory.sh <job-file> <record-count> [threads]
+./utils/profile-memory.sh <job-file> <record-count> [threads]
 ```
 
 **Example:**
 ```bash
-./profile-memory.sh config/jobs/file_address.yaml 1000000 4
+./utils/profile-memory.sh config/jobs/file_address.yaml 1000000 4
 ```
 
 **Output Location:** `profiling-output/` directory
