@@ -17,13 +17,9 @@ First off, thank you for considering contributing to SeedStream! It's people lik
 
 ## Code of Conduct
 
-This project follows a simple principle: **Be respectful and constructive**. We're all here to build great software together.
+This project and everyone participating in it is governed by the [SeedStream Code of Conduct](../CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
-- Use welcoming and inclusive language
-- Be respectful of differing viewpoints and experiences
-- Gracefully accept constructive criticism
-- Focus on what is best for the community
-- Show empathy towards other community members
+**TL;DR**: Be respectful, constructive, and welcoming. We're building great software together.
 
 ---
 
