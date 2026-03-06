@@ -279,11 +279,13 @@
   - **Roadmap**: Current status and future phases
   - **Completion**: March 6, 2026 (Task: TASK-028)
 
-- [ ] **Documentation - Example configurations (complete)**
-  - Create example data structures (users, orders, events, transactions)
-  - Example jobs for all destination types (file ✅, Kafka, database)
-  - Examples for all seed types (embedded ✅, file, env, remote)
-  - Real-world use case scenarios
+- [x] **Documentation - Example configurations (complete)**
+  - Create example data structures (users ✅, orders ✅, events ✅, transactions)
+  - Example jobs for all destination types (file ✅, Kafka ✅, database)
+  - Examples for all seed types (embedded ✅, file ✅, env ✅, remote ✅)
+  - Real-world use case scenarios ✅
+  - Comprehensive config/README.md with ~500 lines (~4 hours)
+  - **Completion**: March 6, 2026 (Task: TASK-029)
 
 ## Future Enhancements
 
