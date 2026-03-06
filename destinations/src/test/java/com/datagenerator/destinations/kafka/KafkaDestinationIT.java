@@ -225,4 +225,272 @@ class KafkaDestinationIT extends IntegrationTest {
 
     assertThat(records).hasSizeGreaterThanOrEqualTo(50);
   }
+
+  @Test
+  void shouldHandleSnappyCompression() throws Exception {
+    // Given: Kafka destination with Snappy compression
+    String topic = "test-snappy-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .compression("snappy")
+            .batchSize(10)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write records with Snappy compression
+    for (int i = 0; i < 20; i++) {
+      Map<String, Object> record =
+          Map.of("id", i, "data", "Snappy compression test data: " + "x".repeat(50));
+      destination.write(record);
+    }
+    destination.flush();
+
+    // Then: Verify all records received
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return records.size() >= 20;
+            });
+
+    assertThat(records).hasSizeGreaterThanOrEqualTo(20);
+  }
+
+  @Test
+  void shouldHandleLz4Compression() throws Exception {
+    // Given: Kafka destination with LZ4 compression
+    String topic = "test-lz4-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .compression("lz4")
+            .batchSize(10)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write records with LZ4 compression
+    for (int i = 0; i < 20; i++) {
+      Map<String, Object> record =
+          Map.of("id", i, "data", "LZ4 compression test data: " + "y".repeat(50));
+      destination.write(record);
+    }
+    destination.flush();
+
+    // Then: Verify all records received
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return records.size() >= 20;
+            });
+
+    assertThat(records).hasSizeGreaterThanOrEqualTo(20);
+  }
+
+  @Test
+  void shouldHandleZstdCompression() throws Exception {
+    // Given: Kafka destination with Zstandard compression
+    String topic = "test-zstd-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .compression("zstd")
+            .batchSize(10)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write records with Zstandard compression
+    for (int i = 0; i < 20; i++) {
+      Map<String, Object> record =
+          Map.of("id", i, "data", "Zstandard compression test data: " + "z".repeat(50));
+      destination.write(record);
+    }
+    destination.flush();
+
+    // Then: Verify all records received
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return records.size() >= 20;
+            });
+
+    assertThat(records).hasSizeGreaterThanOrEqualTo(20);
+  }
+
+  @Test
+  void shouldHandleNoCompression() throws Exception {
+    // Given: Kafka destination with no compression (explicit)
+    String topic = "test-no-compression-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .compression("none")
+            .batchSize(10)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write records with no compression
+    for (int i = 0; i < 15; i++) {
+      Map<String, Object> record = Map.of("id", i, "data", "No compression data: " + i);
+      destination.write(record);
+    }
+    destination.flush();
+
+    // Then: Verify all records received
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return records.size() >= 15;
+            });
+
+    assertThat(records).hasSizeGreaterThanOrEqualTo(15);
+  }
+
+  @Test
+  void shouldHandleCustomBatchSizeAndLinger() throws Exception {
+    // Given: Kafka destination with custom batch size and linger
+    String topic = "test-custom-batch-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .batchSize(32768) // 32KB
+            .lingerMs(50) // 50ms linger time
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write records with custom batching
+    for (int i = 0; i < 30; i++) {
+      Map<String, Object> record = Map.of("id", i, "data", "Batch test data " + i);
+      destination.write(record);
+    }
+    destination.flush();
+
+    // Then: Verify all records received
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return records.size() >= 30;
+            });
+
+    assertThat(records).hasSizeGreaterThanOrEqualTo(30);
+  }
+
+  @Test
+  void shouldHandleDifferentAcksSettings() throws Exception {
+    // Given: Kafka destination with acks="all" (idempotent producer requirement)
+    String topic = "test-acks-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .acks("all") // Explicit all acks for durability
+            .batchSize(10)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write records with all acks
+    for (int i = 0; i < 10; i++) {
+      Map<String, Object> record = Map.of("id", i, "data", "Acks test " + i);
+      destination.write(record);
+    }
+    destination.flush();
+
+    // Then: Verify all records received (with high durability)
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return records.size() >= 10;
+            });
+
+    assertThat(records).hasSizeGreaterThanOrEqualTo(10);
+  }
+
+  @Test
+  void shouldAcceptSecurityProtocolConfiguration() {
+    // Given: Kafka destination with PLAINTEXT security protocol (testcontainers default)
+    String topic = "test-security-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .securityProtocol("PLAINTEXT") // Explicit PLAINTEXT
+            .build();
+
+    // When: Open destination
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    // Then: Should open successfully (no exception)
+    assertThat(destination).isNotNull();
+  }
+
+  @Test
+  void shouldAcceptConfigurationWithoutOptionalFields() {
+    // Given: Minimal Kafka config (only required fields)
+    String topic = "test-minimal-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .build();
+
+    // When: Open destination with minimal config
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    // Then: Should use defaults successfully
+    assertThat(destination).isNotNull();
+  }
 }

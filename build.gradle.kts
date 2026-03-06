@@ -70,12 +70,12 @@ subprojects {
             // AssertJ
             testImplementation("org.assertj:assertj-core:3.27.7")
 
-            // Testcontainers for integration tests
-            testImplementation("org.testcontainers:testcontainers:1.19.8")
-            testImplementation("org.testcontainers:junit-jupiter:1.19.8")
-            testImplementation("org.testcontainers:kafka:1.19.8")
-            testImplementation("org.testcontainers:postgresql:1.19.8")
-            testImplementation("org.testcontainers:mysql:1.19.8")
+            // Testcontainers for integration tests (latest stable)
+            testImplementation("org.testcontainers:testcontainers:1.21.4")
+            testImplementation("org.testcontainers:junit-jupiter:1.21.4")
+            testImplementation("org.testcontainers:kafka:1.21.4")
+            testImplementation("org.testcontainers:postgresql:1.21.4")
+            testImplementation("org.testcontainers:mysql:1.21.4")
 
             // Awaitility for async testing
             testImplementation("org.awaitility:awaitility:4.2.2")
@@ -94,6 +94,10 @@ subprojects {
         description = "Runs integration tests with Testcontainers"
         group = "verification"
         
+        // Use the same test sources and classes as the test task
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
+        
         useJUnitPlatform {
             includeTags("integration")
         }
@@ -104,7 +108,11 @@ subprojects {
         testLogging {
             events("passed", "skipped", "failed")
             showStandardStreams = false
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
+        
+        // Set Docker API version for Testcontainers compatibility with newer Docker versions
+        environment("DOCKER_API_VERSION", "1.41")
     }
 
     tasks.named<JacocoReport>("jacocoTestReport") {

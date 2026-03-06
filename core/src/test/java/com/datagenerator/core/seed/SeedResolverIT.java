@@ -72,7 +72,7 @@ class SeedResolverIT extends IntegrationTest {
     // When/Then: Throws exception
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
-        .hasMessageContaining("Failed to read seed from file");
+        .hasMessageContaining("Seed file not found");
   }
 
   @Test
