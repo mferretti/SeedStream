@@ -132,6 +132,40 @@ brew install gradle
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --verbose"
 ```
 
+### Performance Example
+
+Generate 100,000 realistic customer records with Datafaker using 10 worker threads:
+
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 100000 --threads 10"
+```
+
+**Results:**
+- **Records Generated**: 100,000
+- **Worker Threads**: 10
+- **Time Elapsed**: 14.4 seconds
+- **Throughput**: ~6,923 records/sec
+- **Output File Size**: 30 MB
+- **Data Types**: UUID, names, emails, addresses, phone numbers, cities, states, postal codes (USA locale)
+
+**Sample Output:**
+```json
+{
+  "customer_id": "ce344f82-baf2-4e17-b871-8808047a09c5",
+  "first_name": "Valentine",
+  "last_name": "Reynolds", 
+  "email": "sherman.king@gmail.com",
+  "phone": "(256) 511-6029",
+  "billing_address": "Suite 233 33062 Verlie Corners, East Berryberg, WI 35149",
+  "city": "Mabletown",
+  "state": "New Jersey",
+  "postal_code": "16305",
+  "country": "Kazakhstan"
+}
+```
+
+**Note**: Performance varies based on data complexity. Simple primitive types (int, string) achieve 100,000+ records/sec, while complex Datafaker objects with nested structures generate at 5,000-10,000 records/sec.
+
 **Available Options:**
 - `--job`: Path to job configuration file (required)
 - `--format`: Output format: `json` or `csv` (default: `json`)
