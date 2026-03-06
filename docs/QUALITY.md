@@ -95,8 +95,9 @@ Coverage reports are generated automatically after tests run.
 Configuration: `build.gradle.kts`
 - **Fail build on CVSS**: 7.0+ (high severity)
 - **Suppressions**: `config/dependency-check-suppressions.xml`
-- **NVD API Key**: Optional - set `NVD_API_KEY` env var for faster updates (automatically used in CI if set)
-- **CI Integration**: Runs automatically on every push/PR with cached NVD database
+- **NVD API Key**: Optional - set `NVD_API_KEY` env var for faster updates (50 req/30s vs 5 req/30s rate limit)
+- **Auto-update**: Enabled - downloads/updates NVD database automatically
+- **CI Integration**: Runs on every push/PR with GitHub Actions caching for the NVD database
 
 To suppress false positives, add to `config/dependency-check-suppressions.xml`:
 ```xml

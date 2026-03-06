@@ -155,10 +155,11 @@ subprojects {
         failBuildOnCVSS = 7.0f
         suppressionFile = "$rootDir/config/dependency-check-suppressions.xml"
         
-        // NVD updates: Use cached data in CI, auto-update locally
-        autoUpdate = System.getenv("CI") != "true"
+        // Always enable auto-update to download NVD database on first run
+        // With NVD_API_KEY, updates are fast (cache handles efficiency)
+        autoUpdate = true
         
-        // Optional: Use NVD_API_KEY for faster updates
+        // Optional: Use NVD_API_KEY for faster updates (50 req/30s vs 5 req/30s)
         // Get free key at: https://nvd.nist.gov/developers/request-an-api-key
         nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
     }
