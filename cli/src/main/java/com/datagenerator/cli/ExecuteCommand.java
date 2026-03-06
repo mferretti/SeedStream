@@ -16,6 +16,8 @@
 
 package com.datagenerator.cli;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.datagenerator.core.engine.GenerationEngine;
 import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
@@ -43,6 +45,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -91,15 +94,24 @@ public class ExecuteCommand implements Callable<Integer> {
   private boolean verbose;
 
   @Option(
+      names = {"-d", "--debug"},
+      description = "Enable debug output (includes verbose)")
+  private boolean debug;
+
+  @Option(
       names = {"-t", "--threads"},
       description = "Number of worker threads (default: # of CPU cores)")
   private Integer threads;
 
   @Override
   public Integer call() throws Exception {
+    // Configure logging level based on flags
+    configureLoggingLevel();
+
     log.info("Starting data generation job");
     log.info("Job file: {}", jobFile);
     log.info("Format: {}, Count: {}, Seed override: {}", format, count, seedOverride);
+    log.debug("Verbose: {}, Debug: {}", verbose, debug);
 
     // 1. Parse job configuration
     JobConfigParser jobParser = new JobConfigParser();
@@ -323,5 +335,34 @@ public class ExecuteCommand implements Callable<Integer> {
         };
 
     return new StructureRegistry(loader);
+  }
+
+  /**
+   * Configure logging level based on CLI flags.
+   *
+   * <p>Logging levels:
+   *
+   * <ul>
+   *   <li>Default: INFO (errors, warnings, progress)
+   *   <li>Verbose: DEBUG (configuration, major operations)
+   *   <li>Debug: DEBUG (all operations including detailed execution)
+   * </ul>
+   */
+  private void configureLoggingLevel() {
+    Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Logger appLogger = (Logger) LoggerFactory.getLogger("com.datagenerator");
+
+    if (debug) {
+      rootLogger.setLevel(Level.DEBUG);
+      appLogger.setLevel(Level.DEBUG);
+      log.debug("Debug mode enabled - log level set to DEBUG");
+    } else if (verbose) {
+      rootLogger.setLevel(Level.DEBUG);
+      appLogger.setLevel(Level.DEBUG);
+      log.debug("Verbose mode enabled - log level set to DEBUG");
+    } else {
+      rootLogger.setLevel(Level.INFO);
+      appLogger.setLevel(Level.INFO);
+    }
   }
 }
