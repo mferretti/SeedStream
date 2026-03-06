@@ -37,8 +37,8 @@ public class KafkaDestinationConfig {
   /** Compression type: none, gzip, snappy, lz4, zstd. Default: none. */
   @Builder.Default String compression = "none";
 
-  /** Acknowledgment mode: 0, 1, or all. Default: "1". */
-  @Builder.Default String acks = "1";
+  /** Acknowledgment mode: 0, 1, or all. Default: "all" (required for idempotence). */
+  @Builder.Default String acks = "all";
 
   // Authentication fields
   /** Security protocol: PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL. Optional. */
