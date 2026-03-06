@@ -69,12 +69,42 @@ subprojects {
 
             // AssertJ
             testImplementation("org.assertj:assertj-core:3.27.7")
+
+            // Testcontainers for integration tests
+            testImplementation("org.testcontainers:testcontainers:1.19.8")
+            testImplementation("org.testcontainers:junit-jupiter:1.19.8")
+            testImplementation("org.testcontainers:kafka:1.19.8")
+            testImplementation("org.testcontainers:postgresql:1.19.8")
+            testImplementation("org.testcontainers:mysql:1.19.8")
+
+            // Awaitility for async testing
+            testImplementation("org.awaitility:awaitility:4.2.2")
         }
     }
 
     tasks.test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            excludeTags("integration")
+        }
         finalizedBy("jacocoTestReport")
+    }
+
+    // Separate integration test task
+    tasks.register<Test>("integrationTest") {
+        description = "Runs integration tests with Testcontainers"
+        group = "verification"
+        
+        useJUnitPlatform {
+            includeTags("integration")
+        }
+        
+        shouldRunAfter(tasks.test)
+        
+        // Integration tests may take longer
+        testLogging {
+            events("passed", "skipped", "failed")
+            showStandardStreams = false
+        }
     }
 
     tasks.named<JacocoReport>("jacocoTestReport") {

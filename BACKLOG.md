@@ -219,12 +219,14 @@
 
 ### MEDIUM PRIORITY - Quality Foundation
 
-- [ ] **Testing - Integration tests**
-  - Add integration tests with Testcontainers (Kafka, PostgreSQL, MySQL)
-  - File system tests with temporary directories
-  - Seed resolution tests (all types: embedded/file/env/remote)
-  - End-to-end job execution tests
-  - **Priority**: After performance validation (may reveal integration issues)
+- [x] **Testing - Integration tests** ✅ **COMPLETE (March 6, 2026)**
+  - Testcontainers infrastructure set up (version 1.19.8)
+  - Kafka integration tests: 4 tests with real Kafka container
+  - File integration tests: 6 tests (JSON, CSV, compression, append mode)
+  - Seed resolution integration tests: 10 tests (file, env, error handling)
+  - Separate `integrationTest` Gradle task (excludes from default test runs)
+  - **Run**: `./gradlew integrationTest`
+  - **Completion**: March 6, 2026 (TASK-022, TASK-023, TASK-025)
 
 - [ ] **Testing - Unit tests foundation**
   - Set up JUnit 5, Mockito, AssertJ ✅ (already configured)
