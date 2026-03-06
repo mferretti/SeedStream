@@ -28,17 +28,24 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks for destination adapters. Focuses on file I/O throughput to diagnose the 2.1 MB/sec
- * bottleneck.
+ * Benchmarks for destination adapters. Measures optimized file I/O throughput with batching and
+ * large buffers.
  *
- * <p><b>Goal:</b> Measure raw write throughput vs. serialization + write combined
+ * <p><b>Goal:</b> Validate optimizations achieve 500+ MB/s file writes
  *
  * <p><b>Scenarios:</b>
  *
  * <ul>
  *   <li>Raw file writes (baseline ceiling for I/O)
- *   <li>JSON serialization + file write (end-to-end pipeline)
- *   <li>Buffered vs. unbuffered writes
+ *   <li>JSON serialization + file write with batching (end-to-end pipeline)
+ * </ul>
+ *
+ * <p><b>Optimizations Applied:</b>
+ *
+ * <ul>
+ *   <li>64KB buffer (up from 8KB)
+ *   <li>1000-record batching
+ *   <li>Single write call per newline
  * </ul>
  *
  * <p><b>Note:</b> Kafka benchmarks require running Kafka instance and are excluded for now
@@ -85,9 +92,14 @@ public class DestinationBenchmark {
         Files.newBufferedWriter(
             tempFile, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 
-    // Setup FileDestination
+    // Setup FileDestination with optimized defaults (64KB buffer, 1000 batch size)
     FileDestinationConfig config =
-        FileDestinationConfig.builder().filePath(tempFile).bufferSize(8192).compress(false).build();
+        FileDestinationConfig.builder()
+            .filePath(tempFile)
+            .bufferSize(65536)
+            .batchSize(1000)
+            .compress(false)
+            .build();
 
     fileDestination = new FileDestination(config, jsonSerializer);
     fileDestination.open();
