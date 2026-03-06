@@ -571,6 +571,54 @@ private final ThreadLocal<Random> threadLocalRandom = ThreadLocal.withInitial(()
 
 ---
 
+### Issue #4: GeneratorContext Not Available in Worker Threads
+
+**Problem**: Multi-threaded generation failed with `IllegalStateException: No GeneratorContext active` when using `ObjectGenerator`.
+
+**Impact**: All worker threads crashed immediately, no records generated (100,000 record job produced empty file).
+
+**Root Cause**: `GeneratorContext` uses `ThreadLocal` storage and was only initialized on the main thread via try-with-resources in `ExecuteCommand`:
+```java
+// WRONG ❌ - Only main thread has context
+try (var ctx = GeneratorContext.enter(factory, geolocation)) {
+    engine.generate(count);  // Worker threads have no context!
+}
+```
+
+Worker threads in `GenerationEngine` called `ObjectGenerator.generate()` → accessed `GeneratorContext.getFactory()` → `ThreadLocal.get()` returned null → exception.
+
+**Diagnosis**: Error logs showed all 10 workers failing:
+```
+Worker 0 failed: No GeneratorContext active. Call GeneratorContext.enter() before generating.
+Worker 1 failed: No GeneratorContext active. Call GeneratorContext.enter() before generating.
+...
+```
+
+**Resolution**: Move `GeneratorContext.enter()` into the `RecordGenerator` lambda so each worker thread initializes its own context:
+```java
+// CORRECT ✅ - Each worker gets its own context
+GenerationEngine engine = GenerationEngine.builder()
+    .recordGenerator((random) -> {
+        // Each worker thread initializes context
+        try (var ctx = GeneratorContext.enter(factory, geolocation)) {
+            return generator.generate(random, objectType);
+        }
+    })
+    .build();
+```
+
+**Result**: All 10 workers successful, 100,000 records generated in 14.4 seconds (6,923 records/sec).
+
+**Lesson**: When using `ThreadLocal` state in multi-threaded environments, ensure each thread initializes its own context. Try-with-resources on main thread doesn't propagate to worker threads.
+
+**Performance Impact**: Minimal—context initialization is lightweight (just sets ThreadLocal reference).
+
+**Status**: ✅ Resolved (March 6, 2026)
+
+**Testing**: Verified with complex Datafaker objects (customer structure with UUID, names, emails, addresses) across 10 worker threads.
+
+---
+
 ## Open Questions & Future Work
 
 ### 1. Virtual Threads for I/O-Bound Operations
