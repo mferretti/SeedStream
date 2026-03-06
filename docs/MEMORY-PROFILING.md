@@ -6,47 +6,107 @@
 
 ---
 
-## Executive Summary
+## ⚠️ IMPORTANT NOTE
 
-Memory profiling of SeedStream data generator conducted using JVM Flight Recorder (JFR) and automated leak detection tests. No memory leaks detected. Memory usage is within acceptable bounds for large-scale data generation.
+This document contains a mix of **actual test results** (clearly marked) and **hypothetical examples** (for tests not yet run). Only the sections marked with 📊 **ACTUAL TEST RESULTS** contain real measurements from executed profiling runs.
+
+---
+
+## 📊 ACTUAL TEST RESULTS
+
+The following tests were executed on March 6, 2026 using the `profile-memory.sh` script with JVM Flight Recorder enabled.
+
+### Test 1: 100,000 Records (Single-threaded)
+
+**Configuration:**
+- Job: config/jobs/file_address.yaml
+- Format: JSON
+- Threads: 1
+- JVM: Java 21.0.9-amzn, -Xms512m -Xmx4g -XX:+UseG1GC
+- System: 12 CPUs, 31.3 GB RAM
+
+**Performance:**
+- Duration: 8.87 seconds
+- Throughput: 11,272 records/sec
+- Output file size: ~12 MB
+
+**Memory Behavior:**
+- Peak heap before GC: 80 MB (at GC #2)
+- Heap after GC: ~8 MB (stable across all cycles)
+- Committed heap: 514 MB
+- Reserved heap: 4 GB
+- Final heap usage: 246.7 MB
+
+**Garbage Collection:**
+- Total GC cycles: 3 (all Young Generation / G1 Evacuation Pause)
+- GC pause times: 4.4ms, 4.4ms, 5.0ms
+- Total GC time: 13.7 ms
+- GC overhead: **0.15%** of total runtime ✅
+- No Full GC events
+
+**JFR Event Summary:**
+- Object allocation samples: 1,210
+- Promotions to old generation: 335
+- Large object promotions (outside PLAB): 69
+
+### Test 2: 1,000,000 Records (Single-threaded)
+
+**Configuration:**
+- Job: config/jobs/file_address.yaml
+- Format: JSON
+- Threads: 1
+- JVM: Java 21.0.9-amzn, -Xms512m -Xmx4g -XX:+UseG1GC
+
+**Performance:**
+- Duration: 76.54 seconds
+- Throughput: 13,065 records/sec (**16% faster** than 100K test) ✅
+- Output file size: ~120 MB
+
+**Memory Behavior:**
+- Peak heap before GC: 308 MB (consistent at GC #3-#11)
+- Heap after GC: ~8 MB (stable - **no memory leak detected**) ✅
+- Eden region growth: Linear until GC triggers (~300 MB)
+- Max allocation rate: ~38 MB/sec
+
+**Garbage Collection:**
+- Total GC cycles: 12 (all Young Generation)
+- GC pause times: Range 2.8ms - 7.0ms (average ~4.5ms)
+- Total GC time: 54.1 ms
+- GC overhead: **0.07%** of total runtime ✅ (even better than 100K test)
+- No Full GC events
+- GC interval: ~7.8 seconds between collections
 
 **Key Findings:**
-- ✅ No memory leaks in repeated generation cycles
-- ✅ Proper resource cleanup after destination close
-- ✅ Memory utilization stays below 80% of max heap
-- ✅ GC pressure remains acceptable (<10% of execution time)
-- ✅ Linear memory scaling with record count
+1. ✅ **No memory leaks**: After-GC heap remains stable at ~8 MB across all 12 cycles
+2. ✅ **Linear scaling**: 10x records = 8.6x time (improved throughput at scale)
+3. ✅ **Low GC overhead**: <0.1% time spent in garbage collection
+4. ✅ **Predictable pauses**: All GC pauses consistently under 7ms
+5. ✅ **Only young GCs**: No Old Generation or Full GC events triggered
+6. ✅ **Efficient memory**: Peak ~308 MB for 1M records = ~308 bytes per record
 
 ---
 
 ## Testing Methodology
 
-### Automated Tests
-Located in `benchmarks/src/test/java/com/datagenerator/benchmarks/`:
-
-1. **MemoryLeakTest.java** - Automated leak detection
-   - Repeated generation cycles (5 cycles × 100k records)
-   - Resource cleanup verification
-   - Memory pressure handling
-
-2. **MemoryProfileTest.java** - Manual profiling (disabled by default)
-   - 1M record generation
-   - 10M record generation
-   - Multi-destination stress test
-   - Long-running generation (5 minutes)
-   - Multi-threaded generation (4 threads)
-
-### Manual Profiling
+### Manual Profiling Script
 Script: `profile-memory.sh`
-- Uses Java Flight Recorder (JFR)
+- Uses Java Flight Recorder (JFR) with profile settings
 - Captures allocation rates, GC activity, heap usage
-- Generates detailed profiling reports
+- Generates `.jfr` recording and GC logs
+- Results saved in `profiling-output/` directory
+
+**Usage:**
+```bash
+./profile-memory.sh <job-file> <record-count> [threads]
+```
 
 ---
 
-## Test Results
+## 📝 HYPOTHETICAL EXAMPLES (Not Yet Executed)
 
-### 1. Memory Leak Detection
+The sections below contain example data for tests that have not yet been run. These are provided as templates for future testing.
+
+### 1. Memory Leak Detection (Not Yet Run)
 
 **Test**: 5 cycles of 100,000 records each
 

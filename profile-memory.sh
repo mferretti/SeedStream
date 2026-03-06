@@ -23,7 +23,8 @@ RECORD_COUNT="$2"
 THREADS="${3:-4}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RECORDING_FILE="memory-profile-${TIMESTAMP}.jfr"
-OUTPUT_DIR="profiling-output"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+OUTPUT_DIR="$SCRIPT_DIR/profiling-output"
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
@@ -36,15 +37,26 @@ echo "Recording file: $OUTPUT_DIR/$RECORDING_FILE"
 echo ""
 
 # JFR settings
-JFR_SETTINGS="-XX:StartFlightRecording=filename=$OUTPUT_DIR/$RECORDING_FILE,duration=0s,settings=profile"
-JVM_OPTS="-Xms512m -Xmx4g -XX:+UseG1GC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xlog:gc*:file=$OUTPUT_DIR/gc-${TIMESTAMP}.log"
+JFR_SETTINGS="-XX:StartFlightRecording=filename=$OUTPUT_DIR/$RECORDING_FILE,settings=profile"
+JVM_OPTS="-Xms512m -Xmx4g -XX:+UseG1GC -Xlog:gc*:file=$OUTPUT_DIR/gc-${TIMESTAMP}.log"
 
 echo "Starting data generation with JFR profiling..."
 echo ""
 
+# Build CLI distribution if needed
+if [ ! -f "cli/build/install/cli/bin/cli" ]; then
+    echo "Building CLI distribution..."
+    ./gradlew :cli:installDist
+    echo ""
+fi
+
+# Convert job file to absolute path
+if [[ ! "$JOB_FILE" = /* ]]; then
+    JOB_FILE="$(pwd)/$JOB_FILE"
+fi
+
 # Run the CLI with JFR enabled
-./gradlew :cli:run --args="execute --job $JOB_FILE --count $RECORD_COUNT --threads $THREADS" \
-    -Dorg.gradle.jvmargs="$JVM_OPTS $JFR_SETTINGS"
+JAVA_OPTS="$JVM_OPTS $JFR_SETTINGS" cli/build/install/cli/bin/cli execute --job "$JOB_FILE" --count $RECORD_COUNT --threads $THREADS
 
 echo ""
 echo "=== Profiling Complete ==="

@@ -43,3 +43,4 @@ config/**/*.credentials
 
 # Performance tests (local only, not run in CI)
 **/DatafakerPerformanceTest.java
+profiling-output/
