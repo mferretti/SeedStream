@@ -129,49 +129,50 @@ public class ExecuteCommand implements Callable<Integer> {
     DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
 
     // 7. Generate and write records using GenerationEngine
-    try (var ctx = GeneratorContext.enter(factory, dataStructure.getGeolocation())) {
-      destination.open();
+    destination.open();
 
-      ObjectType objectType = new ObjectType(dataStructure.getName());
-      DataGenerator generator = factory.create(objectType);
+    ObjectType objectType = new ObjectType(dataStructure.getName());
+    DataGenerator generator = factory.create(objectType);
 
-      // Determine number of worker threads
-      int workerThreads = threads != null ? threads : Runtime.getRuntime().availableProcessors();
+    // Determine number of worker threads
+    int workerThreads = threads != null ? threads : Runtime.getRuntime().availableProcessors();
 
-      // Create generation engine
-      GenerationEngine engine =
-          GenerationEngine.builder()
-              .recordGenerator(
-                  (random) -> {
+    // Create generation engine with context-aware record generator
+    String geolocation = dataStructure.getGeolocation();
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(
+                (random) -> {
+                  // Each worker thread needs its own GeneratorContext
+                  try (var ctx = GeneratorContext.enter(factory, geolocation)) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> record =
                         (Map<String, Object>) generator.generate(random, objectType);
                     return record;
-                  })
-              .recordWriter(destination::write)
-              .masterSeed(seed)
-              .workerThreads(workerThreads)
-              .build();
+                  }
+                })
+            .recordWriter(destination::write)
+            .masterSeed(seed)
+            .workerThreads(workerThreads)
+            .build();
 
-      log.info("Generating {} records...", count);
-      long startTime = System.currentTimeMillis();
+    log.info("Generating {} records...", count);
+    long startTime = System.currentTimeMillis();
 
-      // Generate records
-      engine.generate(count);
+    // Generate records
+    engine.generate(count);
 
-      destination.flush();
+    destination.flush();
 
-      long elapsed = System.currentTimeMillis() - startTime;
-      double recordsPerSec = count / (elapsed / 1000.0);
+    long elapsed = System.currentTimeMillis() - startTime;
+    double recordsPerSec = count / (elapsed / 1000.0);
 
-      log.info("Generation complete!");
-      log.info("Total records: {}", count);
-      log.info(
-          "Time elapsed: {} ms ({} records/sec)", elapsed, String.format("%.2f", recordsPerSec));
+    log.info("Generation complete!");
+    log.info("Total records: {}", count);
+    log.info(
+        "Time elapsed: {} ms ({} records/sec)", elapsed, String.format("%.2f", recordsPerSec));
 
-    } finally {
-      destination.close();
-    }
+    destination.close();
 
     return 0; // Success
   }
