@@ -53,7 +53,7 @@
 - ⏸️ Database destination with JDBC and HikariCP (requires careful design)
 - ⏸️ Reference generator for foreign keys
 
-**Test Coverage**: 276 tests passing across 6 modules (75%+ coverage)
+**Test Coverage**: 267 tests passing across 6 modules (75%+ coverage)
 
 ### Key Differentiators
 
