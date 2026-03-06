@@ -161,9 +161,5 @@ subprojects {
         // Optional: Use NVD_API_KEY for faster updates
         // Get free key at: https://nvd.nist.gov/developers/request-an-api-key
         nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
-        
-        // Increase timeouts for first-run database download
-        nvd.connectTimeout = 600000  // 10 minutes
-        nvd.readTimeout = 600000     // 10 minutes
     }
 }
