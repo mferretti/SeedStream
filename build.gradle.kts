@@ -55,19 +55,21 @@ subprojects {
         implementation("org.slf4j:slf4j-api:2.0.17")
         runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 
-        // Testing - JUnit 5
-        testImplementation(platform("org.junit:junit-bom:6.0.3"))
-        testImplementation("org.junit.jupiter:junit-jupiter-api")
-        testImplementation("org.junit.jupiter:junit-jupiter-params")
-        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
-        testRuntimeOnly("org.junit.platform:junit-platform-launcher") // For VSCode test runner
+        // Testing - JUnit 5 (skip for benchmarks module)
+        if (project.name != "benchmarks") {
+            testImplementation(platform("org.junit:junit-bom:6.0.3"))
+            testImplementation("org.junit.jupiter:junit-jupiter-api")
+            testImplementation("org.junit.jupiter:junit-jupiter-params")
+            testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+            testRuntimeOnly("org.junit.platform:junit-platform-launcher") // For VSCode test runner
 
-        // Mockito
-        testImplementation("org.mockito:mockito-core:5.21.0")
-        testImplementation("org.mockito:mockito-junit-jupiter:5.21.0")
+            // Mockito
+            testImplementation("org.mockito:mockito-core:5.21.0")
+            testImplementation("org.mockito:mockito-junit-jupiter:5.21.0")
 
-        // AssertJ
-        testImplementation("org.assertj:assertj-core:3.27.7")
+            // AssertJ
+            testImplementation("org.assertj:assertj-core:3.27.7")
+        }
     }
 
     tasks.test {

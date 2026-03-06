@@ -12,7 +12,7 @@ A high-performance, configurable test data generator for enterprise applications
 ---
 
 **📚 Documentation**  
-[Architecture & Design](DESIGN.md) · [Code Quality Guide](QUALITY.md) · [Roadmap & Backlog](BACKLOG.md) · [License Discussion](LICENSE-DISCUSSION.md)
+[Architecture & Design](DESIGN.md) · [Code Quality Guide](QUALITY.md) · [Roadmap & Backlog](BACKLOG.md) · [Performance Benchmarks](benchmarks/README.md) · [License Discussion](LICENSE-DISCUSSION.md)
 
 ---
 
@@ -361,6 +361,38 @@ For technical details, see [DESIGN.md](DESIGN.md).
 # Build distribution
 ./gradlew :cli:installDist
 ```
+
+## Performance Benchmarks
+
+The project includes comprehensive JMH (Java Microbenchmark Harness) benchmarks to measure and validate performance across all critical paths:
+
+- **Primitive Generators**: Validates NFR-1 requirement (10M ops/s for in-memory generation)
+- **Datafaker Generators**: Measures realistic data generation performance
+- **Composite Generators**: Tests nested objects and arrays
+- **Serializers**: JSON and CSV formatting throughput
+- **Destinations**: File I/O and write pipeline performance
+
+**Note**: Benchmarks are **not run automatically** with `./gradlew test` because they take 10-15 minutes to complete. They must be executed explicitly.
+
+### Running Benchmarks
+
+**Quick Start** (one command):
+```bash
+./benchmarks/run_benchmarks.sh
+```
+
+This will run all benchmarks and generate a `BENCHMARK-RESULTS.md` report with formatted results and NFR-1 compliance validation.
+
+**Manual execution**:
+```bash
+# Run benchmarks only
+./gradlew :benchmarks:jmh
+
+# Generate formatted report
+python3 benchmarks/format_results.py > BENCHMARK-RESULTS.md
+```
+
+For detailed benchmark documentation, configuration options, and result interpretation, see **[benchmarks/README.md](benchmarks/README.md)**.
 
 ## License
 
