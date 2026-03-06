@@ -57,13 +57,13 @@ public class CompositeGeneratorsBenchmark {
   public void setup() {
     random = new Random(12345L);
     arrayGenerator = new ArrayGenerator();
-    
+
     // Register a simple structure for testing
     Map<String, DataType> simpleStructure = new LinkedHashMap<>();
     simpleStructure.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "999999"));
     simpleStructure.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "15"));
     simpleStructure.put("active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
-    
+
     // Create registry with mock loader that returns our simple structure
     registry = new StructureRegistry((name, path, reg) -> simpleStructure);
     factory = new DataGeneratorFactory(registry, null);

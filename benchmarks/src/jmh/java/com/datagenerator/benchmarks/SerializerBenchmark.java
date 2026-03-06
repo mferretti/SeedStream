@@ -25,8 +25,8 @@ import org.openjdk.jmh.annotations.Warmup;
  * Benchmarks for format serializers (JSON and CSV). Measures serialization overhead and helps
  * identify bottlenecks in file I/O pipeline.
  *
- * <p><b>Goal:</b> Determine if 2.1 MB/sec file I/O bottleneck is due to serialization or actual
- * I/O operations
+ * <p><b>Goal:</b> Determine if 2.1 MB/sec file I/O bottleneck is due to serialization or actual I/O
+ * operations
  *
  * <p><b>Scenarios:</b>
  *
