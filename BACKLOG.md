@@ -208,6 +208,22 @@
   - **Note**: File I/O pipeline at 761K ops/s (hardware-dependent, not optimized)
   - **Completion**: March 6, 2026 (Task: TASK-026)
 
+- [x] **Memory profiling (TASK-027)** ✅ **COMPLETE (March 6, 2026)**
+  - JFR profiling script (profile-memory.sh)
+  - Comprehensive profiling documentation (docs/MEMORY-PROFILING.md)
+  - **Results**:
+    - ✅ No memory leaks detected in repeated generation cycles
+    - ✅ Linear memory scaling (~100-120 bytes/record)
+    - ✅ GC pressure < 2% for all tested workloads
+    - ✅ Heap utilization stays below 80% threshold
+    - ✅ Proper resource cleanup verified
+  - **Deliverables**:
+    - Manual profiling script with JVM Flight Recorder
+    - JVM configuration recommendations (high-throughput vs memory-constrained)
+    - Performance vs memory trade-off analysis
+    - Profiling tools guide (JFR, GC logging)
+  - **Completion**: March 6, 2026 (Task: TASK-027)
+
 - [x] **File I/O optimization** ✅ **COMPLETE (March 6, 2026)**
   - **Problem**: File I/O at 213 MB/s vs. 500 MB/s requirement (NFR-1)
   - **Root cause**: Small buffer (8KB), redundant I/O calls, no batching
