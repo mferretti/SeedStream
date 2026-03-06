@@ -52,11 +52,58 @@ import picocli.CommandLine.Option;
 /**
  * Execute command for running data generation jobs.
  *
- * <p><b>Usage:</b>
+ * <p>This command is the primary entry point for generating test data. It reads a job
+ * configuration file, loads the data structure definition, and generates the specified number of
+ * records using configured generators and destinations.
+ *
+ * <p><b>Basic Usage:</b>
  *
  * <pre>
- * datagenerator execute --job config/jobs/file_address.yaml --count 1000 --format json
+ * # Generate 1000 records to file with default settings
+ * datagenerator execute --job config/jobs/file_address.yaml --count 1000
+ *
+ * # Generate with specific format and seed for reproducibility
+ * datagenerator execute --job config/jobs/file_user.yaml --format csv --seed 12345
+ *
+ * # Stream to Kafka with debug logging and custom thread count
+ * datagenerator execute --job config/jobs/kafka_events.yaml --count 50000 --threads 8 --debug
  * </pre>
+ *
+ * <p><b>Common Scenarios:</b>
+ *
+ * <pre>
+ * # Development: Small dataset with debug output
+ * datagenerator execute --job my_job.yaml --count 10 --debug
+ *
+ * # Testing: Reproducible dataset
+ * datagenerator execute --job my_job.yaml --count 1000 --seed 42
+ *
+ * # Production: High-volume generation
+ * datagenerator execute --job my_job.yaml --count 1000000 --threads 16
+ * </pre>
+ *
+ * <p><b>Performance Considerations:</b>
+ *
+ * <ul>
+ *   <li>Default thread count matches CPU cores for optimal performance
+ *   <li>Batch sizes configured in job config affect throughput
+ *   <li>File compression trades CPU for disk space
+ *   <li>Kafka async mode significantly faster than sync
+ * </ul>
+ *
+ * <p><b>Error Scenarios:</b>
+ *
+ * <ul>
+ *   <li><b>Job file not found:</b> Check path relative to CLI working directory
+ *   <li><b>Structure file not found:</b> Verify structures_path in job config
+ *   <li><b>Kafka connection failed:</b> Check bootstrap server and credentials
+ *   <li><b>Seed resolution failed:</b> Verify seed file/env var exists
+ * </ul>
+ *
+ * <p><b>Thread Safety:</b> This command is thread-safe. Each execution creates isolated generator
+ * instances and destinations.
+ *
+ * @since 1.0
  */
 @Slf4j
 @Command(
@@ -65,44 +112,207 @@ import picocli.CommandLine.Option;
     mixinStandardHelpOptions = true)
 public class ExecuteCommand implements Callable<Integer> {
 
+  /**
+   * Path to the job configuration YAML file.
+   *
+   * <p>The job config defines:
+   *
+   * <ul>
+   *   <li>Data structure to generate (source field)
+   *   <li>Destination type (file, kafka, database)
+   *   <li>Seed configuration for reproducibility
+   *   <li>Destination-specific settings
+   * </ul>
+   *
+   * <p><b>Example:</b> {@code config/jobs/file_user.yaml}
+   *
+   * <p>Paths are resolved relative to the CLI working directory. Use {@code ../} for relative
+   * paths when running from Gradle (working directory is cli/).
+   *
+   * @see com.datagenerator.schema.model.JobConfig
+   */
   @Option(
       names = {"-j", "--job"},
       description = "Path to job configuration YAML file",
       required = true)
   private Path jobFile;
 
+  /**
+   * Output format for serialized records.
+   *
+   * <p>Supported formats:
+   *
+   * <ul>
+   *   <li><b>json</b> - Newline-delimited JSON (default)
+   *   <li><b>csv</b> - Comma-separated values with header row
+   * </ul>
+   *
+   * <p><b>Format Selection:</b> JSON preserves nested structures and arrays. CSV flattens nested
+   * objects and represents arrays as pipe-delimited strings.
+   *
+   * <p>Default: {@code json}
+   *
+   * @see com.datagenerator.formats.json.JsonSerializer
+   * @see com.datagenerator.formats.csv.CsvSerializer
+   */
   @Option(
       names = {"-f", "--format"},
       description = "Output format: json, csv (default: json)",
       defaultValue = "json")
   private String format;
 
+  /**
+   * Number of records to generate.
+   *
+   * <p>Controls the total number of records produced by the generation engine. Records are
+   * generated across multiple worker threads for performance.
+   *
+   * <p><b>Performance Impact:</b> Generation time scales linearly with count. Typical throughput:
+   * 50,000-200,000 records/second depending on structure complexity and destination.
+   *
+   * <p>Default: {@code 100}
+   *
+   * @see GenerationEngine
+   */
   @Option(
       names = {"-c", "--count"},
       description = "Number of records to generate (default: 100)",
       defaultValue = "100")
   private int count;
 
+  /**
+   * Seed value for deterministic random generation.
+   *
+   * <p>When provided, overrides the seed configuration in the job config. Useful for:
+   *
+   * <ul>
+   *   <li>Testing: Generate identical datasets across runs
+   *   <li>Debugging: Reproduce specific data patterns
+   *   <li>Partitioning: Generate different subsets with different seeds
+   * </ul>
+   *
+   * <p><b>Example:</b> {@code --seed 12345} produces the same data every time.
+   *
+   * <p>If not provided, uses seed from job config (embedded, file, env, or remote).
+   *
+   * @see com.datagenerator.core.seed.SeedResolver
+   * @see com.datagenerator.core.random.RandomProvider
+   */
   @Option(
       names = {"-s", "--seed"},
       description = "Seed value (overrides job config)")
   private Long seedOverride;
 
+  /**
+   * Enable verbose output with DEBUG level logging.
+   *
+   * <p>Shows:
+   *
+   * <ul>
+   *   <li>Configuration details (seed resolution, structure loading)
+   *   <li>Major operations (generator creation, destination setup)
+   *   <li>Performance metrics (records/second, elapsed time)
+   * </ul>
+   *
+   * <p>Useful for understanding what the generator is doing without overwhelming detail.
+   *
+   * @see #debug
+   */
   @Option(
       names = {"-v", "--verbose"},
       description = "Enable verbose output")
   private boolean verbose;
 
+  /**
+   * Enable debug output with detailed DEBUG level logging.
+   *
+   * <p>Shows all verbose information plus:
+   *
+   * <ul>
+   *   <li>Generator initialization for each field
+   *   <li>Structure loading and validation
+   *   <li>Type parsing details
+   *   <li>Thread pool configuration
+   * </ul>
+   *
+   * <p>Useful for troubleshooting issues or understanding internal behavior. May produce
+   * significant log output for large generation jobs.
+   *
+   * <p><b>Performance Impact:</b> Negligible on generation speed, but log I/O may slow overall
+   * execution.
+   *
+   * @see #verbose
+   */
   @Option(
       names = {"-d", "--debug"},
       description = "Enable debug output (includes verbose)")
   private boolean debug;
 
+  /**
+   * Number of worker threads for parallel generation.
+   *
+   * <p>Controls the level of parallelism for record generation. Each worker thread:
+   *
+   * <ul>
+   *   <li>Has its own Random instance (seeded deterministically)
+   *   <li>Generates a subset of the total record count
+   *   <li>Uses thread-local GeneratorContext for Datafaker instances
+   * </ul>
+   *
+   * <p><b>Performance Tuning:</b>
+   *
+   * <ul>
+   *   <li>Default: Number of CPU cores (optimal for most workloads)
+   *   <li>CPU-bound: Use CPU core count
+   *   <li>I/O-bound (Kafka, DB): Can increase beyond core count
+   *   <li>Too many threads: Overhead from context switching
+   * </ul>
+   *
+   * <p>Default: {@code Runtime.getRuntime().availableProcessors()}
+   *
+   * @see GenerationEngine
+   */
   @Option(
       names = {"-t", "--threads"},
       description = "Number of worker threads (default: # of CPU cores)")
   private Integer threads;
 
+  /**
+   * Executes the data generation job.
+   *
+   * <p>This method orchestrates the entire generation process:
+   *
+   * <ol>
+   *   <li>Configure logging level based on --verbose/--debug flags
+   *   <li>Parse job configuration from YAML file
+   *   <li>Resolve seed (from override, config, or default)
+   *   <li>Load data structure definition
+   *   <li>Create format serializer (JSON/CSV)
+   *   <li>Create and open destination adapter (File/Kafka/Database)
+   *   <li>Build generator factory with structure registry
+   *   <li>Create multi-threaded generation engine
+   *   <li>Generate records in parallel
+   *   <li>Flush and close destination
+   * </ol>
+   *
+   * <p><b>Thread Safety:</b> Each invocation creates isolated instances. Safe to call multiple
+   * times in sequence or from different threads.
+   *
+   * <p><b>Error Handling:</b>
+   *
+   * <ul>
+   *   <li>{@link com.datagenerator.schema.exception.SchemaParseException} - Invalid YAML syntax or
+   *       missing files
+   *   <li>{@link com.datagenerator.core.exception.SeedResolutionException} - Seed file/env var not
+   *       found
+   *   <li>{@link IllegalArgumentException} - Unsupported format or destination type
+   *   <li>{@link com.datagenerator.destinations.DestinationException} - Connection or write
+   *       failures
+   * </ul>
+   *
+   * @return 0 on success, non-zero on error (Picocli standard)
+   * @throws Exception if generation fails (logged before throwing)
+   */
   @Override
   public Integer call() throws Exception {
     // Configure logging level based on flags
@@ -204,6 +414,23 @@ public class ExecuteCommand implements Callable<Integer> {
     return 0; // Success
   }
 
+  /**
+   * Resolves the seed value for deterministic random generation.
+   *
+   * <p>Resolution order:
+   *
+   * <ol>
+   *   <li>Command-line --seed override (if provided)
+   *   <li>Job config seed (embedded/file/env/remote)
+   *   <li>Default value: 0 (with warning)
+   * </ol>
+   *
+   * <p>If seed resolution from config fails (e.g., file not found, env var missing), falls back to
+   * default value 0 and logs an error.
+   *
+   * @param jobConfig the job configuration containing seed config
+   * @return resolved seed value (never null)
+   */
   private long resolveSeed(JobConfig jobConfig) {
     if (seedOverride != null) {
       log.info("Using seed override from command line: {}", seedOverride);
@@ -227,6 +454,13 @@ public class ExecuteCommand implements Callable<Integer> {
     }
   }
 
+  /**
+   * Creates a format serializer based on the specified format string.
+   *
+   * @param format format name ("json" or "csv", case-insensitive)
+   * @return serializer instance for the specified format
+   * @throws IllegalArgumentException if format is unsupported
+   */
   private FormatSerializer createSerializer(String format) {
     return switch (format.toLowerCase()) {
       case "json" -> new JsonSerializer();
