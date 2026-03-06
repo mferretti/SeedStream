@@ -1,6 +1,7 @@
 package com.datagenerator.destinations.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import com.datagenerator.destinations.IntegrationTest;
@@ -492,5 +493,156 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // Then: Should use defaults successfully
     assertThat(destination).isNotNull();
+  }
+
+  @Test
+  void shouldHandleInvalidBrokerAddress() {
+    // Given: Kafka destination with malformed broker address
+    String topic = "test-error-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap("not-a-valid-hostname!!!") // Invalid hostname format
+            .topic(topic)
+            .build();
+
+    // When/Then: Should fail on open due to invalid bootstrap servers
+    destination = new KafkaDestination(config, new JsonSerializer());
+    assertThatThrownBy(() -> destination.open())
+        .isInstanceOf(Exception.class); // KafkaException: Failed to construct kafka producer
+  }
+
+  @Test
+  void shouldHandleWriteAfterClose() throws Exception {
+    // Given: Kafka destination that has been closed
+    String topic = "test-close-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+    destination.close(); // Close the destination
+
+    // When: Try to write after closing
+    Map<String, Object> record = Map.of("id", 1, "data", "test");
+
+    // Then: Should throw exception
+    assertThatThrownBy(() -> destination.write(record))
+        .isInstanceOf(Exception.class)
+        .hasMessageContaining("not open");
+  }
+
+  @Test
+  void shouldHandleSerializationError() throws Exception {
+    // Given: Kafka destination with records that might have serialization issues
+    String topic = "test-serialization-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write record with special characters that JSON can handle
+    Map<String, Object> record =
+        Map.of(
+            "id", 1,
+            "data", "Special chars: \n\t\r\"'\\",
+            "unicode", "日本語 中文 한국어 العربية");
+
+    destination.write(record);
+    destination.flush();
+
+    // Then: Record should be serialized and published successfully
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return !records.isEmpty();
+            });
+
+    assertThat(records).isNotEmpty();
+    assertThat(records.get(0).value()).contains("Special chars");
+  }
+
+  @Test
+  void shouldHandleEmptyRecords() throws Exception {
+    // Given: Kafka destination
+    String topic = "test-empty-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write empty record
+    Map<String, Object> emptyRecord = Map.of();
+    destination.write(emptyRecord);
+    destination.flush();
+
+    // Then: Empty record should be published successfully
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return !records.isEmpty();
+            });
+
+    assertThat(records).isNotEmpty();
+    assertThat(records.get(0).value()).isEqualTo("{}");
+  }
+
+  @Test
+  void shouldHandleLargeRecords() throws Exception {
+    // Given: Kafka destination with reasonably large messages
+    String topic = "test-large-record-topic";
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(kafka.getBootstrapServers())
+            .topic(topic)
+            .build();
+
+    destination = new KafkaDestination(config, new JsonSerializer());
+    destination.open();
+
+    consumer.subscribe(Collections.singletonList(topic));
+
+    // When: Write a large record (100KB of data - within default Kafka limits)
+    String largeData = "x".repeat(100 * 1024); // 100KB string
+    Map<String, Object> largeRecord = Map.of("id", 1, "data", largeData);
+
+    destination.write(largeRecord);
+    destination.flush();
+
+    // Then: Large record should be published successfully
+    CopyOnWriteArrayList<ConsumerRecord<String, String>> records = new CopyOnWriteArrayList<>();
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(100))
+        .until(
+            () -> {
+              consumer.poll(Duration.ofMillis(100)).forEach(records::add);
+              return !records.isEmpty();
+            });
+
+    assertThat(records).isNotEmpty();
+    assertThat(records.get(0).value()).contains("\"id\":1");
   }
 }
