@@ -3,14 +3,10 @@ plugins {
     id("me.champeau.jmh") version "0.7.2"
 }
 
-// Disable regular test task - benchmarks should only run via :benchmarks:jmh
-tasks.named("test") {
-    enabled = false
-}
-
 dependencies {
     // Project dependencies
     implementation(project(":core"))
+    implementation(project(":schema"))
     implementation(project(":generators"))
     implementation(project(":formats"))
     implementation(project(":destinations"))
@@ -27,6 +23,23 @@ dependencies {
     
     // OpenCSV (for CSV serialization benchmarks)
     implementation("com.opencsv:opencsv:5.9")
+    
+    // Test dependencies for memory profiling tests
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
+    testImplementation("org.assertj:assertj-core:3.24.2")
+}
+
+// Enable test task for memory profiling tests
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        // Exclude profiling tests by default (they are long-running)
+        excludeTags("profiling")
+    }
+    
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
 }
 
 jmh {
