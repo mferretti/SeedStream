@@ -1,6 +1,10 @@
 # Data Generator - Design Documentation
 
+**Last Updated**: March 6, 2026 (v0.2.0)
+
 This document captures the architectural decisions, design patterns, issues encountered, and their resolutions during development. It serves as a reference for developers extending the project and for discussions around alternative approaches.
+
+**Status**: Core architecture complete (multi-threading, seeding, Kafka/File destinations). Database destination and plugin architecture planned for future releases.
 
 ---
 
@@ -32,7 +36,7 @@ This document captures the architectural decisions, design patterns, issues enco
 
 ### 2. Performance at Scale
 
-**Requirement**: Generate millions of records per second.
+**Requirement**: Generate millions of primitive records per second (in-memory), or thousands of realistic records per second.
 
 **Design Choices**:
 - Multi-threaded generation with thread-local state
@@ -68,9 +72,27 @@ This document captures the architectural decisions, design patterns, issues enco
 
 ### Dependency Flow
 
+```mermaid
+graph LR
+    CLI[cli] --> DEST[destinations]
+    DEST --> FMT[formats]
+    FMT --> GEN[generators]
+    GEN --> SCHEMA[schema]
+    SCHEMA --> CORE[core]
+    
+    CLI -.->|uses| FMT
+    CLI -.->|uses| GEN
+    CLI -.->|uses| SCHEMA
+    
+    style CORE fill:#e1f5e1
+    style SCHEMA fill:#e3f2fd
+    style GEN fill:#fff3e0
+    style FMT fill:#fce4ec
+    style DEST fill:#f3e5f5
+    style CLI fill:#fff9c4
 ```
-cli → destinations → formats → generators → schema → core
-```
+
+**Dependency Summary**: `cli → destinations → formats → generators → schema → core`
 
 **Key Rule**: No circular dependencies. Each module depends only on modules to its right.
 
@@ -242,16 +264,22 @@ interface RecordWriter {
 
 **Pipeline**: Workers → Bounded Queue → Writer Thread
 
-```
-┌─────────────┐       ┌─────────────┐       ┌──────────────┐
-│  Worker 0   │───┐   │             │       │              │
-│ (Thread-    │   │   │   Bounded   │       │    Writer    │
-│  local RNG) │   ├──▶│    Queue    │──────▶│    Thread    │──▶ Destination
-├─────────────┤   │   │ (capacity:  │       │  (ordered    │
-│  Worker 1   │───┤   │    1000)    │       │   writes)    │
-├─────────────┤   │   │             │       │              │
-│  Worker 2   │───┘   └─────────────┘       └──────────────┘
-└─────────────┘
+```mermaid
+graph LR
+    W0[Worker 0<br/>Thread-local RNG<br/>Seed: derive(master,0)] --> Q[Bounded Queue<br/>Capacity: 1000<br/>Backpressure]
+    W1[Worker 1<br/>Thread-local RNG<br/>Seed: derive(master,1)] --> Q
+    W2[Worker 2<br/>Thread-local RNG<br/>Seed: derive(master,2)] --> Q
+    W3[Worker N...] -.-> Q
+    Q --> WT[Writer Thread<br/>Single thread<br/>Ordered writes]
+    WT --> DEST[Destination<br/>Kafka/File/DB]
+    
+    style W0 fill:#e1f5e1
+    style W1 fill:#e1f5e1
+    style W2 fill:#e1f5e1
+    style W3 fill:#e1f5e1
+    style Q fill:#fff3e0
+    style WT fill:#e3f2fd
+    style DEST fill:#fce4ec
 ```
 
 **Components**:
@@ -726,6 +754,16 @@ private void flushBatch() throws IOException {
 
 ## Open Questions & Future Work
 
+### ✅ RESOLVED: Array Memory Management
+
+**Question**: How to handle variable-length arrays without exploding memory?
+
+**Decision**: Implemented Option C (streaming for destinations, in-memory for small jobs). Arrays are generated element-by-element and streamed to serialization without holding entire array in memory.
+
+**Status**: Implemented in generators module. See `ArrayGenerator.java`.
+
+---
+
 ### 1. Virtual Threads for I/O-Bound Operations
 
 **Question**: Should we use virtual threads (Java 21) for destination writes (Kafka, database)?
@@ -739,13 +777,13 @@ private void flushBatch() throws IOException {
 - Debugging complexity (stack traces span multiple carrier threads)
 - Library compatibility (some JDBC drivers, Kafka clients may have issues)
 
-**Current Decision**: Platform threads with fixed-size pools. Revisit when libraries mature.
+**Current Decision**: Platform threads with fixed-size pools. Revisit when libraries mature (Java 23+).
 
 **Discussion Welcome**: If you have experience with virtual threads + Kafka/JDBC, please share insights in GitHub issues.
 
 ---
 
-### 2. Array Memory Management
+### 2. Statistical Distributions
 
 **Question**: How to handle variable-length arrays without exploding memory?
 
@@ -782,16 +820,19 @@ orders:
 **Option A**: Two-pass generation (generate users, store IDs, generate orders)
 **Option B**: ID cache (LRU cache of recent IDs for random sampling)
 **Option C**: Explicit ID pools (user defines ID range, generator samples from pool)
+**Option D**: Deferred resolution via destination (database foreign keys, not generator concern)
 
-**Current Decision**: Deferred to future release. Option C seems most flexible.
+**Current Decision**: Deferred to v0.3. Option C (explicit ID pools) seems most flexible for file destinations. Option D (database-enforced FKs) for database destination.
 
-**Discussion**: Interested in graph-based data generation? See GitHub issue #TBD.
+**Workaround**: Use `int[1..100000]` for IDs and rely on statistical likelihood of matches.
+
+**Discussion**: Interested in graph-based data generation? Open a GitHub discussion.
 
 ---
 
-### 4. Statistical Distributions
+### 4. Advanced Distributions (Normal, Zipfian, Exponential)
 
-**Question**: Should we support normal, Zipfian, exponential distributions for numeric types?
+**Question**: Should we support statistical distributions for numeric types?
 
 **Example**:
 ```yaml
@@ -802,13 +843,15 @@ age: int[18..65, distribution=normal, mean=35, stddev=10]
 
 **Challenge**: Maintaining reproducibility with distributions is complex (need to specify all params in config).
 
-**Current Decision**: Uniform distribution only. Revisit after MVP.
+**Current Decision**: Uniform distribution only (v0.2). Revisit in v0.4 after database destinations.
+
+**Rationale**: Most use cases satisfied by Datafaker (realistic data) or uniform primitives (load testing). Advanced distributions are niche.
 
 **Interested?**: Propose design in GitHub discussions.
 
 ---
 
-### 5. Plugin Architecture
+### 5. Plugin Architecture (Extensibility)
 
 **Question**: Should we support user-provided generators/destinations as plugins?
 

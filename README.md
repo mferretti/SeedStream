@@ -12,7 +12,7 @@ A high-performance, configurable test data generator for enterprise applications
 ---
 
 **📚 Documentation**  
-[Architecture & Design](docs/DESIGN.md) · [Code Quality Guide](docs/QUALITY.md) · [Roadmap & Backlog](docs/BACKLOG.md) · [Performance Benchmarks](benchmarks/README.md) · [License Discussion](docs/LICENSE-DISCUSSION.md)
+[Architecture & Design](docs/DESIGN.md) · [Performance Guide](docs/PERFORMANCE.md) · [Contributing Guide](docs/CONTRIBUTING.md) · [Code Quality](docs/QUALITY.md) · [Benchmarks](benchmarks/README.md)
 
 ---
 
@@ -164,7 +164,7 @@ Generate 100,000 realistic customer records with Datafaker using 10 worker threa
 }
 ```
 
-**Note**: Performance varies based on data complexity. Simple primitive types (int, string) achieve 100,000+ records/sec, while complex Datafaker objects with nested structures generate at 5,000-10,000 records/sec.
+**Note**: Performance varies based on data complexity. Simple primitive types achieve **millions of records/sec** (57M for int, 12M for char) for in-memory generation, while complex Datafaker objects with nested structures generate at 5,000-10,000 records/sec.
 
 **Available Options:**
 - `--job`: Path to job configuration file (required)
@@ -284,68 +284,17 @@ seed:
 
 ## Architecture
 
+SeedStream follows a modular architecture with clean dependencies:
+
 ```
-datagenerator/
-├── core/           # Generation engine, type system, seeding, deterministic randomization
-├── schema/         # YAML parsing, configuration management
-├── generators/     # Data generators (primitives + Datafaker integration)
-├── formats/        # Output serializers (JSON ✅, CSV ✅, Protobuf 🔜)
-├── destinations/   # Destination adapters (File ✅, Kafka ✅, Database 🔜)
-└── cli/            # Picocli-based command-line interface ✅
+cli → destinations → formats → generators → schema → core
 ```
 
-### Current Implementation Status
+Each module has a clear responsibility (generation, serialization, delivery) and can be extended independently.
 
-**Implemented (v0.2 - March 2026):**
-- ✅ Core modules: type system, seed management, random provider
-- ✅ Schema parsing: YAML-based configuration
-- ✅ Generators: Primitive types (int, char, enum) and composite types (object, array)
-- ✅ Datafaker integration: Realistic data generation with 62+ locales (name, email, address, phone, company, etc.)
-- ✅ Formats: JSON (newline-delimited), CSV (RFC 4180 compliant)
-- ✅ Destinations: File (NIO with compression/append), Kafka (async/sync with SASL/SSL, batching, compression)
-- ✅ Multi-threading engine: Parallel generation with deterministic seeding and backpressure handling
-- ✅ CLI: Full command-line interface with all options including --threads
-- ✅ Tests: 276+ unit tests, 43 integration tests (Testcontainers), 70%+ coverage
+**Current status** (v0.2 - March 2026): Core, schema, generators, formats (JSON, CSV), destinations (File, Kafka), and CLI are fully implemented with 70%+ test coverage. Database destination and Protobuf format are planned.
 
-**Partially Implemented:**
-- 🔄 Licensing: Apache 2.0 LICENSE file and README badge (missing: source file headers, NOTICE file)
-- 🔄 Verbose logging: `--verbose` flag with progress logging (missing: `--debug` flag, dynamic log levels)
-
-**Deferred to Phase 8:**
-- ⏸️ Database destination adapter (PostgreSQL, MySQL) - requires careful design for SQL generation
-- ⏸️ Reference generator for foreign keys - requires database destinations
-
-**Planned:**
-- 📋 Protobuf and Avro format support
-- 📋 Statistical distributions (normal, Zipfian)
-- 📋 REST/gRPC API module
-
-### Reproducibility & Multi-Threading
-
-Data Generator guarantees **bit-identical output** across runs when using the same seed. This is achieved through:
-
-1. **Deterministic Seeding**: Master seed from configuration or CLI
-2. **Logical Worker IDs**: Each thread gets a sequential ID (0, 1, 2, ...) independent of JVM internals
-3. **Thread-Local Random**: Each worker has its own `Random` instance with a derived seed:
-   ```
-   Worker 0: deriveSeed(masterSeed, 0) → Random instance
-   Worker 1: deriveSeed(masterSeed, 1) → Random instance
-   Worker 2: deriveSeed(masterSeed, 2) → Random instance
-   ```
-
-**Why This Matters**: Using JVM thread IDs would break reproducibility because they vary across runs. Our logical worker ID approach ensures the same master seed **always** produces the same data, regardless of:
-- JVM restarts
-- System thread scheduling
-- Garbage collector threads
-- Other background threads
-
-**Performance Optimization**: The engine automatically uses single-threaded mode for small jobs (< 1000 records) to avoid threading overhead. For larger jobs, it uses a configurable worker pool with:
-- **Bounded queue** for backpressure handling (prevents memory overflow)
-- **Single writer thread** for ordered writes to the destination
-- **Progress tracking** with throughput metrics (records/sec)
-- **Linear scaling** with worker count for large data sets
-
-For technical details, see [DESIGN.md](docs/DESIGN.md).
+For detailed architecture, design decisions, and the multi-threading reproducibility model, see **[DESIGN.md](docs/DESIGN.md)**.
 
 ## Development
 
@@ -363,80 +312,22 @@ For technical details, see [DESIGN.md](docs/DESIGN.md).
 ./gradlew :cli:installDist
 ```
 
-## Performance Benchmarks
+## Performance
 
-The project includes comprehensive JMH (Java Microbenchmark Harness) benchmarks to measure and validate performance across all critical paths:
+**Validated throughput** (March 2026, JMH benchmarks):
 
-- **Primitive Generators**: Validates NFR-1 requirement (10M ops/s for in-memory generation)
-- **Datafaker Generators**: Measures realistic data generation performance
-- **Composite Generators**: Tests nested objects and arrays
-- **Serializers**: JSON and CSV formatting throughput
-- **Destinations**: File I/O and write pipeline performance
+- **Primitive types**: 12-258M records/sec (in-memory) — Boolean fastest (258M), char slowest (12M)
+- **Realistic Datafaker data**: 13-154K records/sec — Company names fastest (154K), phones slowest (13K)
+- **Real-world example**: 100,000 customer records (10 Datafaker fields) in 14.4 seconds = **6,923 records/sec**
 
-**Note**: Benchmarks are **not run automatically** with `./gradlew test` because they take 10-15 minutes to complete. They must be executed explicitly.
+**Rule of thumb**: Datafaker is ~1,000× slower than primitives. Use primitives for volume, Datafaker for realism.
 
-### Running Benchmarks
+For comprehensive benchmarks, tuning guidance, and hardware recommendations, see **[PERFORMANCE.md](docs/PERFORMANCE.md)**.
 
-**Quick Start** (one command):
+To run benchmarks yourself:
 ```bash
-./benchmarks/run_benchmarks.sh
+./benchmarks/run_benchmarks.sh  # Takes 10-15 minutes
 ```
-
-This will run all benchmarks and generate a `BENCHMARK-RESULTS.md` report with formatted results and NFR-1 compliance validation.
-
-**Manual execution**:
-```bash
-# Run benchmarks only
-./gradlew :benchmarks:jmh
-
-# Generate formatted report
-python3 benchmarks/format_results.py > BENCHMARK-RESULTS.md
-```
-
-For detailed benchmark documentation, configuration options, and result interpretation, see **[benchmarks/README.md](benchmarks/README.md)**.
-
-### Validated Performance Numbers (March 2026)
-
-**✅ NFR-1 Compliance**: All primitive generators exceed 10M ops/s requirement
-
-**Primitive Generation:**
-- Boolean: **258M ops/s** (25.8× target)
-- Integer: **57M ops/s** (5.7× target)
-- String (char): **12M ops/s** (1.2× target)
-- Timestamp: **4.5M ops/s**
-- Decimal (BigDecimal): **3.0M ops/s**
-- Date (LocalDate): **2.4M ops/s**
-
-**Realistic Data (Datafaker):**
-- Company names: **154K ops/s**
-- Email addresses: **24K ops/s**
-- Person names: **23K ops/s**
-- Addresses: **18K ops/s**
-- Cities: **14K ops/s**
-- Phone numbers: **13K ops/s**
-
-**Composite Generators:**
-- Simple objects (5 fields): **117K ops/s**
-- Small arrays (10 elements): **5.8M ops/s**
-- Large arrays (100 elements): **721K ops/s**
-
-**Serialization:**
-- JSON (simple record): **2.6M ops/s**
-- JSON (complex record): **946K ops/s**
-- JSON (nested structures): **580K ops/s**
-- CSV (simple record): **2.6M ops/s**
-
-**File I/O (Optimized March 2026):**
-- Raw BufferedWriter: **4.7M ops/s**
-- FileDestination (with batching): **Expected 2-3M ops/s** (600-800 MB/s)
-
-**Real-World Performance**:
-- 100,000 complex customer records with Datafaker: **6,923 records/sec** (10 threads, 14.4 seconds)
-- 1M simple primitive records: **100,000+ records/sec** (single thread)
-
-**Hardware**: Results from development machine (specs vary). Your mileage may vary based on CPU, disk speed, and data complexity.
-
-For detailed analysis and optimization decisions, see **[benchmarks/PERFORMANCE-ANALYSIS.md](benchmarks/PERFORMANCE-ANALYSIS.md)**.
 
 ## Type System Reference
 
@@ -990,33 +881,50 @@ A: All generated data is **synthetic** and not real PII. However:
 - 📋 Metrics and monitoring (Prometheus, Grafana)
 - 📋 Web UI
 
-See [BACKLOG.md](docs/BACKLOG.md) for detailed task tracking.
+See [BACKLOG.md](docs/internal/BACKLOG.md) for detailed task tracking (internal).
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+**Getting Started:**
+- **[README.md](README.md)** - This file: Overview, installation, quickstart, type system reference
+- **[config/README.md](config/README.md)** - Configuration guide: data structures, job definitions, examples
+
+**Architecture & Design:**
+- **[DESIGN.md](docs/DESIGN.md)** - Architecture, design decisions, multi-threading model, extensibility
+- **[PERFORMANCE.md](docs/PERFORMANCE.md)** - Benchmarks, tuning guide, hardware recommendations
+
+**Contributing:**
+- **[CONTRIBUTING.md](docs/CONTRIBUTING.md)** - Contributor guide: workflow, standards, PR process, style guide
+- **[QUALITY.md](docs/QUALITY.md)** - Code quality tools: Spotless, JaCoCo, SpotBugs configuration
+
+**Additional Resources:**
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history, release notes, and roadmap
+- **[AGENTIC-PLATFORM-DISCUSSION.md](AGENTIC-PLATFORM-DISCUSSION.md)** - AI-assisted development discussion
+- **[benchmarks/README.md](benchmarks/README.md)** - Benchmark execution guide
+
+**Internal Planning** (for project contributors):
+- **[docs/internal/](docs/internal/)** - Requirements, backlog, memory profiling, internal notes
 
 ## Contributing
 
-Contributions are welcome! Whether it's bug reports, feature requests, or pull requests, we appreciate your help.
+Contributions are welcome! Whether bug reports, feature requests, or pull requests, we appreciate your help.
 
-**Before contributing:**
-1. Check [BACKLOG.md](docs/BACKLOG.md) for planned features
-2. Open an issue to discuss major changes
-3. Read [DESIGN.md](docs/DESIGN.md) for architectural context
-4. Follow [QUALITY.md](docs/QUALITY.md) for code standards
-
-**Development setup:**
+**Quick Start:**
 ```bash
-# Clone repository
 git clone https://github.com/mferretti/SeedStream.git
 cd SeedStream
-
-# Build and test
 ./gradlew build test
-
-# Run code formatting
-./gradlew spotlessApply
-
-# Run static analysis
-./gradlew spotbugsMain
 ```
+
+**Before submitting PRs:**
+- Run `./gradlew spotlessApply` (code formatting)
+- Ensure tests pass: `./gradlew test`
+- Maintain 70%+ code coverage
+- Follow [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html)
+
+For comprehensive contributor guidelines (workflow, code standards, PR process, testing), see **[CONTRIBUTING.md](docs/CONTRIBUTING.md)**.
 
 ## License
 
@@ -1035,15 +943,3 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 See [LICENSE](LICENSE) for the full license text.
-
-## Contributing
-
-Contributions are welcome! This is an open-source project licensed under Apache 2.0.
-
-Please ensure:
-- All tests pass: `./gradlew test`
-- Code is formatted: `./gradlew spotlessApply`
-- New features include tests
-- Follow the existing code style (Google Java Style Guide)
-
-For major changes, please open an issue first to discuss what you would like to change.
