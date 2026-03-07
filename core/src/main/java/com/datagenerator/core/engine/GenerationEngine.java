@@ -17,6 +17,7 @@
 package com.datagenerator.core.engine;
 
 import com.datagenerator.core.seed.RandomProvider;
+import com.datagenerator.core.util.LogUtils;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -264,6 +265,11 @@ public class GenerationEngine {
     while (workerGenerated < count) {
       // Generate record
       Map<String, Object> record = recordGenerator.generate(random);
+
+      // TRACE log individual record generation (sampled)
+      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+        log.trace("Worker {} generated record {}: {}", workerId, workerGenerated + 1, record);
+      }
 
       // Submit to queue (blocks if queue is full - backpressure)
       queue.put(record);

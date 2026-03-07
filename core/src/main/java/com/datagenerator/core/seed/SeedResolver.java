@@ -17,6 +17,7 @@
 package com.datagenerator.core.seed;
 
 import com.datagenerator.core.exception.SeedResolutionException;
+import com.datagenerator.core.util.LogUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -71,6 +72,11 @@ public class SeedResolver {
   private long resolveEmbedded(SeedConfig.EmbeddedSeed embedded) {
     long seed = embedded.getValue();
     log.debug("Using embedded seed: {}", seed);
+
+    if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+      log.trace("Resolved embedded seed value: {}", seed);
+    }
+
     return seed;
   }
 
@@ -90,6 +96,11 @@ public class SeedResolver {
       }
       long seed = Long.parseLong(content);
       log.debug("Resolved seed from file {}: {}", path, seed);
+
+      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+        log.trace("Read seed from file: path={}, content={}, seed={}", path, content, seed);
+      }
+
       return seed;
     } catch (IOException e) {
       throw new SeedResolutionException("Failed to read seed file: " + path, e);
@@ -115,6 +126,11 @@ public class SeedResolver {
     try {
       long seed = Long.parseLong(value.trim());
       log.debug("Resolved seed from environment variable {}: {}", varName, seed);
+
+      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+        log.trace("Resolved env seed: variable={}, value={}, seed={}", varName, value, seed);
+      }
+
       return seed;
     } catch (NumberFormatException e) {
       throw new SeedResolutionException(

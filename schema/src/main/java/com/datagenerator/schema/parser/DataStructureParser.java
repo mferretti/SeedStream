@@ -16,6 +16,7 @@
 
 package com.datagenerator.schema.parser;
 
+import com.datagenerator.core.util.LogUtils;
 import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,6 +62,15 @@ public class DataStructureParser {
     try {
       String content = Files.readString(filePath);
       DataStructure structure = yamlMapper.readValue(content, DataStructure.class);
+
+      // TRACE log parsed structure details
+      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+        log.trace(
+            "Parsed structure: name={}, fields={}, geolocation={}",
+            structure.getName(),
+            structure.getData().keySet(),
+            structure.getGeolocation());
+      }
 
       Set<ConstraintViolation<DataStructure>> violations = validator.validate(structure);
       if (!violations.isEmpty()) {

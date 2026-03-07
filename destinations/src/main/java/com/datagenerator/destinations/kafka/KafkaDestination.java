@@ -16,6 +16,7 @@
 
 package com.datagenerator.destinations.kafka;
 
+import com.datagenerator.core.util.LogUtils;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.formats.FormatSerializer;
@@ -180,10 +181,13 @@ public class KafkaDestination implements DestinationAdapter {
               if (exception != null) {
                 log.error("Failed to send record to Kafka topic: {}", config.getTopic(), exception);
               } else {
-                log.trace(
-                    "Sent record to partition {} offset {}",
-                    metadata.partition(),
-                    metadata.offset());
+                // TRACE log successful send (sampled)
+                if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+                  log.trace(
+                      "Sent record to partition {} offset {}",
+                      metadata.partition(),
+                      metadata.offset());
+                }
               }
             });
       }
