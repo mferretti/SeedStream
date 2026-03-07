@@ -1,8 +1,7 @@
 dependencies {
     // Configuration
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.1")
+    implementation(libs.bundles.jackson)
 
     // Validation
-    implementation("jakarta.validation:jakarta.validation-api:3.1.1")
+    implementation(libs.jakarta.validation.api)
 }

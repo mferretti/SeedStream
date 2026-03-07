@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("me.champeau.jmh") version "0.7.2"
+    alias(libs.plugins.jmh)
 }
 
 dependencies {
@@ -12,21 +12,20 @@ dependencies {
     implementation(project(":destinations"))
     
     // Fake data generation (for Datafaker benchmarks)
-    implementation("net.datafaker:datafaker:2.5.4")
+    implementation(libs.datafaker)
     
     // Kafka (for destination benchmarks)
-    implementation("org.apache.kafka:kafka-clients:4.2.0")
+    implementation(libs.kafka.clients)
     
     // Jackson (for serialization benchmarks)
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.0")
+    implementation(libs.bundles.jackson)
     
     // OpenCSV (for CSV serialization benchmarks)
-    implementation("com.opencsv:opencsv:5.12.0")
+    implementation(libs.opencsv)
     
     // Test dependencies for memory profiling tests
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
-    testImplementation("org.assertj:assertj-core:3.24.2")
+    testImplementation(libs.junit.jupiter.benchmarks)
+    testImplementation(libs.assertj.core)
 }
 
 // Enable test task for memory profiling tests

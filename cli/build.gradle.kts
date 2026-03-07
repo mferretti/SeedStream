@@ -10,14 +10,14 @@ dependencies {
     implementation(project(":destinations"))
     
     // Jackson for JSON processing
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    implementation(libs.jackson.databind)
     
     // CLI framework
-    implementation("info.picocli:picocli:4.7.7")
-    annotationProcessor("info.picocli:picocli-codegen:4.7.7")
+    implementation(libs.picocli)
+    annotationProcessor(libs.picocli.codegen)
     
     // Logback for programmatic log level control
-    implementation("ch.qos.logback:logback-classic:1.5.32")
+    implementation(libs.logback.classic)
 }
 
 application {

@@ -1,0 +1,148 @@
+# Version Catalog for Data Generator
+# Single source of truth for all dependency versions across modules
+
+[versions]
+# Core Libraries
+jackson = "2.21.1"
+lombok = "1.18.42"
+slf4j = "2.0.17"
+logback = "1.5.32"
+picocli = "4.7.7"
+
+# Data Generation
+datafaker = "2.5.4"
+
+# Validation
+jakarta-validation = "3.1.1"
+hibernate-validator = "9.1.0.Final"
+jakarta-el = "4.0.2"
+
+# I/O & Serialization
+opencsv = "5.12.0"
+protobuf = "3.25.5"
+
+# Messaging
+kafka = "4.2.0"
+
+# Database
+hikaricp = "7.0.2"
+postgresql = "42.7.10"
+mysql = "9.1.0"
+
+# Testing
+junit = "6.0.3"
+junit-benchmarks = "5.10.1"  # Benchmarks module uses older version
+mockito = "5.21.0"
+assertj = "3.27.7"
+testcontainers = "1.21.4"
+awaitility = "4.2.2"
+
+# Security Constraints (for dependency-check)
+log4j = "2.26.0"
+
+# Build Plugins
+jmh-plugin = "0.7.2"
+lombok-plugin = "9.2.0"
+spotless-plugin = "8.2.1"
+spotbugs-plugin = "6.4.8"
+dependency-check-plugin = "12.2.0"
+
+[libraries]
+# Lombok
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+# Logging
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+# Jackson JSON/YAML
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
+jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+
+# Validation
+jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version.ref = "jakarta-validation" }
+hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "hibernate-validator" }
+jakarta-el = { module = "org.glassfish:jakarta.el", version.ref = "jakarta-el" }
+
+# Data Generation
+datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
+
+# CLI
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
+
+# I/O & Serialization
+opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+
+# Messaging
+kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+
+# Database
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+mysql-connector-j = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
+
+# Testing - JUnit
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+# Testing - Benchmarks (older JUnit version)
+junit-jupiter-benchmarks = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-benchmarks" }
+
+# Testing - Mockito
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+
+# Testing - AssertJ
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+
+# Testing - Testcontainers
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-mysql = { module = "org.testcontainers:mysql", version.ref = "testcontainers" }
+
+# Testing - Awaitility
+awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
+
+# Security Constraints
+log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
+log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
+
+[bundles]
+# Common testing bundle (for most modules)
+testing = [
+    "junit-jupiter-api",
+    "junit-jupiter-params",
+    "mockito-core",
+    "mockito-junit-jupiter",
+    "assertj-core",
+]
+
+# Testcontainers bundle
+testcontainers = [
+    "testcontainers",
+    "testcontainers-junit-jupiter",
+    "testcontainers-kafka",
+    "testcontainers-postgresql",
+    "testcontainers-mysql",
+]
+
+# Jackson bundle (JSON support)
+jackson = [
+    "jackson-databind",
+    "jackson-datatype-jsr310",
+]
+
+[plugins]
+jmh = { id = "me.champeau.jmh", version.ref = "jmh-plugin" }
+lombok = { id = "io.freefair.lombok", version.ref = "lombok-plugin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless-plugin" }
+spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs-plugin" }
+dependency-check = { id = "org.owasp.dependencycheck", version.ref = "dependency-check-plugin" }

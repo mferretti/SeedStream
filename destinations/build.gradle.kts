@@ -3,11 +3,11 @@ dependencies {
     implementation(project(":formats"))
     
     // Kafka (compileOnly - users provide at runtime)
-    compileOnly("org.apache.kafka:kafka-clients:4.2.0")
-    testImplementation("org.apache.kafka:kafka-clients:4.2.0")
+    compileOnly(libs.kafka.clients)
+    testImplementation(libs.kafka.clients)
     
     // Database
-    implementation("com.zaxxer:HikariCP:7.0.2")
-    compileOnly("org.postgresql:postgresql:42.7.10")
-    compileOnly("com.mysql:mysql-connector-j:9.1.0")
+    implementation(libs.hikaricp)
+    compileOnly(libs.postgresql)
+    compileOnly(libs.mysql.connector.j)
 }
