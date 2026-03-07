@@ -15,14 +15,14 @@ dependencies {
     implementation("net.datafaker:datafaker:2.5.4")
     
     // Kafka (for destination benchmarks)
-    implementation("org.apache.kafka:kafka-clients:3.7.0")
+    implementation("org.apache.kafka:kafka-clients:4.2.0")
     
     // Jackson (for serialization benchmarks)
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.0")
     
     // OpenCSV (for CSV serialization benchmarks)
-    implementation("com.opencsv:opencsv:5.9")
+    implementation("com.opencsv:opencsv:5.12.0")
     
     // Test dependencies for memory profiling tests
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
