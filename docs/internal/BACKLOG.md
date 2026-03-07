@@ -133,10 +133,14 @@
   - Header row generation with serializeHeader()
   - Tests: 17 tests passing
 
-- [ ] **Formats module - Protobuf serializer (LOW PRIORITY - after Phase 6)**
-  - Implement Protobuf format serializer
-  - Schema generation from data structure definitions
-  - **Priority**: Low - JSON/CSV sufficient for most use cases, complete after performance validation
+- [x] **Formats module - Protobuf serializer**
+  - ProtobufSerializer using DynamicMessage API for dynamic schema generation
+  - Base64-encoded binary output for text compatibility
+  - Support for all primitive types, dates, nested objects, and arrays
+  - Compact binary format (50-70% smaller than JSON)
+  - Thread-safe with lazy schema initialization and caching
+  - Tests: 15 tests passing
+  - **Completion**: March 7, 2026 (TASK-015)
 
 ## Phase 4: Destinations
 

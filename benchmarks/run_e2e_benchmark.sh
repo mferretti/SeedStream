@@ -23,7 +23,7 @@ OUTPUT_DIR="${PROJECT_ROOT}/benchmarks/output"
 CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/cli/bin/cli"
 
 # Test matrix
-FORMATS=("json" "csv")
+FORMATS=("json" "csv" "protobuf")
 DESTINATIONS=("file" "kafka")
 THREADS=(1 4 8)
 MEMORY_LIMITS=("256m" "512m" "1024m")

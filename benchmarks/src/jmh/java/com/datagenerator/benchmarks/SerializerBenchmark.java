@@ -18,6 +18,7 @@ package com.datagenerator.benchmarks;
 
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
+import com.datagenerator.formats.protobuf.ProtobufSerializer;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -38,11 +39,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks for format serializers (JSON and CSV). Measures serialization overhead and helps
- * identify bottlenecks in file I/O pipeline.
+ * Benchmarks for format serializers (JSON, CSV, and Protobuf). Measures serialization overhead and
+ * helps identify bottlenecks in file I/O pipeline.
  *
- * <p><b>Goal:</b> Determine if 2.1 MB/sec file I/O bottleneck is due to serialization or actual I/O
- * operations
+ * <p><b>Goal:</b> Determine serialization performance and size efficiency across formats
  *
  * <p><b>Scenarios:</b>
  *
@@ -62,6 +62,7 @@ public class SerializerBenchmark {
 
   private JsonSerializer jsonSerializer;
   private CsvSerializer csvSerializer;
+  private ProtobufSerializer protobufSerializer;
 
   private Map<String, Object> simpleRecord;
   private Map<String, Object> complexRecord;
@@ -71,6 +72,7 @@ public class SerializerBenchmark {
   public void setup() {
     jsonSerializer = new JsonSerializer();
     csvSerializer = new CsvSerializer();
+    protobufSerializer = new ProtobufSerializer();
 
     // Simple flat record with primitives only
     simpleRecord = new LinkedHashMap<>();
@@ -149,5 +151,22 @@ public class SerializerBenchmark {
   @Benchmark
   public String benchmarkCsvNestedRecord() {
     return csvSerializer.serialize(nestedRecord);
+  }
+
+  // Protobuf Serialization Benchmarks
+
+  @Benchmark
+  public String benchmarkProtobufSimpleRecord() {
+    return protobufSerializer.serialize(simpleRecord);
+  }
+
+  @Benchmark
+  public String benchmarkProtobufComplexRecord() {
+    return protobufSerializer.serialize(complexRecord);
+  }
+
+  @Benchmark
+  public String benchmarkProtobufNestedRecord() {
+    return protobufSerializer.serialize(nestedRecord);
   }
 }
