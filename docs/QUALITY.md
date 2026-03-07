@@ -93,11 +93,14 @@ Coverage reports are generated automatically after tests run.
 ### OWASP Dependency-Check
 
 Configuration: `build.gradle.kts`
+- **Task**: `./gradlew dependencyCheckAll` - runs `dependencyCheckAnalyze` on all subprojects
 - **Fail build on CVSS**: 7.0+ (high severity)
 - **Suppressions**: `config/dependency-check-suppressions.xml`
 - **NVD API Key**: Optional - set `NVD_API_KEY` env var for faster updates (50 req/30s vs 5 req/30s rate limit)
 - **Auto-update**: Enabled - downloads/updates NVD database automatically
 - **CI Integration**: Runs on every push/PR with GitHub Actions caching for the NVD database
+
+**Important**: We use `dependencyCheckAnalyze` (per-module) instead of `dependencyCheckAggregate` because aggregate doesn't scan Gradle dependencies properly in multi-module builds.
 
 To suppress false positives, add to `config/dependency-check-suppressions.xml`:
 ```xml
