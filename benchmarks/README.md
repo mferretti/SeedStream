@@ -58,6 +58,77 @@ Results are saved to: `benchmarks/build/reports/jmh/results.json`
 ./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkIntegerGenerator"
 ```
 
+### Run Kafka Benchmarks
+
+**Prerequisites**: Kafka must be running on `localhost:9092` (see setup below)
+
+```bash
+# Run all Kafka benchmarks
+./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*"
+
+# Run only async producer tests
+./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkAsyncProducer.*"
+
+# Run only sync producer tests
+./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkSyncProducer.*"
+
+# Run with custom Kafka settings (override bootstrap server and topic)
+./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*" \
+  -Dkafka.bootstrap=broker1:9092 \
+  -Dkafka.topic=my-benchmark-topic
+
+# Skip Kafka benchmarks (useful when Kafka is not available)
+./gradlew :benchmarks:jmh -Pjmh.excludes=".*KafkaBenchmark.*"
+```
+
+**Kafka Setup (Quick Start with Docker)**:
+
+```bash
+# Start Kafka in Docker (KRaft mode, no ZooKeeper needed)
+docker run -d --name kafka-benchmark \
+  -p 9092:9092 \
+  -e KAFKA_ENABLE_KRAFT=yes \
+  -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+  -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+  -e KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 \
+  -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT \
+  -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+  -e KAFKA_BROKER_ID=1 \
+  -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
+  -e ALLOW_PLAINTEXT_LISTENER=yes \
+  bitnami/kafka:latest
+
+# Wait for Kafka to be ready (about 10-15 seconds)
+sleep 15
+
+# Create benchmark topic (3 partitions for parallelism)
+docker exec kafka-benchmark kafka-topics.sh --create \
+  --topic benchmark-topic \
+  --bootstrap-server localhost:9092 \
+  --partitions 3 \
+  --replication-factor 1
+
+# Run benchmarks
+./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*"
+
+# Cleanup when done
+docker stop kafka-benchmark && docker rm kafka-benchmark
+```
+
+**Kafka Benchmark Parameters**:
+- **sync**: `false` (async fire-and-forget) vs `true` (wait for ack)
+- **compression**: `none`, `gzip`, `snappy`, `lz4`, `zstd`
+- **batchSize**: `1024` (1KB), `16384` (16KB), `65536` (64KB)
+
+The benchmark runs all combinations (24 configurations total).
+
+**Expected Results**:
+- Async + no compression: **50,000+ records/sec**
+- Async + gzip: **30,000+ records/sec**
+- Sync + no compression: **5,000-10,000 records/sec**
+- Larger batch sizes improve throughput but increase latency
+
+
 ### Custom Configuration
 
 Edit `benchmarks/build.gradle.kts` to adjust JMH parameters:
@@ -174,6 +245,35 @@ Tests I/O throughput:
 - `benchmarkFileDestinationWrite`: End-to-end serialize + write
 
 **Goal**: Compare raw I/O vs. full pipeline overhead
+
+### KafkaBenchmark
+
+Tests Kafka producer throughput under various configurations:
+- `benchmarkKafkaProducer`: General producer test (all parameter combinations)
+- `benchmarkAsyncProducer`: Async fire-and-forget mode (fastest)
+- `benchmarkSyncProducer`: Sync with broker acknowledgment (slower but durable)
+
+**Parameterized Tests** (24 total combinations):
+- **sync**: `false` (async) vs `true` (sync with ack)
+- **compression**: `none`, `gzip`, `snappy`, `lz4`
+- **batchSize**: `1024`, `16384`, `65536` bytes
+
+**Prerequisites**: Requires running Kafka instance on `localhost:9092` (see setup in README).
+
+**Expected Results**:
+- Async + no compression: 50,000+ records/sec
+- Async + gzip: 30,000+ records/sec (compression overhead)
+- Async + larger batches: Higher throughput, higher latency
+- Sync mode: 5,000-10,000 records/sec (network RTT bottleneck)
+
+**Performance Factors**:
+- Network latency to Kafka brokers
+- Number of topic partitions (parallelism)
+- Replication factor (durability overhead)
+- Broker disk I/O performance
+- Producer batch settings (linger.ms, batch.size)
+
+**Goal**: Identify optimal producer configuration for high-throughput scenarios
 
 ## Interpreting Results
 

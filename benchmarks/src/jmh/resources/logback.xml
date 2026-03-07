@@ -7,13 +7,14 @@
     </encoder>
   </appender>
 
-  <!-- Suppress DEBUG logs from benchmark runs -->
+  <!-- Suppress DEBUG and INFO logs from benchmark runs - production-like logging -->
   <logger name="com.datagenerator" level="WARN"/>
+  <logger name="org.apache.kafka" level="WARN"/>
   
   <!-- Keep JMH framework logs at INFO level -->
   <logger name="org.openjdk.jmh" level="INFO"/>
 
-  <root level="INFO">
+  <root level="WARN">
     <appender-ref ref="CONSOLE"/>
   </root>
 </configuration>
