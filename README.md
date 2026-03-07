@@ -27,7 +27,7 @@ Data Generator is a Java-based tool designed to generate large volumes of realis
 - 🌍 **Locale-Aware**: Generate realistic data for specific geolocations
 - 🔌 **Pluggable Architecture**: Extensible destinations and formats
 - ⚙️ **YAML Configuration**: Simple, declarative data structure and job definitions
-- 📝 **Multiple Formats**: JSON (NDJSON), CSV with RFC 4180 compliance
+- 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary with dynamic schema)
 - 💾 **File Destinations**: NIO-based file writing with gzip compression support
 - 🖥️ **CLI Interface**: Picocli-based command-line tool with intuitive options
 
@@ -158,6 +158,9 @@ brew install gradle
 
 # Generate CSV format with custom count
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --format csv --count 10000"
+
+# Generate Protobuf format (50-70% smaller than JSON)
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --format protobuf --count 10000"
 
 # Override seed for different data set
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 99999"
@@ -329,7 +332,7 @@ cli → destinations → formats → generators → schema → core
 
 Each module has a clear responsibility (generation, serialization, delivery) and can be extended independently.
 
-**Current status** (v0.2 - March 2026): Core, schema, generators, formats (JSON, CSV), destinations (File, Kafka), and CLI are fully implemented with 70%+ test coverage. Database destination and Protobuf format are planned.
+**Current status** (v0.2 - March 2026): Core, schema, generators, formats (JSON, CSV, Protobuf), destinations (File, Kafka), and CLI are fully implemented with 70%+ test coverage. Database destination is planned for v0.3.
 
 For detailed architecture, design decisions, and the multi-threading reproducibility model, see **[DESIGN.md](docs/DESIGN.md)**.
 
@@ -907,7 +910,7 @@ A: All generated data is **synthetic** and not real PII. However:
 **Phase 8 (Future)** - Database & Advanced Features:
 - 📋 Database destination adapter (PostgreSQL, MySQL)
 - 📋 Reference generator for foreign keys
-- 📋 Protobuf and Avro formats
+- 📋 Avro format serializer
 - 📋 Statistical distributions
 - 📋 REST/gRPC API module
 

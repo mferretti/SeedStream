@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Formats & Destinations
 - **JSON format**: Newline-delimited JSON (RFC 7159 compliant)
 - **CSV format**: RFC 4180 compliant with configurable delimiters
+- **Protobuf format**: Protocol Buffers binary serialization with dynamic schema generation (50-70% smaller than JSON)
 - **File destination**: NIO-based with compression (gzip), append mode, buffering (600-800 MB/s)
 - **Kafka destination**: Async/sync modes, SASL/SSL authentication, compression, batching
 
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Validate command**: Validate YAML configurations without execution
 - **Progress logging**: Real-time throughput metrics (records/sec)
 - **Verbose mode**: Detailed worker activity and destination telemetry
+- **Debug mode**: `--debug` flag with intelligent trace sampling (`--trace-sample-rate` 1-100%, default 10%)
 
 #### Testing & Quality
 - **Unit tests**: 276+ tests across all modules (70%+ coverage)
@@ -77,7 +79,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Limitations
 - **Database destination**: Not yet implemented (planned for v0.3)
 - **Reference generator**: Foreign keys (`ref[structure.field]`) not supported
-- **Protobuf format**: Not yet implemented (planned for v0.3)
 - **Statistical distributions**: Only uniform distribution (normal/Zipfian planned for v0.4)
 - **Plugin architecture**: Fixed generators/destinations (extensibility planned for v1.0)
 

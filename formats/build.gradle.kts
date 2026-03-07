@@ -7,6 +7,6 @@ dependencies {
     // CSV
     implementation(libs.opencsv)
     
-    // Protobuf (optional, add when implementing)
-    // implementation(libs.protobuf.java)
+    // Protobuf
+    implementation(libs.protobuf.java)
 }
