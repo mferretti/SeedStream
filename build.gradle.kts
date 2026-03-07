@@ -19,6 +19,15 @@ allprojects {
     }
 }
 
+// Custom task to run dependency-check on all subprojects
+// Note: dependencyCheckAggregate doesn't scan Gradle dependencies properly
+// We use dependencyCheckAnalyze on each module instead
+tasks.register("dependencyCheckAll") {
+    group = "verification"
+    description = "Runs OWASP Dependency-Check on all subprojects"
+    dependsOn(subprojects.map { it.tasks.named("dependencyCheckAnalyze") })
+}
+
 subprojects {
     apply(plugin = "java")
     apply(plugin = "io.freefair.lombok")

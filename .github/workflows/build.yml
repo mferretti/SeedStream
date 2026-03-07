@@ -53,7 +53,7 @@ jobs:
           nvd-
     
     - name: Run OWASP Dependency-Check
-      run: ./gradlew dependencyCheckAggregate
+      run: ./gradlew dependencyCheckAll
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
       continue-on-error: true
