@@ -2,10 +2,10 @@ dependencies {
     implementation(project(":core"))
     
     // YAML parsing
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.1")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    implementation(libs.jackson.dataformat.yaml)
+    implementation(libs.jackson.databind)
     
     // Configuration validation
-    implementation("org.hibernate.validator:hibernate-validator:9.1.0.Final")
-    implementation("org.glassfish:jakarta.el:4.0.2") // Required for Hibernate Validator
+    implementation(libs.hibernate.validator)
+    implementation(libs.jakarta.el) // Required for Hibernate Validator
 }
