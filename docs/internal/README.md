@@ -35,6 +35,36 @@ This directory contains internal planning and development documentation that is 
 
 ---
 
+### tasks/
+**Purpose**: Detailed technical task breakdown and implementation specifications.
+
+**Contains**:
+- Individual task files (TASK-001, TASK-002, etc.) with technical details
+- Acceptance criteria and test requirements
+- Implementation notes and code examples
+- Task catalog and tracking
+
+**Audience**: Development team, implementers
+
+**Why Internal**: Granular task specifications for development tracking. External contributors should focus on user-facing documentation and GitHub Issues for contribution opportunities.
+
+---
+
+### user-stories/
+**Purpose**: User story definitions and acceptance criteria in standard format.
+
+**Contains**:
+- User story files (US-001, US-002, etc.) in "As a... I want... So that..." format
+- Acceptance criteria from user perspective
+- Story catalog and organization
+- Mapping to functional requirements
+
+**Audience**: Product owners, development team
+
+**Why Internal**: Internal agile planning artifacts. Users should refer to feature documentation and examples in public docs rather than development stories.
+
+---
+
 ### MEMORY-PROFILING.md
 **Purpose**: Detailed memory profiling results and optimization analysis.
 
