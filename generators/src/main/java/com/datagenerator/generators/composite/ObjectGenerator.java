@@ -19,6 +19,7 @@ package com.datagenerator.generators.composite;
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.util.LogUtils;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
@@ -99,7 +100,11 @@ public class ObjectGenerator implements DataGenerator {
       Object fieldValue = fieldGenerator.generate(random, fieldType);
 
       result.put(fieldName, fieldValue);
-      log.trace("Generated field {}: {} = {}", structureName, fieldName, fieldValue);
+
+      // TRACE log field generation (sampled)
+      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+        log.trace("Generated field {}: {} = {}", structureName, fieldName, fieldValue);
+      }
     }
 
     return result;

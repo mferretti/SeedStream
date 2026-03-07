@@ -224,29 +224,68 @@ public class ExecuteCommand implements Callable<Integer> {
   private boolean verbose;
 
   /**
-   * Enable debug output with detailed DEBUG level logging.
+   * Enable debug output with detailed TRACE level logging.
    *
    * <p>Shows all verbose information plus:
    *
    * <ul>
-   *   <li>Generator initialization for each field
-   *   <li>Structure loading and validation
-   *   <li>Type parsing details
-   *   <li>Thread pool configuration
+   *   <li>Individual record generation details (sampled)
+   *   <li>Field-level generation for nested structures
+   *   <li>Kafka record send confirmations
+   *   <li>Structure loading and validation details
+   *   <li>Type parsing and generator initialization
    * </ul>
    *
-   * <p>Useful for troubleshooting issues or understanding internal behavior. May produce
-   * significant log output for large generation jobs.
+   * <p>TRACE logs are sampled to prevent overwhelming output. Use {@code --trace-sample} to control
+   * sampling rate (default: 10%).
    *
-   * <p><b>Performance Impact:</b> Negligible on generation speed, but log I/O may slow overall
-   * execution.
+   * <p><b>Performance Impact:</b> Minimal on generation speed, but log I/O may slow overall
+   * execution depending on sample rate.
    *
    * @see #verbose
+   * @see #traceSample
    */
   @Option(
       names = {"-d", "--debug"},
-      description = "Enable debug output (includes verbose)")
+      description = "Enable debug output with TRACE logging (sampled)")
   private boolean debug;
+
+  /**
+   * Trace log sampling rate (percentage).
+   *
+   * <p>Controls what percentage of TRACE log statements are executed when {@code --debug} is
+   * enabled. This prevents overwhelming log output when generating large datasets.
+   *
+   * <p><b>Sample Rates:</b>
+   *
+   * <ul>
+   *   <li><b>100</b> - Log everything (useful for small datasets or detailed debugging)
+   *   <li><b>10</b> - Log ~10% of TRACE statements (default, good balance)
+   *   <li><b>1</b> - Log ~1% (useful for million-record generation)
+   * </ul>
+   *
+   * <p><b>Example:</b>
+   *
+   * <pre>
+   * # Debug 100 records with full TRACE output
+   * --debug --trace-sample 100
+   *
+   * # Debug 100K records with 10% sampling (default)
+   * --debug
+   *
+   * # Debug 1M records with 1% sampling
+   * --debug --trace-sample 1
+   * </pre>
+   *
+   * <p>This option only has effect when {@code --debug} is enabled.
+   *
+   * @see #debug
+   */
+  @Option(
+      names = {"--trace-sample"},
+      description = "Trace sampling rate percentage (1-100, default: 10)",
+      defaultValue = "10")
+  private int traceSample;
 
   /**
    * Number of worker threads for parallel generation.
@@ -579,17 +618,28 @@ public class ExecuteCommand implements Callable<Integer> {
    * <ul>
    *   <li>Default: INFO (errors, warnings, progress)
    *   <li>Verbose: DEBUG (configuration, major operations)
-   *   <li>Debug: DEBUG (all operations including detailed execution)
+   *   <li>Debug: TRACE (all operations including sampled record-level details)
    * </ul>
+   *
+   * <p>When debug mode is enabled, also sets the trace sample rate system property for use by
+   * {@link com.datagenerator.core.util.LogUtils}.
    */
   private void configureLoggingLevel() {
     Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
     Logger appLogger = (Logger) LoggerFactory.getLogger("com.datagenerator");
 
     if (debug) {
-      rootLogger.setLevel(Level.DEBUG);
-      appLogger.setLevel(Level.DEBUG);
-      log.debug("Debug mode enabled - log level set to DEBUG");
+      // Enable TRACE logging
+      rootLogger.setLevel(Level.TRACE);
+      appLogger.setLevel(Level.TRACE);
+
+      // Set trace sample rate for LogUtils
+      // Validate range (1-100)
+      int validatedSampleRate = Math.max(1, Math.min(100, traceSample));
+      System.setProperty("com.datagenerator.traceSampleRate", String.valueOf(validatedSampleRate));
+
+      log.debug(
+          "Debug mode enabled - log level set to TRACE (sample rate: {}%)", validatedSampleRate);
     } else if (verbose) {
       rootLogger.setLevel(Level.DEBUG);
       appLogger.setLevel(Level.DEBUG);
