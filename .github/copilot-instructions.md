@@ -64,11 +64,23 @@ datagenerator/
 **Tech Stack:**
 - Java 21 (toolchain enforced, use virtual threads for I/O-bound operations)
 - Gradle 8.5+ (multi-module build with Kotlin DSL)
+- **Gradle Version Catalog** (`gradle/libs.versions.toml` - centralized dependency management)
 - Lombok (reduce boilerplate - enabled in all modules)
 - Enforced by Spotless: Run `./gradlew spotlessApply` before committing
 - Datafaker (realistic data generation with locale support)
 - Jackson YAML (configuration parsing)
 - Picocli (CLI framework)
+
+**Dependency Management:**
+- All dependency versions defined in `gradle/libs.versions.toml` (Gradle Version Catalog)
+- Use type-safe accessors in build files: `implementation(libs.kafka.clients)`
+- **Adding dependencies**: 
+  1. Add/update version in `[versions]` section of `gradle/libs.versions.toml`
+  2. Define library in `[libraries]` section
+  3. Reference in module's `build.gradle.kts` with `libs.*` syntax
+- **Benefits**: Single source of truth, no version conflicts, IDE autocomplete
+- **Current versions**: All dependencies at latest stable (Jackson 2.21.1, Kafka 4.2.0, Protobuf 4.34.0, etc.)
+- **Security**: Run `./gradlew dependencyCheckAll` to scan all modules for vulnerabilities
 
 **Code Style:**
 - Follow Google Java Style Guide with one exception: opening braces `{` on same line
@@ -191,7 +203,7 @@ datagenerator/
 - Reading any file in the workspace
 - Creating/editing files within module src directories (main/test)
 - Running `./gradlew build`, `./gradlew test`, or module-specific tests
-- Adding dependencies to module build.gradle.kts files
+- Adding dependencies via Version Catalog (edit `gradle/libs.versions.toml` and reference in module build files)
 - Creating test files alongside implementation
 - Running git commands (status, diff, log, blame)
 - Code searches (grep, semantic, file search)
@@ -200,7 +212,7 @@ datagenerator/
 
 **Require explicit confirmation:**
 - Running `./gradlew clean` or deleting build artifacts
-- Modifying root build.gradle.kts or settings.gradle.kts
+- Modifying root build.gradle.kts or settings.gradle.kts (except Version Catalog updates)
 - Adding new modules to the project structure
 - Installing system packages (apt, brew, npm global)
 - Modifying .gitignore, .github/, or workspace meta files
