@@ -1,0 +1,10 @@
+# End-to-End Benchmark: Passport → File → CSV
+# Used for E2E performance testing with different thread/memory configurations
+
+source: passport.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: benchmarks/output/e2e_passport_file_csv
