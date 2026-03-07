@@ -9,5 +9,5 @@ dependencies {
     // Database
     implementation("com.zaxxer:HikariCP:7.0.2")
     compileOnly("org.postgresql:postgresql:42.7.10")
-    compileOnly("com.mysql:mysql-connector-j:8.2.0")
+    compileOnly("com.mysql:mysql-connector-j:9.1.0")
 }
