@@ -24,7 +24,9 @@ dependencies {
     implementation(libs.opencsv)
     
     // Test dependencies for memory profiling tests
-    testImplementation(libs.junit.jupiter.benchmarks)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.assertj.core)
 }
 
