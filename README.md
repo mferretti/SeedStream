@@ -36,6 +36,43 @@ Data Generator is a Java-based tool designed to generate large volumes of realis
 - **Java 21 or higher** (tested with Amazon Corretto, OpenJDK, and GraalVM)
 - **Gradle 8.5 or higher** (wrapper included, no system installation required)
 
+## Dependency Management
+
+SeedStream uses **[Gradle Version Catalog](https://docs.gradle.org/current/userguide/platforms.html)** for centralized dependency management, providing a single source of truth for all library versions across modules.
+
+### Key Benefits
+
+- ✅ **Centralized versions**: All dependencies defined in `gradle/libs.versions.toml`
+- ✅ **Type-safe accessors**: IDE autocomplete for `libs.kafka.clients`, `libs.jackson.databind`, etc.
+- ✅ **Consistency**: Same version across all modules automatically
+- ✅ **Easy updates**: Change one line to update all modules
+
+### Usage Example
+
+In any module's `build.gradle.kts`:
+
+```kotlin
+dependencies {
+    // Reference from catalog (version managed centrally)
+    implementation(libs.kafka.clients)
+    implementation(libs.bundles.jackson)  // Bundle of related libraries
+    
+    testImplementation(libs.bundles.testing)
+}
+```
+
+**Version Catalog Location**: [`gradle/libs.versions.toml`](gradle/libs.versions.toml)
+
+**Current Versions** (all latest stable as of March 2026):
+- Jackson: 2.21.1
+- Kafka: 4.2.0
+- Protobuf: 4.34.0
+- MySQL Connector: 9.6.0
+- JUnit: 6.0.3
+- See full list in [gradle/libs.versions.toml](gradle/libs.versions.toml)
+
+**Security Status**: ✅ 0 known vulnerabilities (CVSS 7.0+) - See [SECURITY.md](SECURITY.md)
+
 ## Installation
 
 ### Development Environment Setup (Recommended: SDKMAN!)

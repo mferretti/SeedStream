@@ -14,6 +14,31 @@ We release security updates for the following versions:
 
 ---
 
+## Current Security Posture
+
+**Status as of March 2026:**
+
+| Metric | Status | Details |
+|--------|--------|---------|
+| **Known Vulnerabilities (CVSS 7.0+)** | ✅ **0** | All high-severity CVEs resolved |
+| **Dependency Versions** | ✅ **Latest Stable** | All libraries upgraded to latest stable releases |
+| **OWASP Dependency-Check** | ✅ **Enabled** | Automated scanning in CI/CD pipeline |
+| **Suppressions** | ✅ **Minimal** | Only 1 low-risk suppression (log4j 2.25.2 in benchmarks module, CVSS 4.8) |
+| **Last Full Audit** | ✅ **March 2026** | All modules scanned, 0 vulnerabilities found |
+
+**Key Dependency Versions:**
+- Jackson: 2.21.1 (latest)
+- Kafka: 4.2.0 (latest)
+- Protobuf: 4.34.0 (latest, resolved CVE-2024-7254)
+- MySQL Connector: 9.6.0 (latest)
+- All other dependencies at latest stable versions
+
+**Dependency Management**: Centralized in `gradle/libs.versions.toml` ([Gradle Version Catalog](https://docs.gradle.org/current/userguide/platforms.html))
+
+**Scan Yourself**: Run `./gradlew dependencyCheckAll` to verify locally. See [docs/QUALITY.md](docs/QUALITY.md) for details.
+
+---
+
 ## Reporting a Vulnerability
 
 **We take security seriously.** If you discover a security vulnerability in SeedStream, please report it responsibly.
@@ -90,15 +115,19 @@ We will credit you in the security advisory unless you prefer to remain anonymou
 
 We actively monitor dependencies for known vulnerabilities:
 
-- **OWASP Dependency-Check**: Run locally with `./gradlew dependencyCheckAnalyze`
+- **OWASP Dependency-Check**: Run locally with `./gradlew dependencyCheckAll`
 - **Dependabot**: Enabled on GitHub for automated dependency updates
+- **Gradle Version Catalog**: Centralized dependency management in `gradle/libs.versions.toml`
 - **Supported libraries**: We use well-maintained dependencies (Jackson, Kafka clients, etc.)
 
 **Check your local setup**:
 ```bash
-./gradlew dependencyCheckAnalyze
-open build/reports/dependency-check-report.html
+./gradlew dependencyCheckAll
+# View reports in each module's build/reports/dependency-check-report.html
+open core/build/reports/dependency-check-report.html
 ```
+
+**Current Status**: ✅ 0 known vulnerabilities (see Current Security Posture section above)
 
 ### 3. Network Security
 

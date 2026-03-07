@@ -46,10 +46,12 @@ open core/build/reports/spotbugs/main.html
 
 **Security scanning:**
 ```bash
-./gradlew dependencyCheckAnalyze
+./gradlew dependencyCheckAll
 
-# View report
-open build/reports/dependency-check-report.html
+# View reports (generated per-module and aggregated)
+open core/build/reports/dependency-check-report.html
+open generators/build/reports/dependency-check-report.html
+# ... or check any module's build/reports/ directory
 ```
 
 ## CI/CD Integration
@@ -110,6 +112,62 @@ To suppress false positives, add to `config/dependency-check-suppressions.xml`:
     <cve>CVE-2023-12345</cve>
 </suppress>
 ```
+
+**Current Security Status** (as of March 2026):
+- ✅ **0 known vulnerabilities** (CVSS 7.0+)
+- ✅ **Latest stable versions**: All dependencies upgraded to latest stable releases
+- ✅ **Minimal suppressions**: Only 1 low-risk suppression (log4j in benchmarks module)
+
+## Dependency Management
+
+SeedStream uses [Gradle Version Catalog](https://docs.gradle.org/current/userguide/platforms.html) for centralized dependency management.
+
+### Version Catalog Location
+
+All dependency versions are defined in: **`gradle/libs.versions.toml`**
+
+Example structure:
+```toml
+[versions]
+jackson = "2.21.1"
+kafka = "4.2.0"
+protobuf = "4.34.0"
+
+[libraries]
+kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+
+[bundles]
+jackson = ["jackson-databind", "jackson-datatype-jsr310"]
+```
+
+### Using Dependencies in Build Files
+
+Access dependencies via type-safe `libs.*` references:
+
+```kotlin
+dependencies {
+    // Single library
+    implementation(libs.kafka.clients)
+    
+    // Bundle (multiple related libraries)
+    implementation(libs.bundles.jackson)
+    
+    // Versions are centrally managed in gradle/libs.versions.toml
+}
+```
+
+### Updating Dependencies
+
+1. **Edit**: Change version in `gradle/libs.versions.toml`
+2. **Apply**: Version automatically updates in all modules that use it
+3. **Verify**: Run `./gradlew build` and `./gradlew dependencyCheckAll`
+
+**Benefits:**
+- ✅ Single source of truth for all versions
+- ✅ IDE autocomplete and type safety
+- ✅ No version conflicts across modules
+- ✅ Easier to audit and update dependencies
 
 ## Dependabot
 
