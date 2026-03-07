@@ -18,6 +18,11 @@ dependencies {
     
     // Logback for programmatic log level control
     implementation(libs.logback.classic)
+    
+    // Runtime dependencies for destinations (users can override versions)
+    runtimeOnly(libs.kafka.clients)
+    runtimeOnly(libs.postgresql)
+    runtimeOnly(libs.mysql.connector.j)
 }
 
 application {

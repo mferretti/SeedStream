@@ -1,0 +1,14 @@
+# End-to-End Benchmark: Passport → Kafka → CSV
+# Used for E2E performance testing with different thread/memory configurations
+
+source: passport.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 42
+conf:
+  bootstrap: localhost:9092
+  topic: benchmark-topic
+  sync: false
+  batchSize: 16384
+  compression: snappy
