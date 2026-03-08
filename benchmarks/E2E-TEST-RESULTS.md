@@ -1,4 +1,4 @@
-# End-to-End Benchmark Results
+# End-to-End Test Results
 
 **Date:** March 08, 2026  
 **Test Duration:** ~8 minutes  
@@ -379,7 +379,7 @@ This benchmark suite ran **one iteration per configuration** to quickly validate
 # Do: 5-10 runs × 54 configs = 270-540 data points
 
 for run in {1..5}; do
-  ./run_e2e_benchmark.sh --iteration $run
+  ./run_e2e_test.sh --iteration $run
 done
 
 # Calculate: mean, median, standard deviation, confidence intervals

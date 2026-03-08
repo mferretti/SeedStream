@@ -4,11 +4,11 @@
 # Tests complete pipeline: Structure → Generation → Serialization → Destination
 #
 # Usage:
-#   ./benchmarks/run_e2e_benchmark.sh
+#   ./benchmarks/run_e2e_test.sh
 #
-# Output:
+# Outputs:
 #   - benchmarks/e2e_results.csv (raw data)
-#   - benchmarks/E2E-BENCHMARK-RESULTS.md (formatted report)
+#   - benchmarks/E2E-TEST-RESULTS.md (formatted report)
 #
 
 set -euo pipefail
@@ -266,12 +266,12 @@ run_all_tests() {
 
 # Generate markdown report
 generate_report() {
-    log_info "Generating report: ${PROJECT_ROOT}/benchmarks/E2E-BENCHMARK-RESULTS.md"
+    log_info "Generating report: ${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
     
     local date_str=$(date +"%B %d, %Y")
     
-    cat > "${PROJECT_ROOT}/benchmarks/E2E-BENCHMARK-RESULTS.md" <<EOF
-# End-to-End Benchmark Results
+    cat > "${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md" <<EOF
+# End-to-End Test Results
 
 **Date:** ${date_str}  
 **Test Duration:** ~45 minutes  
@@ -409,7 +409,7 @@ GC logs available in: \`benchmarks/build/gc_logs/\`
 
 EOF
     
-    log_success "Report generated: ${PROJECT_ROOT}/benchmarks/E2E-BENCHMARK-RESULTS.md"
+    log_success "Report generated: ${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
 }
 
 # Main execution
@@ -431,7 +431,7 @@ main() {
     log_success "Benchmark suite complete!"
     log_success "═══════════════════════════════════════════════════════════"
     log_info "Results: ${PROJECT_ROOT}/benchmarks/e2e_results.csv"
-    log_info "Report:  ${PROJECT_ROOT}/benchmarks/E2E-BENCHMARK-RESULTS.md"
+    log_info "Report:  ${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
     echo ""
 }
 
