@@ -6,11 +6,11 @@ This document provides a quick overview of all user stories for sprint planning 
 
 ## Summary Statistics
 
-- **Total Stories**: 38
+- **Total Stories**: 39
 - **Completed**: 13 ✅
 - **Partially Complete**: 2 🔄
 - **In Progress**: 0 🚧
-- **Not Started**: 22 ⏸️
+- **Not Started**: 23 ⏸️
 - **Blocked**: 1 🔒
 
 ---
@@ -145,6 +145,7 @@ Nice to have for v1.0 but not blocking.
 |----|-------|----------|--------|--------------|-------|
 | US-037 | REST API | P2 | 12-16h | US-019, US-020 | **Post-1.0** |
 | US-038 | gRPC API | P2 | 12-16h | US-019, US-020 | **Post-1.0** |
+| US-041 | Datafaker Plugin Architecture | P2 | 16-20h | US-010 | **Post-1.0** - Extensible type registry |
 
 ---
 

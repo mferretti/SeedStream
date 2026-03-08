@@ -445,10 +445,26 @@
 3. **Low**: Platform-specific paths (niche use case)
 4. **Defer**: Schema/Relational data (we already have ObjectGenerator with nested structures)
 
+- [ ] **Datafaker Plugin Architecture** (TASK-041, US-041) 🔌 **PLANNED**
+  - **Problem**: Only 28 of 110+ Datafaker types currently supported (~25% coverage)
+  - **Solution**: Runtime type registry allowing users to register custom Datafaker providers
+  - **Benefits**:
+    - User empowerment: Add any Datafaker type without code changes
+    - Zero maintenance: Core stays lean, users add what they need
+    - Community: Shareable type registry files
+    - Rapid prototyping: Test specialized types immediately
+  - **API**: `DatafakerRegistry.register("pokemon", (faker, random) -> faker.pokemon().name())`
+  - **YAML Support**: Reference custom types in data structures: `datatype: pokemon`
+  - **Effort**: 16-20 hours (registry system, type parser updates, CLI integration, tests)
+  - **Priority**: P2 (Medium) - Post v1.0 enhancement
+  - **Documentation**: docs/DATAFAKER-COVERAGE.md (full analysis of 110+ types)
+  - **User Story**: docs/internal/user-stories/US-041-datafaker-plugin-architecture.md
+  - **Task**: docs/internal/tasks/TASK-041-datafaker-plugin-architecture.md
+
 - [ ] **Additional Datafaker Providers** (Entertainment, Sports, Videogames - ~216 specialized types)
   - Entertainment: Movies, TV Shows, Books, Games (256 providers total in Datafaker)
   - Examples: StarTrek, GameOfThrones, HarryPotter, Pokemon, Simpsons, etc.
-  - **Priority**: Low - niche use cases, implement on-demand
+  - **Priority**: Low - niche use cases, implement on-demand OR wait for plugin architecture
 
 - [ ] **Jackson Streaming API optimization** (TASK-039) **LOW PRIORITY**
   - Replace `ObjectMapper.writeValueAsString()` with streaming `JsonGenerator`
