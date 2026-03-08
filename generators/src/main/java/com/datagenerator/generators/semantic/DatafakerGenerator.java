@@ -16,8 +16,9 @@
 
 package com.datagenerator.generators.semantic;
 
+import com.datagenerator.core.registry.DatafakerRegistry;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
-import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
@@ -28,11 +29,20 @@ import lombok.extern.slf4j.Slf4j;
 import net.datafaker.Faker;
 
 /**
- * Generates realistic locale-specific data using Datafaker library. Supports semantic types like
- * name, email, address, phone, etc.
+ * Generates realistic locale-specific data using Datafaker library via DatafakerRegistry.
  *
- * <p><b>Supported Types:</b> Person (name, email, username), Address (city, street, postal_code),
- * Finance (company, iban, price), Internet (url, domain, ipv4), etc.
+ * <p><b>Supported Types:</b> All types registered in {@link DatafakerRegistry} including:
+ *
+ * <ul>
+ *   <li>Person (name, email, username)
+ *   <li>Address (city, street, postal_code)
+ *   <li>Finance (company, iban, price)
+ *   <li>Internet (url, domain, ipv4)
+ *   <li>Commerce (product_name, department, color)
+ *   <li>Text (lorem_word, lorem_sentence, lorem_paragraph)
+ *   <li>Code (isbn, uuid)
+ *   <li>Custom types (pokemon, beer_style, etc.)
+ * </ul>
  *
  * <p><b>Locale Support:</b> Uses geolocation from GeneratorContext to determine Faker locale.
  * Supports 62+ locales (en, it, es, fr, de, pt, ru, zh, ja, ko, ar, etc.)
@@ -49,8 +59,8 @@ import net.datafaker.Faker;
  * // With Italian locale
  * GeneratorContext.enter(factory, "italy");
  * DatafakerGenerator gen = new DatafakerGenerator();
- * String name = gen.generate(random, nameType); // → "Mario Rossi"
- * String city = gen.generate(random, cityType); // → "Milano"
+ * String name = gen.generate(random, new CustomDatafakerType("name")); // → "Mario Rossi"
+ * String city = gen.generate(random, new CustomDatafakerType("city")); // → "Milano"
  * </pre>
  */
 @Slf4j
@@ -58,21 +68,14 @@ public class DatafakerGenerator implements DataGenerator {
 
   @Override
   public boolean supports(DataType type) {
-    if (!(type instanceof PrimitiveType primitiveType)) {
-      return false;
-    }
-    return isSemanticType(primitiveType.getKind());
+    return type instanceof CustomDatafakerType;
   }
 
   @Override
   public Object generate(Random random, DataType type) {
-    if (!(type instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException("DatafakerGenerator only supports PrimitiveType, got: " + type);
-    }
-
-    PrimitiveType.Kind kind = primitiveType.getKind();
-    if (!isSemanticType(kind)) {
-      throw new GeneratorException("DatafakerGenerator does not support type: " + kind);
+    if (!(type instanceof CustomDatafakerType customType)) {
+      throw new GeneratorException(
+          "DatafakerGenerator only supports CustomDatafakerType, got: " + type);
     }
 
     // Get geolocation from context and map to locale
@@ -82,159 +85,7 @@ public class DatafakerGenerator implements DataGenerator {
     // Get cached Faker instance for this locale (thread-local cache)
     Faker faker = FakerCache.getOrCreate(locale, random);
 
-    return generateValue(faker, kind);
-  }
-
-  /**
-   * Generate value using Datafaker based on semantic type.
-   *
-   * @param faker Datafaker instance with locale and random seed
-   * @param kind Semantic type kind
-   * @return Generated value
-   */
-  private String generateValue(Faker faker, PrimitiveType.Kind kind) {
-    return switch (kind) {
-      // Person types
-      case NAME -> faker.name().name();
-      case FIRST_NAME -> faker.name().firstName();
-      case LAST_NAME -> faker.name().lastName();
-      case FULL_NAME -> faker.name().fullName();
-      case USERNAME -> generateUsername(faker);
-      case TITLE -> faker.name().title();
-      case OCCUPATION -> faker.job().title();
-      case PREFIX -> faker.name().prefix();
-      case SUFFIX -> faker.name().suffix();
-      case PASSWORD -> faker.credentials().password();
-      case SSN -> faker.idNumber().valid();
-
-      // Address types
-      case ADDRESS -> faker.address().fullAddress();
-      case STREET_NAME -> faker.address().streetName();
-      case STREET_NUMBER -> faker.address().streetAddressNumber();
-      case CITY -> faker.address().city();
-      case STATE -> faker.address().state();
-      case POSTAL_CODE -> faker.address().zipCode();
-      case COUNTRY -> faker.address().country();
-      case LATITUDE -> faker.address().latitude();
-      case LONGITUDE -> faker.address().longitude();
-      case COUNTRY_CODE -> faker.address().countryCode();
-      case TIME_ZONE -> faker.address().timeZone();
-
-      // Contact types
-      case EMAIL -> faker.internet().emailAddress();
-      case PHONE_NUMBER -> faker.phoneNumber().phoneNumber();
-
-      // Finance types
-      case COMPANY -> faker.company().name();
-      case CREDIT_CARD -> faker.finance().creditCard();
-      case IBAN -> faker.finance().iban();
-      case CURRENCY -> faker.money().currencyCode();
-      case PRICE -> faker.commerce().price();
-      case BIC -> faker.finance().bic();
-      case CVV -> String.valueOf(faker.number().numberBetween(100, 999));
-      case CREDIT_CARD_TYPE -> faker.finance().creditCard().split(" ")[0]; // Extract type only
-      case STOCK_MARKET -> faker.stock().nsdqSymbol();
-
-      // Internet types
-      case DOMAIN -> faker.internet().domainName();
-      case URL -> faker.internet().url();
-      case IPV4 -> faker.internet().ipV4Address();
-      case IPV6 -> faker.internet().ipV6Address();
-      case MAC_ADDRESS -> faker.internet().macAddress();
-
-      // Commerce types
-      case PRODUCT_NAME -> faker.commerce().productName();
-      case DEPARTMENT -> faker.commerce().department();
-      case COLOR -> faker.color().name();
-      case MATERIAL -> faker.commerce().material();
-      case PROMOTION_CODE -> faker.commerce().promotionCode();
-
-      // Text/Lorem types
-      case LOREM_WORD -> faker.lorem().word();
-      case LOREM_SENTENCE -> faker.lorem().sentence();
-      case LOREM_PARAGRAPH -> faker.lorem().paragraph();
-
-      // Code types
-      case ISBN -> faker.code().isbn13();
-      case UUID -> faker.internet().uuid();
-
-      default ->
-          throw new GeneratorException("Type " + kind + " is not supported by DatafakerGenerator");
-    };
-  }
-
-  /**
-   * Check if a PrimitiveType.Kind is a semantic type (Datafaker-based).
-   *
-   * @param kind The kind to check
-   * @return true if semantic type, false if primitive with range
-   */
-  private boolean isSemanticType(PrimitiveType.Kind kind) {
-    return switch (kind) {
-      case NAME,
-          FIRST_NAME,
-          LAST_NAME,
-          FULL_NAME,
-          USERNAME,
-          TITLE,
-          OCCUPATION,
-          PREFIX,
-          SUFFIX,
-          PASSWORD,
-          SSN,
-          ADDRESS,
-          STREET_NAME,
-          STREET_NUMBER,
-          CITY,
-          STATE,
-          POSTAL_CODE,
-          COUNTRY,
-          LATITUDE,
-          LONGITUDE,
-          COUNTRY_CODE,
-          TIME_ZONE,
-          EMAIL,
-          PHONE_NUMBER,
-          COMPANY,
-          CREDIT_CARD,
-          IBAN,
-          CURRENCY,
-          PRICE,
-          BIC,
-          CVV,
-          CREDIT_CARD_TYPE,
-          STOCK_MARKET,
-          DOMAIN,
-          URL,
-          IPV4,
-          IPV6,
-          MAC_ADDRESS,
-          PRODUCT_NAME,
-          DEPARTMENT,
-          COLOR,
-          MATERIAL,
-          PROMOTION_CODE,
-          LOREM_WORD,
-          LOREM_SENTENCE,
-          LOREM_PARAGRAPH,
-          ISBN,
-          UUID ->
-          true;
-      default -> false;
-    };
-  }
-
-  /**
-   * Generate a username without using deprecated methods.
-   *
-   * <p>Creates username from first name + random number (e.g., "john1234")
-   *
-   * @param faker Datafaker instance
-   * @return Generated username
-   */
-  private String generateUsername(Faker faker) {
-    String firstName = faker.name().firstName().toLowerCase().replaceAll("[^a-z]", "");
-    int number = faker.number().numberBetween(1, 10000);
-    return firstName + number;
+    // Generate value via registry
+    return DatafakerRegistry.generate(customType.getTypeName(), faker, random);
   }
 }

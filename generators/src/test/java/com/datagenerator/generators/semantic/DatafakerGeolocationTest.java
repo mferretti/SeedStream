@@ -19,8 +19,8 @@ package com.datagenerator.generators.semantic;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
-import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
 import java.util.ArrayList;
@@ -59,7 +59,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateItalianNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("italy", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -69,7 +69,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateGermanNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("germany", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -78,7 +78,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateFrenchNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("france", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -87,7 +87,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateSpanishNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("spain", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -96,7 +96,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateBrazilianNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("brazil", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -106,7 +106,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateJapaneseNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("japan", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -115,7 +115,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateChineseNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("china", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -124,7 +124,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateKoreanNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("korea", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -133,7 +133,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateRussianNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("russia", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -142,7 +142,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateArabicNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("saudi arabia", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -151,7 +151,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateIndianNames() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("india", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -161,7 +161,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateAustralianData() {
-    PrimitiveType cityType = new PrimitiveType(PrimitiveType.Kind.CITY, null, null);
+    CustomDatafakerType cityType = new CustomDatafakerType("city");
     String city = (String) generateWithContext("australia", cityType);
 
     assertThat(city).isNotNull().isNotEmpty();
@@ -169,7 +169,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateMexicanData() {
-    PrimitiveType addressType = new PrimitiveType(PrimitiveType.Kind.ADDRESS, null, null);
+    CustomDatafakerType addressType = new CustomDatafakerType("address");
     String address = (String) generateWithContext("mexico", addressType);
 
     assertThat(address).isNotNull().isNotEmpty();
@@ -177,7 +177,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateCanadianData() {
-    PrimitiveType postalCodeType = new PrimitiveType(PrimitiveType.Kind.POSTAL_CODE, null, null);
+    CustomDatafakerType postalCodeType = new CustomDatafakerType("postal_code");
     String postalCode = (String) generateWithContext("canada", postalCodeType);
 
     assertThat(postalCode).isNotNull().isNotEmpty();
@@ -185,7 +185,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateDutchData() {
-    PrimitiveType cityType = new PrimitiveType(PrimitiveType.Kind.CITY, null, null);
+    CustomDatafakerType cityType = new CustomDatafakerType("city");
     String city = (String) generateWithContext("netherlands", cityType);
 
     assertThat(city).isNotNull().isNotEmpty();
@@ -193,7 +193,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateSwedishData() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("sweden", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -203,7 +203,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGeneratePolishData() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("poland", nameType);
 
     assertThat(name).isNotNull().isNotEmpty();
@@ -211,7 +211,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateTurkishData() {
-    PrimitiveType cityType = new PrimitiveType(PrimitiveType.Kind.CITY, null, null);
+    CustomDatafakerType cityType = new CustomDatafakerType("city");
     String city = (String) generateWithContext("turkey", cityType);
 
     assertThat(city).isNotNull().isNotEmpty();
@@ -223,45 +223,24 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateAllPersonSemanticTypes() {
-    Map<PrimitiveType.Kind, String> results = new HashMap<>();
+    Map<String, String> results = new HashMap<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
       // Test all person-related semantic types
+      results.put("name", (String) generator.generate(random, new CustomDatafakerType("name")));
       results.put(
-          PrimitiveType.Kind.NAME,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.NAME, null, null)));
+          "first_name", (String) generator.generate(random, new CustomDatafakerType("first_name")));
       results.put(
-          PrimitiveType.Kind.FIRST_NAME,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.FIRST_NAME, null, null)));
+          "last_name", (String) generator.generate(random, new CustomDatafakerType("last_name")));
       results.put(
-          PrimitiveType.Kind.LAST_NAME,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.LAST_NAME, null, null)));
+          "full_name", (String) generator.generate(random, new CustomDatafakerType("full_name")));
       results.put(
-          PrimitiveType.Kind.FULL_NAME,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.FULL_NAME, null, null)));
+          "username", (String) generator.generate(random, new CustomDatafakerType("username")));
+      results.put("title", (String) generator.generate(random, new CustomDatafakerType("title")));
       results.put(
-          PrimitiveType.Kind.USERNAME,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.USERNAME, null, null)));
-      results.put(
-          PrimitiveType.Kind.TITLE,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.TITLE, null, null)));
-      results.put(
-          PrimitiveType.Kind.OCCUPATION,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.OCCUPATION, null, null)));
+          "occupation", (String) generator.generate(random, new CustomDatafakerType("occupation")));
     }
 
     // Verify all generated values
@@ -273,44 +252,26 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateAllAddressSemanticTypes() {
-    Map<PrimitiveType.Kind, String> results = new HashMap<>();
+    Map<String, String> results = new HashMap<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
       results.put(
-          PrimitiveType.Kind.ADDRESS,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.ADDRESS, null, null)));
+          "address", (String) generator.generate(random, new CustomDatafakerType("address")));
       results.put(
-          PrimitiveType.Kind.STREET_NAME,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.STREET_NAME, null, null)));
+          "street_name",
+          (String) generator.generate(random, new CustomDatafakerType("street_name")));
       results.put(
-          PrimitiveType.Kind.STREET_NUMBER,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.STREET_NUMBER, null, null)));
+          "street_number",
+          (String) generator.generate(random, new CustomDatafakerType("street_number")));
+      results.put("city", (String) generator.generate(random, new CustomDatafakerType("city")));
+      results.put("state", (String) generator.generate(random, new CustomDatafakerType("state")));
       results.put(
-          PrimitiveType.Kind.CITY,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.CITY, null, null)));
+          "postal_code",
+          (String) generator.generate(random, new CustomDatafakerType("postal_code")));
       results.put(
-          PrimitiveType.Kind.STATE,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.STATE, null, null)));
-      results.put(
-          PrimitiveType.Kind.POSTAL_CODE,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.POSTAL_CODE, null, null)));
-      results.put(
-          PrimitiveType.Kind.COUNTRY,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.COUNTRY, null, null)));
+          "country", (String) generator.generate(random, new CustomDatafakerType("country")));
     }
 
     results.forEach(
@@ -321,20 +282,15 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateAllContactSemanticTypes() {
-    Map<PrimitiveType.Kind, String> results = new HashMap<>();
+    Map<String, String> results = new HashMap<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
+      results.put("email", (String) generator.generate(random, new CustomDatafakerType("email")));
       results.put(
-          PrimitiveType.Kind.EMAIL,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.EMAIL, null, null)));
-      results.put(
-          PrimitiveType.Kind.PHONE_NUMBER,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.PHONE_NUMBER, null, null)));
+          "phone_number",
+          (String) generator.generate(random, new CustomDatafakerType("phone_number")));
     }
 
     results.forEach(
@@ -343,39 +299,25 @@ class DatafakerGeolocationTest {
         });
 
     // Verify email format
-    assertThat(results.get(PrimitiveType.Kind.EMAIL)).contains("@");
+    assertThat(results.get("email")).contains("@");
   }
 
   @Test
   void shouldGenerateAllFinanceSemanticTypes() {
-    Map<PrimitiveType.Kind, String> results = new HashMap<>();
+    Map<String, String> results = new HashMap<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
       results.put(
-          PrimitiveType.Kind.COMPANY,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.COMPANY, null, null)));
+          "company", (String) generator.generate(random, new CustomDatafakerType("company")));
       results.put(
-          PrimitiveType.Kind.CREDIT_CARD,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.CREDIT_CARD, null, null)));
+          "credit_card",
+          (String) generator.generate(random, new CustomDatafakerType("credit_card")));
+      results.put("iban", (String) generator.generate(random, new CustomDatafakerType("iban")));
       results.put(
-          PrimitiveType.Kind.IBAN,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.IBAN, null, null)));
-      results.put(
-          PrimitiveType.Kind.CURRENCY,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.CURRENCY, null, null)));
-      results.put(
-          PrimitiveType.Kind.PRICE,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.PRICE, null, null)));
+          "currency", (String) generator.generate(random, new CustomDatafakerType("currency")));
+      results.put("price", (String) generator.generate(random, new CustomDatafakerType("price")));
     }
 
     results.forEach(
@@ -386,32 +328,18 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateAllInternetSemanticTypes() {
-    Map<PrimitiveType.Kind, String> results = new HashMap<>();
+    Map<String, String> results = new HashMap<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
+      results.put("domain", (String) generator.generate(random, new CustomDatafakerType("domain")));
+      results.put("url", (String) generator.generate(random, new CustomDatafakerType("url")));
+      results.put("ipv4", (String) generator.generate(random, new CustomDatafakerType("ipv4")));
+      results.put("ipv6", (String) generator.generate(random, new CustomDatafakerType("ipv6")));
       results.put(
-          PrimitiveType.Kind.DOMAIN,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.DOMAIN, null, null)));
-      results.put(
-          PrimitiveType.Kind.URL,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.URL, null, null)));
-      results.put(
-          PrimitiveType.Kind.IPV4,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.IPV4, null, null)));
-      results.put(
-          PrimitiveType.Kind.IPV6,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.IPV6, null, null)));
-      results.put(
-          PrimitiveType.Kind.MAC_ADDRESS,
-          (String)
-              generator.generate(
-                  random, new PrimitiveType(PrimitiveType.Kind.MAC_ADDRESS, null, null)));
+          "mac_address",
+          (String) generator.generate(random, new CustomDatafakerType("mac_address")));
     }
 
     results.forEach(
@@ -420,32 +348,24 @@ class DatafakerGeolocationTest {
         });
 
     // Verify URL format
-    assertThat(results.get(PrimitiveType.Kind.URL)).matches("^https?://.*");
+    assertThat(results.get("url")).matches("^https?://.*");
 
     // Verify IPv4 format
-    assertThat(results.get(PrimitiveType.Kind.IPV4))
-        .matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
+    assertThat(results.get("ipv4")).matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
 
     // Verify MAC address format
-    assertThat(results.get(PrimitiveType.Kind.MAC_ADDRESS))
-        .matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$");
+    assertThat(results.get("mac_address")).matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$");
   }
 
   @Test
   void shouldGenerateAllCodeSemanticTypes() {
-    Map<PrimitiveType.Kind, String> results = new HashMap<>();
+    Map<String, String> results = new HashMap<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
-      results.put(
-          PrimitiveType.Kind.ISBN,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.ISBN, null, null)));
-      results.put(
-          PrimitiveType.Kind.UUID,
-          (String)
-              generator.generate(random, new PrimitiveType(PrimitiveType.Kind.UUID, null, null)));
+      results.put("isbn", (String) generator.generate(random, new CustomDatafakerType("isbn")));
+      results.put("uuid", (String) generator.generate(random, new CustomDatafakerType("uuid")));
     }
 
     results.forEach(
@@ -454,10 +374,10 @@ class DatafakerGeolocationTest {
         });
 
     // Verify ISBN format (ISBN-13)
-    assertThat(results.get(PrimitiveType.Kind.ISBN)).matches("^\\d{13}$");
+    assertThat(results.get("isbn")).matches("^\\d{13}$");
 
     // Verify UUID format
-    assertThat(results.get(PrimitiveType.Kind.UUID))
+    assertThat(results.get("uuid"))
         .matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
   }
 
@@ -467,7 +387,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldProduceDeterministicResultsAcrossMultipleGeolocations() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
 
     List<String> geolocations = List.of("italy", "germany", "france", "spain", "brazil", "japan");
 
@@ -488,7 +408,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateDifferentValuesForDifferentSeedsInSameLocale() {
-    PrimitiveType emailType = new PrimitiveType(PrimitiveType.Kind.EMAIL, null, null);
+    CustomDatafakerType emailType = new CustomDatafakerType("email");
     List<String> emails = new ArrayList<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {

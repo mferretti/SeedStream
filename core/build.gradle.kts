@@ -4,4 +4,7 @@ dependencies {
 
     // Validation
     implementation(libs.jakarta.validation.api)
+
+    // Fake data generation
+    implementation(libs.datafaker)
 }
