@@ -322,6 +322,47 @@ Add benchmark step to GitHub Actions (optional, long-running):
 
 **Note**: Benchmarks take ~10-15 minutes. Consider running only on release branches or manually triggered.
 
+## Performance Profiling
+
+For deep performance analysis beyond JMH component benchmarks, use the E2E test runner with profiling enabled:
+
+```bash
+# Run E2E tests with Java Flight Recorder profiling
+./benchmarks/run_e2e_test.sh --profile
+```
+
+This captures detailed profiling data for the **complete pipeline** (parsing → generation → serialization → destination), including:
+- **CPU hotspots**: Which methods consume the most CPU time
+- **Memory allocations**: What objects are being created and where
+- **GC behavior**: Pause times, frequency, and causes
+- **Thread contention**: Lock waits and blocking operations
+
+### Quick Analysis
+
+After running with `--profile`, JFR files are saved to `benchmarks/build/jfr/`:
+
+```bash
+# View CPU hotspots (command-line)
+jfr print --events jdk.ExecutionSample \
+  benchmarks/build/jfr/profile_file_json_t4_m512m.jfr | head -50
+
+# Analyze allocations
+jfr print --events jdk.ObjectAllocationInNewTLAB \
+  benchmarks/build/jfr/profile_file_json_t4_m512m.jfr | grep objectClass | head -20
+
+# Open in JDK Mission Control (GUI)
+jmc benchmarks/build/jfr/profile_file_json_t4_m512m.jfr
+```
+
+### When to Use Profiling
+
+- **E2E performance is lower than expected** (e.g., 50K rec/s vs. component benchmark 2M rec/s)
+- **GC overhead is high** (>5% of total time)
+- **Threading doesn't scale** (4 threads ≠ 4× throughput)
+- **Memory usage grows unexpectedly**
+
+See [PROFILING.md](PROFILING.md) for detailed profiling guide with examples.
+
 ## Troubleshooting
 
 ### Issue: "OutOfMemoryError" during benchmarks
