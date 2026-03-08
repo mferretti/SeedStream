@@ -104,6 +104,17 @@ kafka,protobuf,8,1024,100000,4,25000,25,1024,58,11,1.45,SUCCESS,
 - **8 threads, 512MB:** 33333 rec/s (1.07% GC, Heap: 24/512MB)
 - **8 threads, 1024MB:** 33333 rec/s (0.83% GC, Heap: 24/1024MB)
 
+#### Protobuf Format
+- **1 threads, 256MB:** 33333 rec/s (2.20% GC, Heap: 33/256MB)
+- **1 threads, 512MB:** 25000 rec/s (0.90% GC, Heap: 20/512MB)
+- **1 threads, 1024MB:** 33333 rec/s (1.03% GC, Heap: 26/1024MB)
+- **4 threads, 256MB:** 33333 rec/s (1.90% GC, Heap: 35/256MB)
+- **4 threads, 512MB:** 50000 rec/s (1.75% GC, Heap: 20/512MB)
+- **4 threads, 1024MB:** 33333 rec/s (1.20% GC, Heap: 23/1024MB)
+- **8 threads, 256MB:** 33333 rec/s (1.93% GC, Heap: 33/256MB)
+- **8 threads, 512MB:** 33333 rec/s (1.53% GC, Heap: 21/512MB)
+- **8 threads, 1024MB:** 25000 rec/s (0.80% GC, Heap: 22/1024MB)
+
 ### Kafka Destination
 
 #### JSON Format
@@ -117,7 +128,7 @@ kafka,protobuf,8,1024,100000,4,25000,25,1024,58,11,1.45,SUCCESS,
 - **8 threads, 512MB:** 25000 rec/s (0.90% GC, Heap: 27/512MB)
 - **8 threads, 1024MB:** 33333 rec/s (1.37% GC, Heap: 29/1024MB)
 
-####CSV Format
+#### CSV Format
 - **1 threads, 256MB:** 25000 rec/s (1.77% GC, Heap: 46/256MB)
 - **1 threads, 512MB:** 25000 rec/s (0.95% GC, Heap: 26/512MB)
 - **1 threads, 1024MB:** 33333 rec/s (1.33% GC, Heap: 37/1024MB)
@@ -127,6 +138,17 @@ kafka,protobuf,8,1024,100000,4,25000,25,1024,58,11,1.45,SUCCESS,
 - **8 threads, 256MB:** 33333 rec/s (1.97% GC, Heap: 39/256MB)
 - **8 threads, 512MB:** 33333 rec/s (2.20% GC, Heap: 74/512MB)
 - **8 threads, 1024MB:** 25000 rec/s (0.95% GC, Heap: 29/1024MB)
+
+#### Protobuf Format
+- **1 threads, 256MB:** 25000 rec/s (1.57% GC, Heap: 34/256MB)
+- **1 threads, 512MB:** 25000 rec/s (1.25% GC, Heap: 23/512MB)
+- **1 threads, 1024MB:** 25000 rec/s (1.73% GC, Heap: 67/1024MB)
+- **4 threads, 256MB:** 25000 rec/s (1.85% GC, Heap: 35/256MB)
+- **4 threads, 512MB:** 25000 rec/s (1.18% GC, Heap: 24/512MB)
+- **4 threads, 1024MB:** 33333 rec/s (1.43% GC, Heap: 31/1024MB)
+- **8 threads, 256MB:** 33333 rec/s (2.33% GC, Heap: 36/256MB)
+- **8 threads, 512MB:** 25000 rec/s (1.30% GC, Heap: 25/512MB)
+- **8 threads, 1024MB:** 25000 rec/s (1.45% GC, Heap: 25/1024MB)
 
 ## Memory Analysis
 
@@ -213,6 +235,7 @@ resources:
 | Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower |
 | JSON Serializer | 2.9M ops/sec | - | 89× slower |
 | CSV Serializer | Same as JSON | - | 89× slower |
+| Protobuf Serializer | Similar to JSON/CSV | - | ~89× slower |
 | File I/O | 4.9M ops/sec | 50K-100K rec/s | 49-98× slower |
 | Kafka (sync) | 3.5K rec/sec | 15K-25K rec/s | Pipeline optimization |
 
