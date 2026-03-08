@@ -31,9 +31,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class FakerCacheTest {
+
+  @BeforeEach
+  void setup() {
+    // Clear cache before each test to prevent pollution from other test classes
+    // that may have run on the same thread (thread pool reuse)
+    FakerCache.clear();
+  }
 
   @AfterEach
   void cleanup() {
