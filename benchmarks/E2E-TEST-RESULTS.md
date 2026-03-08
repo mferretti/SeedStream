@@ -20,33 +20,33 @@ This benchmark measures **real-world, end-to-end performance** using the complet
 
 ```csv
 destination,format,threads,memory_mb,record_count,duration_sec,throughput_rps,heap_used_mb,heap_max_mb,gc_time_ms,gc_count,gc_time_percent,status,error
-file,json,1,256,100000,14,7142,67,256,104,33,0.74,SUCCESS,
-file,json,1,512,100000,15,6666,29,512,59,19,0.39,SUCCESS,
-file,json,1,1024,100000,14,7142,67,1024,58,13,0.41,SUCCESS,
-file,json,4,256,100000,7,14285,68,256,87,33,1.24,SUCCESS,
-file,json,4,512,100000,6,16666,67,512,66,20,1.10,SUCCESS,
-file,json,4,1024,100000,7,14285,21,1024,64,12,0.91,SUCCESS,
-file,json,8,256,100000,5,20000,65,256,118,34,2.36,SUCCESS,
-file,json,8,512,100000,6,16666,24,512,99,20,1.65,SUCCESS,
-file,json,8,1024,100000,6,16666,22,1024,63,12,1.05,SUCCESS,
-file,csv,1,256,100000,14,7142,69,256,107,33,0.76,SUCCESS,
-file,csv,1,512,100000,14,7142,28,512,58,19,0.41,SUCCESS,
-file,csv,1,1024,100000,15,6666,66,1024,59,13,0.39,SUCCESS,
-file,csv,4,256,100000,6,16666,69,256,84,34,1.40,SUCCESS,
-file,csv,4,512,100000,6,16666,67,512,68,21,1.13,SUCCESS,
-file,csv,4,1024,100000,6,16666,69,1024,77,14,1.28,SUCCESS,
-file,csv,8,256,100000,6,16666,70,256,114,35,1.90,SUCCESS,
-file,csv,8,512,100000,6,16666,22,512,96,19,1.60,SUCCESS,
-file,csv,8,1024,100000,5,20000,22,1024,57,12,1.14,SUCCESS,
-file,protobuf,1,256,100000,14,7142,66,256,101,34,0.72,SUCCESS,
-file,protobuf,1,512,100000,14,7142,68,512,83,21,0.59,SUCCESS,
-file,protobuf,1,1024,100000,15,6666,66,1024,65,14,0.43,SUCCESS,
-file,protobuf,4,256,100000,6,16666,68,256,80,34,1.33,SUCCESS,
-file,protobuf,4,512,100000,7,14285,28,512,100,20,1.43,SUCCESS,
-file,protobuf,4,1024,100000,6,16666,50,1024,66,13,1.10,SUCCESS,
-file,protobuf,8,256,100000,6,16666,48,256,109,35,1.82,SUCCESS,
-file,protobuf,8,512,100000,5,20000,24,512,96,19,1.92,SUCCESS,
-file,protobuf,8,1024,100000,5,20000,22,1024,59,12,1.18,SUCCESS,
+file,json,1,256,100000,4,25000,68,256,64,13,1.60,SUCCESS,
+file,json,1,512,100000,3,33333,67,512,57,10,1.90,SUCCESS,
+file,json,1,1024,100000,4,25000,68,1024,49,8,1.23,SUCCESS,
+file,json,4,256,100000,3,33333,68,256,63,12,2.10,SUCCESS,
+file,json,4,512,100000,3,33333,68,512,53,10,1.77,SUCCESS,
+file,json,4,1024,100000,3,33333,47,1024,48,8,1.60,SUCCESS,
+file,json,8,256,100000,3,33333,68,256,75,14,2.50,SUCCESS,
+file,json,8,512,100000,3,33333,24,512,38,8,1.27,SUCCESS,
+file,json,8,1024,100000,4,25000,23,1024,34,7,0.85,SUCCESS,
+file,csv,1,256,100000,3,33333,66,256,66,13,2.20,SUCCESS,
+file,csv,1,512,100000,3,33333,67,512,54,10,1.80,SUCCESS,
+file,csv,1,1024,100000,3,33333,66,1024,50,8,1.67,SUCCESS,
+file,csv,4,256,100000,3,33333,67,256,59,13,1.97,SUCCESS,
+file,csv,4,512,100000,3,33333,66,512,57,11,1.90,SUCCESS,
+file,csv,4,1024,100000,3,33333,48,1024,50,8,1.67,SUCCESS,
+file,csv,8,256,100000,3,33333,68,256,75,15,2.50,SUCCESS,
+file,csv,8,512,100000,3,33333,24,512,44,9,1.47,SUCCESS,
+file,csv,8,1024,100000,3,33333,24,1024,34,7,1.13,SUCCESS,
+file,protobuf,1,256,100000,3,33333,69,256,79,14,2.63,SUCCESS,
+file,protobuf,1,512,100000,3,33333,68,512,59,10,1.97,SUCCESS,
+file,protobuf,1,1024,100000,4,25000,67,1024,47,8,1.18,SUCCESS,
+file,protobuf,4,256,100000,3,33333,69,256,67,14,2.23,SUCCESS,
+file,protobuf,4,512,100000,3,33333,67,512,59,11,1.97,SUCCESS,
+file,protobuf,4,1024,100000,3,33333,47,1024,53,9,1.77,SUCCESS,
+file,protobuf,8,256,100000,3,33333,69,256,66,14,2.20,SUCCESS,
+file,protobuf,8,512,100000,3,33333,24,512,41,9,1.37,SUCCESS,
+file,protobuf,8,1024,100000,3,33333,24,1024,36,7,1.20,SUCCESS,
 kafka,json,1,256,100000,0,0,0,0,0,0,0.0,SKIPPED,Kafka not running
 kafka,json,1,512,100000,0,0,0,0,0,0,0.0,SKIPPED,Kafka not running
 kafka,json,1,1024,100000,0,0,0,0,0,0,0.0,SKIPPED,Kafka not running
@@ -81,26 +81,26 @@ kafka,protobuf,8,1024,100000,0,0,0,0,0,0,0.0,SKIPPED,Kafka not running
 ### File Destination
 
 #### JSON Format
-- **1 threads, 256MB:** 7142 rec/s (0.74% GC, Heap: 67/256MB)
-- **1 threads, 512MB:** 6666 rec/s (0.39% GC, Heap: 29/512MB)
-- **1 threads, 1024MB:** 7142 rec/s (0.41% GC, Heap: 67/1024MB)
-- **4 threads, 256MB:** 14285 rec/s (1.24% GC, Heap: 68/256MB)
-- **4 threads, 512MB:** 16666 rec/s (1.10% GC, Heap: 67/512MB)
-- **4 threads, 1024MB:** 14285 rec/s (0.91% GC, Heap: 21/1024MB)
-- **8 threads, 256MB:** 20000 rec/s (2.36% GC, Heap: 65/256MB)
-- **8 threads, 512MB:** 16666 rec/s (1.65% GC, Heap: 24/512MB)
-- **8 threads, 1024MB:** 16666 rec/s (1.05% GC, Heap: 22/1024MB)
+- **1 threads, 256MB:** 25000 rec/s (1.60% GC, Heap: 68/256MB)
+- **1 threads, 512MB:** 33333 rec/s (1.90% GC, Heap: 67/512MB)
+- **1 threads, 1024MB:** 25000 rec/s (1.23% GC, Heap: 68/1024MB)
+- **4 threads, 256MB:** 33333 rec/s (2.10% GC, Heap: 68/256MB)
+- **4 threads, 512MB:** 33333 rec/s (1.77% GC, Heap: 68/512MB)
+- **4 threads, 1024MB:** 33333 rec/s (1.60% GC, Heap: 47/1024MB)
+- **8 threads, 256MB:** 33333 rec/s (2.50% GC, Heap: 68/256MB)
+- **8 threads, 512MB:** 33333 rec/s (1.27% GC, Heap: 24/512MB)
+- **8 threads, 1024MB:** 25000 rec/s (0.85% GC, Heap: 23/1024MB)
 
 #### CSV Format
-- **1 threads, 256MB:** 7142 rec/s (0.76% GC, Heap: 69/256MB)
-- **1 threads, 512MB:** 7142 rec/s (0.41% GC, Heap: 28/512MB)
-- **1 threads, 1024MB:** 6666 rec/s (0.39% GC, Heap: 66/1024MB)
-- **4 threads, 256MB:** 16666 rec/s (1.40% GC, Heap: 69/256MB)
-- **4 threads, 512MB:** 16666 rec/s (1.13% GC, Heap: 67/512MB)
-- **4 threads, 1024MB:** 16666 rec/s (1.28% GC, Heap: 69/1024MB)
-- **8 threads, 256MB:** 16666 rec/s (1.90% GC, Heap: 70/256MB)
-- **8 threads, 512MB:** 16666 rec/s (1.60% GC, Heap: 22/512MB)
-- **8 threads, 1024MB:** 20000 rec/s (1.14% GC, Heap: 22/1024MB)
+- **1 threads, 256MB:** 33333 rec/s (2.20% GC, Heap: 66/256MB)
+- **1 threads, 512MB:** 33333 rec/s (1.80% GC, Heap: 67/512MB)
+- **1 threads, 1024MB:** 33333 rec/s (1.67% GC, Heap: 66/1024MB)
+- **4 threads, 256MB:** 33333 rec/s (1.97% GC, Heap: 67/256MB)
+- **4 threads, 512MB:** 33333 rec/s (1.90% GC, Heap: 66/512MB)
+- **4 threads, 1024MB:** 33333 rec/s (1.67% GC, Heap: 48/1024MB)
+- **8 threads, 256MB:** 33333 rec/s (2.50% GC, Heap: 68/256MB)
+- **8 threads, 512MB:** 33333 rec/s (1.47% GC, Heap: 24/512MB)
+- **8 threads, 1024MB:** 33333 rec/s (1.13% GC, Heap: 24/1024MB)
 
 ### Kafka Destination
 
@@ -114,24 +114,24 @@ kafka,protobuf,8,1024,100000,0,0,0,0,0,0,0.0,SKIPPED,Kafka not running
 
 ### 256MB Configuration
 - Success Rate: 9/18 tests
-- Average Heap Usage: 66MB
-- Average GC Time: 1.36%
+- Average Heap Usage: 68MB
+- Average GC Time: 2.21%
 
 ### 512MB Configuration
 - Success Rate: 9/18 tests
-- Average Heap Usage: 40MB
-- Average GC Time: 1.14%
+- Average Heap Usage: 53MB
+- Average GC Time: 1.71%
 
 ### 1GB Configuration
 - Success Rate: 9/18 tests
-- Average Heap Usage: 45MB
-- Average GC Time: 0.88%
+- Average Heap Usage: 46MB
+- Average GC Time: 1.37%
 
 ## Threading Impact
 
-- **1 thread(s):** Average 6983 rec/s (9 tests)
-- **4 thread(s):** Average 15872 rec/s (9 tests)
-- **8 thread(s):** Average 18147 rec/s (9 tests)
+- **1 thread(s):** Average 30555 rec/s (9 tests)
+- **4 thread(s):** Average 33333 rec/s (9 tests)
+- **8 thread(s):** Average 32407 rec/s (9 tests)
 
 ## Production Recommendations
 

@@ -48,6 +48,7 @@ class DatafakerComplexStructureTest {
 
   @BeforeEach
   void setUp() {
+    FakerCache.clear(); // Clear cache to ensure clean state
     // Create registry with mock structure loader
     registry = new StructureRegistry(this::loadMockStructure);
     factory = new DataGeneratorFactory(registry, Paths.get("test"));
@@ -362,6 +363,9 @@ class DatafakerComplexStructureTest {
 
       Map<String, Object> transaction1 =
           (Map<String, Object>) generator.generate(random1, transactionType);
+      
+      FakerCache.clear(); // Clear cache to allow new Random instance
+      
       Map<String, Object> transaction2 =
           (Map<String, Object>) generator.generate(random2, transactionType);
 

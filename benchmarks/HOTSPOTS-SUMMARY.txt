@@ -1,25 +1,31 @@
 CPU HOTSPOT ANALYSIS - profile_file_json_t8_m256m.jfr (20,000 rec/s)
 =======================================================================
 
-DATAFAKER YAML PARSING (Estimated 60-80% CPU Time):
-----------------------------------------------------
+DATAFAKER VALUE GENERATION (Estimated 98% CPU Time):
+-----------------------------------------------------
+net.datafaker.service.FakeValuesService.fetchObject()
+net.datafaker.service.FakeValuesService.safeFetch()
+net.datafaker.service.FakeValuesService.resolve()
 net.datafaker.shaded.snakeyaml.reader.StreamReader.update() line 196
 net.datafaker.shaded.snakeyaml.reader.StreamReader.ensureEnoughData() line 171  
 net.datafaker.shaded.snakeyaml.scanner.ScannerImpl.fetchMoreTokens()
 net.datafaker.shaded.snakeyaml.scanner.ScannerImpl.fetchFlowEntry()
 net.datafaker.shaded.snakeyaml.scanner.ScannerImpl.checkToken()
 net.datafaker.shaded.snakeyaml.composer.Composer.composeSequenceNode() line 284
-net.datafaker.service.FakeValuesService.fetchObject()
-net.datafaker.service.FakeValuesService.safeFetch()
-net.datafaker.service.FakeValuesService.resolve()
 
-Pattern: For EVERY generated value (name, city, passport number), Datafaker:
-1. Opens and reads YAML locale file
-2. Parses YAML with SnakeYAML (expensive)
-3. Resolves template expressions recursively
-4. Composes final value from nested structures
+⚠️ ROOT CAUSE IDENTIFIED:
 
-This happens WITHOUT any caching - millions of redundant YAML parses.
+Our code created NEW Faker(locale, random) for EVERY value generation.
+This defeated Datafaker's internal caching mechanisms!
+
+Datafaker HAS internal caching for:
+- Parsed YAML locale files
+- Resolved template expressions
+- Provider instances
+
+BUT: Each new Faker instance = fresh empty cache.
+
+800,000 Faker instantiations per test = 800,000 cache resets.
 
 SERIALIZATION (Estimated 15-25% CPU Time):
 ------------------------------------------
@@ -41,11 +47,13 @@ E2E Pipeline Shows Low Throughput:
 - This is 77× SLOWER than isolated Datafaker benchmarks (12K-154K ops/sec)
 - Gap indicates significant overhead beyond just Datafaker calls
 
-Conclusion: Datafaker locale parsing overhead dominates. Caching will:
-✓ Eliminate 60-80% of CPU time (YAML parsing)
-✓ Close the 77× performance gap
+Conclusion: We were MISUSING Datafaker by defeating its internal caching. Solution:
+✓ Reuse Faker instances (thread-local cache)
+✓ Let Datafaker's own caching work as designed
 ✓ Enable near-linear thread scaling (vs current 32% efficiency)
-✓ Unlock 5-10× throughput improvement minimum
+✓ Unlock 3-5× throughput improvement by fixing our mistake
+
+Lesson: Datafaker is NOT slow - we just used it wrong!
 
 RECOMMENDED FIRST STEP:
 -----------------------

@@ -151,13 +151,14 @@ jfr print --events jdk.ExecutionSample \
 ### Step 5: Root Cause Analysis & Mathematical Projection
 
 **Bottleneck Identified:**
-1. **Datafaker YAML parsing** - 98.1% of CPU time
+1. **Improper Faker usage** - 98.1% of CPU time (we defeated Datafaker's internal caching)
 2. **Faker instantiation overhead** - ~5% execution time (800K instantiations per 100K test)
 
 **Thread Efficiency Analysis:**
 - **Current:** 32% efficiency at 8 threads (actual: 2.86×, expected: 8×)
-- **Root cause:** Faker instances created for EVERY value (not cached)
+- **Root cause:** Faker instances created for EVERY value (cache reset each time)
 - **Evidence:** `BaseFaker.<init>()` appears 14× in CPU samples
+- **KEY INSIGHT:** Datafaker HAS internal caching - we just kept resetting it!
 
 **Mathematical Projections:**
 

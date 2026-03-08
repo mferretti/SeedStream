@@ -26,7 +26,8 @@ Implement thread-local caching for Datafaker instances to eliminate repeated ins
 **Problem Identified (TASK-039):**
 - `DatafakerGenerator.java:79` creates `new Faker(locale, random)` for EVERY value
 - 100,000 records × 8 Datafaker fields = 800,000 Faker instantiations per test
-- Each instantiation: locale setup, provider registration, internal maps, YAML file access
+- Each instantiation: **throws away Datafaker's internal cache state**
+- Datafaker HAS caching for YAML/templates, but we kept resetting it!
 - JFR evidence: `BaseFaker.<init>()` and `Faker.<init>()` appear repeatedly in CPU samples
 
 **Root Cause:**
@@ -36,7 +37,7 @@ Implement thread-local caching for Datafaker instances to eliminate repeated ins
 public Object generate(Random random, DataType type) {
     Locale locale = LocaleMapper.map(geolocation);
     
-    Faker faker = new Faker(locale, random);  // 🔴 NEW INSTANCE EVERY TIME!
+    Faker faker = new Faker(locale, random);  // 🔴 NEW INSTANCE = CACHE RESET!
     
     return generateValue(faker, kind);
 }
@@ -44,11 +45,12 @@ public Object generate(Random random, DataType type) {
 
 **Impact:**
 - Thread efficiency: Only 32% at 8 threads (expected 70%+)
-- Faker init overhead compounds with Datafaker YAML parsing (98.1% bottleneck)
+- Datafaker init overhead compounds with cache resets (98.1% bottleneck)
 - Throughput plateau: ~20K rec/s regardless of threads beyond 4
 
 **Solution:**
 Thread-local cache to reuse Faker instances within each thread for the same locale.
+**Let Datafaker's own caching mechanisms work as designed!**
 
 ---
 

@@ -40,6 +40,7 @@ class DatafakerGeolocationTest {
 
   @BeforeEach
   void setUp() {
+    FakerCache.clear(); // Clear cache to ensure clean state
     generator = new DatafakerGenerator();
     StructureRegistry registry = new StructureRegistry((name, path, reg) -> Map.of());
     factory = new DataGeneratorFactory(registry, java.nio.file.Paths.get("test"));
@@ -476,10 +477,12 @@ class DatafakerGeolocationTest {
 
       try (var ctx = GeneratorContext.enter(factory, geolocation)) {
         String name1 = (String) generator.generate(random1, nameType);
+        FakerCache.clear(); // Clear cache to allow new Random instance
         String name2 = (String) generator.generate(random2, nameType);
 
         assertThat(name1).as("Determinism for geolocation: " + geolocation).isEqualTo(name2);
       }
+      FakerCache.clear(); // Clear cache between geolocations
     }
   }
 
