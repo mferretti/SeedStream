@@ -240,8 +240,8 @@
     - ✅ GC overhead: 0.27-2.04% across all configs (<2% target met)
     - ✅ Threading scaling: 2.45× speedup with 8 threads vs 1 thread
   - **Deliverables**:
-    - run_e2e_benchmark.sh (450+ lines, automated runner with GC log parsing)
-    - E2E-BENCHMARK-RESULTS.md (200+ lines with Kubernetes recommendations)
+    - run_e2e_test.sh (450+ lines, automated runner with GC log parsing)
+    - E2E-TEST-RESULTS.md (200+ lines with Kubernetes recommendations)
     - e2e_results.csv (raw data for all 36 tests)
     - 4 job config files (e2e_passport_*.yaml)
   - **Production Guidance**: Memory configs (256MB minimum, 512MB recommended, 1GB optimal)
