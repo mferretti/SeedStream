@@ -8,6 +8,48 @@
 
 **Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs pre-refactoring baseline).
 
+### Test Data Structure
+
+The **Passport** structure ([`config/structures/passport.yaml`](../../config/structures/passport.yaml)) contains 11 fields with a mix of Datafaker semantic types and primitives:
+
+```yaml
+name: passport
+geolocation: usa
+data:
+  passport_number:
+    datatype: char[8..9]
+    alias: "number"
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  full_name:
+    datatype: full_name
+  date_of_birth:
+    datatype: date[1950-01-01..2006-12-31]
+    alias: "dob"
+  nationality:
+    datatype: country
+  place_of_birth:
+    datatype: city
+  issue_date:
+    datatype: date[2015-01-01..2024-12-31]
+  expiry_date:
+    datatype: date[2025-01-01..2034-12-31]
+  issuing_authority:
+    datatype: company
+    alias: "authority"
+  sex:
+    datatype: enum[M,F,X]
+```
+
+**Field Breakdown:**
+- **3 primitive types:** `char` (1), `date` (3), `enum` (1)
+- **7 Datafaker types:** `first_name`, `last_name`, `full_name`, `country`, `city`, `company`
+- **Estimated size:** ~200 bytes per record (JSON serialized)
+
+This structure provides a realistic mix of generation complexity, making it representative of real-world use cases.
+
 ## Executive Summary
 
 This benchmark measures **real-world, end-to-end performance** using the complete CLI pipeline:
