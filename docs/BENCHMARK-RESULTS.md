@@ -4,6 +4,74 @@
 
 ---
 
+## Methodology
+
+### About JMH (Java Microbenchmark Harness)
+
+These benchmarks use **JMH 1.37**, the industry-standard framework for Java performance testing developed by Oracle. JMH is specifically designed to avoid common microbenchmarking pitfalls:
+
+✅ **JIT Compiler Warmup** — Runs warmup iterations before measurement to ensure code is fully optimized  
+✅ **Dead Code Elimination** — Uses blackholes to prevent JVM from optimizing away benchmark code  
+✅ **Statistical Analysis** — Multiple iterations with confidence intervals and error margins  
+✅ **Stable Measurement** — Isolated process with controlled GC and compilation  
+
+### Benchmark Configuration
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| **Warmup Iterations** | 2 × 1 second | Allow JIT compiler to optimize hot paths |
+| **Measurement Iterations** | 3 × 1 second | Collect statistically valid performance data |
+| **Forks** | 1 | Run in isolated JVM process |
+| **Threads** | 1 per benchmark | Measure single-threaded component performance |
+| **Mode** | Throughput | Operations per second (ops/s) |
+
+### What These Benchmarks Measure
+
+These are **component benchmarks** that measure isolated performance:
+
+- **Primitive Generators:** Pure generation speed without I/O
+- **Datafaker Generators:** Realistic data generation overhead
+- **Serializers:** JSON/CSV formatting speed (in-memory)
+- **File I/O:** Write throughput to disk
+
+**NOT measured here:**
+- End-to-end pipeline performance (see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md))
+- Multi-threaded scaling (see E2E tests with 1/4/8 threads)
+- Network I/O (Kafka benchmarks separate)
+- Memory pressure under load
+
+### Interpreting Error Margins
+
+Each result shows throughput **± error margin** (95% confidence interval):
+
+```
+Boolean Generator: 258,431,292 ops/s  (± 25,132,942)
+                   └─ Mean value       └─ Margin of error
+```
+
+**What this means:**
+- True performance is likely within **233M - 284M ops/s** (95% confidence)
+- Smaller error margins = more stable performance
+- Large error margins may indicate JIT warmup effects or GC interference
+
+### Statistical Validity
+
+✅ **These results ARE statistically rigorous** (unlike single-run tests)  
+✅ **Multiple iterations** provide confidence intervals  
+✅ **JMH controls** for JIT, GC, and other sources of variance  
+✅ **Suitable for** performance comparisons and optimization validation  
+
+### Limitations
+
+⚠️ **Single-threaded measurements** — Real workloads will use multiple threads  
+⚠️ **Isolated components** — End-to-end performance may be lower due to coordination overhead  
+⚠️ **In-memory focus** — Doesn't account for network latency, disk I/O contention, or backpressure  
+⚠️ **Synthetic data** — Results may vary with different data distributions  
+
+**For production estimates:** Combine these component benchmarks with E2E test results to understand real-world throughput.
+
+---
+
 ## Primitive Generators
 
 **Target:** 10M ops/s (NFR-1 requirement)
@@ -119,15 +187,11 @@
 
 ---
 
-## Benchmark Configuration
+## Environment
 
-| Parameter | Value |
-|-----------|-------|
-| Warmup Iterations | 2 (1 second each) |
-| Measurement Iterations | 3 (1 second each) |
-| Forks | 1 |
-| Threads | 1 (per benchmark) |
-| JMH Version | 1.37 |
-| Java Version | 21.0.9 |
+**Hardware:** Development machine (specs may vary)  
+**JMH Version:** 1.37  
+**Java Version:** 21.0.9  
+**OS:** Linux  
 
-**Note:** All measurements are single-threaded. E2E tests demonstrate multi-threaded scaling (see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md)).
+**Note:** All measurements are single-threaded component benchmarks. For multi-threaded performance and complete pipeline validation, see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md).
