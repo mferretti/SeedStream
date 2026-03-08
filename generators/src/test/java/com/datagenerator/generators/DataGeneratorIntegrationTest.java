@@ -19,16 +19,28 @@ package com.datagenerator.generators;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.seed.RandomProvider;
+import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
  * Integration test demonstrating all generators working together with deterministic RandomProvider.
  */
 class DataGeneratorIntegrationTest {
+  private DataGeneratorFactory factory;
+
+  @BeforeEach
+  void setUp() {
+    // Create factory with minimal registry for primitive-only tests
+    StructureRegistry registry = new StructureRegistry((name, path, reg) -> Map.of());
+    factory = new DataGeneratorFactory(registry, Paths.get("test"));
+  }
 
   @Test
   void shouldGenerateAllTypesWithDeterministicResults() {
@@ -37,37 +49,37 @@ class DataGeneratorIntegrationTest {
 
     // Test char generation
     PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "10");
-    DataGenerator charGen = DataGeneratorFactory.createStateless(charType);
+    DataGenerator charGen = factory.create(charType);
     String charValue = (String) charGen.generate(random, charType);
     assertThat(charValue).hasSizeBetween(5, 10).matches("[a-zA-Z]+");
 
     // Test int generation
     PrimitiveType intType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "100");
-    DataGenerator intGen = DataGeneratorFactory.createStateless(intType);
+    DataGenerator intGen = factory.create(intType);
     int intValue = (int) intGen.generate(random, intType);
     assertThat(intValue).isBetween(1, 100);
 
     // Test decimal generation
     PrimitiveType decimalType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
-    DataGenerator decimalGen = DataGeneratorFactory.createStateless(decimalType);
+    DataGenerator decimalGen = factory.create(decimalType);
     Object decimalValue = decimalGen.generate(random, decimalType);
     assertThat(decimalValue).isNotNull();
 
     // Test boolean generation
     PrimitiveType boolType = new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null);
-    DataGenerator boolGen = DataGeneratorFactory.createStateless(boolType);
+    DataGenerator boolGen = factory.create(boolType);
     boolean boolValue = (boolean) boolGen.generate(random, boolType);
     assertThat(boolValue).isIn(true, false);
 
     // Test date generation
     PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
-    DataGenerator dateGen = DataGeneratorFactory.createStateless(dateType);
+    DataGenerator dateGen = factory.create(dateType);
     Object dateValue = dateGen.generate(random, dateType);
     assertThat(dateValue).isNotNull();
 
     // Test enum generation
     EnumType enumType = new EnumType(List.of("ACTIVE", "INACTIVE", "PENDING"));
-    DataGenerator enumGen = DataGeneratorFactory.createStateless(enumType);
+    DataGenerator enumGen = factory.create(enumType);
     String enumValue = (String) enumGen.generate(random, enumType);
     assertThat(enumValue).isIn("ACTIVE", "INACTIVE", "PENDING");
   }
@@ -78,7 +90,7 @@ class DataGeneratorIntegrationTest {
     RandomProvider provider1 = new RandomProvider(999L);
     Random random1 = provider1.getRandom();
     PrimitiveType intType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000");
-    DataGenerator intGen = DataGeneratorFactory.createStateless(intType);
+    DataGenerator intGen = factory.create(intType);
 
     int value1_1 = (int) intGen.generate(random1, intType);
     int value1_2 = (int) intGen.generate(random1, intType);
