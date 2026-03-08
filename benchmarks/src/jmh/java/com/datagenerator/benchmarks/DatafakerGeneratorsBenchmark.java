@@ -17,7 +17,7 @@
 package com.datagenerator.benchmarks;
 
 import com.datagenerator.core.structure.StructureRegistry;
-import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
@@ -57,12 +57,12 @@ public class DatafakerGeneratorsBenchmark {
   private DatafakerGenerator datafakerGenerator;
   private DataGeneratorFactory factory;
 
-  private PrimitiveType nameType;
-  private PrimitiveType emailType;
-  private PrimitiveType phoneType;
-  private PrimitiveType addressType;
-  private PrimitiveType cityType;
-  private PrimitiveType companyType;
+  private CustomDatafakerType nameType;
+  private CustomDatafakerType emailType;
+  private CustomDatafakerType phoneType;
+  private CustomDatafakerType addressType;
+  private CustomDatafakerType cityType;
+  private CustomDatafakerType companyType;
 
   @Setup
   public void setup() {
@@ -74,12 +74,12 @@ public class DatafakerGeneratorsBenchmark {
     factory = new DataGeneratorFactory(registry, null);
 
     // Initialize types
-    nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
-    emailType = new PrimitiveType(PrimitiveType.Kind.EMAIL, null, null);
-    phoneType = new PrimitiveType(PrimitiveType.Kind.PHONE_NUMBER, null, null);
-    addressType = new PrimitiveType(PrimitiveType.Kind.ADDRESS, null, null);
-    cityType = new PrimitiveType(PrimitiveType.Kind.CITY, null, null);
-    companyType = new PrimitiveType(PrimitiveType.Kind.COMPANY, null, null);
+    nameType = new CustomDatafakerType("name");
+    emailType = new CustomDatafakerType("email");
+    phoneType = new CustomDatafakerType("phonenumber");
+    addressType = new CustomDatafakerType("address");
+    cityType = new CustomDatafakerType("city");
+    companyType = new CustomDatafakerType("company");
 
     // Initialize GeneratorContext with English locale
     GeneratorContext.enter(factory, "en");
