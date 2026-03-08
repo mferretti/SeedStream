@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+- **Registry-based type system**: Refactored semantic types to use `DatafakerRegistry` instead of enum-based `PrimitiveType.Kind`
+  - Removed 42 semantic enum values (NAME, EMAIL, ADDRESS, etc.)
+  - Created `DatafakerRegistry` with 48+ built-in types and 20+ aliases
+  - Introduced `CustomDatafakerType` to replace enum-based semantic types
+  - Simplified `TypeParser` (~150 lines deleted) by replacing switch statement with registry lookup
+  - Simplified `DatafakerGenerator` (~220 lines deleted) by delegating to registry
+  - Total code reduction: ~350 lines of duplicated switch logic eliminated
+  - Benefits: Single source of truth, runtime extensibility, cleaner architecture
+
+### Technical Details
+- Registry uses `ConcurrentHashMap` for thread-safe, lock-free type registration
+- Type names normalized (lowercase, trimmed) for flexible matching
+- Aliases support common variations (lat/latitude, lon/lng/longitude, swift/bic, etc.)
+- Foundation for future plugin architecture without enum bloat
+
+---
+
 ## [0.2.0] - March 2026
 
 **Major Release**: Core features complete, production-ready for file and Kafka destinations.
