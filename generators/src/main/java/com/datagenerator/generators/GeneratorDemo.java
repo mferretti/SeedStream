@@ -17,9 +17,12 @@
 package com.datagenerator.generators;
 
 import com.datagenerator.core.seed.RandomProvider;
+import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -33,11 +36,15 @@ public class GeneratorDemo {
     RandomProvider randomProvider = new RandomProvider(42L);
     Random random = randomProvider.getRandom();
 
+    // Create factory for generators (with minimal registry for demo)
+    StructureRegistry registry = new StructureRegistry((name, path, reg) -> Map.of());
+    DataGeneratorFactory factory = new DataGeneratorFactory(registry, Paths.get("demo"));
+
     System.out.println("=== Data Generator Demo (seed=42) ===\n");
 
     // String generation
     PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "15");
-    DataGenerator charGen = DataGeneratorFactory.createStateless(charType);
+    DataGenerator charGen = factory.create(charType);
     System.out.println("Generating 5 strings (char[5..15]):");
     for (int i = 0; i < 5; i++) {
       System.out.println("  " + (i + 1) + ". " + charGen.generate(random, charType));
@@ -45,7 +52,7 @@ public class GeneratorDemo {
 
     // Integer generation
     PrimitiveType intType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "100");
-    DataGenerator intGen = DataGeneratorFactory.createStateless(intType);
+    DataGenerator intGen = factory.create(intType);
     System.out.println("\nGenerating 5 integers (int[1..100]):");
     for (int i = 0; i < 5; i++) {
       System.out.println("  " + (i + 1) + ". " + intGen.generate(random, intType));
@@ -53,7 +60,7 @@ public class GeneratorDemo {
 
     // Decimal generation
     PrimitiveType decimalType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
-    DataGenerator decimalGen = DataGeneratorFactory.createStateless(decimalType);
+    DataGenerator decimalGen = factory.create(decimalType);
     System.out.println("\nGenerating 5 decimals (decimal[0.0..100.0]):");
     for (int i = 0; i < 5; i++) {
       System.out.println("  " + (i + 1) + ". " + decimalGen.generate(random, decimalType));
@@ -61,7 +68,7 @@ public class GeneratorDemo {
 
     // Boolean generation
     PrimitiveType boolType = new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null);
-    DataGenerator boolGen = DataGeneratorFactory.createStateless(boolType);
+    DataGenerator boolGen = factory.create(boolType);
     System.out.println("\nGenerating 10 booleans:");
     for (int i = 0; i < 10; i++) {
       System.out.print(boolGen.generate(random, boolType) + " ");
@@ -70,7 +77,7 @@ public class GeneratorDemo {
 
     // Date generation
     PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
-    DataGenerator dateGen = DataGeneratorFactory.createStateless(dateType);
+    DataGenerator dateGen = factory.create(dateType);
     System.out.println("\nGenerating 5 dates (date[2020-01-01..2025-12-31]):");
     for (int i = 0; i < 5; i++) {
       System.out.println("  " + (i + 1) + ". " + dateGen.generate(random, dateType));
@@ -79,7 +86,7 @@ public class GeneratorDemo {
     // Timestamp generation
     PrimitiveType timestampType =
         new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "2024-01-01T00:00:00Z", "now");
-    DataGenerator timestampGen = DataGeneratorFactory.createStateless(timestampType);
+    DataGenerator timestampGen = factory.create(timestampType);
     System.out.println("\nGenerating 5 timestamps (timestamp[2024-01-01T00:00:00Z..now]):");
     for (int i = 0; i < 5; i++) {
       System.out.println("  " + (i + 1) + ". " + timestampGen.generate(random, timestampType));
@@ -87,7 +94,7 @@ public class GeneratorDemo {
 
     // Enum generation
     EnumType enumType = new EnumType(List.of("ACTIVE", "INACTIVE", "PENDING", "SUSPENDED"));
-    DataGenerator enumGen = DataGeneratorFactory.createStateless(enumType);
+    DataGenerator enumGen = factory.create(enumType);
     System.out.println("\nGenerating 10 enums (enum[ACTIVE,INACTIVE,PENDING,SUSPENDED]):");
     for (int i = 0; i < 10; i++) {
       System.out.print(enumGen.generate(random, enumType) + " ");

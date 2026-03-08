@@ -102,6 +102,10 @@ public class DatafakerGenerator implements DataGenerator {
       case USERNAME -> generateUsername(faker);
       case TITLE -> faker.name().title();
       case OCCUPATION -> faker.job().title();
+      case PREFIX -> faker.name().prefix();
+      case SUFFIX -> faker.name().suffix();
+      case PASSWORD -> faker.credentials().password();
+      case SSN -> faker.idNumber().valid();
 
       // Address types
       case ADDRESS -> faker.address().fullAddress();
@@ -111,6 +115,10 @@ public class DatafakerGenerator implements DataGenerator {
       case STATE -> faker.address().state();
       case POSTAL_CODE -> faker.address().zipCode();
       case COUNTRY -> faker.address().country();
+      case LATITUDE -> faker.address().latitude();
+      case LONGITUDE -> faker.address().longitude();
+      case COUNTRY_CODE -> faker.address().countryCode();
+      case TIME_ZONE -> faker.address().timeZone();
 
       // Contact types
       case EMAIL -> faker.internet().emailAddress();
@@ -122,6 +130,10 @@ public class DatafakerGenerator implements DataGenerator {
       case IBAN -> faker.finance().iban();
       case CURRENCY -> faker.money().currencyCode();
       case PRICE -> faker.commerce().price();
+      case BIC -> faker.finance().bic();
+      case CVV -> String.valueOf(faker.number().numberBetween(100, 999));
+      case CREDIT_CARD_TYPE -> faker.finance().creditCard().split(" ")[0]; // Extract type only
+      case STOCK_MARKET -> faker.stock().nsdqSymbol();
 
       // Internet types
       case DOMAIN -> faker.internet().domainName();
@@ -129,6 +141,18 @@ public class DatafakerGenerator implements DataGenerator {
       case IPV4 -> faker.internet().ipV4Address();
       case IPV6 -> faker.internet().ipV6Address();
       case MAC_ADDRESS -> faker.internet().macAddress();
+
+      // Commerce types
+      case PRODUCT_NAME -> faker.commerce().productName();
+      case DEPARTMENT -> faker.commerce().department();
+      case COLOR -> faker.color().name();
+      case MATERIAL -> faker.commerce().material();
+      case PROMOTION_CODE -> faker.commerce().promotionCode();
+
+      // Text/Lorem types
+      case LOREM_WORD -> faker.lorem().word();
+      case LOREM_SENTENCE -> faker.lorem().sentence();
+      case LOREM_PARAGRAPH -> faker.lorem().paragraph();
 
       // Code types
       case ISBN -> faker.code().isbn13();
@@ -154,6 +178,10 @@ public class DatafakerGenerator implements DataGenerator {
           USERNAME,
           TITLE,
           OCCUPATION,
+          PREFIX,
+          SUFFIX,
+          PASSWORD,
+          SSN,
           ADDRESS,
           STREET_NAME,
           STREET_NUMBER,
@@ -161,6 +189,10 @@ public class DatafakerGenerator implements DataGenerator {
           STATE,
           POSTAL_CODE,
           COUNTRY,
+          LATITUDE,
+          LONGITUDE,
+          COUNTRY_CODE,
+          TIME_ZONE,
           EMAIL,
           PHONE_NUMBER,
           COMPANY,
@@ -168,11 +200,23 @@ public class DatafakerGenerator implements DataGenerator {
           IBAN,
           CURRENCY,
           PRICE,
+          BIC,
+          CVV,
+          CREDIT_CARD_TYPE,
+          STOCK_MARKET,
           DOMAIN,
           URL,
           IPV4,
           IPV6,
           MAC_ADDRESS,
+          PRODUCT_NAME,
+          DEPARTMENT,
+          COLOR,
+          MATERIAL,
+          PROMOTION_CODE,
+          LOREM_WORD,
+          LOREM_SENTENCE,
+          LOREM_PARAGRAPH,
           ISBN,
           UUID ->
           true;

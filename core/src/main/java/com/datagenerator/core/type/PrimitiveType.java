@@ -58,6 +58,14 @@ public class PrimitiveType implements DataType {
     TITLE,
     /** Occupation (locale-aware). */
     OCCUPATION,
+    /** Name prefix (Mr., Mrs., Dr., etc.) (locale-aware). */
+    PREFIX,
+    /** Name suffix (Jr., Sr., III, etc.) (locale-aware). */
+    SUFFIX,
+    /** Password (8-20 characters with mixed case, numbers, special chars). */
+    PASSWORD,
+    /** Social Security Number (locale-aware format). */
+    SSN,
 
     // Address semantic types
     /** Full street address (locale-aware). */
@@ -74,6 +82,14 @@ public class PrimitiveType implements DataType {
     POSTAL_CODE,
     /** Country name (locale-aware). */
     COUNTRY,
+    /** Latitude coordinate (-90 to 90). */
+    LATITUDE,
+    /** Longitude coordinate (-180 to 180). */
+    LONGITUDE,
+    /** Country code (ISO 3166-1 alpha-2, e.g., "US", "IT"). */
+    COUNTRY_CODE,
+    /** Time zone (e.g., "America/New_York", "Europe/Rome"). */
+    TIME_ZONE,
 
     // Contact semantic types
     /** Email address (locale-aware). */
@@ -92,6 +108,14 @@ public class PrimitiveType implements DataType {
     CURRENCY,
     /** Price with currency formatting. */
     PRICE,
+    /** BIC/SWIFT code (Bank Identifier Code). */
+    BIC,
+    /** Credit card CVV/CVC code (3-4 digits). */
+    CVV,
+    /** Credit card type (Visa, Mastercard, Amex, etc.). */
+    CREDIT_CARD_TYPE,
+    /** Stock market ticker symbol (e.g., AAPL, GOOGL). */
+    STOCK_MARKET,
 
     // Internet semantic types
     /** Internet domain name. */
@@ -104,6 +128,26 @@ public class PrimitiveType implements DataType {
     IPV6,
     /** MAC address. */
     MAC_ADDRESS,
+
+    // Commerce semantic types
+    /** Product name (e.g., "Ergonomic Steel Chair"). */
+    PRODUCT_NAME,
+    /** Department name (e.g., "Electronics", "Clothing"). */
+    DEPARTMENT,
+    /** Color name (e.g., "Red", "Blue"). */
+    COLOR,
+    /** Material name (e.g., "Cotton", "Steel", "Plastic"). */
+    MATERIAL,
+    /** Promotion/coupon code (e.g., "SAVE20"). */
+    PROMOTION_CODE,
+
+    // Text/Lorem semantic types
+    /** Single lorem ipsum word. */
+    LOREM_WORD,
+    /** Lorem ipsum sentence (multiple words). */
+    LOREM_SENTENCE,
+    /** Lorem ipsum paragraph (multiple sentences). */
+    LOREM_PARAGRAPH,
 
     // Code semantic types
     /** ISBN book identifier. */

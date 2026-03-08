@@ -137,6 +137,10 @@ public class TypeParser {
           case "username" -> PrimitiveType.Kind.USERNAME;
           case "title" -> PrimitiveType.Kind.TITLE;
           case "occupation" -> PrimitiveType.Kind.OCCUPATION;
+          case "prefix" -> PrimitiveType.Kind.PREFIX;
+          case "suffix" -> PrimitiveType.Kind.SUFFIX;
+          case "password" -> PrimitiveType.Kind.PASSWORD;
+          case "ssn" -> PrimitiveType.Kind.SSN;
 
           // Address types
           case "address" -> PrimitiveType.Kind.ADDRESS;
@@ -146,6 +150,10 @@ public class TypeParser {
           case "state" -> PrimitiveType.Kind.STATE;
           case "postal_code", "postalcode", "zipcode", "zip" -> PrimitiveType.Kind.POSTAL_CODE;
           case "country" -> PrimitiveType.Kind.COUNTRY;
+          case "latitude", "lat" -> PrimitiveType.Kind.LATITUDE;
+          case "longitude", "lon", "lng", "long" -> PrimitiveType.Kind.LONGITUDE;
+          case "country_code", "countrycode" -> PrimitiveType.Kind.COUNTRY_CODE;
+          case "time_zone", "timezone" -> PrimitiveType.Kind.TIME_ZONE;
 
           // Contact types
           case "email" -> PrimitiveType.Kind.EMAIL;
@@ -157,6 +165,10 @@ public class TypeParser {
           case "iban" -> PrimitiveType.Kind.IBAN;
           case "currency" -> PrimitiveType.Kind.CURRENCY;
           case "price" -> PrimitiveType.Kind.PRICE;
+          case "bic", "swift" -> PrimitiveType.Kind.BIC;
+          case "cvv", "cvc" -> PrimitiveType.Kind.CVV;
+          case "credit_card_type", "creditcardtype" -> PrimitiveType.Kind.CREDIT_CARD_TYPE;
+          case "stock_market", "stockmarket", "stock", "ticker" -> PrimitiveType.Kind.STOCK_MARKET;
 
           // Internet types
           case "domain" -> PrimitiveType.Kind.DOMAIN;
@@ -164,6 +176,19 @@ public class TypeParser {
           case "ipv4" -> PrimitiveType.Kind.IPV4;
           case "ipv6" -> PrimitiveType.Kind.IPV6;
           case "mac_address", "macaddress" -> PrimitiveType.Kind.MAC_ADDRESS;
+
+          // Commerce types
+          case "product_name", "productname", "product" -> PrimitiveType.Kind.PRODUCT_NAME;
+          case "department" -> PrimitiveType.Kind.DEPARTMENT;
+          case "color" -> PrimitiveType.Kind.COLOR;
+          case "material" -> PrimitiveType.Kind.MATERIAL;
+          case "promotion_code", "promotioncode", "promo", "coupon" ->
+              PrimitiveType.Kind.PROMOTION_CODE;
+
+          // Text/Lorem types
+          case "lorem_word", "loremword" -> PrimitiveType.Kind.LOREM_WORD;
+          case "lorem_sentence", "loremsentence" -> PrimitiveType.Kind.LOREM_SENTENCE;
+          case "lorem_paragraph", "loremparagraph" -> PrimitiveType.Kind.LOREM_PARAGRAPH;
 
           // Code types
           case "isbn" -> PrimitiveType.Kind.ISBN;

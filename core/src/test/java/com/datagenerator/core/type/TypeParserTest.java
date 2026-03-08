@@ -203,4 +203,241 @@ class TypeParserTest {
         .isInstanceOf(TypeParseException.class)
         .hasMessageContaining("Invalid array length constraints");
   }
+
+  // ===== New Semantic Types Tests (Phase 1) =====
+
+  @Test
+  void shouldParsePrefix() {
+    DataType type = parser.parse("prefix");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    PrimitiveType primitiveType = (PrimitiveType) type;
+    assertThat(primitiveType.getKind()).isEqualTo(PrimitiveType.Kind.PREFIX);
+    assertThat(primitiveType.getMinValue()).isNull();
+    assertThat(primitiveType.getMaxValue()).isNull();
+  }
+
+  @Test
+  void shouldParseSuffix() {
+    DataType type = parser.parse("suffix");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.SUFFIX);
+  }
+
+  @Test
+  void shouldParsePassword() {
+    DataType type = parser.parse("password");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.PASSWORD);
+  }
+
+  @Test
+  void shouldParseSSN() {
+    DataType type = parser.parse("ssn");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.SSN);
+  }
+
+  @Test
+  void shouldParseLatitude() {
+    DataType type = parser.parse("latitude");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LATITUDE);
+  }
+
+  @Test
+  void shouldParseLatitudeAlias() {
+    DataType type = parser.parse("lat");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LATITUDE);
+  }
+
+  @Test
+  void shouldParseLongitude() {
+    DataType type = parser.parse("longitude");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LONGITUDE);
+  }
+
+  @Test
+  void shouldParseLongitudeAliases() {
+    assertThat(((PrimitiveType) parser.parse("lon")).getKind())
+        .isEqualTo(PrimitiveType.Kind.LONGITUDE);
+    assertThat(((PrimitiveType) parser.parse("lng")).getKind())
+        .isEqualTo(PrimitiveType.Kind.LONGITUDE);
+    assertThat(((PrimitiveType) parser.parse("long")).getKind())
+        .isEqualTo(PrimitiveType.Kind.LONGITUDE);
+  }
+
+  @Test
+  void shouldParseCountryCode() {
+    DataType type = parser.parse("country_code");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.COUNTRY_CODE);
+  }
+
+  @Test
+  void shouldParseCountryCodeAlias() {
+    DataType type = parser.parse("countrycode");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.COUNTRY_CODE);
+  }
+
+  @Test
+  void shouldParseTimeZone() {
+    DataType type = parser.parse("time_zone");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.TIME_ZONE);
+  }
+
+  @Test
+  void shouldParseTimeZoneAlias() {
+    DataType type = parser.parse("timezone");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.TIME_ZONE);
+  }
+
+  @Test
+  void shouldParseBIC() {
+    DataType type = parser.parse("bic");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.BIC);
+  }
+
+  @Test
+  void shouldParseBICAliasSwift() {
+    DataType type = parser.parse("swift");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.BIC);
+  }
+
+  @Test
+  void shouldParseCVV() {
+    DataType type = parser.parse("cvv");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.CVV);
+  }
+
+  @Test
+  void shouldParseCVVAliasCVC() {
+    DataType type = parser.parse("cvc");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.CVV);
+  }
+
+  @Test
+  void shouldParseCreditCardType() {
+    DataType type = parser.parse("credit_card_type");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.CREDIT_CARD_TYPE);
+  }
+
+  @Test
+  void shouldParseCreditCardTypeAlias() {
+    DataType type = parser.parse("creditcardtype");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.CREDIT_CARD_TYPE);
+  }
+
+  @Test
+  void shouldParseStockMarket() {
+    DataType type = parser.parse("stock_market");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.STOCK_MARKET);
+  }
+
+  @Test
+  void shouldParseStockMarketAliases() {
+    assertThat(((PrimitiveType) parser.parse("stockmarket")).getKind())
+        .isEqualTo(PrimitiveType.Kind.STOCK_MARKET);
+    assertThat(((PrimitiveType) parser.parse("stock")).getKind())
+        .isEqualTo(PrimitiveType.Kind.STOCK_MARKET);
+    assertThat(((PrimitiveType) parser.parse("ticker")).getKind())
+        .isEqualTo(PrimitiveType.Kind.STOCK_MARKET);
+  }
+
+  @Test
+  void shouldParseProductName() {
+    DataType type = parser.parse("product_name");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.PRODUCT_NAME);
+  }
+
+  @Test
+  void shouldParseProductNameAliases() {
+    assertThat(((PrimitiveType) parser.parse("productname")).getKind())
+        .isEqualTo(PrimitiveType.Kind.PRODUCT_NAME);
+    assertThat(((PrimitiveType) parser.parse("product")).getKind())
+        .isEqualTo(PrimitiveType.Kind.PRODUCT_NAME);
+  }
+
+  @Test
+  void shouldParseDepartment() {
+    DataType type = parser.parse("department");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.DEPARTMENT);
+  }
+
+  @Test
+  void shouldParseColor() {
+    DataType type = parser.parse("color");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.COLOR);
+  }
+
+  @Test
+  void shouldParseMaterial() {
+    DataType type = parser.parse("material");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.MATERIAL);
+  }
+
+  @Test
+  void shouldParsePromotionCode() {
+    DataType type = parser.parse("promotion_code");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.PROMOTION_CODE);
+  }
+
+  @Test
+  void shouldParsePromotionCodeAliases() {
+    assertThat(((PrimitiveType) parser.parse("promotioncode")).getKind())
+        .isEqualTo(PrimitiveType.Kind.PROMOTION_CODE);
+    assertThat(((PrimitiveType) parser.parse("promo")).getKind())
+        .isEqualTo(PrimitiveType.Kind.PROMOTION_CODE);
+    assertThat(((PrimitiveType) parser.parse("coupon")).getKind())
+        .isEqualTo(PrimitiveType.Kind.PROMOTION_CODE);
+  }
+
+  @Test
+  void shouldParseLoremWord() {
+    DataType type = parser.parse("lorem_word");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LOREM_WORD);
+  }
+
+  @Test
+  void shouldParseLoremWordAlias() {
+    DataType type = parser.parse("loremword");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LOREM_WORD);
+  }
+
+  @Test
+  void shouldParseLoremSentence() {
+    DataType type = parser.parse("lorem_sentence");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LOREM_SENTENCE);
+  }
+
+  @Test
+  void shouldParseLoremSentenceAlias() {
+    DataType type = parser.parse("loremsentence");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LOREM_SENTENCE);
+  }
+
+  @Test
+  void shouldParseLoremParagraph() {
+    DataType type = parser.parse("lorem_paragraph");
+    assertThat(type).isInstanceOf(PrimitiveType.class);
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LOREM_PARAGRAPH);
+  }
+
+  @Test
+  void shouldParseLoremParagraphAlias() {
+    DataType type = parser.parse("loremparagraph");
+    assertThat(((PrimitiveType) type).getKind()).isEqualTo(PrimitiveType.Kind.LOREM_PARAGRAPH);
+  }
 }
