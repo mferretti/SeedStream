@@ -95,10 +95,10 @@ class FakerCacheTest {
     assertThat(FakerCache.getCacheSize()).isEqualTo(1);
 
     FakerCache.clear();
-   assertThat(FakerCache.getCacheSize()).isEqualTo(0);
+    assertThat(FakerCache.getCacheSize()).isEqualTo(0);
 
     // After clear, should create new instance (even with same Random)
-    Random random2 = new Random(42);  // Use new Random with same seed
+    Random random2 = new Random(42); // Use new Random with same seed
     Faker faker2 = FakerCache.getOrCreate(Locale.ITALY, random2);
     assertThat(FakerCache.getCacheSize()).isEqualTo(1);
     assertThat(faker2).isNotSameAs(faker1);

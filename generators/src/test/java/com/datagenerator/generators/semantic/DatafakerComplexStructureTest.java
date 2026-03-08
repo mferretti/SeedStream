@@ -363,9 +363,9 @@ class DatafakerComplexStructureTest {
 
       Map<String, Object> transaction1 =
           (Map<String, Object>) generator.generate(random1, transactionType);
-      
+
       FakerCache.clear(); // Clear cache to allow new Random instance
-      
+
       Map<String, Object> transaction2 =
           (Map<String, Object>) generator.generate(random2, transactionType);
 
