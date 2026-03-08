@@ -241,7 +241,6 @@ class ObjectGeneratorTest {
 
   @Test
   void shouldThrowExceptionForWrongType() {
-    PrimitiveType wrongType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "100");
     Random random = new Random(42);
 
     assertThatThrownBy(() -> generateWithContext(new ObjectType("dummy"), random))

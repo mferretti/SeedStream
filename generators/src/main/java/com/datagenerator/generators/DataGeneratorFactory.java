@@ -79,16 +79,10 @@ public class DataGeneratorFactory {
     // NOTE: ObjectGenerator is stateful and created with context
   }
 
-  // Instance state for stateful generators
-  private final StructureRegistry structureRegistry;
-  private final Path structuresPath;
   private final List<DataGenerator> allGenerators;
 
   /** Create factory with context for stateful generators (e.g., ObjectGenerator). */
   public DataGeneratorFactory(StructureRegistry structureRegistry, Path structuresPath) {
-    this.structureRegistry = structureRegistry;
-    this.structuresPath = structuresPath;
-
     // Combine stateless and stateful generators
     this.allGenerators = new ArrayList<>(STATELESS_GENERATORS);
     this.allGenerators.add(new ObjectGenerator(structureRegistry, structuresPath));
