@@ -112,27 +112,6 @@ public class DataGeneratorFactory {
   }
 
   /**
-   * Static factory method for stateless generators only (primitives, arrays of primitives).
-   *
-   * <p><b>Note:</b> Cannot create ObjectGenerator - use instance method with context.
-   *
-   * @param dataType Type to generate
-   * @return Matching generator
-   * @throws GeneratorException if no generator supports the type
-   * @deprecated Use instance method create() with context for full support
-   */
-  @Deprecated
-  public static DataGenerator createStateless(DataType dataType) {
-    for (DataGenerator generator : STATELESS_GENERATORS) {
-      if (generator.supports(dataType)) {
-        return generator;
-      }
-    }
-
-    throw new GeneratorException("No stateless generator found for type: " + dataType.describe());
-  }
-
-  /**
    * Check if a generator exists for the given DataType (instance method).
    *
    * @param dataType Type to check
@@ -140,15 +119,5 @@ public class DataGeneratorFactory {
    */
   public boolean hasGenerator(DataType dataType) {
     return allGenerators.stream().anyMatch(g -> g.supports(dataType));
-  }
-
-  /**
-   * Check if a stateless generator exists (static method).
-   *
-   * @param dataType Type to check
-   * @return true if a stateless generator exists
-   */
-  public static boolean hasStatelessGenerator(DataType dataType) {
-    return STATELESS_GENERATORS.stream().anyMatch(g -> g.supports(dataType));
   }
 }

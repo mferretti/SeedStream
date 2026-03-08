@@ -112,32 +112,22 @@ class DataGeneratorIntegrationTest {
 
   @Test
   void shouldFindGeneratorsForAllPrimitiveTypes() {
-    assertThat(
-            DataGeneratorFactory.hasStatelessGenerator(
-                new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "10")))
+    assertThat(factory.hasGenerator(new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "10")))
+        .isTrue();
+    assertThat(factory.hasGenerator(new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"))).isTrue();
+    assertThat(factory.hasGenerator(new PrimitiveType(PrimitiveType.Kind.DECIMAL, "1.0", "10.0")))
+        .isTrue();
+    assertThat(factory.hasGenerator(new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null)))
         .isTrue();
     assertThat(
-            DataGeneratorFactory.hasStatelessGenerator(
-                new PrimitiveType(PrimitiveType.Kind.INT, "1", "10")))
-        .isTrue();
-    assertThat(
-            DataGeneratorFactory.hasStatelessGenerator(
-                new PrimitiveType(PrimitiveType.Kind.DECIMAL, "1.0", "10.0")))
-        .isTrue();
-    assertThat(
-            DataGeneratorFactory.hasStatelessGenerator(
-                new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null)))
-        .isTrue();
-    assertThat(
-            DataGeneratorFactory.hasStatelessGenerator(
+            factory.hasGenerator(
                 new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31")))
         .isTrue();
     assertThat(
-            DataGeneratorFactory.hasStatelessGenerator(
+            factory.hasGenerator(
                 new PrimitiveType(
                     PrimitiveType.Kind.TIMESTAMP, "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z")))
         .isTrue();
-    assertThat(DataGeneratorFactory.hasStatelessGenerator(new EnumType(List.of("A", "B"))))
-        .isTrue();
+    assertThat(factory.hasGenerator(new EnumType(List.of("A", "B")))).isTrue();
   }
 }
