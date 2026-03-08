@@ -16,8 +16,8 @@
 
 package com.datagenerator.benchmarks;
 
-import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.EnumType;
+import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.primitive.BooleanGenerator;
 import com.datagenerator.generators.primitive.CharGenerator;
 import com.datagenerator.generators.primitive.DateGenerator;
@@ -25,8 +25,8 @@ import com.datagenerator.generators.primitive.DecimalGenerator;
 import com.datagenerator.generators.primitive.EnumGenerator;
 import com.datagenerator.generators.primitive.IntegerGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
-import java.util.Random;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
