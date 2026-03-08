@@ -4,14 +4,42 @@
 # Tests complete pipeline: Structure → Generation → Serialization → Destination
 #
 # Usage:
-#   ./benchmarks/run_e2e_test.sh
+#   ./benchmarks/run_e2e_test.sh [--profile]
+#
+# Options:
+#   --profile    Enable Java Flight Recorder profiling (creates .jfr files)
 #
 # Outputs:
 #   - benchmarks/e2e_results.csv (raw data)
 #   - benchmarks/E2E-TEST-RESULTS.md (formatted report)
+#   - benchmarks/build/jfr/*.jfr (profiling data, if --profile enabled)
 #
 
 set -euo pipefail
+
+# Parse arguments
+PROFILE_MODE=false
+for arg in "$@"; do
+    case $arg in
+        --profile)
+            PROFILE_MODE=true
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [--profile]"
+            echo ""
+            echo "Options:"
+            echo "  --profile    Enable Java Flight Recorder profiling"
+            echo "  --help       Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 # Configuration
 RECORD_COUNT=100000
@@ -19,6 +47,7 @@ WARMUP_COUNT=10000
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_FILE="${PROJECT_ROOT}/benchmarks/e2e_results.csv"
 GC_LOG_DIR="${PROJECT_ROOT}/benchmarks/build/gc_logs"
+JFR_OUTPUT_DIR="${PROJECT_ROOT}/benchmarks/build/jfr"
 OUTPUT_DIR="${PROJECT_ROOT}/benchmarks/output"
 CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/cli/bin/cli"
 
@@ -56,6 +85,10 @@ log_error() {
 check_prerequisites() {
     log_info "Checking prerequisites..."
     
+    if [[ "$PROFILE_MODE" == true ]]; then
+        log_info "Profile mode: ENABLED (JFR profiling will be captured)"
+    fi
+    
     # Check if Kafka is running (for kafka destination tests)
     if docker ps --filter "name=kafka-benchmark" --format "{{.Names}}" | grep -q "kafka-benchmark"; then
         log_success "Kafka container is running"
@@ -73,6 +106,11 @@ check_prerequisites() {
     # Create directories
     mkdir -p "$GC_LOG_DIR"
     mkdir -p "$OUTPUT_DIR"
+    
+    if [[ "$PROFILE_MODE" == true ]]; then
+        mkdir -p "$JFR_OUTPUT_DIR"
+        log_info "JFR profiles will be saved to: $JFR_OUTPUT_DIR"
+    fi
     
     log_success "Prerequisites check passed"
 }
@@ -181,8 +219,16 @@ run_test() {
     local status="SUCCESS"
     local error_msg=""
     
-    # Run with GC logging - set JAVA_OPTS with GC options
-    export JAVA_OPTS="-Xmx${memory} -Xms${memory} -Xlog:gc*:file=${gc_log_file}:time,level,tags"
+    # Build JAVA_OPTS with GC logging and optional JFR profiling
+    local java_opts="-Xmx${memory} -Xms${memory} -Xlog:gc*:file=${gc_log_file}:time,level,tags"
+    
+    if [[ "$PROFILE_MODE" == true ]]; then
+        local jfr_file="${JFR_OUTPUT_DIR}/profile_${destination}_${format}_t${threads}_m${memory}.jfr"
+        java_opts="${java_opts} -XX:StartFlightRecording=filename=${jfr_file},settings=profile"
+        log_info "  JFR profiling enabled: $jfr_file"
+    fi
+    
+    export JAVA_OPTS="$java_opts"
     
     # Run the CLI
     if "$CLI_SCRIPT" execute --job "$job_file" --format "$format" --count $RECORD_COUNT --threads $threads \
@@ -432,6 +478,35 @@ main() {
     log_success "═══════════════════════════════════════════════════════════"
     log_info "Results: ${PROJECT_ROOT}/benchmarks/e2e_results.csv"
     log_info "Report:  ${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
+    
+    if [[ "$PROFILE_MODE" == true ]]; then
+        echo ""
+        log_info "═══════════════════════════════════════════════════════════"
+        log_info "JFR Profile Analysis"
+        log_info "═══════════════════════════════════════════════════════════"
+        log_info "Profiles saved to: ${JFR_OUTPUT_DIR}/"
+        echo ""
+        log_info "Quick analysis commands:"
+        echo ""
+        echo "  # List all events in a recording:"
+        echo "  jfr print --events ${JFR_OUTPUT_DIR}/profile_file_json_t4_m512m.jfr"
+        echo ""
+        echo "  # Show CPU hotspots (top methods):"
+        echo "  jfr print --events jdk.ExecutionSample ${JFR_OUTPUT_DIR}/profile_file_json_t4_m512m.jfr | grep -A 5 'stackTrace'"
+        echo ""
+        echo "  # Show allocation hotspots:"
+        echo "  jfr print --events jdk.ObjectAllocationInNewTLAB ${JFR_OUTPUT_DIR}/profile_file_json_t4_m512m.jfr"
+        echo ""
+        echo "  # Show GC events:"
+        echo "  jfr print --events jdk.GarbageCollection ${JFR_OUTPUT_DIR}/profile_file_json_t4_m512m.jfr"
+        echo ""
+        echo "  # Open in JDK Mission Control (GUI):"
+        echo "  jmc ${JFR_OUTPUT_DIR}/profile_file_json_t4_m512m.jfr"
+        echo ""
+        log_info "For flame graph visualization, use async-profiler converter:"
+        echo "  https://github.com/jvm-profiling-tools/async-profiler"
+        log_info "═══════════════════════════════════════════════════════════"
+    fi
     echo ""
 }
 
