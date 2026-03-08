@@ -187,11 +187,46 @@ Boolean Generator: 258,431,292 ops/s  (± 25,132,942)
 
 ---
 
-## Environment
+## Test Environment
 
-**Hardware:** Development machine (specs may vary)  
-**JMH Version:** 1.37  
-**Java Version:** 21.0.9  
-**OS:** Linux  
+### Hardware Specifications
+
+| Component | Specification |
+|-----------|---------------|
+| **CPU** | AMD Ryzen 5 PRO 4650U with Radeon Graphics |
+| **Cores/Threads** | 6 cores / 12 threads @ 1.4-4.0 GHz |
+| **Memory** | 30 GB DDR4 |
+| **Storage** | NVMe SSD (468 GB) |
+| **OS** | Linux (kernel 5.x+) |
+
+### Software Environment
+
+| Component | Version |
+|-----------|---------|
+| **JMH** | 1.37 |
+| **Java** | OpenJDK 21.0.9 |
+| **JVM Options** | Default (no custom tuning) |
+
+### Notes on Hardware Impact
+
+**CPU Performance:**
+- Modern 6-core Ryzen (Zen 2 architecture, 2020)
+- **Primitive generators** benefit from high single-thread performance
+- Results will scale proportionally on faster/slower CPUs
+
+**Memory:**
+- 30 GB available (far exceeds benchmark needs)
+- All operations in-memory with no swapping
+- Memory bandwidth: ~40 GB/s (dual-channel DDR4)
+
+**Storage:**
+- NVMe SSD provides ~3 GB/s sequential read/write
+- **File I/O benchmarks** benefit significantly from SSD vs HDD
+- Results on HDD may be 5-10× slower for file operations
+
+**Reproducibility:**
+- ✅ Primitive/Datafaker generators: CPU-bound (results portable)
+- ✅ Serializers: CPU-bound (results portable)
+- ⚠️ File I/O: Storage-dependent (your mileage may vary)
 
 **Note:** All measurements are single-threaded component benchmarks. For multi-threaded performance and complete pipeline validation, see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md).
