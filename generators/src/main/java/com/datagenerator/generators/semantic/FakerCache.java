@@ -66,7 +66,8 @@ public class FakerCache {
    *
    * <ul>
    *   <li>Each thread has its own cache (ThreadLocal)
-   *   <li>Each thread receives a deterministic Random from RandomProvider (seed = master + workerID)
+   *   <li>Each thread receives a deterministic Random from RandomProvider (seed = master +
+   *       workerID)
    *   <li>The Random parameter MUST be the same thread-local instance for all calls in a thread
    *   <li>Faker stores a REFERENCE to the Random, so as Random state progresses, Faker uses it
    * </ul>
