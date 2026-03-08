@@ -72,9 +72,9 @@ These stories block other work and should be prioritized:
 - [US-012](US-012-generators-references.md) - Reference Generator (Deferred) ⏸️
 
 ### Phase 3: Output Formats (Priority: High)
-- [US-013](US-013-formats-json.md) - JSON Serializer ⏸️
-- [US-014](US-014-formats-csv.md) - CSV Serializer ⏸️
-- [US-015](US-015-formats-protobuf.md) - Protobuf Serializer ⏸️
+- [US-013](US-013-formats-json.md) - JSON Serializer ✅
+- [US-014](US-014-formats-csv.md) - CSV Serializer ✅
+- [US-015](US-015-formats-protobuf.md) - Protobuf Serializer ✅
 
 ### Phase 4: Destinations (Priority: High)
 - [US-016](US-016-destinations-file.md) - File Destination ⏸️
