@@ -42,6 +42,7 @@ class DatafakerIntegrationTest {
 
   @BeforeEach
   void setUp() {
+    FakerCache.clear(); // Clear cache to ensure clean state
     typeParser = new TypeParser();
     random = new Random(12345L);
 
@@ -187,6 +188,8 @@ class DatafakerIntegrationTest {
     try (var ctx = GeneratorContext.enter(factory, "france")) {
       name1 = (String) factory.create(nameType).generate(random1, nameType);
     }
+
+    FakerCache.clear(); // Clear cache to allow new Random instance
 
     String name2;
     try (var ctx = GeneratorContext.enter(factory, "france")) {

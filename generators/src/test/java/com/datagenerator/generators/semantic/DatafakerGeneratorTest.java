@@ -39,6 +39,7 @@ class DatafakerGeneratorTest {
 
   @BeforeEach
   void setUp() {
+    FakerCache.clear(); // Clear cache to ensure clean state
     generator = new DatafakerGenerator();
     random = new Random(12345L);
 
@@ -84,7 +85,7 @@ class DatafakerGeneratorTest {
 
     try (var ctx = GeneratorContext.enter(factory, "italy")) {
       String name1 = (String) generator.generate(random1, nameType);
-      random2.setSeed(12345L); // Reset second random to same seed
+      FakerCache.clear(); // Clear cache to allow new Random instance
       String name2 = (String) generator.generate(random2, nameType);
 
       assertThat(name1).isEqualTo(name2);

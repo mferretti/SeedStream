@@ -79,8 +79,8 @@ public class DatafakerGenerator implements DataGenerator {
     String geolocation = GeneratorContext.getGeolocation();
     Locale locale = LocaleMapper.map(geolocation);
 
-    // Create Faker with seeded random for determinism
-    Faker faker = new Faker(locale, random);
+    // Get cached Faker instance for this locale (thread-local cache)
+    Faker faker = FakerCache.getOrCreate(locale, random);
 
     return generateValue(faker, kind);
   }

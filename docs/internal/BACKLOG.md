@@ -355,7 +355,8 @@
 
 - [ ] **Thread-local Faker cache optimization (TASK-040)** 📋 **READY TO START**
   - Eliminate 800,000 Faker instantiations per test (reduce to 8, one per thread)
-  - **Expected Impact**: 2× throughput improvement (20K → 40K rec/s)
+  - **Root Cause**: We defeated Datafaker's internal caching by creating new instances
+  - **Expected Impact**: 2-5× throughput improvement (20K → 40-100K rec/s)
   - **Thread Efficiency**: 32% → 60-70%
   - **Implementation**:
     - Create FakerCache.java with ThreadLocal<Map<Locale, Faker>>
@@ -364,16 +365,17 @@
     - Unit tests for FakerCache (6 tests)
   - **Time Estimate**: 2-3 hours
   - **Risk**: Low (simple caching pattern, no external dependencies)
-  - **Priority**: P1 (High) - Quick win with significant impact
+  - **Priority**: P1 (High) - Quick win fixing OUR usage mistake
   - **Status**: Ready to start (strategy documented, code examples provided)
+  - **Lesson**: Check correct library usage before blaming library performance!
 
-- [ ] **Datafaker YAML caching (future)** 🔮 **REQUIRES UPSTREAM**
-  - Cache parsed YAML locale files to eliminate 98.1% CPU bottleneck
-  - **Expected Impact**: 20× throughput improvement (theoretical maximum)
+- [ ] **Datafaker deep caching (future)** 🔮 **OPTIONAL ENHANCEMENT**
+  - Add cross-instance YAML/template caching for additional optimization
+  - **Expected Impact**: 2-4× additional improvement (on top of thread-local fix)
+  - **Note**: Not urgent - our usage pattern was the main issue
   - **Blocker**: Requires Datafaker fork or upstream contribution
-  - **Alternative**: Wait for Datafaker 3.x caching features
-  - **Priority**: P2 (High impact, but requires external work)
-  - **Timeline**: Deferred until user can contribute upstream
+  - **Priority**: P3 (Nice to have, but thread-local cache solves 80% of problem)
+  - **Timeline**: Deferred (user should focus on other features first)
 
 ## Phase 7: Documentation ✅ **COMPLETE**
 

@@ -51,19 +51,25 @@ Other              █ 0.5%
 
 ---
 
-## 🔍 Root Cause
+## 🔍 Root Cause (CORRECTED)
 
-**For EVERY value generation**, Datafaker:
-1. Opens and reads YAML locale file
-2. Parses YAML with SnakeYAML (expensive!)
-3. Resolves template expressions recursively
-4. Composes result from nested YAML structures
-5. **NO CACHING** - repeats for every single value
+**OUR CODE** created `new Faker()` for EVERY value, which:
+1. Threw away Datafaker's internal cache for YAML locale files
+2. Threw away Datafaker's internal cache for resolved templates
+3. Reset provider state on every call
+4. **Forced Datafaker to redo work it had already cached**
+
+**Reality Check:**
+- Datafaker HAS internal caching mechanisms
+- Problem: We defeated caching by creating 800K fresh instances
+- **98.1% CPU in Datafaker = legitimate work, but repeated unnecessarily**
 
 **Top 3 Datafaker methods** consume 60.3% of ALL CPU time:
-1. `FakeValuesService.safeFetch()` - 20.6% of CPU
-2. `FakeValuesService.resolve()` [variant 1] - 19.9% of CPU
-3. `FakeValuesService.resolve()` [variant 2] - 19.8% of CPU
+1. `FakeValuesService.safeFetch()` - 20.6% of CPU (normal operation)
+2. `FakeValuesService.resolve()` [variant 1] - 19.9% of CPU (normal operation)
+3. `FakeValuesService.resolve()` [variant 2] - 19.8% of CPU (normal operation)
+
+**Lesson:** Before blaming library performance, verify correct usage!
 
 ---
 

@@ -42,10 +42,13 @@ public Object generate(Random random, DataType type) {
 - **800,000 Faker instantiations** per test run
 - 8 threads × ~100,000 instantiations per thread
 - Each instantiation triggers:
-  1. Locale setup
-  2. Provider registration
-  3. Internal map initialization
-  4. YAML locale file access (then parsed by Datafaker's internal code)
+  1. **CACHE RESET** - throws away Datafaker's internal caches!
+  2. Locale setup
+  3. Provider registration (fresh state)
+  4. Internal map initialization (empty again)
+  5. Datafaker must rebuild its YAML/template caches
+
+**KEY INSIGHT:** Datafaker HAS internal caching, we just defeated it!
 
 **JFR Evidence:**
 - `BaseFaker.<init>()` appears 14 times in top CPU samples (line 55)

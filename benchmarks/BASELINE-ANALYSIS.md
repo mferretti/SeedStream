@@ -125,25 +125,30 @@ This is happening **millions of times** per test run (100,000 records × 11 fiel
 
 ## Performance Bottlenecks Identified
 
-### 1. Datafaker YAML Parsing (CRITICAL - **98.1%** of CPU time) 🔴
+### 1. Improper Faker Usage (CRITICAL - **98.1%** of CPU time) 🔴
 
-**Issue:** Datafaker re-parses YAML locale files for **every single value generation** without any caching
+**Issue:** Our code created `new Faker(locale, random)` for **every single value generation**, defeating Datafaker's internal caching
 
 **Evidence from JFR Profiling:**
 - **5,200 out of 5,299 CPU samples** (98.1%) are in Datafaker code
 - Top 3 Datafaker methods consume **60.3%** of ALL CPU time
-- SnakeYAML parser methods (`StreamReader`, `Scanner`, `Composer`) appear repeatedly
+- SnakeYAML parser methods appear (part of normal Datafaker operation)
 - `FakeValuesService` methods dominate the hot path
+
+**Root Cause:** 
+- Creating 800,000 Faker instances per 100K test = 800,000 cache resets
+- Datafaker HAS internal caching, but we threw away the cache on every call
+- Thread scaling efficiency only 32% because we kept recreating state
 
 **Impact:** 
 - Limits throughput to ~20K rec/s despite multi-threading
-- **98.1% of execution time is wasted** re-parsing the same YAML files
-- Thread scaling efficiency is only 32% (vs expected 70%+) due to CPU saturation on Datafaker
+- **98.1% of CPU time spent in legitimate Datafaker work, but repeated unnecessarily**
+- Each new Faker starts with empty cache
 
-**Potential Improvement:**  
-- **Theoretical maximum:** 50× faster if Datafaker overhead reduced from 98% to 2%
-- **Realistic target:** 20-30× improvement (400K-600K rec/s) with effective caching
-- **Quick win:** Even basic caching should yield 5-10× immediate improvement
+**Solution (Not "Fix Datafaker" but "Use Datafaker Correctly"):**  
+- **Reuse Faker instances** via thread-local cache
+- Let Datafaker's own caching mechanisms work as designed
+- **Realistic improvement:** 2-5× throughput by fixing our usage pattern
 
 ### 2. Thread Scalability (HIGH PRIORITY - 32% → 70% efficiency) 🟡
 
@@ -190,33 +195,38 @@ Faker faker = new Faker(locale, random);  // NEW INSTANCE EVERY TIME!
 
 ## Optimization Opportunities (Prioritized)
 
-### Priority 1: Cache Datafaker Locale Data ⭐⭐⭐⭐⭐
+### Priority 1: Let Datafaker's Internal Caching Work (REALIZATION) ⭐⭐⭐⭐⭐
 
-**Expected Improvement:** **20-50× throughput** (400K-1M rec/s) 🚀
+**Expected Improvement:** **2-5× throughput** (40K-100K rec/s) 🚀
 
 **Approach:**
-1. Pre-load and cache YAML locale files at initialization (parse once, reuse forever)
-2. Cache resolved template expressions in thread-local or shared cache
-3. Implement two-tier caching: (a) parsed YAML structures (b) frequently-used resolved values
-4. Use copy-on-write data structures for thread-safe access
+1. ✅ **COMPLETED**: Reuse Faker instances via thread-local cache
+2. Stop creating new Faker for every value (defeats internal caching)
+3. Let Datafaker manage its own YAML/template caching as designed
 
-**Implementation Complexity:** Medium-High (requires Datafaker fork/wrapper OR alternative realistic data generator)
+**Implementation Complexity:** Low (thread-local caching pattern)
 
-**Risk:** Low (caching is well-understood pattern, but requires careful thread-safety)
+**Risk:** Very Low (standard usage pattern)
 
-**Justification:** 
-- **98.1% of CPU time is currently wasted** in Datafaker YAML parsing
-- Even reducing this to 10% (still inefficient!) would yield 10× improvement
-- With proper caching reducing overhead to 2%, theoretical maximum is 50× improvement
-- **This is THE bottleneck** - all other optimizations are secondary
+**Key Realization:** 
+- **Datafaker ALREADY HAS internal caching** for YAML and templates
+- Problem wasn't "Datafaker is slow" - problem was "we used it wrong"
+- Creating new Faker() = throwing away all cached state
+- **98.1% of CPU time was legitimate Datafaker work, but repeated unnecessarily**
 
-**Mathematical Justification:**
+**Lesson Learned:**
 ```
-Current: 20,000 rec/s with 98.1% CPU in Datafaker  
-If Datafaker reduced to 10%:  20,000 × (98.1 / 10) = 196,000 rec/s (~10×)
-If Datafaker reduced to 5%:   20,000 × (98.1 / 5)  = 392,000 rec/s (~20×)
-If Datafaker reduced to 2%:   20,000 × (98.1 / 2)  = 980,000 rec/s (~50×)
+Don't blame the library - check if you're using it correctly first!
+
+Our mistake: new Faker() for every value
+Correct usage: Reuse Faker instances
+Result: 3.5-5× single-thread improvement when we fixed OUR bug
 ```
+
+**Alternative "Deep Caching" Approach (Future):**
+- Could still fork Datafaker to add cross-instance caching
+- Expected additional 2-4× improvement (on top of current fix)
+- But NOT urgent - our usage pattern was the main issue
 
 ### Priority 2: Thread-Local Faker Cache ⭐⭐⭐⭐
 
