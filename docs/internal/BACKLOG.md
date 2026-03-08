@@ -142,12 +142,12 @@
   - Tests: 15 tests passing
   - **Completion**: March 7, 2026 (TASK-015)
 
-## Phase 4: Destinations
+## Phase 4: Destinations ✅ **COMPLETE** (File & Kafka)
 
 - [x] **Destinations module - File adapter**
   - DestinationAdapter interface for pluggable destinations
   - FileDestination with Java NIO for fast I/O
-  - Support JSON and CSV formats with automatic header for CSV
+  - Support JSON, CSV, and Protobuf formats with automatic header for CSV
   - Optional gzip compression
   - Append mode support
   - Automatic parent directory creation
@@ -165,7 +165,7 @@
   - **Testcontainers**: Upgraded to 1.21.4 (latest stable) for Docker 29.x compatibility
   - **Integration tests**: 18 comprehensive tests (12 configuration/compression + 6 error scenarios)
 
-## Phase 5: CLI & Execution
+## Phase 5: CLI & Execution ✅ **COMPLETE**
 
 - [x] **CLI module - Command interface**
   - Picocli-based command-line interface
@@ -174,12 +174,15 @@
   - Seed resolution from config or CLI override
   - Progress logging and performance metrics
   - End-to-end execution: parse → generate → serialize → write
-  - Tested with JSON and CSV formats
+  - Tested with JSON, CSV, and Protobuf formats
 
-- [~] **CLI module - Verbose logging** (Partially Complete)
-  - ✅ --verbose flag implemented with progress logging every 100 records
-  - ✅ Basic INFO level logging throughout
-  - ❌ Missing: --debug flag, programmatic log level switching (DEBUG/TRACE levels)
+- [x] **CLI module - Verbose logging**
+  - ✅ --verbose flag implemented (INFO + DEBUG logging)
+  - ✅ --debug flag implemented (TRACE level logging)
+  - ✅ --trace-sample parameter for controlling TRACE log volume
+  - ✅ Programmatic log level switching (INFO → DEBUG → TRACE)
+  - ✅ Strategic TRACE logs with sampling (10% default, configurable 1-100%)
+  - **Completion**: March 7, 2026 (TASK-032)
 
 - [x] **Core - Multi-threading engine**
   - GenerationEngine class with worker pool architecture
@@ -195,9 +198,11 @@
     - Solution: Initialize GeneratorContext in RecordGenerator lambda (per-worker context)
     - Tested: 100,000 complex Datafaker records, 10 threads, 6,923 rec/sec (14.4s)
 
-## Phase 6: Quality & Performance
+## Phase 6: Quality & Performance ✅ **COMPLETE**
 
-### 🔥 HIGH PRIORITY - Performance Validation (Next Sprint)
+**Note**: Core performance validation and integration testing complete. Unit test coverage (70%+ target) is ongoing maintenance work.
+
+### Performance Validation ✅
 
 - [x] **Performance benchmarking (TASK-026)** ✅ **COMPLETE (March 6, 2026)**
   - JMH benchmarks implemented for all critical paths
@@ -274,7 +279,7 @@
   - **Documentation**: benchmarks/PERFORMANCE-ANALYSIS.md
   - **Completion**: March 6, 2026
 
-### MEDIUM PRIORITY - Quality Foundation
+### Quality Foundation ✅ (Integration Tests Complete)
 
 - [x] **Testing - Integration tests** ✅ **COMPLETE (March 6, 2026)**
   - Testcontainers infrastructure set up (version 1.21.4 - latest stable)
@@ -297,7 +302,7 @@
   - High code coverage for critical paths (Current: 267 tests passing)
   - **Target**: Maintain 70%+ unit test coverage
 
-## Phase 7: Documentation (After Performance Validation)
+## Phase 7: Documentation ✅ **COMPLETE**
 
 **Note**: Documentation should be completed AFTER Phase 6 performance validation to include accurate, validated performance numbers.
 
