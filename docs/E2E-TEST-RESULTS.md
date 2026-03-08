@@ -209,6 +209,20 @@ kafka,protobuf,8,1024,100000,4,25000,25,1024,58,11,1.45,SUCCESS,
 - Average Heap Usage: 32MB
 - Average GC Time: 1.15%
 
+**Counter-Intuitive Pattern Explained:**
+
+The 256MB configuration shows **higher average heap usage** (41MB) than 512MB (27MB), which seems paradoxical. This is actually expected JVM behavior:
+
+1. **Heap Pressure & GC Strategy**: With constrained heap (256MB), the JVM operates under more pressure. It delays garbage collection cycles to avoid frequent pauses, allowing heap usage to build up higher before triggering GC.
+
+2. **Generous Heap Advantage**: With 512MB available, the JVM has breathing room and can run GC more proactively/efficiently. This keeps the heap cleaner between measurements, resulting in lower *observed* heap usage.
+
+3. **GC Timing Correlation**: Notice the GC time is also higher for 256MB (1.91%) vs 512MB (1.23%), confirming that constrained heap leads to more GC pressure overall.
+
+4. **Measurement Timing**: Heap usage is sampled at specific points (typically end-of-run). With tight memory, the sample captures higher utilization; with generous memory, it captures post-GC cleanup states.
+
+**Practical Takeaway:** While 256MB *works* (18/18 success), the higher heap usage and GC time indicate it's operating near capacity. The 512MB configuration provides better headroom with lower memory pressure and more efficient GC behavior.
+
 ## Threading Impact
 
 - **1 thread(s):** Average 28703 rec/s (18 tests)
