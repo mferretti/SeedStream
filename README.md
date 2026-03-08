@@ -504,7 +504,7 @@ data:
     datatype: credit_card  # "4532-1234-5678-9010"
 ```
 
-**28 semantic types supported**. See [generators module](generators/) for the complete list.
+**48+ semantic types supported** with 20+ aliases for flexible naming. All types registered in `DatafakerRegistry` for runtime extensibility. See [generators module](generators/) for the complete list.
 
 ### Composite Types
 
@@ -864,7 +864,7 @@ A: Use a random seed or timestamp:
 A: No hard limit, but large arrays (> 1000 elements) may impact performance and memory. Consider streaming for very large arrays.
 
 **Q: Can I use custom Datafaker providers?**  
-A: Not yet. Planned for future releases. Current providers: 28 semantic types.
+A: The registry pattern (`DatafakerRegistry`) provides the foundation for extensibility. Currently supports 48+ built-in types with runtime registration capability. Full plugin system (ServiceLoader-based) planned for post-1.0 release. See [DESIGN.md](docs/DESIGN.md) for architecture details.
 
 **Q: How do I generate date ranges relative to today?**  
 A: Use relative timestamp syntax:

@@ -464,6 +464,81 @@ user_id: ref[user.id]  # References generated user IDs
 
 **Open for Discussion**: Alternative approaches welcome. See GitHub issues for proposals.
 
+### Datafaker Type Registry (Semantic Types)
+
+**Status**: ✅ Implemented (March 2026)
+
+**Problem**: Original implementation used 42 semantic type enum values in `PrimitiveType.Kind` (NAME, EMAIL, ADDRESS, PHONE, etc.), leading to:
+- Code duplication (~350 lines of switch statements in `TypeParser` and `DatafakerGenerator`)
+- Tight coupling between type definitions and generators
+- Inability to add new semantic types at runtime
+
+**Solution**: Registry pattern with `DatafakerRegistry` and `CustomDatafakerType`
+
+**Architecture**:
+```java
+// Registry stores type name → generator function mappings
+public class DatafakerRegistry {
+    private static final Map<String, Function<Faker, Object>> registry = 
+        new ConcurrentHashMap<>();
+    
+    static {
+        registerBuiltIns(); // 48+ types with 20+ aliases
+    }
+    
+    public static void register(String typeName, Function<Faker, Object> generator);
+    public static boolean isRegistered(String typeName);
+    public static Object generate(Faker faker, String typeName);
+}
+
+// Lightweight type wrapper (replaces 42 enum values)
+public record CustomDatafakerType(String typeName) implements DataType {}
+```
+
+**Benefits**:
+1. **Single Source of Truth**: All semantic types defined in one place
+2. **Runtime Extensibility**: Register new types without code changes
+3. **Code Simplification**: 
+   - TypeParser: ~150 lines deleted (replaced with 3-line registry check)
+   - DatafakerGenerator: ~220 lines deleted (replaced with single delegation)
+4. **Alias Support**: Common variations (lat/latitude, lon/lng, swift/bic, cvc/cvv)
+5. **Thread-Safe**: ConcurrentHashMap for lock-free concurrent access
+6. **Foundation for Plugins**: Easy path to user-contributed types (future)
+
+**Type Registration Example**:
+```java
+DatafakerRegistry.register("name", Faker::name().fullName());
+DatafakerRegistry.register("email", Faker::internet().emailAddress());
+DatafakerRegistry.register("phone", Faker::phoneNumber().phoneNumber());
+
+// Aliases for common variations
+DatafakerRegistry.register("lat", Faker::address().latitude());
+DatafakerRegistry.register("latitude", Faker::address().latitude());
+DatafakerRegistry.register("lon", Faker::address().longitude());
+DatafakerRegistry.register("lng", Faker::address().longitude());
+```
+
+**Usage in YAML**:
+```yaml
+# All these work via registry lookup
+user_name: name
+email_address: email  
+phone_number: phonenumber
+location:
+  latitude: lat      # Alias: short form
+  longitude: long    # Alias: alternative spelling
+```
+
+**Design Decisions**:
+- **Normalization**: Type names converted to lowercase and trimmed for flexible matching
+- **Validation**: Fail fast if unknown type referenced in YAML (clear error message)
+- **No ServiceLoader Yet**: Built-in types only for now; plugins deferred to post-1.0
+- **Functional Interface**: `Function<Faker, Object>` allows inline lambdas for simple cases
+
+**Performance Impact**: Negligible (ConcurrentHashMap lookup is O(1), no synchronized blocks)
+
+**Migration Path**: All existing YAML configs remain compatible (registry includes all original enum types)
+
 ---
 
 ## Performance Optimizations
@@ -864,9 +939,17 @@ age: int[18..65, distribution=normal, mean=35, stddev=10]
 
 ### 5. Plugin Architecture (Extensibility)
 
+**Status**: 🔄 Foundation Complete (March 2026)
+
 **Question**: Should we support user-provided generators/destinations as plugins?
 
-**Vision**:
+**Current Implementation**: Registry pattern provides foundation for extensibility:
+- `DatafakerRegistry` allows runtime type registration
+- `CustomDatafakerType` decouples types from enum-based implementation
+- Thread-safe concurrent access for registration and lookup
+- ~350 lines of switch statement code eliminated
+
+**Vision for Plugin System**:
 ```java
 // User creates custom generator
 public class CustomDataGenerator implements DataTypeGenerator {
@@ -876,18 +959,32 @@ public class CustomDataGenerator implements DataTypeGenerator {
     }
 }
 
-// User registers via META-INF/services
+// User registers via META-INF/services or programmatic API
+DatafakerRegistry.register("custom_type", faker -> 
+    // Custom generation logic
+);
 ```
 
 **Pros**:
-- Extensibility without modifying core code
+- ✅ **Foundation Complete**: Registry pattern established with `DatafakerRegistry`
+- ✅ **Extensibility Proven**: 48+ built-in types, 20+ aliases demonstrate scalability
 - Community contributions (marketplace of generators)
+- No need to modify core code for new types
 
 **Cons**:
 - Complexity (ServiceLoader, classloading, versioning)
 - Security (untrusted code execution)
+- Plugin API design needs careful consideration
 
-**Current Decision**: Fixed generators in codebase. Revisit after 1.0 release.
+**Current Decision**: Built-in types via registry (complete). Full ServiceLoader-based plugin system deferred until post-1.0 to gather user feedback on registry pattern.
+
+**Next Steps**:
+1. ✅ Registry pattern (complete)
+2. 🔄 Gather feedback on registry API design
+3. ⏳ Define plugin API contract (interfaces, lifecycle)
+4. ⏳ Implement ServiceLoader discovery
+5. ⏳ Security model (sandboxing, permissions)
+6. ⏳ Plugin marketplace/documentation
 
 **Interested?**: Discuss plugin API design in GitHub.
 
@@ -911,8 +1008,9 @@ This document is a living record. If you:
 | Date       | Change                                                      | Author |
 |------------|-------------------------------------------------------------|--------|
 | 2026-01-18 | Initial version: seeding, reproducibility, issues #1-3      | Marco  |
+| 2026-03-08 | Registry pattern: DatafakerRegistry, plugin foundation      | Marco  |
 
 ---
 
-**Last Updated**: January 18, 2026  
+**Last Updated**: March 8, 2026  
 **Status**: Living document (updated as project evolves)
