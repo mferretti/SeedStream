@@ -19,6 +19,7 @@ package com.datagenerator.generators.semantic;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.PrimitiveType;
@@ -30,7 +31,7 @@ import java.util.Random;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DatafakerGeneratorTest {
   private DatafakerGenerator generator;
@@ -56,16 +57,14 @@ class DatafakerGeneratorTest {
   }
 
   @Test
-  void shouldSupportSemanticTypes() {
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.NAME, null, null))).isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.EMAIL, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.PHONE_NUMBER, null, null)))
-        .isTrue();
+  void shouldSupportCustomDatafakerTypes() {
+    assertThat(generator.supports(new CustomDatafakerType("name"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("email"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("phone_number"))).isTrue();
   }
 
   @Test
-  void shouldNotSupportPrimitiveTypesWithRanges() {
+  void shouldNotSupportPrimitiveTypes() {
     assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "10"))).isFalse();
     assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"))).isFalse();
     assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null)))
@@ -73,7 +72,7 @@ class DatafakerGeneratorTest {
   }
 
   @Test
-  void shouldNotSupportNonPrimitiveTypes() {
+  void shouldNotSupportNonCustomTypes() {
     assertThat(generator.supports(new ObjectType("user"))).isFalse();
   }
 
@@ -81,7 +80,7 @@ class DatafakerGeneratorTest {
   void shouldGenerateDeterministicDataWithSameSeed() {
     Random random1 = new Random(12345L);
     Random random2 = new Random(12345L);
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
 
     try (var ctx = GeneratorContext.enter(factory, "italy")) {
       String name1 = (String) generator.generate(random1, nameType);
@@ -94,7 +93,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateNameForItalianLocale() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("italy", nameType);
 
     assertThat(name).isNotNull();
@@ -104,7 +103,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateEmailAddress() {
-    PrimitiveType emailType = new PrimitiveType(PrimitiveType.Kind.EMAIL, null, null);
+    CustomDatafakerType emailType = new CustomDatafakerType("email");
     String email = (String) generateWithContext("usa", emailType);
 
     assertThat(email).isNotNull();
@@ -114,7 +113,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGeneratePhoneNumber() {
-    PrimitiveType phoneType = new PrimitiveType(PrimitiveType.Kind.PHONE_NUMBER, null, null);
+    CustomDatafakerType phoneType = new CustomDatafakerType("phone_number");
     String phone = (String) generateWithContext("usa", phoneType);
 
     assertThat(phone).isNotNull();
@@ -125,7 +124,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateAddress() {
-    PrimitiveType addressType = new PrimitiveType(PrimitiveType.Kind.ADDRESS, null, null);
+    CustomDatafakerType addressType = new CustomDatafakerType("address");
     String address = (String) generateWithContext("usa", addressType);
 
     assertThat(address).isNotNull();
@@ -134,7 +133,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateCompanyName() {
-    PrimitiveType companyType = new PrimitiveType(PrimitiveType.Kind.COMPANY, null, null);
+    CustomDatafakerType companyType = new CustomDatafakerType("company");
     String company = (String) generateWithContext("usa", companyType);
 
     assertThat(company).isNotNull();
@@ -143,7 +142,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateURL() {
-    PrimitiveType urlType = new PrimitiveType(PrimitiveType.Kind.URL, null, null);
+    CustomDatafakerType urlType = new CustomDatafakerType("url");
     String url = (String) generateWithContext("usa", urlType);
 
     assertThat(url).isNotNull();
@@ -152,7 +151,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateUUID() {
-    PrimitiveType uuidType = new PrimitiveType(PrimitiveType.Kind.UUID, null, null);
+    CustomDatafakerType uuidType = new CustomDatafakerType("uuid");
     String uuid = (String) generateWithContext("usa", uuidType);
 
     assertThat(uuid).isNotNull();
@@ -161,7 +160,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateIPv4Address() {
-    PrimitiveType ipv4Type = new PrimitiveType(PrimitiveType.Kind.IPV4, null, null);
+    CustomDatafakerType ipv4Type = new CustomDatafakerType("ipv4");
     String ipv4 = (String) generateWithContext("usa", ipv4Type);
 
     assertThat(ipv4).isNotNull();
@@ -170,7 +169,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateValidISBN() {
-    PrimitiveType isbnType = new PrimitiveType(PrimitiveType.Kind.ISBN, null, null);
+    CustomDatafakerType isbnType = new CustomDatafakerType("isbn");
     String isbn = (String) generateWithContext("usa", isbnType);
 
     assertThat(isbn).isNotNull();
@@ -179,7 +178,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateIBAN() {
-    PrimitiveType ibanType = new PrimitiveType(PrimitiveType.Kind.IBAN, null, null);
+    CustomDatafakerType ibanType = new CustomDatafakerType("iban");
     String iban = (String) generateWithContext("germany", ibanType);
 
     assertThat(iban).isNotNull();
@@ -189,7 +188,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldFallbackToEnglishForUnknownGeolocation() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("unknown_locale_12345", nameType);
 
     // Should generate valid name (English fallback)
@@ -199,7 +198,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldFallbackToEnglishForNullGeolocation() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext(null, nameType);
 
     // Should generate valid name (English fallback)
@@ -208,22 +207,21 @@ class DatafakerGeneratorTest {
   }
 
   @ParameterizedTest
-  @EnumSource(
-      value = PrimitiveType.Kind.class,
-      names = {
-        "NAME",
-        "FIRST_NAME",
-        "LAST_NAME",
-        "EMAIL",
-        "PHONE_NUMBER",
-        "ADDRESS",
-        "CITY",
-        "COMPANY",
-        "URL",
-        "UUID"
+  @ValueSource(
+      strings = {
+        "name",
+        "first_name",
+        "last_name",
+        "email",
+        "phone_number",
+        "address",
+        "city",
+        "company",
+        "url",
+        "uuid"
       })
-  void shouldGenerateValidDataForAllSupportedSemanticTypes(PrimitiveType.Kind kind) {
-    PrimitiveType type = new PrimitiveType(kind, null, null);
+  void shouldGenerateValidDataForAllSupportedSemanticTypes(String typeName) {
+    CustomDatafakerType type = new CustomDatafakerType(typeName);
     String value = (String) generateWithContext("usa", type);
 
     assertThat(value).isNotNull();
@@ -232,7 +230,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateDifferentValuesForDifferentSeeds() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
 
     Random random1 = new Random(12345L);
     Random random2 = new Random(99999L);
@@ -248,7 +246,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldHandleMultipleLocales() {
-    PrimitiveType nameType = new PrimitiveType(PrimitiveType.Kind.NAME, null, null);
+    CustomDatafakerType nameType = new CustomDatafakerType("name");
 
     try (var ctx = GeneratorContext.enter(factory, "italy")) {
       String italianName = (String) generator.generate(random, nameType);
@@ -266,7 +264,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGeneratePrice() {
-    PrimitiveType priceType = new PrimitiveType(PrimitiveType.Kind.PRICE, null, null);
+    CustomDatafakerType priceType = new CustomDatafakerType("price");
     String price = (String) generateWithContext("usa", priceType);
 
     assertThat(price).isNotNull();
@@ -275,7 +273,7 @@ class DatafakerGeneratorTest {
 
   @Test
   void shouldGenerateMacAddress() {
-    PrimitiveType macType = new PrimitiveType(PrimitiveType.Kind.MAC_ADDRESS, null, null);
+    CustomDatafakerType macType = new CustomDatafakerType("mac_address");
     String mac = (String) generateWithContext("usa", macType);
 
     assertThat(mac).isNotNull();

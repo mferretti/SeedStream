@@ -19,6 +19,7 @@ package com.datagenerator.generators.semantic;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.TypeParser;
@@ -54,8 +55,8 @@ class DatafakerIntegrationTest {
   void shouldParseAndGenerateSemanticTypes() {
     // Parse semantic type without brackets
     DataType nameType = typeParser.parse("name");
-    assertThat(nameType).isInstanceOf(PrimitiveType.class);
-    assertThat(((PrimitiveType) nameType).getKind()).isEqualTo(PrimitiveType.Kind.NAME);
+    assertThat(nameType).isInstanceOf(CustomDatafakerType.class);
+    assertThat(((CustomDatafakerType) nameType).getTypeName()).isEqualTo("name");
 
     // Generate value using DatafakerGenerator
     try (var ctx = GeneratorContext.enter(factory, "italy")) {
@@ -71,18 +72,18 @@ class DatafakerIntegrationTest {
   @Test
   void shouldParseAllSemanticTypeSyntaxVariants() {
     // Underscore variants
-    assertThat(typeParser.parse("first_name")).isInstanceOf(PrimitiveType.class);
-    assertThat(typeParser.parse("last_name")).isInstanceOf(PrimitiveType.class);
-    assertThat(typeParser.parse("phone_number")).isInstanceOf(PrimitiveType.class);
+    assertThat(typeParser.parse("first_name")).isInstanceOf(CustomDatafakerType.class);
+    assertThat(typeParser.parse("last_name")).isInstanceOf(CustomDatafakerType.class);
+    assertThat(typeParser.parse("phone_number")).isInstanceOf(CustomDatafakerType.class);
 
     // No underscore variants
-    assertThat(typeParser.parse("firstname")).isInstanceOf(PrimitiveType.class);
-    assertThat(typeParser.parse("lastname")).isInstanceOf(PrimitiveType.class);
-    assertThat(typeParser.parse("phonenumber")).isInstanceOf(PrimitiveType.class);
+    assertThat(typeParser.parse("firstname")).isInstanceOf(CustomDatafakerType.class);
+    assertThat(typeParser.parse("lastname")).isInstanceOf(CustomDatafakerType.class);
+    assertThat(typeParser.parse("phonenumber")).isInstanceOf(CustomDatafakerType.class);
 
     // Alias variants
-    assertThat(typeParser.parse("zip")).isInstanceOf(PrimitiveType.class);
-    assertThat(typeParser.parse("phone")).isInstanceOf(PrimitiveType.class);
+    assertThat(typeParser.parse("zip")).isInstanceOf(CustomDatafakerType.class);
+    assertThat(typeParser.parse("phone")).isInstanceOf(CustomDatafakerType.class);
   }
 
   @Test
@@ -163,9 +164,8 @@ class DatafakerIntegrationTest {
 
     // Semantic type
     DataType nameType = typeParser.parse("name");
-    assertThat(nameType).isInstanceOf(PrimitiveType.class);
-    assertThat(((PrimitiveType) nameType).getMinValue()).isNull();
-    assertThat(((PrimitiveType) nameType).getMaxValue()).isNull();
+    assertThat(nameType).isInstanceOf(CustomDatafakerType.class);
+    assertThat(((CustomDatafakerType) nameType).getTypeName()).isEqualTo("name");
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       // Both should generate successfully

@@ -19,7 +19,7 @@ package com.datagenerator.generators.semantic;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.structure.StructureRegistry;
-import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
 import java.nio.file.Paths;
@@ -44,9 +44,9 @@ class DatafakerNewTypesTest {
     factory = new DataGeneratorFactory(registry, Paths.get("test"));
   }
 
-  private Object generateWithContext(String geolocation, PrimitiveType.Kind kind) {
+  private Object generateWithContext(String geolocation, String typeName) {
     try (var ctx = GeneratorContext.enter(factory, geolocation)) {
-      return generator.generate(random, new PrimitiveType(kind, null, null));
+      return generator.generate(random, new CustomDatafakerType(typeName));
     }
   }
 
@@ -54,7 +54,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGeneratePrefix() {
-    String prefix = (String) generateWithContext("usa", PrimitiveType.Kind.PREFIX);
+    String prefix = (String) generateWithContext("usa", "prefix");
     assertThat(prefix).isNotNull();
     assertThat(prefix).isNotEmpty();
     // Common prefixes: Mr., Mrs., Ms., Dr., etc.
@@ -63,7 +63,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateSuffix() {
-    String suffix = (String) generateWithContext("usa", PrimitiveType.Kind.SUFFIX);
+    String suffix = (String) generateWithContext("usa", "suffix");
     assertThat(suffix).isNotNull();
     assertThat(suffix).isNotEmpty();
     // Common suffixes: Jr., Sr., III, etc.
@@ -71,7 +71,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGeneratePassword() {
-    String password = (String) generateWithContext("usa", PrimitiveType.Kind.PASSWORD);
+    String password = (String) generateWithContext("usa", "password");
     assertThat(password).isNotNull();
     assertThat(password).hasSizeGreaterThanOrEqualTo(8);
     assertThat(password).hasSizeLessThanOrEqualTo(20);
@@ -81,7 +81,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateSSN() {
-    String ssn = (String) generateWithContext("usa", PrimitiveType.Kind.SSN);
+    String ssn = (String) generateWithContext("usa", "ssn");
     assertThat(ssn).isNotNull();
     assertThat(ssn).isNotEmpty();
     // SSN format varies by locale
@@ -91,7 +91,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateLatitude() {
-    String latitude = (String) generateWithContext("usa", PrimitiveType.Kind.LATITUDE);
+    String latitude = (String) generateWithContext("usa", "latitude");
     assertThat(latitude).isNotNull();
     double lat = Double.parseDouble(latitude);
     assertThat(lat).isBetween(-90.0, 90.0);
@@ -99,7 +99,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateLongitude() {
-    String longitude = (String) generateWithContext("usa", PrimitiveType.Kind.LONGITUDE);
+    String longitude = (String) generateWithContext("usa", "longitude");
     assertThat(longitude).isNotNull();
     double lon = Double.parseDouble(longitude);
     assertThat(lon).isBetween(-180.0, 180.0);
@@ -107,7 +107,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateCountryCode() {
-    String countryCode = (String) generateWithContext("usa", PrimitiveType.Kind.COUNTRY_CODE);
+    String countryCode = (String) generateWithContext("usa", "country_code");
     assertThat(countryCode).isNotNull();
     assertThat(countryCode).hasSize(2); // ISO 3166-1 alpha-2
     assertThat(countryCode).matches("^[A-Z]{2}$");
@@ -115,7 +115,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateTimeZone() {
-    String timeZone = (String) generateWithContext("usa", PrimitiveType.Kind.TIME_ZONE);
+    String timeZone = (String) generateWithContext("usa", "time_zone");
     assertThat(timeZone).isNotNull();
     assertThat(timeZone).isNotEmpty();
     // Time zones like "America/New_York", "Europe/Rome"
@@ -126,7 +126,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateBIC() {
-    String bic = (String) generateWithContext("germany", PrimitiveType.Kind.BIC);
+    String bic = (String) generateWithContext("germany", "bic");
     assertThat(bic).isNotNull();
     assertThat(bic).isNotEmpty();
     // BIC/SWIFT code format: 8 or 11 alphanumeric characters
@@ -135,7 +135,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateCVV() {
-    String cvv = (String) generateWithContext("usa", PrimitiveType.Kind.CVV);
+    String cvv = (String) generateWithContext("usa", "cvv");
     assertThat(cvv).isNotNull();
     assertThat(cvv).matches("^\\d{3}$"); // 3-digit CVV
     int cvvValue = Integer.parseInt(cvv);
@@ -144,7 +144,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateCreditCardType() {
-    String cardType = (String) generateWithContext("usa", PrimitiveType.Kind.CREDIT_CARD_TYPE);
+    String cardType = (String) generateWithContext("usa", "credit_card_type");
     assertThat(cardType).isNotNull();
     assertThat(cardType).isNotEmpty();
     // Common card types: Visa, Mastercard, Discover, Amex, etc.
@@ -152,7 +152,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateStockMarket() {
-    String ticker = (String) generateWithContext("usa", PrimitiveType.Kind.STOCK_MARKET);
+    String ticker = (String) generateWithContext("usa", "stock_market");
     assertThat(ticker).isNotNull();
     assertThat(ticker).isNotEmpty();
     // Stock ticker symbols are typically 1-5 uppercase letters
@@ -163,7 +163,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateProductName() {
-    String productName = (String) generateWithContext("usa", PrimitiveType.Kind.PRODUCT_NAME);
+    String productName = (String) generateWithContext("usa", "product_name");
     assertThat(productName).isNotNull();
     assertThat(productName).isNotEmpty();
     // Product names like "Ergonomic Steel Chair"
@@ -172,7 +172,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateDepartment() {
-    String department = (String) generateWithContext("usa", PrimitiveType.Kind.DEPARTMENT);
+    String department = (String) generateWithContext("usa", "department");
     assertThat(department).isNotNull();
     assertThat(department).isNotEmpty();
     // Department names like "Electronics", "Clothing"
@@ -180,7 +180,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateColor() {
-    String color = (String) generateWithContext("usa", PrimitiveType.Kind.COLOR);
+    String color = (String) generateWithContext("usa", "color");
     assertThat(color).isNotNull();
     assertThat(color).isNotEmpty();
     // Color names like "red", "blue", "sky blue"
@@ -189,7 +189,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateMaterial() {
-    String material = (String) generateWithContext("usa", PrimitiveType.Kind.MATERIAL);
+    String material = (String) generateWithContext("usa", "material");
     assertThat(material).isNotNull();
     assertThat(material).isNotEmpty();
     // Materials like "Cotton", "Steel", "Plastic"
@@ -197,7 +197,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGeneratePromotionCode() {
-    String promoCode = (String) generateWithContext("usa", PrimitiveType.Kind.PROMOTION_CODE);
+    String promoCode = (String) generateWithContext("usa", "promotion_code");
     assertThat(promoCode).isNotNull();
     assertThat(promoCode).isNotEmpty();
     // Promo codes like "SAVE20", "SaleCool194130"
@@ -208,7 +208,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateLoremWord() {
-    String word = (String) generateWithContext("usa", PrimitiveType.Kind.LOREM_WORD);
+    String word = (String) generateWithContext("usa", "lorem_word");
     assertThat(word).isNotNull();
     assertThat(word).isNotEmpty();
     assertThat(word).matches("^[a-z]+$");
@@ -217,7 +217,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateLoremSentence() {
-    String sentence = (String) generateWithContext("usa", PrimitiveType.Kind.LOREM_SENTENCE);
+    String sentence = (String) generateWithContext("usa", "lorem_sentence");
     assertThat(sentence).isNotNull();
     assertThat(sentence).hasSizeGreaterThan(10);
     // Sentence should contain multiple words
@@ -226,7 +226,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateLoremParagraph() {
-    String paragraph = (String) generateWithContext("usa", PrimitiveType.Kind.LOREM_PARAGRAPH);
+    String paragraph = (String) generateWithContext("usa", "lorem_paragraph");
     assertThat(paragraph).isNotNull();
     assertThat(paragraph).hasSizeGreaterThan(50);
     // Paragraph should contain multiple sentences or clauses
@@ -241,13 +241,9 @@ class DatafakerNewTypesTest {
     Random r2 = new Random(12345L);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      String pass1 =
-          (String)
-              generator.generate(r1, new PrimitiveType(PrimitiveType.Kind.PASSWORD, null, null));
+      String pass1 = (String) generator.generate(r1, new CustomDatafakerType("password"));
       FakerCache.clear();
-      String pass2 =
-          (String)
-              generator.generate(r2, new PrimitiveType(PrimitiveType.Kind.PASSWORD, null, null));
+      String pass2 = (String) generator.generate(r2, new CustomDatafakerType("password"));
       assertThat(pass1).isEqualTo(pass2);
     }
   }
@@ -258,15 +254,9 @@ class DatafakerNewTypesTest {
     Random r2 = new Random(99999L);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      String product1 =
-          (String)
-              generator.generate(
-                  r1, new PrimitiveType(PrimitiveType.Kind.PRODUCT_NAME, null, null));
+      String product1 = (String) generator.generate(r1, new CustomDatafakerType("product_name"));
       FakerCache.clear();
-      String product2 =
-          (String)
-              generator.generate(
-                  r2, new PrimitiveType(PrimitiveType.Kind.PRODUCT_NAME, null, null));
+      String product2 = (String) generator.generate(r2, new CustomDatafakerType("product_name"));
       assertThat(product1).isEqualTo(product2);
     }
   }
@@ -277,10 +267,8 @@ class DatafakerNewTypesTest {
     Random r2 = new Random(22222L);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      String color1 =
-          (String) generator.generate(r1, new PrimitiveType(PrimitiveType.Kind.COLOR, null, null));
-      String color2 =
-          (String) generator.generate(r2, new PrimitiveType(PrimitiveType.Kind.COLOR, null, null));
+      String color1 = (String) generator.generate(r1, new CustomDatafakerType("color"));
+      String color2 = (String) generator.generate(r2, new CustomDatafakerType("color"));
       // Different seeds should produce different colors (with high probability)
       assertThat(color1).isNotEqualTo(color2);
     }
@@ -290,44 +278,25 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldSupportAllNewSemanticTypes() {
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.PREFIX, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.SUFFIX, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.PASSWORD, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.SSN, null, null))).isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.LATITUDE, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.LONGITUDE, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.COUNTRY_CODE, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.TIME_ZONE, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.BIC, null, null))).isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.CVV, null, null))).isTrue();
-    assertThat(
-            generator.supports(new PrimitiveType(PrimitiveType.Kind.CREDIT_CARD_TYPE, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.STOCK_MARKET, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.PRODUCT_NAME, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.DEPARTMENT, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.COLOR, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.MATERIAL, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.PROMOTION_CODE, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.LOREM_WORD, null, null)))
-        .isTrue();
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.LOREM_SENTENCE, null, null)))
-        .isTrue();
-    assertThat(
-            generator.supports(new PrimitiveType(PrimitiveType.Kind.LOREM_PARAGRAPH, null, null)))
-        .isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("prefix"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("suffix"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("password"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("ssn"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("latitude"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("longitude"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("country_code"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("time_zone"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("bic"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("cvv"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("credit_card_type"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("stock_market"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("product_name"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("department"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("color"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("material"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("promotion_code"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("lorem_word"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("lorem_sentence"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType("lorem_paragraph"))).isTrue();
   }
 }

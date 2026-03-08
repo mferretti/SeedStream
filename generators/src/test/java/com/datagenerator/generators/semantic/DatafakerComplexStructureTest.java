@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.ArrayType;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.PrimitiveType;
@@ -65,43 +66,43 @@ class DatafakerComplexStructureTest {
     switch (name) {
       case "passport" -> {
         fields.put("passport_number", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "9"));
-        fields.put("first_name", new PrimitiveType(PrimitiveType.Kind.FIRST_NAME, null, null));
-        fields.put("last_name", new PrimitiveType(PrimitiveType.Kind.LAST_NAME, null, null));
-        fields.put("full_name", new PrimitiveType(PrimitiveType.Kind.FULL_NAME, null, null));
+        fields.put("first_name", new CustomDatafakerType("first_name"));
+        fields.put("last_name", new CustomDatafakerType("last_name"));
+        fields.put("full_name", new CustomDatafakerType("full_name"));
         fields.put(
             "date_of_birth",
             new PrimitiveType(PrimitiveType.Kind.DATE, "1950-01-01", "2006-12-31"));
-        fields.put("nationality", new PrimitiveType(PrimitiveType.Kind.COUNTRY, null, null));
-        fields.put("place_of_birth", new PrimitiveType(PrimitiveType.Kind.CITY, null, null));
+        fields.put("nationality", new CustomDatafakerType("country"));
+        fields.put("place_of_birth", new CustomDatafakerType("city"));
         fields.put(
             "issue_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2015-01-01", "2024-12-31"));
         fields.put(
             "expiry_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2025-01-01", "2034-12-31"));
-        fields.put("issuing_authority", new PrimitiveType(PrimitiveType.Kind.COMPANY, null, null));
+        fields.put("issuing_authority", new CustomDatafakerType("company"));
         fields.put("sex", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "1"));
       }
       case "customer" -> {
-        fields.put("customer_id", new PrimitiveType(PrimitiveType.Kind.UUID, null, null));
-        fields.put("first_name", new PrimitiveType(PrimitiveType.Kind.FIRST_NAME, null, null));
-        fields.put("last_name", new PrimitiveType(PrimitiveType.Kind.LAST_NAME, null, null));
-        fields.put("email", new PrimitiveType(PrimitiveType.Kind.EMAIL, null, null));
-        fields.put("phone", new PrimitiveType(PrimitiveType.Kind.PHONE_NUMBER, null, null));
-        fields.put("billing_address", new PrimitiveType(PrimitiveType.Kind.ADDRESS, null, null));
-        fields.put("city", new PrimitiveType(PrimitiveType.Kind.CITY, null, null));
-        fields.put("state", new PrimitiveType(PrimitiveType.Kind.STATE, null, null));
-        fields.put("postal_code", new PrimitiveType(PrimitiveType.Kind.POSTAL_CODE, null, null));
-        fields.put("country", new PrimitiveType(PrimitiveType.Kind.COUNTRY, null, null));
+        fields.put("customer_id", new CustomDatafakerType("uuid"));
+        fields.put("first_name", new CustomDatafakerType("first_name"));
+        fields.put("last_name", new CustomDatafakerType("last_name"));
+        fields.put("email", new CustomDatafakerType("email"));
+        fields.put("phone", new CustomDatafakerType("phone_number"));
+        fields.put("billing_address", new CustomDatafakerType("address"));
+        fields.put("city", new CustomDatafakerType("city"));
+        fields.put("state", new CustomDatafakerType("state"));
+        fields.put("postal_code", new CustomDatafakerType("postal_code"));
+        fields.put("country", new CustomDatafakerType("country"));
       }
       case "transaction_item" -> {
-        fields.put("item_id", new PrimitiveType(PrimitiveType.Kind.UUID, null, null));
+        fields.put("item_id", new CustomDatafakerType("uuid"));
         fields.put("product_name", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "50"));
         fields.put("sku", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "12"));
         fields.put("quantity", new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"));
-        fields.put("unit_price", new PrimitiveType(PrimitiveType.Kind.PRICE, null, null));
-        fields.put("line_total", new PrimitiveType(PrimitiveType.Kind.PRICE, null, null));
+        fields.put("unit_price", new CustomDatafakerType("price"));
+        fields.put("line_total", new CustomDatafakerType("price"));
       }
       case "shop_transaction" -> {
-        fields.put("transaction_id", new PrimitiveType(PrimitiveType.Kind.UUID, null, null));
+        fields.put("transaction_id", new CustomDatafakerType("uuid"));
         fields.put(
             "timestamp",
             new PrimitiveType(
@@ -110,23 +111,23 @@ class DatafakerComplexStructureTest {
         fields.put(
             "items",
             new ArrayType(new ObjectType("transaction_item"), 1, 15)); // Min 1 item, max 15 items
-        fields.put("subtotal", new PrimitiveType(PrimitiveType.Kind.PRICE, null, null));
-        fields.put("tax", new PrimitiveType(PrimitiveType.Kind.PRICE, null, null));
-        fields.put("total", new PrimitiveType(PrimitiveType.Kind.PRICE, null, null));
-        fields.put("payment_method", new PrimitiveType(PrimitiveType.Kind.CREDIT_CARD, null, null));
-        fields.put("currency", new PrimitiveType(PrimitiveType.Kind.CURRENCY, null, null));
+        fields.put("subtotal", new CustomDatafakerType("price"));
+        fields.put("tax", new CustomDatafakerType("price"));
+        fields.put("total", new CustomDatafakerType("price"));
+        fields.put("payment_method", new CustomDatafakerType("credit_card"));
+        fields.put("currency", new CustomDatafakerType("currency"));
       }
       case "product" -> {
-        fields.put("product_id", new PrimitiveType(PrimitiveType.Kind.UUID, null, null));
+        fields.put("product_id", new CustomDatafakerType("uuid"));
         fields.put("sku", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "12"));
         fields.put("product_name", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "50"));
-        fields.put("manufacturer", new PrimitiveType(PrimitiveType.Kind.COMPANY, null, null));
+        fields.put("manufacturer", new CustomDatafakerType("company"));
         fields.put("category", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "30"));
-        fields.put("unit_price", new PrimitiveType(PrimitiveType.Kind.PRICE, null, null));
-        fields.put("barcode", new PrimitiveType(PrimitiveType.Kind.ISBN, null, null));
+        fields.put("unit_price", new CustomDatafakerType("price"));
+        fields.put("barcode", new CustomDatafakerType("isbn"));
       }
       case "store_movement" -> {
-        fields.put("movement_id", new PrimitiveType(PrimitiveType.Kind.UUID, null, null));
+        fields.put("movement_id", new CustomDatafakerType("uuid"));
         fields.put(
             "timestamp",
             new PrimitiveType(
@@ -135,9 +136,9 @@ class DatafakerComplexStructureTest {
         fields.put("movement_type", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "10"));
         fields.put("quantity", new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000"));
         fields.put("warehouse_location", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "10"));
-        fields.put("from_warehouse", new PrimitiveType(PrimitiveType.Kind.CITY, null, null));
-        fields.put("to_warehouse", new PrimitiveType(PrimitiveType.Kind.CITY, null, null));
-        fields.put("operator", new PrimitiveType(PrimitiveType.Kind.FULL_NAME, null, null));
+        fields.put("from_warehouse", new CustomDatafakerType("city"));
+        fields.put("to_warehouse", new CustomDatafakerType("city"));
+        fields.put("operator", new CustomDatafakerType("full_name"));
         fields.put("notes", new PrimitiveType(PrimitiveType.Kind.CHAR, "0", "100"));
       }
       default -> throw new RuntimeException("Unknown structure: " + name);
