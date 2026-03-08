@@ -137,8 +137,8 @@ class FakerCacheTest {
     Random random = new Random(42);
 
     Faker enFaker = FakerCache.getOrCreate(Locale.US, random);
-    Faker itFaker = FakerCache.getOrCreate(Locale.ITALY, random);
-    Faker frFaker = FakerCache.getOrCreate(Locale.FRANCE, random);
+    FakerCache.getOrCreate(Locale.ITALY, random);
+    FakerCache.getOrCreate(Locale.FRANCE, random);
 
     assertThat(FakerCache.getCacheSize()).isEqualTo(3);
 

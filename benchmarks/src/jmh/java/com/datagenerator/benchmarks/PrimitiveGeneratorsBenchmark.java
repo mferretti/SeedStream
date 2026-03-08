@@ -17,6 +17,7 @@
 package com.datagenerator.benchmarks;
 
 import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.EnumType;
 import com.datagenerator.generators.primitive.BooleanGenerator;
 import com.datagenerator.generators.primitive.CharGenerator;
 import com.datagenerator.generators.primitive.DateGenerator;
@@ -25,6 +26,7 @@ import com.datagenerator.generators.primitive.EnumGenerator;
 import com.datagenerator.generators.primitive.IntegerGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
 import java.util.Random;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -68,7 +70,7 @@ public class PrimitiveGeneratorsBenchmark {
   private PrimitiveType booleanType;
   private PrimitiveType dateType;
   private PrimitiveType timestampType;
-  private PrimitiveType enumType;
+  private EnumType enumType;
 
   @Setup
   public void setup() {
@@ -90,7 +92,7 @@ public class PrimitiveGeneratorsBenchmark {
     booleanType = new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null);
     dateType = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
     timestampType = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "now-30d", "now");
-    enumType = new PrimitiveType(PrimitiveType.Kind.CHAR, "VALUE1,VALUE2,VALUE3", null);
+    enumType = new EnumType(List.of("VALUE1", "VALUE2", "VALUE3"));
   }
 
   @Benchmark
@@ -121,5 +123,10 @@ public class PrimitiveGeneratorsBenchmark {
   @Benchmark
   public Object benchmarkTimestampGenerator() {
     return timestampGenerator.generate(random, timestampType);
+  }
+
+  @Benchmark
+  public String benchmarkEnumGenerator() {
+    return (String) enumGenerator.generate(random, enumType);
   }
 }
