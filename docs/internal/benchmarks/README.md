@@ -2,7 +2,7 @@
 
 This directory contains historical performance analysis documents from the benchmark development and optimization process.
 
-**These documents  are kept for reference and learning, but are NOT the current performance status.**
+**These documents are kept for reference and learning, but are NOT the current performance status.**
 
 ---
 
@@ -18,52 +18,40 @@ For **up-to-date performance metrics and analysis**, see:
 
 ## Historical Documents
 
-### Performance Analysis (Pre-Optimization - March 5-7, 2026)
+### Baseline Analysis & Root Cause (March 5-7, 2026)
 
-1. **BASELINE-ANALYSIS.md** → Moved to `../../BASELINE-ANALYSIS.md`
-   - Initial performance baseline analysis (20K rec/s)
-   - Root cause identification (Faker instantiation overhead)
-   - Thread efficiency analysis (32% before optimization)
-   - Mathematical projections for optimization impact
+**[BASELINE-PERFORMANCE-FINDINGS.md](BASELINE-PERFORMANCE-FINDINGS.md)**
+- **Consolidated analysis** of pre-optimization baseline (7-20K rec/s)
+- CPU profiling results (98.1% in Datafaker operations)
+- Root cause: Improper Faker usage defeating internal caching (800K instantiations)
+- Thread efficiency analysis (32% before fix)
+- Mathematical projections and validation
+- Combines: ANALYSIS-SUMMARY + HOTSPOTS-SUMMARY
 
-2. **ANALYSIS-SUMMARY.md**
-   - Executive summary of baseline findings
-   - CPU hotspot analysis (98% in Datafaker operations)
-   - Caching hypothesis and validation
+### Optimization Implementation (March 7-8, 2026)
 
-3. **HOTSPOTS-SUMMARY.txt**
-   - JFR profiling analysis of CPU hotspots
-   - Datafaker time breakdown
-   - Root cause: defeating Datafaker's internal caching
+**[THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)**
+- Complete thread-local Faker cache strategy
+- Implementation details and code
+- Expected vs actual results (3.5-5× improvement achieved)
+- Post-optimization validation
 
-### Optimization Strategy (March 7-8, 2026)
+### Specialized Benchmarks (March 6-7, 2026)
 
-4. **THREAD-LOCAL-OPTIMIZATION-STRATEGY.md**
-   - Thread-local Faker cache implementation plan
-   - Expected improvements and strategy
-   - Successfully implemented → 3.5-5× improvement
+**[PERFORMANCE-ANALYSIS.md](PERFORMANCE-ANALYSIS.md)**
+- File I/O performance deep-dive
+- Hardware baseline tests (dd, Java NIO)
+- Buffer size optimization analysis
 
-5. **QUICK-WIN-SUMMARY.md**
-   - Quick reference for thread-local cache optimization
-   - Problem statement and solution overview
-   - Implementation summary
+**[SERIALIZER-BENCHMARK-RESULTS.md](SERIALIZER-BENCHMARK-RESULTS.md)**
+- JSON/CSV serializer component benchmarks
+- Jackson ObjectMapper performance
+- Serialization overhead analysis
 
-### Specialized Benchmarks (March 6, 2026)
-
-6. **PERFORMANCE-ANALYSIS.md**
-   - File I/O performance deep-dive
-   - Hardware baseline tests (dd, Java NIO)
-   - Buffer size optimization analysis
-
-7. **SERIALIZER-BENCHMARK-RESULTS.md**
-   - JSON/CSV serializer component benchmarks
-   - Jackson ObjectMapper performance
-   - Serialization overhead analysis
-
-8. **KAFKA-BENCHMARK-RESULTS.md**
-   - Kafka producer performance analysis
-   - Async vs sync comparison
-   - Compression and batching impact
+**[KAFKA-BENCHMARK-RESULTS.md](KAFKA-BENCHMARK-RESULTS.md)**
+- Kafka producer performance analysis
+- Async vs sync comparison
+- Compression and batching impact
 
 ---
 
