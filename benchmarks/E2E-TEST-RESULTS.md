@@ -6,7 +6,7 @@
 **Record Count:** 100,000 per test  
 **Test Matrix:** 2 destinations × 3 formats × 3 thread counts × 3 memory limits = 54 tests
 
-**Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs pre-refactoring baseline).
+**Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs enum-based pre-refactoring baseline).
 
 ## Executive Summary
 
