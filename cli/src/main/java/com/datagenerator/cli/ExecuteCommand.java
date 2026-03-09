@@ -25,6 +25,8 @@ import com.datagenerator.core.structure.StructureLoader;
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.destinations.DestinationAdapter;
+import com.datagenerator.destinations.database.DatabaseDestination;
+import com.datagenerator.destinations.database.DatabaseDestinationConfig;
 import com.datagenerator.destinations.file.FileDestination;
 import com.datagenerator.destinations.file.FileDestinationConfig;
 import com.datagenerator.destinations.kafka.KafkaDestination;
@@ -36,6 +38,7 @@ import com.datagenerator.formats.protobuf.ProtobufSerializer;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
+import com.datagenerator.generators.semantic.FakerCache;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.JobConfig;
 import com.datagenerator.schema.parser.DataStructureParser;
@@ -435,6 +438,7 @@ public class ExecuteCommand implements Callable<Integer> {
             .recordWriter(destination::write)
             .masterSeed(seed)
             .workerThreads(workerThreads)
+            .workerCleanup(FakerCache::clear)
             .build();
 
     log.info("Generating {} records...", count);
@@ -520,8 +524,7 @@ public class ExecuteCommand implements Callable<Integer> {
     return switch (type.toLowerCase()) {
       case "file" -> createFileDestination(conf, serializer);
       case "kafka" -> createKafkaDestination(conf, serializer);
-      case "database" ->
-          throw new UnsupportedOperationException("Database destination not yet implemented");
+      case "database" -> createDatabaseDestination(jobConfig);
       default -> throw new IllegalArgumentException("Unsupported destination type: " + type);
     };
   }
@@ -589,6 +592,70 @@ public class ExecuteCommand implements Callable<Integer> {
     }
 
     return new KafkaDestination(configBuilder.build(), serializer);
+  }
+
+  private DatabaseDestination createDatabaseDestination(JobConfig jobConfig) {
+    JsonNode conf = jobConfig.getConf();
+
+    String jdbcUrl = resolveEnvVar(conf.get("jdbc_url").asText());
+    String username = resolveEnvVar(conf.get("username").asText());
+    String password = resolveEnvVar(conf.get("password").asText());
+
+    // Table name: explicit override > structure name (strip .yaml extension if present)
+    String structureName = jobConfig.getSource().replaceAll("\\.yaml$", "");
+    String tableName =
+        conf.has("table") ? resolveEnvVar(conf.get("table").asText()) : structureName;
+
+    DatabaseDestinationConfig.DatabaseDestinationConfigBuilder builder =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl(jdbcUrl)
+            .username(username)
+            .password(password)
+            .tableName(tableName);
+
+    if (conf.has("batch_size")) {
+      builder.batchSize(conf.get("batch_size").asInt());
+    }
+    if (conf.has("pool_size")) {
+      builder.poolSize(conf.get("pool_size").asInt());
+    }
+    if (conf.has("transaction_strategy")) {
+      builder.transactionStrategy(conf.get("transaction_strategy").asText());
+    }
+
+    DatabaseDestinationConfig dbConfig = builder.build();
+    log.info(
+        "Created database destination: url={}, table={}, strategy={}",
+        dbConfig.getJdbcUrl(),
+        dbConfig.getTableName(),
+        dbConfig.getTransactionStrategy());
+
+    return new DatabaseDestination(dbConfig);
+  }
+
+  /**
+   * Resolve a config string value: if it matches {@code ${VAR_NAME}}, the value is read from the
+   * environment variable {@code VAR_NAME}. Throws if the variable is not set.
+   *
+   * @param value raw config string (may or may not be an env var reference)
+   * @return resolved string value
+   * @throws IllegalArgumentException if an env var reference cannot be resolved
+   */
+  private String resolveEnvVar(String value) {
+    if (value != null && value.startsWith("${") && value.endsWith("}")) {
+      String varName = value.substring(2, value.length() - 1);
+      String envValue = System.getenv(varName);
+      if (envValue == null) {
+        throw new IllegalArgumentException(
+            "Environment variable '"
+                + varName
+                + "' is not set (referenced as '"
+                + value
+                + "' in job config)");
+      }
+      return envValue;
+    }
+    return value;
   }
 
   private StructureRegistry createStructureRegistry(Path structuresPath) {

@@ -1,26 +1,19 @@
 # Project Backlog
 
-## ⚡ Current Priority Recommendation (March 8, 2026)
+## ⚡ Current Priority Recommendation (March 9, 2026)
 
-**Phase 6 Extended (Performance Analysis & Optimization) - IN PROGRESS! 🔥**
+**Phase 8 (Database Destinations) — Stage 1 COMPLETE ✅**
 
-**Recently Accomplished (March 8, 2026):**
-- ✅ **Performance profiling infrastructure** (TASK-039):
-  - JFR profiling integration with --profile flag
-  - 27 JFR profiles captured (~35MB) from full E2E suite
-  - CPU hotspot analysis: Datafaker 98.1%, JSON 0.2%, Engine 1.2%
-  - JMH component validation: Datafaker 165-221× slower than primitives
-  - Root cause: YAML parsing (98.1%) + 800K Faker instantiations
-  - Mathematical projections: 2× to 20× improvement potential
-  - 5 comprehensive analysis documents created
-
-**Current Focus:**
-- 🔥 **TASK-040: Thread-Local Faker Cache** (READY TO START)
-  - Quick win: 2-3 hour implementation
-  - Expected: 2× throughput (20K → 40K rec/s)
-  - Reduces Faker instantiations: 800K → 8 (99.999%)
-  - Thread efficiency: 32% → 60-70%
-  - Strategy documented with full code examples
+**Recently Accomplished (March 9, 2026):**
+- ✅ **Thread-local Faker cache** (TASK-040):
+  - `FakerCache.java` with `ThreadLocal<Map<Locale, Faker>>`
+  - `DatafakerGenerator` updated to use cache (eliminates 800K Faker instantiations per 100K records)
+  - `workerCleanup: Runnable` callback in `GenerationEngine` for thread-local teardown
+  - Expected: 2× throughput improvement (20K → 40K rec/s)
+- ✅ **Database adapter Stage 1** (TASK-018 + TASK-024):
+  - PostgreSQL destination via JDBC/HikariCP, batch inserts, 3 transaction strategies
+  - 10 unit tests (H2) + 9 integration tests (Testcontainers PostgreSQL)
+  - Env var substitution, table name override, flat-only guard
 
 **Phase 6 (Core Performance Validation) - COMPLETE ✅:**
 - ✅ Component benchmarks (primitives, Datafaker, JSON serialization, file I/O)
@@ -35,12 +28,12 @@
 1. ✅ Phase 3 (Output Formats) - **COMPLETE** (JSON, CSV, Protobuf)
 2. ✅ Phase 5 (CLI & Multi-threading) - **COMPLETE**
 3. ✅ Phase 6 (Performance Validation) - **COMPLETE**
-4. 🔥 Phase 6 Extended (Analysis & Optimization) - **IN PROGRESS** (profiling ✅, thread-local next)
+4. ✅ Phase 6 Extended (Analysis & Optimization) - **COMPLETE** (profiling ✅, thread-local cache ✅)
 5. ✅ Phase 7 (Documentation) - **COMPLETE** (README, examples, performance docs)
-6. 💤 Phase 8: Database Destinations - Deferred (requires user requirements)
+6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables)
 7. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
 
-**Current Status:** Production-ready for file/Kafka with JSON/CSV/Protobuf. Performance optimization phase active with 2× improvement ready to implement. Database destinations deferred.
+**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database destinations Stage 1 complete (flat tables). Stage 2 (nested objects/FK) deferred.
 
 ---
 
@@ -353,20 +346,13 @@
 
 ### Performance Optimizations
 
-- [ ] **Thread-local Faker cache optimization (TASK-040)** 📋 **READY TO START**
-  - Eliminate 800,000 Faker instantiations per test (reduce to 8, one per thread)
-  - **Root Cause**: We defeated Datafaker's internal caching by creating new instances
-  - **Expected Impact**: 2-5× throughput improvement (20K → 40-100K rec/s)
-  - **Thread Efficiency**: 32% → 60-70%
-  - **Implementation**:
-    - Create FakerCache.java with ThreadLocal<Map<Locale, Faker>>
-    - Update DatafakerGenerator.java to use cache (1 line change)
-    - Add cleanup in GenerationEngine.java
-    - Unit tests for FakerCache (6 tests)
-  - **Time Estimate**: 2-3 hours
-  - **Risk**: Low (simple caching pattern, no external dependencies)
-  - **Priority**: P1 (High) - Quick win fixing OUR usage mistake
-  - **Status**: Ready to start (strategy documented, code examples provided)
+- [x] **Thread-local Faker cache optimization (TASK-040)** ✅ **COMPLETE (March 9, 2026)**
+  - Eliminated 800,000 Faker instantiations per test (reduced to 8, one per thread)
+  - `FakerCache.java` with `ThreadLocal<Map<Locale, Faker>>`
+  - `DatafakerGenerator` updated to use cache
+  - `workerCleanup: Runnable` injected into `GenerationEngine` for thread-local teardown
+  - 7 unit tests in `FakerCacheTest`
+  - **Expected Impact**: 2× throughput (20K → 40K rec/s)
   - **Lesson**: Check correct library usage before blaming library performance!
 
 - [ ] **Datafaker deep caching (future)** 🔮 **OPTIONAL ENHANCEMENT**
@@ -489,18 +475,27 @@
   - Plugin marketplace for custom generators and destinations
   - Metrics and monitoring integration (Prometheus, Grafana)
 
-## Phase 8: Database Destinations (Deferred - Requires Careful Design)
+## Phase 8: Database Destinations
 
-- [ ] **Destinations module - Database adapter**
-  - Implement JDBC destination with HikariCP connection pooling
-  - Batch inserts for performance
-  - Support PostgreSQL and MySQL (drivers as compileOnly)
-  - Transaction management
-  - Auto-table creation from structure definitions
-  - Complex type mapping (arrays, nested objects)
-  - **Complexity**: High - requires SQL generation, schema management, type conversion
-  - **Design decisions needed**: Schema auto-creation vs manual, complex type handling, migration strategy
+- [x] **Destinations module - Database adapter (Stage 1)** ✅ **COMPLETE (March 9, 2026)**
+  - HikariCP connection pooling
+  - Batch inserts (configurable batch size, default 1000)
+  - PostgreSQL support (MySQL driver included compileOnly, untested)
+  - Three transaction strategies: `per_batch`, `per_job`, `auto_commit`
+  - Flat structures only (Stage 1 — nested/array rejection with clear error)
+  - Env var substitution for credentials (`${VAR_NAME}`)
+  - Table name override support (`conf.table`)
+  - 10 unit tests (H2 in-memory) + 9 PostgreSQL integration tests (Testcontainers)
   - Task: TASK-018-destinations-database.md
+
+- [ ] **Destinations module - Database adapter (Stage 2)** 💤 **DEFERRED**
+  - Nested objects → separate table inserts with FK injection
+  - Arrays → child table inserts with FK injection
+  - Insert ordering (topological sort for dependencies)
+  - Transaction management across related tables
+  - `ref[]` type support (requires TASK-042 decision first)
+  - MySQL integration tests
+  - Task: TASK-018-destinations-database.md (Stage 2 section)
 
 ## Before Going Public 🚀
 

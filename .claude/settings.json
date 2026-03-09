@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew test jacocoTestReport)",
+      "Bash(for pr in 39 40 41 42 43)",
+      "Bash(do)",
+      "Bash(echo \"=== PR #$pr ===\")",
+      "Bash(gh pr checks $pr --required)",
+      "Bash(done)",
+      "Bash(gh pr checks $pr)",
+      "Bash(echo \"=== Merging PR #$pr ===\")",
+      "Bash(gh pr merge $pr --squash --auto)",
+      "Bash(gh pr merge $pr --squash)",
+      "Bash(gh pr list --author \"app/dependabot\")",
+      "Bash(git pull origin main)"
+    ]
+  }
+}

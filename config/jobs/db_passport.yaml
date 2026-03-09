@@ -1,4 +1,4 @@
-source: address.yaml
+source: passport.yaml
 type: database
 seed:
   type: embedded
@@ -7,7 +7,7 @@ conf:
   jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
   username: "dbuser"
   password: "${DB_PASSWORD}"
-  table: "addresses"           # optional — defaults to structure name ("address")
+  table: "passports"           # optional — defaults to structure name ("passport")
   batch_size: 1000
   pool_size: 5
-  transaction_strategy: per_batch
+  transaction_strategy: per_batch  # per_batch | per_job | auto_commit

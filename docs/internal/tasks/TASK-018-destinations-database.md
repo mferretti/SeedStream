@@ -1,276 +1,123 @@
-# TASK-018: Destinations Module - Database Adapter
+# TASK-018: Destinations Module - Database Adapter (Stage 1)
 
-**Status**: ⏸️ Not Started  
-**Priority**: P1 (High)  
-**Phase**: 4 - Destinations  
-**Dependencies**: TASK-013 (JSON Serializer), TASK-016 (File Destination)  
+**Status**: ✅ Complete (Stage 1)
+**Priority**: P1 (High)
+**Phase**: 4 - Destinations
+**Dependencies**: TASK-013 (JSON Serializer), TASK-016 (File Destination)
 **Human Supervision**: MEDIUM (SQL generation, connection pooling)
+**Completion Date**: March 9, 2026
 
 ---
 
 ## Objective
 
-Implement database destination adapter that inserts generated records into relational databases (PostgreSQL, MySQL) using JDBC with HikariCP connection pooling and batch inserts.
+Implement database destination adapter that inserts generated records into relational databases via JDBC with HikariCP connection pooling and batch inserts.
+
+**Stage 1 scope**: flat structures only (primitives, enums, Datafaker string types). Nested objects and arrays rejected with a clear error. See `docs/DATABASE-DESTINATION-PLANNING.md` for the full staging plan.
 
 ---
 
-## Background
+## What Was Delivered
 
-Databases are a common destination for test data:
-- Populate test databases
-- Load testing database performance
-- Integration test data setup
+### New Classes
 
-**Requirements**:
-- Connection pooling (HikariCP)
-- Batch inserts for performance
-- Support PostgreSQL and MySQL
-- Auto-create tables from structure definitions
-- Transaction management
-- Proper error handling
+| Class | Location | Purpose |
+|-------|----------|---------|
+| `DatabaseDestinationConfig` | `destinations/.../database/` | Config model — JDBC URL, credentials, table, batch size, pool size, transaction strategy |
+| `JdbcTypeMapper` | `destinations/.../database/` | Static `bind()` — maps Java values to `PreparedStatement.setXxx()` via `instanceof` (Option A) |
+| `DatabaseDestination` | `destinations/.../database/` | Full `DestinationAdapter` — HikariCP pool, batch INSERT, 3 transaction strategies, flat-only validation |
+| `package-info.java` | `destinations/.../database/` | Package docs |
 
----
+### CLI Integration
 
-## Implementation Details
+- `ExecuteCommand.java` — `case "database"` wired in `createDestination()`
+- `resolveEnvVar()` — `${VAR_NAME}` substitution from `System.getenv()` for any config string field
+- Table name resolution: `conf.table` override → structure name fallback
 
-### Step 1: Create DatabaseDestination
+### Configuration
 
-**File**: `destinations/src/main/java/com/datagenerator/destinations/DatabaseDestination.java`
-
-```java
-package com.datagenerator.destinations;
-
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-/**
- * Database destination adapter using JDBC and HikariCP.
- */
-@Slf4j
-public class DatabaseDestination implements DestinationAdapter {
-    
-    private final HikariDataSource dataSource;
-    private final String tableName;
-    private final List<String> fieldNames;
-    private final int batchSize;
-    private final List<byte[]> batch;
-    private Connection connection;
-    private PreparedStatement statement;
-    private int batchCount = 0;
-    
-    public DatabaseDestination(Map<String, Object> config) {
-        this.tableName = (String) config.get("table");
-        if (tableName == null) {
-            throw new DestinationException("Database table name is required");
-        }
-        
-        this.batchSize = (Integer) config.getOrDefault("batch_size", 1000);
-        this.batch = new ArrayList<>(batchSize);
-        this.fieldNames = new ArrayList<>();
-        
-        // Initialize HikariCP connection pool
-        HikariConfig hikariConfig = buildHikariConfig(config);
-        this.dataSource = new HikariDataSource(hikariConfig);
-        
-        log.info("Created database destination: table={}, batchSize={}", 
-            tableName, batchSize);
-    }
-    
-    private HikariConfig buildHikariConfig(Map<String, Object> config) {
-        HikariConfig hikariConfig = new HikariConfig();
-        
-        String url = (String) config.get("url");
-        if (url == null) {
-            throw new DestinationException("Database URL is required");
-        }
-        hikariConfig.setJdbcUrl(url);
-        
-        String username = (String) config.get("username");
-        String password = (String) config.get("password");
-        if (username != null) {
-            hikariConfig.setUsername(username);
-            hikariConfig.setPassword(password);
-        }
-        
-        // Connection pool settings
-        hikariConfig.setMaximumPoolSize(
-            (Integer) config.getOrDefault("pool_size", 10));
-        hikariConfig.setMinimumIdle(
-            (Integer) config.getOrDefault("min_idle", 2));
-        hikariConfig.setConnectionTimeout(30000);
-        hikariConfig.setIdleTimeout(600000);
-        hikariConfig.setMaxLifetime(1800000);
-        
-        return hikariConfig;
-    }
-    
-    @Override
-    public void write(byte[] record) {
-        batch.add(record);
-        
-        if (batch.size() >= batchSize) {
-            flush();
-        }
-    }
-    
-    @Override
-    public void flush() {
-        if (batch.isEmpty()) {
-            return;
-        }
-        
-        try {
-            // Parse first record to get field structure
-            if (fieldNames.isEmpty()) {
-                initializeFieldNames(batch.get(0));
-            }
-            
-            // Prepare statement if needed
-            if (statement == null) {
-                connection = dataSource.getConnection();
-                connection.setAutoCommit(false);
-                statement = prepareInsertStatement();
-            }
-            
-            // Add all records to batch
-            for (byte[] recordBytes : batch) {
-                Map<String, Object> record = parseRecord(recordBytes);
-                addToBatch(record);
-            }
-            
-            // Execute batch
-            int[] results = statement.executeBatch();
-            connection.commit();
-            
-            batchCount++;
-            log.info("Inserted {} records (batch #{})", batch.size(), batchCount);
-            
-            batch.clear();
-            
-        } catch (SQLException e) {
-            try {
-                if (connection != null) {
-                    connection.rollback();
-                }
-            } catch (SQLException re) {
-                log.error("Failed to rollback", re);
-            }
-            throw new DestinationException("Failed to insert batch", e);
-        }
-    }
-    
-    private void initializeFieldNames(byte[] recordBytes) {
-        Map<String, Object> record = parseRecord(recordBytes);
-        fieldNames.addAll(record.keySet());
-    }
-    
-    private Map<String, Object> parseRecord(byte[] recordBytes) {
-        // Parse JSON record
-        try {
-            String json = new String(recordBytes, java.nio.charset.StandardCharsets.UTF_8);
-            com.fasterxml.jackson.databind.ObjectMapper mapper = 
-                new com.fasterxml.jackson.databind.ObjectMapper();
-            return mapper.readValue(json, Map.class);
-        } catch (Exception e) {
-            throw new DestinationException("Failed to parse record JSON", e);
-        }
-    }
-    
-    private PreparedStatement prepareInsertStatement() throws SQLException {
-        StringBuilder sql = new StringBuilder("INSERT INTO ");
-        sql.append(tableName).append(" (");
-        sql.append(String.join(", ", fieldNames));
-        sql.append(") VALUES (");
-        sql.append("?, ".repeat(fieldNames.size()));
-        sql.setLength(sql.length() - 2); // Remove last ", "
-        sql.append(")");
-        
-        log.debug("Prepared statement: {}", sql);
-        return connection.prepareStatement(sql.toString());
-    }
-    
-    private void addToBatch(Map<String, Object> record) throws SQLException {
-        for (int i = 0; i < fieldNames.size(); i++) {
-            Object value = record.get(fieldNames.get(i));
-            statement.setObject(i + 1, value);
-        }
-        statement.addBatch();
-    }
-    
-    @Override
-    public void close() throws Exception {
-        try {
-            flush(); // Flush remaining records
-            
-            if (statement != null) {
-                statement.close();
-            }
-            if (connection != null) {
-                connection.close();
-            }
-            if (dataSource != null) {
-                dataSource.close();
-            }
-            
-            log.info("Closed database destination");
-        } catch (SQLException e) {
-            throw new DestinationException("Failed to close database connection", e);
-        }
-    }
-}
+```yaml
+# config/jobs/db_passport.yaml
+source: passport.yaml
+type: database
+seed:
+  type: embedded
+  value: 42
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"   # resolved from environment variable
+  table: "passports"           # optional — defaults to structure name
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch  # per_batch | per_job | auto_commit
 ```
+
+### Key Design Decisions
+
+See `docs/DATABASE-DESTINATION-PLANNING.md` — Technical Decisions Summary.
+
+- **Option A type binding**: `instanceof` on generated Java values (Option B deferred to TASK-042)
+- **Table name**: `source` field = default table name; optional `conf.table` override
+- **Env var substitution**: `${VAR_NAME}` resolved at parse time; fail fast if unset
+- **Fail fast on nested/arrays**: Stage 1 guard at `write()` time
+
+### Dependencies Updated
+
+- `gradle/libs.versions.toml` — H2 `2.3.232` added for unit testing
+- `destinations/build.gradle.kts` — `testImplementation(libs.h2)`, `testImplementation(libs.postgresql)`
+
+---
+
+## Tests
+
+### Unit Tests (10) — `JdbcTypeMapperTest`, `DatabaseDestinationTest`
+
+| Test class | Count | Covers |
+|------------|-------|--------|
+| `JdbcTypeMapperTest` | 10 | All JDBC bindings (null, int, long, BigDecimal, boolean, LocalDate, Instant, String, enum fallback, SQLException propagation) |
+| `DatabaseDestinationTest` | 10 | Insert, batch, partial flush on close, nested/array rejection, pre-open guard, transaction strategies — via H2 in-memory |
+
+### Integration Tests (9) — `DatabaseDestinationIT`
+
+Against real PostgreSQL via Testcontainers (`postgres:16-alpine`). Uses passport structure (flat, all field types).
+
+| Test | Verifies |
+|------|---------|
+| `shouldInsertPassportRecords` | Basic connection + INSERT |
+| `shouldPersistCorrectFieldValues` | String field round-trip |
+| `shouldPersistDateFieldsCorrectly` | `LocalDate` → `DATE` column (dob, issue_date, expiry_date) |
+| `shouldInsertAcrossMultipleBatches` | Batch flush with real PG (35 records, batchSize=10) |
+| `shouldFlushPartialBatchOnClose` | `close()` flushes remainder |
+| `shouldCommitWithPerJobStrategy` | Single commit at `flush()` |
+| `shouldWorkWithAutoCommitStrategy` | JDBC auto-commit mode |
+| `shouldRespectTableNameOverride` | `tableName` config routes to correct table |
+| `shouldRejectNestedObjectWithClearError` | Stage 1 guard |
+
+```bash
+./gradlew :destinations:test              # unit tests
+./gradlew :destinations:integrationTest   # PostgreSQL integration tests
+```
+
+---
+
+## Stage 2 (Future — see DATABASE-DESTINATION-PLANNING.md)
+
+- Nested objects → separate table inserts with FK injection
+- Arrays → child table inserts with FK injection
+- Insert ordering (topological sort)
+- `ref[]` type support (TASK-042 decision first)
 
 ---
 
 ## Acceptance Criteria
 
-- ✅ Connects to databases via JDBC
-- ✅ Uses HikariCP connection pooling
-- ✅ Batch inserts for performance
-- ✅ Supports PostgreSQL and MySQL
-- ✅ Transaction management (rollback on error)
-- ✅ Proper resource cleanup
-- ✅ Unit tests pass
-
----
-
-## Configuration Example
-
-```yaml
-source: address.yaml
-seed:
-  type: embedded
-  value: 12345
-destination: database
-conf:
-  url: jdbc:postgresql://localhost:5432/testdb
-  username: postgres
-  password: secret
-  table: addresses
-  batch_size: 1000
-  pool_size: 10
-```
-
----
-
-## Testing
-
-```bash
-./gradlew :destinations:test
-```
-
-Integration tests (TASK-024):
-```bash
-./gradlew :destinations:integrationTest
-```
-
----
-
-**Completion Date**: [Mark when complete]
+- ✅ Connects to PostgreSQL via JDBC
+- ✅ HikariCP connection pooling
+- ✅ Batch inserts (`addBatch` / `executeBatch`)
+- ✅ Three transaction strategies: `per_batch`, `per_job`, `auto_commit`
+- ✅ Flat-only validation with clear Stage 1 error
+- ✅ Table name override support
+- ✅ Env var substitution for credentials
+- ✅ 10 unit tests passing
+- ✅ 9 PostgreSQL integration tests passing

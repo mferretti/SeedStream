@@ -31,6 +31,7 @@ mysql = "9.6.0"  # Updated from 9.1.0
 
 # Testing
 junit = "6.0.3"
+h2 = "2.3.232"
 mockito = "5.21.0"
 assertj = "3.27.7"
 testcontainers = "1.21.4"
@@ -106,6 +107,9 @@ testcontainers-mysql = { module = "org.testcontainers:mysql", version.ref = "tes
 
 # Testing - Awaitility
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
+
+# Testing - H2 in-memory database
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
 
 # Security Constraints
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
