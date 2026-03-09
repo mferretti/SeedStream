@@ -1,7 +1,7 @@
-# End-to-End Benchmark: Passport → Kafka → JSON
-# Used for E2E performance testing with different thread/memory configurations
+# End-to-End Benchmark: Invoice → Kafka → Protobuf
+# Used for E2E performance testing with nested object structure
 
-source: passport.yaml
+source: invoice.yaml
 type: kafka
 seed:
   type: embedded

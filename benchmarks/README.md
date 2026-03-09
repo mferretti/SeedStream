@@ -241,7 +241,41 @@ docker exec kafka-benchmark kafka-broker-api-versions.sh \
 
 ---
 
-**Questions?** See [../docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md) or open an issue.
+## E2E Job Configuration: Symlink Support & Naming Convention
+
+The E2E benchmark script (`run_e2e_test.sh`) supports using **symlinks** for job configuration files. This allows you to keep your actual job configs named however you like, and simply create symlinks that follow the required naming convention for the script to discover and run them.
+
+**How it works:**
+- Place your real job config files anywhere (e.g., `my_custom_kafka_job.yaml`, `test_flat_file.yaml`).
+- Create a symlink in the `config/jobs/` directory with a name that matches the E2E convention (see below), pointing to your actual config file.
+- The script will pick up any symlink that matches the pattern and run the corresponding test.
+
+### Naming Convention for E2E Job Files
+
+Symlinks (or files) must be named as:
 
 ```
+e2e_{destination}_{format}.yaml
+```
+Where:
+- `{destination}` = `file`, `kafka`, or other supported destination types
+- `{format}` = `json`, `csv`, `protobuf`, etc.
+
+**Examples:**
+- `e2e_file_json.yaml` (File destination, JSON format)
+- `e2e_kafka_json.yaml` (Kafka destination, JSON format)
+- `e2e_file_protobuf.yaml` (File destination, Protobuf format)
+
+**To use a custom config:**
+```bash
+# Suppose you have a config named my_invoice_kafka.yaml
+ln -s ../../my_invoice_kafka.yaml config/jobs/e2e_kafka_json.yaml
+```
+You can now run the E2E script and it will use your custom config via the symlink.
+
+**Tip:** You can maintain multiple symlinks for different test scenarios without renaming your original files.
+
+---
+
+**Questions?** See [../docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md) or open an issue.
 

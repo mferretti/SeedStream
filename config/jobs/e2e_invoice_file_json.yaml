@@ -1,0 +1,10 @@
+# End-to-End Benchmark: Invoice → File → JSON
+# Used for E2E performance testing with nested object structure
+
+source: invoice.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: benchmarks/output/e2e_invoice_file_json
