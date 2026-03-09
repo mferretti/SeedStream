@@ -66,6 +66,10 @@ DESTINATIONS=("file" "kafka")
 THREADS=(1 4 8)
 MEMORY_LIMITS=("256m" "512m" "1024m")
 
+# Global unified test counter (set by compute_total_tests, incremented by both run functions)
+CURRENT_TEST=0
+TOTAL_TESTS=0
+
 # Database test matrix (no format dimension — JDBC binding, not serialization)
 DB_JOB_FILE="${PROJECT_ROOT}/config/jobs/e2e_test_database_passport.yaml"
 POSTGRES_CONTAINER="postgres-benchmark"
@@ -468,17 +472,13 @@ run_database_test() {
 # Run all database tests (no format dimension)
 run_database_tests() {
     log_info "Starting database benchmark tests..."
-    log_info "Test matrix: ${#THREADS[@]} thread configs × ${#MEMORY_LIMITS[@]} memory limits"
-
-    local total_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
-    local current_test=0
 
     for threads in "${THREADS[@]}"; do
         for memory in "${MEMORY_LIMITS[@]}"; do
-            current_test=$((current_test + 1))
+            CURRENT_TEST=$((CURRENT_TEST + 1))
             echo ""
             log_info "═══════════════════════════════════════════════════════════"
-            log_info "Database test $current_test of $total_tests"
+            log_info "Test $CURRENT_TEST of $TOTAL_TESTS"
             log_info "═══════════════════════════════════════════════════════════"
             run_database_test "$threads" "$memory"
             sleep 2
@@ -488,34 +488,47 @@ run_database_tests() {
     log_success "Database tests complete!"
 }
 
-# Run all tests
+# Compute the unified total test count across all destinations.
+# Counts only file/kafka combos where the job file actually exists, plus all database tests.
+compute_total_tests() {
+    local runnable=0
+    for dest in "${DESTINATIONS[@]}"; do
+        for fmt in "${FORMATS[@]}"; do
+            local job_file="${PROJECT_ROOT}/config/jobs/e2e_test_${dest}_${fmt}.yaml"
+            if [[ -f "$job_file" ]]; then
+                runnable=$(( runnable + ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+            fi
+        done
+    done
+    local db_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    TOTAL_TESTS=$(( runnable + db_tests ))
+    log_info "Unified test count: ${runnable} file/kafka + ${db_tests} database = ${TOTAL_TESTS} total"
+}
+
+# Run all file/kafka tests
 run_all_tests() {
-    log_info "Starting end-to-end benchmark suite..."
-    log_info "Test matrix: ${#DESTINATIONS[@]} destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread configs × ${#MEMORY_LIMITS[@]} memory limits"
-    
-    local total_tests=$((${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]}))
-    local current_test=0
-    
+    log_info "Starting file/kafka benchmark tests..."
+
     for destination in "${DESTINATIONS[@]}"; do
         for format in "${FORMATS[@]}"; do
             for threads in "${THREADS[@]}"; do
                 for memory in "${MEMORY_LIMITS[@]}"; do
-                    current_test=$((current_test + 1))
+                    CURRENT_TEST=$((CURRENT_TEST + 1))
                     echo ""
                     log_info "═══════════════════════════════════════════════════════════"
-                    log_info "Test $current_test of $total_tests"
+                    log_info "Test $CURRENT_TEST of $TOTAL_TESTS"
                     log_info "═══════════════════════════════════════════════════════════"
-                    
+
                     run_test "$destination" "$format" "$threads" "$memory"
-                    
+
                     # Small delay between tests
                     sleep 2
                 done
             done
         done
     done
-    
-    log_success "All tests complete!"
+
+    log_success "File/Kafka tests complete!"
 }
 
 # Generate markdown report
@@ -761,16 +774,19 @@ fi)
 
 ## Comparison with Component Benchmarks
 
-| Component | Isolated Benchmark | End-to-End Performance | Overhead |
-|-----------|-------------------|----------------------|----------|
-| Primitive Generators | 259M ops/sec | - | Baseline |
-| Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower |
-| JSON Serializer | 2.9M ops/sec | - | 89× slower |
-| CSV Serializer | Same as JSON | - | 89× slower |
-| File I/O | 4.9M ops/sec | 50K-100K rec/s | 49-98× slower |
-| Kafka (sync) | 3.5K rec/sec | 15K-25K rec/s | Pipeline optimization |
+_Isolated benchmarks are from JMH runs (static). End-to-End columns are computed from this run's results._
 
-**Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka, disk for files).
+| Component | Isolated Benchmark | End-to-End (this run) | Notes |
+|-----------|-------------------|----------------------|-------|
+| Primitive Generators | 259M ops/sec | - | Baseline (JMH) |
+| Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower (JMH) |
+| JSON Serializer | 2.9M ops/sec | - | 89× slower (JMH) |
+| CSV Serializer | Same as JSON | - | 89× slower (JMH) |
+| File I/O | 4.9M ops/sec | $(awk -F',' 'NR>1 && $1=="file" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { printf "%d-%d rec/s", min+0, max+0 }' "$RESULTS_FILE") | Disk-bound |
+| Kafka (async) | 3.5K rec/sec (sync) | $(awk -F',' 'NR>1 && $1=="kafka" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { printf "%d-%d rec/s", min+0, max+0 }' "$RESULTS_FILE") | Network-bound (localhost) |
+| Database (JDBC) | - | $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { if(max>0) printf "%d-%d rec/s", min+0, max+0; else print "skipped" }' "$RESULTS_FILE") | JDBC batch (batch_size=1000) |
+
+**Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka/database, disk for files).
 
 ## Raw Data
 
@@ -791,6 +807,7 @@ main() {
     check_prerequisites
     build_project
     init_results_file
+    compute_total_tests
     BENCHMARK_START_SECONDS=$SECONDS
     run_all_tests
     run_database_tests
