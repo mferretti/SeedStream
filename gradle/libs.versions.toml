@@ -40,7 +40,7 @@ awaitility = "4.3.0"  # Updated from 4.2.2
 log4j = "2.26.0"
 
 # Build Plugins
-jmh-plugin = "0.7.2"
+jmh-plugin = "0.7.3"
 lombok-plugin = "9.2.0"
 spotless-plugin = "8.2.1"
 spotbugs-plugin = "6.4.8"
