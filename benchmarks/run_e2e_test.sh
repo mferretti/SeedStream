@@ -66,6 +66,30 @@ DESTINATIONS=("file" "kafka")
 THREADS=(1 4 8)
 MEMORY_LIMITS=("256m" "512m" "1024m")
 
+# Database test matrix (no format dimension — JDBC binding, not serialization)
+DB_JOB_FILE="${PROJECT_ROOT}/config/jobs/e2e_test_database_passport.yaml"
+POSTGRES_CONTAINER="postgres-benchmark"
+POSTGRES_PORT=5432
+POSTGRES_DB="testdb"
+POSTGRES_USER="testuser"
+POSTGRES_PASS="testpass"
+
+# DDL for the passports table used in e2e tests
+PASSPORTS_DDL="
+CREATE TABLE passports (
+  number         VARCHAR(9),
+  first_name     VARCHAR(255),
+  last_name      VARCHAR(255),
+  full_name      VARCHAR(255),
+  dob            DATE,
+  nationality    VARCHAR(255),
+  place_of_birth VARCHAR(255),
+  issue_date     DATE,
+  expiry_date    DATE,
+  authority      VARCHAR(255),
+  sex            VARCHAR(5)
+);"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -104,6 +128,37 @@ check_prerequisites() {
     else
         log_warn "Kafka container not running - Kafka tests will be skipped"
         log_info "Start Kafka with: docker run -d --name kafka-benchmark -p 9092:9092 ..."
+    fi
+
+    # Check if PostgreSQL is running (for database destination tests)
+    if docker ps --filter "name=${POSTGRES_CONTAINER}" --format "{{.Names}}" | grep -q "${POSTGRES_CONTAINER}"; then
+        log_success "PostgreSQL container is running"
+    else
+        log_info "PostgreSQL container not running - attempting to start..."
+        if docker run -d \
+            --name "${POSTGRES_CONTAINER}" \
+            -p "${POSTGRES_PORT}:5432" \
+            -e POSTGRES_DB="${POSTGRES_DB}" \
+            -e POSTGRES_USER="${POSTGRES_USER}" \
+            -e POSTGRES_PASSWORD="${POSTGRES_PASS}" \
+            postgres:16-alpine >/dev/null 2>&1; then
+            log_info "Waiting for PostgreSQL to be ready..."
+            local retries=20
+            while [[ $retries -gt 0 ]]; do
+                if docker exec "${POSTGRES_CONTAINER}" pg_isready -U "${POSTGRES_USER}" -q 2>/dev/null; then
+                    log_success "PostgreSQL is ready"
+                    break
+                fi
+                sleep 2
+                retries=$((retries - 1))
+            done
+            if [[ $retries -eq 0 ]]; then
+                log_warn "PostgreSQL did not become ready in time - database tests will be skipped"
+            fi
+        else
+            log_warn "Failed to start PostgreSQL container - database tests will be skipped"
+            log_info "Start manually with: docker run -d --name ${POSTGRES_CONTAINER} -p ${POSTGRES_PORT}:5432 -e POSTGRES_DB=${POSTGRES_DB} -e POSTGRES_USER=${POSTGRES_USER} -e POSTGRES_PASSWORD=${POSTGRES_PASS} postgres:16-alpine"
+        fi
     fi
     
     # Check if gradle wrapper exists
@@ -289,6 +344,143 @@ run_test() {
     unset JAVA_OPTS
 }
 
+# Drop and recreate the passports table for a clean test run
+prepare_passports_table() {
+    docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        -c "DROP TABLE IF EXISTS passports;" \
+        -c "${PASSPORTS_DDL}" \
+        >/dev/null 2>&1
+}
+
+# Count rows in the passports table after a test run
+count_passports_rows() {
+    docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        -t -c "SELECT COUNT(*) FROM passports;" 2>/dev/null | tr -d ' \n'
+}
+
+# Run a single database benchmark test
+run_database_test() {
+    local threads=$1
+    local memory=$2
+
+    local memory_mb="${memory%m}"
+    local gc_log_file="${GC_LOG_DIR}/gc_database_passport_t${threads}_m${memory}.log"
+    local output_file="${GC_LOG_DIR}/output_database_passport_t${threads}_m${memory}.log"
+    local test_name="database/passport/t${threads}/m${memory}"
+
+    log_info "Running test: $test_name"
+
+    # Skip if PostgreSQL is not available
+    if ! docker ps --filter "name=${POSTGRES_CONTAINER}" --format "{{.Names}}" | grep -q "${POSTGRES_CONTAINER}"; then
+        log_warn "Skipping database test (PostgreSQL not running): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,PostgreSQL not running" >> "$RESULTS_FILE"
+        return
+    fi
+
+    # Prepare clean table
+    if ! prepare_passports_table; then
+        log_warn "Skipping database test (could not prepare table): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table setup failed" >> "$RESULTS_FILE"
+        return
+    fi
+
+    # Warmup run
+    log_info "  Warmup: $WARMUP_COUNT records..."
+    export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
+    if ! "$CLI_SCRIPT" execute --job "$DB_JOB_FILE" --count $WARMUP_COUNT --threads $threads \
+        >/dev/null 2>&1; then
+        log_warn "  Warmup failed"
+    fi
+    unset JAVA_OPTS
+
+    # Reset table before main run
+    prepare_passports_table
+
+    # Main benchmark run
+    log_info "  Benchmark: $RECORD_COUNT records..."
+    local start_time
+    start_time=$(date +%s)
+    local status="SUCCESS"
+    local error_msg=""
+
+    local java_opts="-Xmx${memory} -Xms${memory} -Xlog:gc*:file=${gc_log_file}:time,level,tags"
+    if [[ "$PROFILE_MODE" == true ]]; then
+        local jfr_file="${JFR_OUTPUT_DIR}/profile_database_passport_t${threads}_m${memory}.jfr"
+        java_opts="${java_opts} -XX:StartFlightRecording=filename=${jfr_file},settings=profile"
+        log_info "  JFR profiling enabled: $jfr_file"
+    fi
+    export JAVA_OPTS="$java_opts"
+
+    if "$CLI_SCRIPT" execute --job "$DB_JOB_FILE" --count $RECORD_COUNT --threads $threads \
+        >"$output_file" 2>&1; then
+
+        local end_time
+        end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        local throughput=0
+        [[ $duration -gt 0 ]] && throughput=$((RECORD_COUNT / duration))
+
+        # Verify row count
+        local actual_rows
+        actual_rows=$(count_passports_rows)
+        if [[ "$actual_rows" != "$RECORD_COUNT" ]]; then
+            log_warn "  Row count mismatch: expected $RECORD_COUNT, got $actual_rows"
+            status="WARN"
+            error_msg="Row count mismatch: expected $RECORD_COUNT got $actual_rows"
+        fi
+
+        local gc_stats
+        gc_stats=$(parse_gc_log "$gc_log_file")
+        IFS=',' read -r heap_used heap_max gc_time gc_count gc_time_percent <<< "$gc_stats"
+
+        if [[ $duration -gt 0 ]]; then
+            gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / ($duration * 1000)) * 100}")
+        fi
+
+        log_success "  Duration: ${duration}s | Throughput: ${throughput} rec/s | Rows: ${actual_rows} | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,$duration,$throughput,$heap_used,$heap_max,$gc_time,$gc_count,$gc_time_percent,$status,$error_msg" >> "$RESULTS_FILE"
+
+    else
+        status="FAILED"
+        error_msg="Execution failed"
+        if grep -q "OutOfMemoryError" "$output_file" 2>/dev/null; then
+            error_msg="OutOfMemoryError"
+            log_error "  OutOfMemoryError - insufficient memory"
+        elif grep -q "Exception" "$output_file" 2>/dev/null; then
+            error_msg=$(grep -m 1 "Exception" "$output_file" | cut -d: -f1 | head -c 50)
+            log_error "  Exception: $error_msg"
+        else
+            log_error "  Test failed (see log: $output_file)"
+        fi
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,$status,$error_msg" >> "$RESULTS_FILE"
+    fi
+
+    unset JAVA_OPTS
+}
+
+# Run all database tests (no format dimension)
+run_database_tests() {
+    log_info "Starting database benchmark tests..."
+    log_info "Test matrix: ${#THREADS[@]} thread configs × ${#MEMORY_LIMITS[@]} memory limits"
+
+    local total_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local current_test=0
+
+    for threads in "${THREADS[@]}"; do
+        for memory in "${MEMORY_LIMITS[@]}"; do
+            current_test=$((current_test + 1))
+            echo ""
+            log_info "═══════════════════════════════════════════════════════════"
+            log_info "Database test $current_test of $total_tests"
+            log_info "═══════════════════════════════════════════════════════════"
+            run_database_test "$threads" "$memory"
+            sleep 2
+        done
+    done
+
+    log_success "Database tests complete!"
+}
+
 # Run all tests
 run_all_tests() {
     log_info "Starting end-to-end benchmark suite..."
@@ -328,7 +520,9 @@ generate_report() {
     local report_file="${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
 
     local elapsed_min=$(( (SECONDS - BENCHMARK_START_SECONDS) / 60 ))
-    local total_tests=$(( ${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local file_kafka_tests=$(( ${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local db_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local total_tests=$(( file_kafka_tests + db_tests ))
 
     # Best file scenario: max throughput, tie-break by min memory then min threads
     local file_best file_fmt file_thr file_mem file_tps
@@ -353,6 +547,18 @@ generate_report() {
     local kafka_mem_lim=$(( kafka_mem * 2 ))
     local kafka_cpu_req=$(( kafka_thr * 1000 ))
     local kafka_cpu_lim=$(( kafka_thr * 2000 ))
+
+    # Best database scenario: max throughput, tie-break by min memory then min threads
+    local db_best db_thr db_mem db_tps
+    db_best=$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {
+        key = $7 * 100000 - $4 * 10 - $3
+        if (key > best) { best=key; thr=$3+0; mem=$4+0; tps=$7+0 }
+    } END { printf "%d|%d|%d", thr, mem, tps }' "$RESULTS_FILE")
+    IFS='|' read -r db_thr db_mem db_tps <<< "$db_best"
+    local db_tps_low=$(( db_tps * 3 / 4 ))
+    local db_mem_lim=$(( db_mem * 2 ))
+    local db_cpu_req=$(( db_thr * 1000 ))
+    local db_cpu_lim=$(( db_thr * 2000 ))
 
     # 256MB viability check
     local mem256_status
@@ -383,7 +589,7 @@ generate_report() {
 **Tests:** ${tests_run} executed, ${tests_skipped} skipped, ${total_tests} total
 **Data Structure:** Passport (11 fields, ~200 bytes)
 **Record Count:** ${RECORD_COUNT} per test
-**Test Matrix:** ${#DESTINATIONS[@]} destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread counts × ${#MEMORY_LIMITS[@]} memory limits = ${total_tests} tests
+**Test Matrix:** ${#DESTINATIONS[@]} file/kafka destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread counts × ${#MEMORY_LIMITS[@]} memory limits + ${db_tests} database tests = ${total_tests} tests
 
 **⚠️ LOCAL TESTING ENVIRONMENT:**
 All tests execute on a **single machine** with:
@@ -439,6 +645,14 @@ $(awk -F',' 'NR>1 && $1=="kafka" && $2=="csv" && $13=="SUCCESS" {printf "- **%d 
 
 #### Protobuf Format
 $(awk -F',' 'NR>1 && $1=="kafka" && $2=="protobuf" && $13=="SUCCESS" {printf "- **%d threads, %dMB:** %d rec/s (%.2f%% GC, Heap: %d/%dMB)\n", $3, $4, $7, $12, $8, $9}' "$RESULTS_FILE")
+
+### Database Destination (JDBC — no format dimension)
+
+_Binding strategy: Option B (DataType-aware). Serializer not used. Table: \`passports\` (11 columns, pre-existing)._
+
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {printf "- **%d threads, %dMB:** %d rec/s (%.2f%% GC, Heap: %d/%dMB)\n", $3, $4, $7, $12, $8, $9}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13=="WARN" {printf "- **%d threads, %dMB:** %d rec/s ⚠️ %s\n", $3, $4, $7, $14}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SKIPPED" {print "_(Tests skipped — PostgreSQL container not running)_"; exit}' "$RESULTS_FILE")
 
 ## Memory Analysis
 
@@ -502,6 +716,28 @@ resources:
     cpu: "${kafka_cpu_lim}m"
 \`\`\`
 
+### For Database Inserts (JDBC Batch)
+
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {found=1; exit} END {if (!found) print "_No successful database tests — PostgreSQL was not available._"}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {found=1; exit} END {if (found) print "**Recommended Configuration:**"}' "$RESULTS_FILE")
+$(if [[ -n "$db_tps" && "$db_tps" -gt 0 ]]; then cat <<DBREC
+- **Memory:** ${db_mem}MB (best observed performance)
+- **Threads:** ${db_thr} (optimal for this workload)
+- **Expected:** ${db_tps_low}-${db_tps} rec/s (batch_size=1000, per_batch commit)
+
+**Kubernetes Resource Requests:**
+\`\`\`yaml
+resources:
+  requests:
+    memory: "${db_mem}Mi"
+    cpu: "${db_cpu_req}m"
+  limits:
+    memory: "${db_mem_lim}Mi"
+    cpu: "${db_cpu_lim}m"
+\`\`\`
+DBREC
+fi)
+
 ### Memory-Constrained Environments
 
 **256MB Configuration:**
@@ -512,8 +748,8 @@ resources:
 ## Known Limitations
 
 1. **Async Kafka Mode:** Not tested (config issue with idempotence)
-2. **Database Destination:** Not included in this benchmark suite
-3. **Local Testing:** All Kafka tests use Docker on localhost - production network latency not reflected (see warning at top)
+2. **Database Destination:** Requires a running \`${POSTGRES_CONTAINER}\` Docker container — tests skipped automatically if unavailable
+3. **Local Testing:** All Kafka and database tests use Docker on localhost - production network latency not reflected (see warning at top)
 4. **Disk Speed:** File throughput depends on storage type (SSD vs HDD)
 
 ## Comparison with Component Benchmarks
@@ -550,6 +786,7 @@ main() {
     init_results_file
     BENCHMARK_START_SECONDS=$SECONDS
     run_all_tests
+    run_database_tests
     generate_report
     
     echo ""
