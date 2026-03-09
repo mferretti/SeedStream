@@ -6,6 +6,17 @@
 **Record Count:** 100,000 per test  
 **Test Matrix:** 2 destinations × 3 formats × 3 thread counts × 3 memory limits = 54 tests
 
+**⚠️ LOCAL TESTING ENVIRONMENT:**  
+All tests execute on a **single machine** with:
+- Kafka broker in Docker container (`localhost:9092`)
+- File destination on local SSD
+- Zero network latency (loopback interface)
+
+**Production environments** with real network infrastructure will experience:
+- Network round-trip latency (1-100ms typical)
+- Bandwidth constraints
+- Lower Kafka throughput (expect 30-50% reduction)
+
 **Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs enum-based pre-refactoring baseline).
 
 ## Executive Summary
@@ -202,7 +213,7 @@ resources:
 
 1. **Async Kafka Mode:** Not tested (config issue with idempotence)
 2. **Database Destination:** Not included in this benchmark suite
-3. **Network Latency:** Kafka tests use localhost (production may be slower)
+3. **Local Testing:** All Kafka tests use Docker on localhost - production network latency not reflected (see warning at top)
 4. **Disk Speed:** File throughput depends on storage type (SSD vs HDD)
 
 ## Comparison with Component Benchmarks

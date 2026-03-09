@@ -44,3 +44,6 @@ config/**/*.credentials
 # Performance tests (local only, not run in CI)
 **/DatafakerPerformanceTest.java
 profiling-output/
+
+# Internal planning documents (work in progress, not for publication)
+docs/DATABASE-DESTINATION-PLANNING.md
