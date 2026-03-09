@@ -62,7 +62,7 @@ public class FakerCache {
   /**
    * Get or create a Faker instance for the given locale.
    *
-   * <p><b>Thread Safety & Reproducibility:</b>
+   * <p><b>Thread Safety &amp; Reproducibility:</b>
    *
    * <ul>
    *   <li>Each thread has its own cache (ThreadLocal)
