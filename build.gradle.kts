@@ -98,7 +98,7 @@ subprojects {
             testImplementation("org.testcontainers:mysql:1.21.4")
 
             // Awaitility for async testing
-            testImplementation("org.awaitility:awaitility:4.2.2")
+            testImplementation("org.awaitility:awaitility:4.3.0")
         }
     }
 
