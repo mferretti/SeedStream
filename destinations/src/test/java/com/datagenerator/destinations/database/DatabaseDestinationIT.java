@@ -18,6 +18,10 @@ package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.datagenerator.core.type.CustomDatafakerType;
+import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.EnumType;
+import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.IntegrationTest;
 import java.sql.Connection;
@@ -28,6 +32,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -361,5 +366,77 @@ class DatabaseDestinationIT extends IntegrationTest {
           .hasMessageContaining("nested objects")
           .hasMessageContaining("address");
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Option B — schema-aware binding against real PostgreSQL
+  // -------------------------------------------------------------------------
+
+  @Test
+  void shouldInsertPassportRecordsWithSchema() throws SQLException {
+    try (DatabaseDestination dest = new DatabaseDestination(config(), passportSchema())) {
+      dest.open();
+      for (int i = 0; i < 5; i++) {
+        dest.write(samplePassport(i));
+      }
+      dest.flush();
+    }
+
+    assertThat(countRows()).isEqualTo(5);
+  }
+
+  @Test
+  void shouldCoerceStringToDateWithSchemaAgainstPostgres() throws SQLException {
+    // Pass ISO-8601 String for date fields instead of LocalDate — schema triggers coercion
+    Map<String, Object> recordWithStringDates = new LinkedHashMap<>();
+    recordWithStringDates.put("number", "ZZ000001");
+    recordWithStringDates.put("first_name", "Test");
+    recordWithStringDates.put("last_name", "User");
+    recordWithStringDates.put("full_name", "Test User");
+    recordWithStringDates.put("dob", "1990-06-15"); // String, not LocalDate
+    recordWithStringDates.put("nationality", "Italy");
+    recordWithStringDates.put("place_of_birth", "Rome");
+    recordWithStringDates.put("issue_date", "2020-03-01"); // String, not LocalDate
+    recordWithStringDates.put("expiry_date", "2030-03-01"); // String, not LocalDate
+    recordWithStringDates.put("authority", "Ministry of Interior");
+    recordWithStringDates.put("sex", "M");
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), passportSchema())) {
+      dest.open();
+      dest.write(recordWithStringDates);
+      dest.flush();
+    }
+
+    try (Statement st = verifyConnection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT dob, issue_date FROM passports")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getDate("dob")).isEqualTo(Date.valueOf(LocalDate.of(1990, 6, 15)));
+      assertThat(rs.getDate("issue_date")).isEqualTo(Date.valueOf(LocalDate.of(2020, 3, 1)));
+    }
+  }
+
+  // --- Schema helper ---
+
+  /**
+   * Build the DataType schema for the passport table columns used in this test class.
+   *
+   * <p>Keys match the record field names used by {@link #samplePassport(int)} and {@link
+   * #passportRecord}, which use alias names (number, dob, authority) matching the DB columns.
+   */
+  private Map<String, DataType> passportSchema() {
+    return Map.ofEntries(
+        Map.entry("number", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "9")),
+        Map.entry("first_name", new CustomDatafakerType("first_name")),
+        Map.entry("last_name", new CustomDatafakerType("last_name")),
+        Map.entry("full_name", new CustomDatafakerType("full_name")),
+        Map.entry("dob", new PrimitiveType(PrimitiveType.Kind.DATE, "1950-01-01", "2006-12-31")),
+        Map.entry("nationality", new CustomDatafakerType("country")),
+        Map.entry("place_of_birth", new CustomDatafakerType("city")),
+        Map.entry(
+            "issue_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2015-01-01", "2024-12-31")),
+        Map.entry(
+            "expiry_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2025-01-01", "2034-12-31")),
+        Map.entry("authority", new CustomDatafakerType("company")),
+        Map.entry("sex", new EnumType(List.of("M", "F", "X"))));
   }
 }

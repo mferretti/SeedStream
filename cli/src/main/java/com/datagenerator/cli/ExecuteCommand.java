@@ -23,7 +23,9 @@ import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.database.DatabaseDestination;
 import com.datagenerator.destinations.database.DatabaseDestinationConfig;
@@ -48,6 +50,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -405,7 +408,7 @@ public class ExecuteCommand implements Callable<Integer> {
     log.info("Created serializer: {}", serializer.getFormatName());
 
     // 5. Create destination adapter
-    DestinationAdapter destination = createDestination(jobConfig, serializer);
+    DestinationAdapter destination = createDestination(jobConfig, serializer, dataStructure);
     log.info("Created destination: {}", destination.getDestinationType());
 
     // 6. Set up generation context
@@ -517,14 +520,15 @@ public class ExecuteCommand implements Callable<Integer> {
     };
   }
 
-  private DestinationAdapter createDestination(JobConfig jobConfig, FormatSerializer serializer) {
+  private DestinationAdapter createDestination(
+      JobConfig jobConfig, FormatSerializer serializer, DataStructure dataStructure) {
     String type = jobConfig.getType();
     JsonNode conf = jobConfig.getConf();
 
     return switch (type.toLowerCase()) {
       case "file" -> createFileDestination(conf, serializer);
       case "kafka" -> createKafkaDestination(conf, serializer);
-      case "database" -> createDatabaseDestination(jobConfig);
+      case "database" -> createDatabaseDestination(jobConfig, dataStructure);
       default -> throw new IllegalArgumentException("Unsupported destination type: " + type);
     };
   }
@@ -594,7 +598,8 @@ public class ExecuteCommand implements Callable<Integer> {
     return new KafkaDestination(configBuilder.build(), serializer);
   }
 
-  private DatabaseDestination createDatabaseDestination(JobConfig jobConfig) {
+  private DatabaseDestination createDatabaseDestination(
+      JobConfig jobConfig, DataStructure dataStructure) {
     JsonNode conf = jobConfig.getConf();
 
     String jdbcUrl = resolveEnvVar(conf.get("jdbc_url").asText());
@@ -630,7 +635,17 @@ public class ExecuteCommand implements Callable<Integer> {
         dbConfig.getTableName(),
         dbConfig.getTransactionStrategy());
 
-    return new DatabaseDestination(dbConfig);
+    // Build field schema (Option B) — keyed by original YAML field name (aliases not resolved
+    // in ObjectGenerator, so record keys match original names, not aliases)
+    TypeParser typeParser = new TypeParser();
+    Map<String, DataType> schema =
+        dataStructure.getData().entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey, entry -> typeParser.parse(entry.getValue().getDatatype())));
+
+    log.debug("Built field schema for database destination: {} fields", schema.size());
+    return new DatabaseDestination(dbConfig, schema);
   }
 
   /**
@@ -667,11 +682,10 @@ public class ExecuteCommand implements Callable<Integer> {
             DataStructure structure = parser.parse(structureFile);
 
             // Convert Map<String, FieldDefinition> to Map<String, DataType>
-            com.datagenerator.core.type.TypeParser typeParser =
-                new com.datagenerator.core.type.TypeParser();
+            TypeParser typeParser = new TypeParser();
             return structure.getData().entrySet().stream()
                 .collect(
-                    java.util.stream.Collectors.toMap(
+                    Collectors.toMap(
                         Map.Entry::getKey,
                         entry -> typeParser.parse(entry.getValue().getDatatype())));
           } catch (Exception e) {
