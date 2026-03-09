@@ -2,7 +2,7 @@
 
 ## ⚡ Current Priority Recommendation (March 9, 2026)
 
-**Phase 8 (Database Destinations) — Stage 1 COMPLETE ✅**
+**Phase 8 (Database Destinations) — Stage 2 is the current priority**
 
 **Recently Accomplished (March 9, 2026):**
 - ✅ **Thread-local Faker cache** (TASK-040):
@@ -14,6 +14,17 @@
   - PostgreSQL destination via JDBC/HikariCP, batch inserts, 3 transaction strategies
   - 10 unit tests (H2) + 9 integration tests (Testcontainers PostgreSQL)
   - Env var substitution, table name override, flat-only guard
+- ✅ **JDBC Option B type binding** (TASK-042):
+  - `DatabaseDestination` accepts `Map<String, String>` raw YAML type strings
+  - TypeParser invoked inside `open()` after connection established (fail-fast ordering)
+  - Schema-aware JDBC binding with `JdbcTypeMapper`; fallback to `instanceof` when no schema
+  - IT tests for schema-aware path (coerce String→Date, enum binding)
+- ✅ **Database Stage 2 design finalized** (TASK-043 created):
+  - Auto-decomposition: nested `object[X]` / `array[object[X]]` → multi-table INSERTs
+  - Context stack for FK injection (immediate parent only, no root bleed-through)
+  - Convention-based FK column: `{parent_structure_name}_id`
+  - Zero changes to generators, serializers, Kafka/File destinations
+  - Full design in `docs/DATABASE-DESTINATION-PLANNING.md` Stage 2 section
 
 **Phase 6 (Core Performance Validation) - COMPLETE ✅:**
 - ✅ Component benchmarks (primitives, Datafaker, JSON serialization, file I/O)
@@ -30,10 +41,11 @@
 3. ✅ Phase 6 (Performance Validation) - **COMPLETE**
 4. ✅ Phase 6 Extended (Analysis & Optimization) - **COMPLETE** (profiling ✅, thread-local cache ✅)
 5. ✅ Phase 7 (Documentation) - **COMPLETE** (README, examples, performance docs)
-6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables)
-7. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
+6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables, Option B type binding)
+7. 🔥 **Phase 8: Database Destinations Stage 2 (TASK-043) — NEXT PRIORITY**
+8. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
 
-**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database destinations Stage 1 complete (flat tables). Stage 2 (nested objects/FK) deferred.
+**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 complete (flat tables + schema-aware JDBC binding). Stage 2 (nested objects / FK auto-decomposition) is the current implementation priority. Branch `feature/typed-record-pipeline-option-b` held until Stage 2 complete.
 
 ---
 
@@ -488,14 +500,15 @@
   - 10 unit tests (H2 in-memory) + 9 PostgreSQL integration tests (Testcontainers)
   - Task: TASK-018-destinations-database.md
 
-- [ ] **Destinations module - Database adapter (Stage 2)** 💤 **DEFERRED**
-  - Nested objects → separate table inserts with FK injection
-  - Arrays → child table inserts with FK injection
-  - Insert ordering (topological sort for dependencies)
-  - Transaction management across related tables
-  - `ref[]` type support (requires TASK-042 decision first)
-  - MySQL integration tests
-  - Task: TASK-018-destinations-database.md (Stage 2 section)
+- [ ] **Destinations module - Database adapter (Stage 2)** 🔥 **NEXT PRIORITY (TASK-043)**
+  - Auto-decomposition: `object[X]` → child table INSERT; `array[object[X]]` → N child INSERTs
+  - Context stack for FK injection (convention: `{parent_structure_name}_id`)
+  - Recursive decomposition (works at any nesting depth)
+  - Transaction management: parent + all children committed/rolled-back together
+  - No composite PK (deferred); no `ref[]` cross-record references (requires TASK-012)
+  - Integration tests: order → line_items, 3-level nesting, FK verification
+  - Task: TASK-043-database-stage2-nested-decomposition.md
+  - User Story: US-043-database-nested-auto-decomposition.md
 
 ## Before Going Public 🚀
 

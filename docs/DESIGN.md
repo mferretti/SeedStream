@@ -990,6 +990,104 @@ DatafakerRegistry.register("custom_type", faker ->
 
 ---
 
+## Database Destination: Multi-Table Auto-Decomposition (Stage 2)
+
+**Decision Date**: March 9, 2026
+**Status**: Design complete, implementation pending (TASK-043)
+**Branch**: `feature/typed-record-pipeline-option-b`
+
+---
+
+### Problem
+
+Stage 1 `DatabaseDestination` only supports flat structures. Real schemas are relational — an `order` has many `line_items`. Testers need to populate parent and child tables in one job run.
+
+---
+
+### Decision: Destination-Side Auto-Decomposition
+
+**Key insight**: The job type (`type: database`) already signals intent. Generators produce the full nested record tree as-is (Map with nested Maps/Lists). The destination is responsible for exploding it into table-specific inserts.
+
+**Zero changes required** to:
+- Generators (they already produce nested Maps)
+- Serializers (they already serialize nested records)
+- Kafka/File destinations (they don't care about structure)
+
+---
+
+### Algorithm
+
+For each generated top-level record:
+
+1. **Decompose** — split into scalar fields (parent INSERT) + nested fields (child INSERTs)
+2. **Insert parent** into the root table
+3. **Build parent context** — capture `(tableName, id_value)` from the just-inserted parent
+4. **Recurse** — for each nested object/array, inject FK column `{parent_table_name}_id = parent_id`, then repeat from step 1 for each child record
+
+**Context stack**: A `Deque<ParentContext>` local to each record processing. Children see only their immediate parent — no root bleed-through at depth > 1.
+
+---
+
+### Example: 3-Level Nesting
+
+```
+order (root)
+  └── line_item (child — FK: order_id)
+        └── line_item_attribute (grandchild — FK: line_item_id)
+```
+
+Processing order:
+1. Insert `order` → get `order.id = 42`
+2. Context push: `(table=order, id=42)` → FK for line_item will be `order_id=42`
+3. Insert `line_item` (with `order_id=42`) → get `line_item.id = 101`
+4. Context push: `(table=line_item, id=101)` → FK for attribute will be `line_item_id=101`
+5. Insert `line_item_attribute` (with `line_item_id=101`)
+6. Context pop back to order level; process next line_item
+
+---
+
+### FK Convention
+
+`{parent_structure_name}_id` — always. No YAML config needed.
+
+The structure name comes from the YAML `name:` field (or array field key — design detail TBD). The tester must name their FK columns to match.
+
+---
+
+### Limitations (by design)
+
+| Limitation | Rationale |
+|------------|-----------|
+| No composite PKs | Single `id` field covers 95% of cases; simplicity wins |
+| No `ref[]` cross-record FK | Requires TASK-012 Reference Generator; separate concern |
+| No DB auto-increment IDs | Would require `getGeneratedKeys()` round-trip; deferred |
+| Convention FK names only | Configurable override deferred; convention is predictable |
+| One root table per job | Multi-root jobs uncommon; deferred |
+
+---
+
+### JDBC Option B: Schema-Aware Type Binding
+
+Also decided March 9, 2026 (TASK-042):
+
+`DatabaseDestination` accepts `Map<String, String>` raw YAML type strings instead of parsed `DataType` objects. The `TypeParser` runs inside `open()` — after the connection is established. Rationale: if the DB is unreachable, parsing the schema is pointless.
+
+```java
+// CLI passes raw strings (no TypeParser in CLI layer)
+Map<String, String> rawFieldTypes = dataStructure.getData().entrySet().stream()
+    .collect(toMap(Map.Entry::getKey, e -> e.getValue().getDatatype()));
+
+new DatabaseDestination(dbConfig, rawFieldTypes);
+
+// Inside DatabaseDestination.open():
+schema = rawFieldTypes.entrySet().stream()
+    .collect(toMap(Map.Entry::getKey, e -> typeParser.parse(e.getValue())));
+```
+
+This preserves the `destinations` module boundary — it cannot import `DataStructure` from `schema` without breaking the dependency graph. `Map<String, String>` is the clean interface.
+
+---
+
 ## Contributing & Discussion
 
 This document is a living record. If you:
@@ -1005,12 +1103,14 @@ This document is a living record. If you:
 
 ## Version History
 
-| Date       | Change                                                      | Author |
-|------------|-------------------------------------------------------------|--------|
-| 2026-01-18 | Initial version: seeding, reproducibility, issues #1-3      | Marco  |
-| 2026-03-08 | Registry pattern: DatafakerRegistry, plugin foundation      | Marco  |
+| Date       | Change                                                                  | Author |
+|------------|-------------------------------------------------------------------------|--------|
+| 2026-01-18 | Initial version: seeding, reproducibility, issues #1-3                  | Marco  |
+| 2026-03-08 | Registry pattern: DatafakerRegistry, plugin foundation                  | Marco  |
+| 2026-03-09 | Database Stage 2: auto-decomposition + context stack design (TASK-043)  | Marco  |
+| 2026-03-09 | JDBC Option B: raw YAML type strings, TypeParser deferred to open()     | Marco  |
 
 ---
 
-**Last Updated**: March 8, 2026  
+**Last Updated**: March 9, 2026
 **Status**: Living document (updated as project evolves)
