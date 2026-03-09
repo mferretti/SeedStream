@@ -6,6 +6,18 @@
 **Record Count:** 100,000 per test  
 **Test Matrix:** 2 destinations × 3 formats × 3 thread counts × 3 memory limits = 54 tests
 
+**⚠️ IMPORTANT — Local Testing Environment:**  
+All tests run on a **single local machine** with:
+- **Kafka:** Docker container on `localhost:9092` (no network latency)
+- **File destination:** Local SSD storage
+- **Network:** Loopback interface only
+
+**Production deployments will experience:**
+- Network latency (WAN/LAN round-trip times)
+- Network bandwidth constraints
+- Distributed broker/storage overhead
+- Lower throughput for Kafka destination (expect 30-50% slower)
+
 **Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs pre-refactoring baseline).
 
 ### Test Data Structure
@@ -280,7 +292,7 @@ resources:
 
 1. **Async Kafka Mode:** Not tested (config issue with idempotence)
 2. **Database Destination:** Not included in this benchmark suite
-3. **Network Latency:** Kafka tests use localhost (production may be slower)
+3. **Local Testing:** All Kafka tests use Docker on localhost - production network latency not reflected (see warning at top)
 4. **Disk Speed:** File throughput depends on storage type (SSD vs HDD)
 
 ## Comparison with Component Benchmarks
@@ -289,11 +301,11 @@ resources:
 |-----------|-------------------|----------------------|----------|
 | Primitive Generators | 259M ops/sec | - | Baseline |
 | Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower |
-| JSON Serializer | 2.9M ops/sec | - | 89× slower |
-| CSV Serializer | Same as JSON | - | 89× slower |
-| Protobuf Serializer | Similar to JSON/CSV | - | ~89× slower |
-| File I/O | 4.9M ops/sec | 50K-100K rec/s | 49-98× slower |
-| Kafka (sync) | 3.5K rec/sec | 15K-25K rec/s | Pipeline optimization |
+| JSON Serializer | 2.6M ops/sec | - | 100× slower |
+| CSV Serializer | 2.6M ops/sec | - | 100× slower |
+| Protobuf Serializer | ~2.5M ops/sec | - | ~104× slower |
+| File I/O (raw write) | 4.9M ops/sec | 25K-50K rec/s (E2E) | 98-196× slower |
+| Kafka destination | Not isolated | 25K-33K rec/s (E2E) | Network-bound |
 
 **Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka, disk for files).
 

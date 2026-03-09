@@ -37,8 +37,10 @@ These are **component benchmarks** that measure isolated performance:
 **NOT measured here:**
 - End-to-end pipeline performance (see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md))
 - Multi-threaded scaling (see E2E tests with 1/4/8 threads)
-- Network I/O (Kafka benchmarks separate)
+- Network I/O with real-world latency (all tests use localhost)
 - Memory pressure under load
+
+**⚠️ Testing Environment:** All benchmarks run on a local development machine. Kafka tests use Docker containers on `localhost:9092`, eliminating network latency. Production deployments with real network infrastructure will show different (typically slower) performance.
 
 ### Interpreting Error Margins
 
