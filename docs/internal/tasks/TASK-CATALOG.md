@@ -6,15 +6,36 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 40
-- **Completed**: 26 ✅
+- **Total Tasks**: 42
+- **Completed**: 28 ✅
 - **Partially Complete**: 1 🔄
 - **In Progress**: 0
 - **Not Started**: 5 ⏸️
-- **Deferred**: 2 (TASK-012, TASK-018 to Phase 8; TASK-039 low priority)
-- **Overall Progress**: 76% (26/34 active tasks)
+- **Deferred**: 1 (TASK-012 to Stage 2; TASK-039 low priority)
+- **Overall Progress**: 82% (28/34 active tasks)
 
 ---
+
+## Recent Completions (March 9, 2026)
+
+**Completed March 9, 2026:**
+- ✅ TASK-040: Thread-Local Faker Cache — `FakerCache` + `workerCleanup` hook in `GenerationEngine`
+  - Eliminates 800K Faker instantiations per 100K records (down to 1 per thread per locale)
+  - `FakerCache::clear` wired via `workerCleanup` callback in `ExecuteCommand`
+  - 7 unit tests in `FakerCacheTest`
+- ✅ TASK-018: Database Destination Adapter (Stage 1 — flat tables)
+  - `DatabaseDestination`, `DatabaseDestinationConfig`, `JdbcTypeMapper`
+  - HikariCP pooling, batch INSERT, 3 transaction strategies, flat-only Stage 1 guard
+  - Env var substitution (`${VAR_NAME}`) and `conf.table` override
+  - 10 unit tests (H2), 9 PostgreSQL integration tests
+- ✅ TASK-024: Database Integration Tests (PostgreSQL, Stage 1)
+  - `DatabaseDestinationIT` using Testcontainers (`postgres:16-alpine`)
+  - Passport structure (all Stage 1 field types: VARCHAR, DATE, enum-as-string)
+  - 9 tests: insert, field values, date round-trip, multi-batch, partial flush, all 3 strategies, table override, nested rejection
+- ✅ TASK-042: JDBC Type Binding Strategy decision task created
+  - Documents Option A (implemented) vs Option B (deferred) trade-offs
+  - Must be resolved before Stage 2 database work
+- **Total tests**: 338 (unit) + 41 (integration) = **379 total tests**
 
 ## Recent Completions (March 6, 2026)
 
@@ -138,15 +159,16 @@ These tasks block other work and should be completed first:
 |------|-------|--------|------------|--------------|--------|
 | TASK-016 | File Destination Adapter | 4-5h | Medium | TASK-013, TASK-014 | ✅ Complete |
 | TASK-017 | Kafka Destination Adapter | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
-| TASK-018 | Database Destination Adapter | 6-8h | High | TASK-013, TASK-014 | ⏸️ Deferred |
+| TASK-018 | Database Destination Adapter (Stage 1) | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
 
-**Completed**: 
-- ✅ File destination (16 tests, 6 integration tests)
-- ✅ Kafka destination (8 unit tests, 12 integration tests)
+**Completed**:
+- ✅ File destination (16 unit tests, 6 integration tests)
+- ✅ Kafka destination (8 unit tests, 18 integration tests)
+- ✅ Database destination Stage 1 (10 unit tests, 9 PostgreSQL integration tests)
 - ✅ All compression types tested (gzip, snappy, lz4, zstd)
 - ✅ Idempotent producer with acks="all" default
 
-**Deferred**: Database destination (moved to Phase 8)
+**Stage 2 (future)**: Nested objects, arrays, FK injection — see DATABASE-DESTINATION-PLANNING.md
 
 ---
 
@@ -170,7 +192,7 @@ These tasks block other work and should be completed first:
 |------|-------|--------|------------|--------------|--------|
 | TASK-022 | Integration Tests Setup | 3-4h | Medium | TASK-016 | ✅ Complete |
 | TASK-023 | Kafka Integration Tests | 4-5h | Medium | TASK-017, TASK-022 | ✅ Complete (Enhanced) |
-| TASK-024 | Database Integration Tests | 4-5h | Medium | TASK-018, TASK-022 | 🔒 Blocked |
+| TASK-024 | Database Integration Tests | 4-5h | Medium | TASK-018, TASK-022 | ✅ Complete |
 | TASK-025 | File Integration Tests | 2-3h | Low | TASK-016, TASK-022 | ✅ Complete |
 | TASK-026 | JMH Benchmarks | 4-6h | Medium | TASK-020 | ✅ Complete |
 | TASK-027 | Memory Profiling | 3-4h | Medium | TASK-020 | ✅ Complete |
@@ -182,10 +204,9 @@ These tasks block other work and should be completed first:
 - ✅ TASK-025 (File, 6 tests)
 - ✅ TASK-026 (JMH benchmarks)
 - ✅ TASK-027 (Memory profiling with JFR)
+- ✅ TASK-024 (Database integration tests — 9 PostgreSQL tests)
 - ✅ File I/O optimizations
-- **Total integration tests**: 43 (10 seed resolver + 6 file + 18 Kafka + 9 misc)
-
-**Blocked**: TASK-024 (needs database destinations)  
+- **Total integration tests**: 41 (6 file + 18 Kafka + 9 database + 8 seed resolver)  
 **Deferred**: TASK-039 Jackson streaming (marginal gain, high effort, target already met)
 
 ---

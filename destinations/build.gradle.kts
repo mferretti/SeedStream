@@ -10,4 +10,6 @@ dependencies {
     implementation(libs.hikaricp)
     compileOnly(libs.postgresql)
     compileOnly(libs.mysql.connector.j)
+    testImplementation(libs.h2)
+    testImplementation(libs.postgresql)  // needed for integration tests against real PostgreSQL
 }

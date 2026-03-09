@@ -92,6 +92,17 @@ public class GenerationEngine {
   @Builder.Default private final int singleThreadedThreshold = 1000;
 
   /**
+   * Optional cleanup to run on each worker thread after it finishes generating.
+   *
+   * <p>Use this to clear thread-local state (e.g., {@code FakerCache::clear}) when worker threads
+   * may be reused across multiple jobs. For short-lived CLI processes this is not strictly
+   * necessary, but it is good practice in long-running or embedded use cases.
+   *
+   * <p>Defaults to a no-op.
+   */
+  @Builder.Default private final Runnable workerCleanup = () -> {};
+
+  /**
    * Generate specified number of records.
    *
    * <p>For small counts (&lt; singleThreadedThreshold), uses single thread to avoid overhead. For
@@ -284,6 +295,7 @@ public class GenerationEngine {
     }
 
     log.debug("Worker {} completed: generated {} records", workerId, workerGenerated);
+    workerCleanup.run();
   }
 
   /**
