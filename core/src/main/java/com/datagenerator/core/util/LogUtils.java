@@ -28,7 +28,7 @@ import java.util.Random;
  * <p><b>Usage Pattern:</b>
  *
  * <pre>
- * if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+ * if (log.isTraceEnabled() &amp;&amp; LogUtils.shouldTrace()) {
  *   log.trace("Generated record: {}", record);
  * }
  * </pre>
@@ -110,7 +110,7 @@ public final class LogUtils {
    *
    * <pre>
    * // Only execute TRACE log if sampling says yes
-   * if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+   * if (log.isTraceEnabled() &amp;&amp; LogUtils.shouldTrace()) {
    *   log.trace("Expensive log message: {}", computeExpensiveData());
    * }
    * </pre>
