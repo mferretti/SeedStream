@@ -17,6 +17,7 @@
 package com.datagenerator.destinations.database;
 
 import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.zaxxer.hikari.HikariConfig;
@@ -63,9 +64,10 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>{@code auto_commit} — JDBC auto-commit, no explicit transaction management
  * </ul>
  *
- * <p><b>Schema (Option B):</b> When a field schema ({@code Map<String, DataType>}) is provided at
- * construction, {@link JdbcTypeMapper#bind(java.sql.PreparedStatement, int, Object, DataType)} is
- * used for accurate JDBC type binding and String-to-primitive coercion. Without a schema, the
+ * <p><b>Schema (Option B):</b> When a raw field-type map ({@code Map<String, String>}) is provided
+ * at construction, it is parsed via {@link TypeParser} inside {@link #open()} and used for accurate
+ * JDBC type binding and String-to-primitive coercion via {@link
+ * JdbcTypeMapper#bind(java.sql.PreparedStatement, int, Object, DataType)}. Without a schema, the
  * runtime-type inference fallback (Option A) is used.
  *
  * <p><b>Thread safety:</b> Not thread-safe. The {@link
@@ -82,12 +84,15 @@ public class DatabaseDestination implements DestinationAdapter {
   private final DatabaseDestinationConfig config;
 
   /**
-   * Optional field schema for DataType-aware JDBC binding (Option B).
+   * Optional raw YAML type strings for DataType-aware JDBC binding (Option B).
    *
-   * <p>When present, {@link JdbcTypeMapper#bind(java.sql.PreparedStatement, int, Object, DataType)}
-   * is used. When null, falls back to the instanceof-based Option A.
+   * <p>When non-null, parsed into {@link #schema} during {@link #open()}. When null, falls back to
+   * the instanceof-based Option A.
    */
-  private final Map<String, DataType> schema;
+  private final Map<String, String> rawFieldTypes;
+
+  /** Parsed schema built from {@link #rawFieldTypes} in {@link #open()}. Null for Option A. */
+  private Map<String, DataType> schema;
 
   private HikariDataSource dataSource;
   private Connection connection;
@@ -109,12 +114,17 @@ public class DatabaseDestination implements DestinationAdapter {
   /**
    * Create a database destination with schema-aware JDBC binding (Option B).
    *
+   * <p>The raw field-type map uses the same YAML type syntax as structure definitions (e.g. {@code
+   * "int[1..999]"}, {@code "date[2020-01-01..2025-12-31]"}, {@code "enum[M,F,X]"}). It is parsed
+   * into a {@code Map<String, DataType>} inside {@link #open()} after the connection is
+   * established.
+   *
    * @param config connection and batch settings
-   * @param schema field schema keyed by alias-resolved field name; may be null to use Option A
+   * @param rawFieldTypes YAML type strings keyed by field name; null to use Option A
    */
-  public DatabaseDestination(DatabaseDestinationConfig config, Map<String, DataType> schema) {
+  public DatabaseDestination(DatabaseDestinationConfig config, Map<String, String> rawFieldTypes) {
     this.config = config;
-    this.schema = schema;
+    this.rawFieldTypes = rawFieldTypes;
     this.batch = new ArrayList<>(config.getBatchSize());
   }
 
@@ -141,6 +151,14 @@ public class DatabaseDestination implements DestinationAdapter {
 
       if (!STRATEGY_AUTO_COMMIT.equals(config.getTransactionStrategy())) {
         connection.setAutoCommit(false);
+      }
+
+      if (rawFieldTypes != null) {
+        TypeParser typeParser = new TypeParser();
+        schema =
+            rawFieldTypes.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> typeParser.parse(e.getValue())));
+        log.debug("Built field schema with {} typed fields", schema.size());
       }
 
       isOpen = true;

@@ -23,7 +23,6 @@ import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
 import com.datagenerator.core.structure.StructureRegistry;
-import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.DestinationAdapter;
@@ -635,17 +634,13 @@ public class ExecuteCommand implements Callable<Integer> {
         dbConfig.getTableName(),
         dbConfig.getTransactionStrategy());
 
-    // Build field schema (Option B) — keyed by original YAML field name (aliases not resolved
-    // in ObjectGenerator, so record keys match original names, not aliases)
-    TypeParser typeParser = new TypeParser();
-    Map<String, DataType> schema =
+    // Extract raw YAML type strings — parsing into DataType happens inside
+    // DatabaseDestination.open()
+    Map<String, String> rawFieldTypes =
         dataStructure.getData().entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey, entry -> typeParser.parse(entry.getValue().getDatatype())));
+            .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype()));
 
-    log.debug("Built field schema for database destination: {} fields", schema.size());
-    return new DatabaseDestination(dbConfig, schema);
+    return new DatabaseDestination(dbConfig, rawFieldTypes);
   }
 
   /**

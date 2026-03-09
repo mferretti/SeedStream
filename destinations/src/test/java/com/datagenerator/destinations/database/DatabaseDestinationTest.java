@@ -18,9 +18,6 @@ package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.datagenerator.core.type.DataType;
-import com.datagenerator.core.type.EnumType;
-import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.destinations.DestinationException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -251,11 +248,8 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldInsertWithSchemaUsingTypedBinding() throws SQLException {
-    Map<String, DataType> schema =
-        Map.of(
-            "id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "9999"),
-            "name", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "255"),
-            "active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
       dest.open();
@@ -270,11 +264,8 @@ class DatabaseDestinationTest {
   @Test
   void shouldCoerceStringValueToIntWhenSchemaDeclaresIntType() throws SQLException {
     // Simulates a Datafaker numeric type returning a String (e.g. age, quantity)
-    Map<String, DataType> schema =
-        Map.of(
-            "id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "9999"),
-            "name", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "255"),
-            "active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
 
     Map<String, Object> recordWithStringId = new LinkedHashMap<>();
     recordWithStringId.put("id", "7"); // String instead of Integer — coercion expected
@@ -297,11 +288,8 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldHandleNullWithTypedSchemaForCorrectSqlType() throws SQLException {
-    Map<String, DataType> schema =
-        Map.of(
-            "id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "9999"),
-            "name", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "255"),
-            "active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
 
     Map<String, Object> recordWithNull = new LinkedHashMap<>();
     recordWithNull.put("id", 5);
@@ -324,8 +312,7 @@ class DatabaseDestinationTest {
   @Test
   void shouldFallBackToOptionAForFieldsNotInSchema() throws SQLException {
     // Schema only covers 'id' — 'name' and 'active' fall back to Option A instanceof binding
-    Map<String, DataType> partialSchema =
-        Map.of("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "9999"));
+    Map<String, String> partialSchema = Map.of("id", "int[1..9999]");
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), partialSchema)) {
       dest.open();
@@ -353,10 +340,8 @@ class DatabaseDestinationTest {
             .batchSize(10)
             .build();
 
-    Map<String, DataType> schema =
-        Map.of(
-            "id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "9999"),
-            "status", new EnumType(List.of("ACTIVE", "INACTIVE", "PENDING")));
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "status", "enum[ACTIVE,INACTIVE,PENDING]");
 
     Map<String, Object> statusRecord = new LinkedHashMap<>();
     statusRecord.put("id", 1);

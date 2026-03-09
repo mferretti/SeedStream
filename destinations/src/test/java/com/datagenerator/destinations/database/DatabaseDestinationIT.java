@@ -18,10 +18,6 @@ package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.datagenerator.core.type.CustomDatafakerType;
-import com.datagenerator.core.type.DataType;
-import com.datagenerator.core.type.EnumType;
-import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.IntegrationTest;
 import java.sql.Connection;
@@ -32,7 +28,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -418,25 +413,23 @@ class DatabaseDestinationIT extends IntegrationTest {
   // --- Schema helper ---
 
   /**
-   * Build the DataType schema for the passport table columns used in this test class.
+   * Raw YAML type strings for the passport table columns used in this test class.
    *
-   * <p>Keys match the record field names used by {@link #samplePassport(int)} and {@link
-   * #passportRecord}, which use alias names (number, dob, authority) matching the DB columns.
+   * <p>Keys use alias names (number, dob, authority) to match the record field names produced by
+   * {@link #samplePassport(int)} and {@link #passportRecord}, which mirror the DB column names.
    */
-  private Map<String, DataType> passportSchema() {
+  private Map<String, String> passportSchema() {
     return Map.ofEntries(
-        Map.entry("number", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "9")),
-        Map.entry("first_name", new CustomDatafakerType("first_name")),
-        Map.entry("last_name", new CustomDatafakerType("last_name")),
-        Map.entry("full_name", new CustomDatafakerType("full_name")),
-        Map.entry("dob", new PrimitiveType(PrimitiveType.Kind.DATE, "1950-01-01", "2006-12-31")),
-        Map.entry("nationality", new CustomDatafakerType("country")),
-        Map.entry("place_of_birth", new CustomDatafakerType("city")),
-        Map.entry(
-            "issue_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2015-01-01", "2024-12-31")),
-        Map.entry(
-            "expiry_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2025-01-01", "2034-12-31")),
-        Map.entry("authority", new CustomDatafakerType("company")),
-        Map.entry("sex", new EnumType(List.of("M", "F", "X"))));
+        Map.entry("number", "char[8..9]"),
+        Map.entry("first_name", "first_name"),
+        Map.entry("last_name", "last_name"),
+        Map.entry("full_name", "full_name"),
+        Map.entry("dob", "date[1950-01-01..2006-12-31]"),
+        Map.entry("nationality", "country"),
+        Map.entry("place_of_birth", "city"),
+        Map.entry("issue_date", "date[2015-01-01..2024-12-31]"),
+        Map.entry("expiry_date", "date[2025-01-01..2034-12-31]"),
+        Map.entry("authority", "company"),
+        Map.entry("sex", "enum[M,F,X]"));
   }
 }
