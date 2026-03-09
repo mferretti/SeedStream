@@ -16,6 +16,7 @@
 
 package com.datagenerator.destinations.database;
 
+import com.datagenerator.core.type.DataType;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.zaxxer.hikari.HikariConfig;
@@ -62,6 +63,11 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>{@code auto_commit} — JDBC auto-commit, no explicit transaction management
  * </ul>
  *
+ * <p><b>Schema (Option B):</b> When a field schema ({@code Map<String, DataType>}) is provided at
+ * construction, {@link JdbcTypeMapper#bind(java.sql.PreparedStatement, int, Object, DataType)} is
+ * used for accurate JDBC type binding and String-to-primitive coercion. Without a schema, the
+ * runtime-type inference fallback (Option A) is used.
+ *
  * <p><b>Thread safety:</b> Not thread-safe. The {@link
  * com.datagenerator.core.engine.GenerationEngine} uses a single writer thread, so this is safe in
  * normal usage.
@@ -75,6 +81,14 @@ public class DatabaseDestination implements DestinationAdapter {
 
   private final DatabaseDestinationConfig config;
 
+  /**
+   * Optional field schema for DataType-aware JDBC binding (Option B).
+   *
+   * <p>When present, {@link JdbcTypeMapper#bind(java.sql.PreparedStatement, int, Object, DataType)}
+   * is used. When null, falls back to the instanceof-based Option A.
+   */
+  private final Map<String, DataType> schema;
+
   private HikariDataSource dataSource;
   private Connection connection;
   private PreparedStatement insertStatement;
@@ -84,12 +98,23 @@ public class DatabaseDestination implements DestinationAdapter {
   private boolean isOpen = false;
 
   /**
-   * Create a database destination with the given configuration.
+   * Create a database destination with the given configuration (Option A — no schema).
    *
    * @param config connection and batch settings
    */
   public DatabaseDestination(DatabaseDestinationConfig config) {
+    this(config, null);
+  }
+
+  /**
+   * Create a database destination with schema-aware JDBC binding (Option B).
+   *
+   * @param config connection and batch settings
+   * @param schema field schema keyed by alias-resolved field name; may be null to use Option A
+   */
+  public DatabaseDestination(DatabaseDestinationConfig config, Map<String, DataType> schema) {
     this.config = config;
+    this.schema = schema;
     this.batch = new ArrayList<>(config.getBatchSize());
   }
 
@@ -250,8 +275,13 @@ public class DatabaseDestination implements DestinationAdapter {
     try {
       for (Map<String, Object> record : batch) {
         for (int i = 0; i < columnNames.size(); i++) {
-          Object value = record.get(columnNames.get(i));
-          JdbcTypeMapper.bind(insertStatement, i + 1, value);
+          String col = columnNames.get(i);
+          Object value = record.get(col);
+          if (schema != null && schema.containsKey(col)) {
+            JdbcTypeMapper.bind(insertStatement, i + 1, value, schema.get(col));
+          } else {
+            JdbcTypeMapper.bind(insertStatement, i + 1, value);
+          }
         }
         insertStatement.addBatch();
       }
