@@ -74,20 +74,22 @@ POSTGRES_DB="testdb"
 POSTGRES_USER="testuser"
 POSTGRES_PASS="testpass"
 
-# DDL for the passports table used in e2e tests
+# DDL for the passports table used in e2e tests.
+# Column names match original YAML field names from passport.yaml (NOT aliases).
+# Aliases (number, dob, authority) are only cosmetic — ObjectGenerator uses original keys.
 PASSPORTS_DDL="
 CREATE TABLE passports (
-  number         VARCHAR(9),
-  first_name     VARCHAR(255),
-  last_name      VARCHAR(255),
-  full_name      VARCHAR(255),
-  dob            DATE,
-  nationality    VARCHAR(255),
-  place_of_birth VARCHAR(255),
-  issue_date     DATE,
-  expiry_date    DATE,
-  authority      VARCHAR(255),
-  sex            VARCHAR(5)
+  passport_number   VARCHAR(9),
+  first_name        VARCHAR(255),
+  last_name         VARCHAR(255),
+  full_name         VARCHAR(255),
+  date_of_birth     DATE,
+  nationality       VARCHAR(255),
+  place_of_birth    VARCHAR(255),
+  issue_date        DATE,
+  expiry_date       DATE,
+  issuing_authority VARCHAR(255),
+  sex               VARCHAR(5)
 );"
 
 # Colors for output
@@ -394,7 +396,12 @@ run_database_test() {
     unset JAVA_OPTS
 
     # Reset table before main run
-    prepare_passports_table
+    if ! prepare_passports_table; then
+        log_warn "Skipping database test (could not reset table before main run): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table reset failed" >> "$RESULTS_FILE"
+        unset JAVA_OPTS
+        return
+    fi
 
     # Main benchmark run
     log_info "  Benchmark: $RECORD_COUNT records..."
@@ -422,7 +429,7 @@ run_database_test() {
 
         # Verify row count
         local actual_rows
-        actual_rows=$(count_passports_rows)
+        actual_rows=$(count_passports_rows || echo "unknown")
         if [[ "$actual_rows" != "$RECORD_COUNT" ]]; then
             log_warn "  Row count mismatch: expected $RECORD_COUNT, got $actual_rows"
             status="WARN"
