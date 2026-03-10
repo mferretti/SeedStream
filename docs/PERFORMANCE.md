@@ -330,7 +330,7 @@ Each child record requires the parent's generated ID, so inserts are inherently 
 
 For nested structures, reduce `batch_size` to 100-200 to avoid large transactions with mixed table inserts.
 
-**JDBC driver**: SeedStream does not bundle JDBC drivers. Place the appropriate driver JAR in the `extras/` directory before running a database job. See `extras/README.txt` in the distribution.
+**JDBC driver**: PostgreSQL and MySQL drivers are currently bundled in the distribution. Support for user-supplied drivers via an `extras/` directory is planned (TASK-044).
 
 ### 5. Format Selection
 
@@ -520,16 +520,16 @@ For more details, see [benchmarks/README.md](../benchmarks/README.md).
 
 ### Issue: Database connection refused / timeout
 
-**Cause**: JDBC driver not found, or database unreachable.
+**Cause**: Database unreachable, or incorrect connection URL / credentials.
 
 **Diagnostics**:
-1. Confirm driver JAR is present in `extras/` directory.
-2. Confirm database is reachable: `psql -h host -U user -d db`
-3. Check connection URL format: `jdbc:postgresql://host:5432/db`
+1. Confirm database is reachable: `psql -h host -U user -d db`
+2. Check connection URL format: `jdbc:postgresql://host:5432/db`
+3. Verify credentials are correctly set (env var substitution: `${DB_PASSWORD}`)
 
 **Solution**:
-- Place the correct JDBC driver JAR in `extras/` (see `extras/README.txt`)
 - Verify `url`, `username`, `password` in job YAML (use `${ENV_VAR}` for secrets)
+- Confirm the database user has INSERT privileges on the target tables
 
 For more troubleshooting, see [README.md](../README.md#troubleshooting) or open a [GitHub Issue](https://github.com/mferretti/SeedStream/issues).
 
