@@ -1,6 +1,6 @@
 # TASK-043: Database Destination Stage 2 — Nested Structure Auto-Decomposition
 
-**Status:** Not Started
+**Status:** Complete ✅
 **Priority:** P1
 **Phase:** Phase 8 (Database Destinations)
 **Estimated Effort:** 20-25 hours
@@ -171,53 +171,51 @@ private final Map<String, TableInsertState> statementCache = new LinkedHashMap<>
 
 ### Phase 1: Core Decomposition (no DB yet)
 
-- [ ] Create `ParentContext` record
-- [ ] Create `NestedRecordDecomposer` with unit tests
-  - [ ] Flat record → flat fields only, no children
-  - [ ] Single nested object → one child entry
-  - [ ] Nested array → N child entries
-  - [ ] FK injection from parent context
-  - [ ] Multi-level: object containing array (recursive)
-  - [ ] Null `id` field (no FK injected)
-- [ ] Create `DecomposedInsertCoordinator` with unit tests (mock `insertFn`)
-  - [ ] Depth-first ordering verified (parent before children)
-  - [ ] Recursive two-level nesting
-  - [ ] Array generates correct N child calls
+- [x] Create `ParentContext` record
+- [x] Create `NestedRecordDecomposer` with unit tests
+  - [x] Flat record → flat fields only, no children
+  - [x] Single nested object → one child entry
+  - [x] Nested array → N child entries
+  - [x] FK injection from parent context
+  - [x] Multi-level: object containing array (recursive)
+  - [x] Null `id` field (no FK injected)
+- [x] Create `NestedRecordDecomposer` (recursive depth-first; `DecomposedInsertCoordinator` logic merged into `DatabaseDestination`)
+  - [x] Depth-first ordering verified (parent before children)
+  - [x] Recursive two-level nesting
+  - [x] Array generates correct N child calls
 
 ### Phase 2: DatabaseDestination Integration
 
-- [ ] Add `nestedMode` detection in `open()` (inspect `rawFieldTypes` for `object[` / `array[object[` prefixes)
-- [ ] Add per-table `PreparedStatement` cache (`Map<String, TableInsertState>`)
-- [ ] Wire `DecomposedInsertCoordinator` into `write()` when `nestedMode = true`
-- [ ] Remove `validateFlatRecord()` from nested path (decomposer handles it)
-- [ ] Update `flush()` and `close()` to drain all per-table batches
-- [ ] Update transaction commit to cover all tables in the same batch
+- [x] Add `nestedMode` detection on first `write()` (auto-detect from record structure)
+- [x] Add per-table `PreparedStatement` cache (`Map<String, TableInsertState>`)
+- [x] Wire nested insert path into `write()` when nested maps/lists detected
+- [x] Remove `validateFlatRecord()` from nested path (decomposer handles it)
+- [x] Update `flush()` and `close()` to drain all per-table batches
+- [x] Update transaction commit to cover all tables in the same batch
 
 ### Phase 3: Integration Tests (Testcontainers PostgreSQL)
 
-Add to `DatabaseDestinationIT.java` or create `DatabaseDestinationNestedIT.java`:
-
-- [ ] `shouldInsertOrderWithLineItems()` — 1 order, 3 line items, verify both tables
-- [ ] `shouldInsertOrderWithNoLineItems()` — empty array → only parent row
-- [ ] `shouldHandleArrayWithMultipleElements()` — N elements in array, FK correct on all
-- [ ] `shouldInsertThreeLevelNesting()` — order → line_item → line_item_attribute
-- [ ] `shouldIsolateImmediateParentFk()` — deep child does NOT get root ID
-- [ ] `shouldCommitParentAndChildrenTogether()` — per_batch strategy: atomicity verified
-- [ ] `shouldCountCorrectRowsAcrossTables()` — 100 orders × 1..5 line items
+- [x] `shouldInsertOrderWithLineItems()` — invoices + line_items, FK chain
+- [x] `shouldInsertOrderWithNoLineItems()` — empty array → only parent row
+- [x] `shouldHandleArrayWithMultipleElements()` — N elements in array, FK correct on all
+- [x] `shouldInsertThreeLevelNesting()` — invoices → issuer/recipient → attributes
+- [x] `shouldIsolateImmediateParentFk()` — deep child does NOT get root ID
+- [x] `shouldCommitParentAndChildrenTogether()` — per_batch strategy: atomicity verified
+- [x] `shouldCountCorrectRowsAcrossTables()` — 100 orders × variable line items
 
 ### Phase 4: E2E Test Update
 
-- [ ] Add nested structure job to `config/jobs/e2e_test_database_order.yaml`
-- [ ] Add `order.yaml` and `line_item.yaml` to `config/structures/`
-- [ ] Update `benchmarks/run_e2e_test.sh` to include nested DB test
-- [ ] Verify row counts in both tables after run
+- [x] Added nested structure job to `config/jobs/e2e_test_database_invoice.yaml`
+- [x] `invoice.yaml`, `line_item.yaml` in `config/structures/`
+- [x] Updated `benchmarks/run_e2e_test.sh` to use nested DB invoice test (replaces flat passport)
+- [x] Row counts verified in invoices + child tables after run
 
 ### Phase 5: Documentation
 
-- [ ] Update `DATABASE-DESTINATION-PLANNING.md` Stage 2 checklist (tick items off)
-- [ ] Update `BACKLOG.md` Stage 2 entry from "Deferred" to "Complete"
-- [ ] Update `TASK-CATALOG.md` stats
-- [ ] Update `DESIGN.md` with Stage 2 section
+- [x] Update `DATABASE-DESTINATION-PLANNING.md` Stage 2 checklist (tick items off)
+- [x] Update `BACKLOG.md` Stage 2 entry from "Deferred" to "Complete"
+- [x] Update `TASK-CATALOG.md` stats
+- [x] `DESIGN.md` Stage 2 section already present (added during design phase)
 
 ---
 
