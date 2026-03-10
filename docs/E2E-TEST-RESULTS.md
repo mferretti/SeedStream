@@ -22,7 +22,7 @@ All tests run on a **single local machine** with:
 
 ### Test Data Structure
 
-The **Passport** structure ([`config/structures/passport.yaml`](../../config/structures/passport.yaml)) contains 11 fields with a mix of Datafaker semantic types and primitives:
+The **Passport** structure ([`config/structures/passport.yaml`](../config/structures/passport.yaml)) contains 11 fields with a mix of Datafaker semantic types and primitives:
 
 ```yaml
 name: passport
