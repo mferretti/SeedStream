@@ -71,29 +71,49 @@ CURRENT_TEST=0
 TOTAL_TESTS=0
 
 # Database test matrix (no format dimension — JDBC binding, not serialization)
-DB_JOB_FILE="${PROJECT_ROOT}/config/jobs/e2e_test_database_passport.yaml"
+# Uses the invoice nested structure (Stage 2): invoices → issuer, recipient, line_items.
+# This is a more realistic benchmark than a flat table.
+DB_JOB_FILE="${PROJECT_ROOT}/config/jobs/e2e_test_database_invoice.yaml"
 POSTGRES_CONTAINER="postgres-benchmark"
 POSTGRES_PORT=5432
 POSTGRES_DB="testdb"
 POSTGRES_USER="testuser"
 POSTGRES_PASS="testpass"
 
-# DDL for the passports table used in e2e tests.
-# Column names match original YAML field names from passport.yaml (NOT aliases).
-# Aliases (number, dob, authority) are only cosmetic — ObjectGenerator uses original keys.
-PASSPORTS_DDL="
-CREATE TABLE passports (
-  passport_number   VARCHAR(9),
-  first_name        VARCHAR(255),
-  last_name         VARCHAR(255),
-  full_name         VARCHAR(255),
-  date_of_birth     DATE,
-  nationality       VARCHAR(255),
-  place_of_birth    VARCHAR(255),
-  issue_date        DATE,
-  expiry_date       DATE,
-  issuing_authority VARCHAR(255),
-  sex               VARCHAR(5)
+# DDL for the invoice multi-table schema.
+# Column names match original YAML field names (NOT aliases) — ObjectGenerator uses original keys.
+# Root table: invoices (must have `id` for FK injection into child tables).
+# Child tables: issuer, recipient (from object[company]), line_items (from array[object[line_item]]).
+# FK convention: {parent_table_name}_id (e.g. invoices_id in all child tables).
+INVOICES_DDL="
+CREATE TABLE invoices (
+  id              INT,
+  invoice_number  INT,
+  invoice_date    DATE,
+  gross_total     DECIMAL(12,2),
+  total_vat       DECIMAL(12,2),
+  net_total       DECIMAL(12,2)
+);
+CREATE TABLE issuer (
+  name         VARCHAR(255),
+  vat_number   VARCHAR(20),
+  address      VARCHAR(255),
+  city         VARCHAR(100),
+  invoices_id  INT
+);
+CREATE TABLE recipient (
+  name         VARCHAR(255),
+  vat_number   VARCHAR(20),
+  address      VARCHAR(255),
+  city         VARCHAR(100),
+  invoices_id  INT
+);
+CREATE TABLE line_items (
+  description  VARCHAR(255),
+  quantity     INT,
+  unit_price   DECIMAL(12,2),
+  vat_rate     VARCHAR(10),
+  invoices_id  INT
 );"
 
 # Colors for output
@@ -272,14 +292,17 @@ run_test() {
         mkdir -p "${OUTPUT_DIR}/e2e_passport_file_${format}"
     fi
     
-    # Set JAVA_OPTS for memory constraints (warmup)
-    export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
-    
-    # Warmup run (10K records, skip metrics)
-    log_info "  Warmup: $WARMUP_COUNT records..."
-    if ! "$CLI_SCRIPT" execute --job "$job_file" --format "$format" --count $WARMUP_COUNT --threads $threads \
-        >/dev/null 2>&1; then
-        log_warn "  Warmup failed - may indicate memory issue"
+    # Warmup run (skip if WARMUP_COUNT=0)
+    if [[ $WARMUP_COUNT -gt 0 ]]; then
+        export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
+        log_info "  Warmup: $WARMUP_COUNT records..."
+        if ! "$CLI_SCRIPT" execute --job "$job_file" --format "$format" --count $WARMUP_COUNT --threads $threads \
+            >/dev/null 2>&1; then
+            log_warn "  Warmup failed - may indicate memory issue"
+        fi
+        unset JAVA_OPTS
+    else
+        log_info "  Warmup: skipped"
     fi
     
     # Main benchmark run
@@ -350,29 +373,36 @@ run_test() {
     unset JAVA_OPTS
 }
 
-# Drop and recreate the passports table for a clean test run
-prepare_passports_table() {
+# Drop and recreate all invoice tables for a clean test run
+prepare_invoice_tables() {
     docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
-        -c "DROP TABLE IF EXISTS passports;" \
-        -c "${PASSPORTS_DDL}" \
+        -c "DROP TABLE IF EXISTS line_items; DROP TABLE IF EXISTS issuer; DROP TABLE IF EXISTS recipient; DROP TABLE IF EXISTS invoices;" \
+        -c "${INVOICES_DDL}" \
         >/dev/null 2>&1
 }
 
-# Count rows in the passports table after a test run
-count_passports_rows() {
+# Count rows in the invoices (root) table after a test run
+count_invoice_rows() {
     docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
-        -t -c "SELECT COUNT(*) FROM passports;" 2>/dev/null | tr -d ' \n'
+        -t -c "SELECT COUNT(*) FROM invoices;" 2>/dev/null | tr -d ' \n'
 }
 
-# Run a single database benchmark test
+# Count total child rows inserted across all child tables
+count_invoice_child_rows() {
+    docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        -t -c "SELECT (SELECT COUNT(*) FROM issuer) + (SELECT COUNT(*) FROM recipient) + (SELECT COUNT(*) FROM line_items);" \
+        2>/dev/null | tr -d ' \n'
+}
+
+# Run a single database benchmark test (invoice nested structure)
 run_database_test() {
     local threads=$1
     local memory=$2
 
     local memory_mb="${memory%m}"
-    local gc_log_file="${GC_LOG_DIR}/gc_database_passport_t${threads}_m${memory}.log"
-    local output_file="${GC_LOG_DIR}/output_database_passport_t${threads}_m${memory}.log"
-    local test_name="database/passport/t${threads}/m${memory}"
+    local gc_log_file="${GC_LOG_DIR}/gc_database_invoice_t${threads}_m${memory}.log"
+    local output_file="${GC_LOG_DIR}/output_database_invoice_t${threads}_m${memory}.log"
+    local test_name="database/invoice/t${threads}/m${memory}"
 
     log_info "Running test: $test_name"
 
@@ -383,27 +413,30 @@ run_database_test() {
         return
     fi
 
-    # Prepare clean table
-    if ! prepare_passports_table; then
-        log_warn "Skipping database test (could not prepare table): $test_name"
+    # Prepare clean tables (invoices + issuer + recipient + line_items)
+    if ! prepare_invoice_tables; then
+        log_warn "Skipping database test (could not prepare tables): $test_name"
         echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table setup failed" >> "$RESULTS_FILE"
         return
     fi
 
-    # Warmup run
-    log_info "  Warmup: $WARMUP_COUNT records..."
-    export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
-    if ! "$CLI_SCRIPT" execute --job "$DB_JOB_FILE" --count $WARMUP_COUNT --threads $threads \
-        >/dev/null 2>&1; then
-        log_warn "  Warmup failed"
-    fi
-    unset JAVA_OPTS
-
-    # Reset table before main run
-    if ! prepare_passports_table; then
-        log_warn "Skipping database test (could not reset table before main run): $test_name"
-        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table reset failed" >> "$RESULTS_FILE"
+    # Warmup run (skip if WARMUP_COUNT=0)
+    if [[ $WARMUP_COUNT -gt 0 ]]; then
+        log_info "  Warmup: $WARMUP_COUNT records..."
+        export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
+        if ! "$CLI_SCRIPT" execute --job "$DB_JOB_FILE" --count $WARMUP_COUNT --threads $threads \
+            >/dev/null 2>&1; then
+            log_warn "  Warmup failed"
+        fi
         unset JAVA_OPTS
+    else
+        log_info "  Warmup: skipped"
+    fi
+
+    # Reset tables before main run
+    if ! prepare_invoice_tables; then
+        log_warn "Skipping database test (could not reset tables before main run): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table reset failed" >> "$RESULTS_FILE"
         return
     fi
 
@@ -416,7 +449,7 @@ run_database_test() {
 
     local java_opts="-Xmx${memory} -Xms${memory} -Xlog:gc*:file=${gc_log_file}:time,level,tags"
     if [[ "$PROFILE_MODE" == true ]]; then
-        local jfr_file="${JFR_OUTPUT_DIR}/profile_database_passport_t${threads}_m${memory}.jfr"
+        local jfr_file="${JFR_OUTPUT_DIR}/profile_database_invoice_t${threads}_m${memory}.jfr"
         java_opts="${java_opts} -XX:StartFlightRecording=filename=${jfr_file},settings=profile"
         log_info "  JFR profiling enabled: $jfr_file"
     fi
@@ -431,13 +464,15 @@ run_database_test() {
         local throughput=0
         [[ $duration -gt 0 ]] && throughput=$((RECORD_COUNT / duration))
 
-        # Verify row count
-        local actual_rows
-        actual_rows=$(count_passports_rows || echo "unknown")
-        if [[ "$actual_rows" != "$RECORD_COUNT" ]]; then
-            log_warn "  Row count mismatch: expected $RECORD_COUNT, got $actual_rows"
+        # Verify root row count (invoices table must equal RECORD_COUNT)
+        local actual_invoices
+        actual_invoices=$(count_invoice_rows || echo "unknown")
+        local actual_children
+        actual_children=$(count_invoice_child_rows || echo "unknown")
+        if [[ "$actual_invoices" != "$RECORD_COUNT" ]]; then
+            log_warn "  Row count mismatch: expected $RECORD_COUNT invoices, got $actual_invoices"
             status="WARN"
-            error_msg="Row count mismatch: expected $RECORD_COUNT got $actual_rows"
+            error_msg="Row count mismatch: expected $RECORD_COUNT got $actual_invoices"
         fi
 
         local gc_stats
@@ -448,7 +483,7 @@ run_database_test() {
             gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / ($duration * 1000)) * 100}")
         fi
 
-        log_success "  Duration: ${duration}s | Throughput: ${throughput} rec/s | Rows: ${actual_rows} | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
+        log_success "  Duration: ${duration}s | Throughput: ${throughput} rec/s | Invoices: ${actual_invoices} | Child rows: ${actual_children} | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
         echo "database,none,$threads,$memory_mb,$RECORD_COUNT,$duration,$throughput,$heap_used,$heap_max,$gc_time,$gc_count,$gc_time_percent,$status,$error_msg" >> "$RESULTS_FILE"
 
     else
@@ -607,7 +642,7 @@ generate_report() {
 **Date:** ${date_str}
 **Test Duration:** ~${elapsed_min} minutes
 **Tests:** ${tests_run} executed, ${tests_skipped} skipped, ${total_tests} total
-**Data Structure:** Passport (11 fields, ~200 bytes)
+**Data Structures:** Invoice nested (invoices → issuer, recipient, line_items) for database; Passport (11 fields) for file/kafka
 **Record Count:** ${RECORD_COUNT} per test
 **Test Matrix:** ${#DESTINATIONS[@]} file/kafka destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread counts × ${#MEMORY_LIMITS[@]} memory limits + ${db_tests} database tests = ${total_tests} tests
 
@@ -668,11 +703,12 @@ $(awk -F',' 'NR>1 && $1=="kafka" && $2=="protobuf" && $13=="SUCCESS" {printf "- 
 
 ### Database Destination (JDBC — no format dimension)
 
-_Binding strategy: Option B (DataType-aware). Serializer not used. Table: \`passports\` (11 columns, pre-existing)._
+_Stage 2 multi-table auto-decomposition. Each invoice record writes to 4 tables: \`invoices\` (root), \`issuer\`, \`recipient\`, \`line_items\` (1–10 rows each). Throughput is rec/s of root invoices; total DB writes are ~4–12× higher. batch_size=1000 root records, per_batch commit._
 
 $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {printf "- **%d threads, %dMB:** %d rec/s (%.2f%% GC, Heap: %d/%dMB)\n", $3, $4, $7, $12, $8, $9}' "$RESULTS_FILE")
 $(awk -F',' 'NR>1 && $1=="database" && $13=="WARN" {printf "- **%d threads, %dMB:** %d rec/s ⚠️ %s\n", $3, $4, $7, $14}' "$RESULTS_FILE")
 $(awk -F',' 'NR>1 && $1=="database" && $13=="SKIPPED" {print "_(Tests skipped — PostgreSQL container not running)_"; exit}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13!="SKIPPED" {found=1; exit} END {if (!found) print "_(No database tests ran)_"}' "$RESULTS_FILE")
 
 ## Memory Analysis
 
@@ -736,14 +772,14 @@ resources:
     cpu: "${kafka_cpu_lim}m"
 \`\`\`
 
-### For Database Inserts (JDBC Batch)
+### For Database Inserts (JDBC Batch — Nested Multi-Table)
 
 $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {found=1; exit} END {if (!found) print "_No successful database tests — PostgreSQL was not available._"}' "$RESULTS_FILE")
 $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {found=1; exit} END {if (found) print "**Recommended Configuration:**"}' "$RESULTS_FILE")
 $(if [[ -n "$db_tps" && "$db_tps" -gt 0 ]]; then cat <<DBREC
 - **Memory:** ${db_mem}MB (best observed performance)
 - **Threads:** ${db_thr} (optimal for this workload)
-- **Expected:** ${db_tps_low}-${db_tps} rec/s (batch_size=1000, per_batch commit)
+- **Expected:** ${db_tps_low}-${db_tps} invoice rec/s (4 tables, batch_size=1000, per_batch commit)
 
 **Kubernetes Resource Requests:**
 \`\`\`yaml
@@ -784,7 +820,7 @@ _Isolated benchmarks are from JMH runs (static). End-to-End columns are computed
 | CSV Serializer | Same as JSON | - | 89× slower (JMH) |
 | File I/O | 4.9M ops/sec | $(awk -F',' 'NR>1 && $1=="file" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { printf "%d-%d rec/s", min+0, max+0 }' "$RESULTS_FILE") | Disk-bound |
 | Kafka (async) | 3.5K rec/sec (sync) | $(awk -F',' 'NR>1 && $1=="kafka" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { printf "%d-%d rec/s", min+0, max+0 }' "$RESULTS_FILE") | Network-bound (localhost) |
-| Database (JDBC) | - | $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { if(max>0) printf "%d-%d rec/s", min+0, max+0; else print "skipped" }' "$RESULTS_FILE") | JDBC batch (batch_size=1000) |
+| Database (JDBC) | - | $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { if(max>0) printf "%d-%d rec/s", min+0, max+0; else print "skipped" }' "$RESULTS_FILE") | Nested 4 tables, batch_size=1000 |
 
 **Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka/database, disk for files).
 

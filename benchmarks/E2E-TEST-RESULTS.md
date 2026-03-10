@@ -1,9 +1,9 @@
 # End-to-End Test Results
 
-**Date:** March 09, 2026
-**Test Duration:** ~5 minutes
+**Date:** March 10, 2026
+**Test Duration:** ~27 minutes
 **Tests:** 45 executed, 18 skipped, 63 total
-**Data Structure:** Passport (11 fields, ~200 bytes)
+**Data Structures:** Invoice nested (invoices → issuer, recipient, line_items) for database; Passport (11 fields) for file/kafka
 **Record Count:** 100000 per test
 **Test Matrix:** 2 file/kafka destinations × 3 formats × 3 thread counts × 3 memory limits + 9 database tests = 63 tests
 
@@ -36,11 +36,11 @@ _Showing first 5 rows — full data in [`benchmarks/e2e_results.csv`](e2e_result
 
 ```csv
 destination,format,threads,memory_mb,record_count,duration_sec,throughput_rps,heap_used_mb,heap_max_mb,gc_time_ms,gc_count,gc_time_percent,status,error
-file,json,1,256,100000,3,33333,12,256,45,17,1.50,SUCCESS,
-file,json,1,512,100000,3,33333,12,512,26,9,0.87,SUCCESS,
-file,json,1,1024,100000,3,33333,11,1024,16,5,0.53,SUCCESS,
-file,json,4,256,100000,3,33333,19,256,61,18,2.03,SUCCESS,
-file,json,4,512,100000,4,25000,19,512,48,10,1.20,SUCCESS,
+file,json,1,256,100000,4,25000,12,256,47,17,1.18,SUCCESS,
+file,json,1,512,100000,3,33333,12,512,28,9,0.93,SUCCESS,
+file,json,1,1024,100000,4,25000,11,1024,16,5,0.40,SUCCESS,
+file,json,4,256,100000,3,33333,19,256,85,18,2.83,SUCCESS,
+file,json,4,512,100000,3,33333,19,512,40,10,1.33,SUCCESS,
 ```
 
 ## Analysis by Scenario
@@ -48,70 +48,71 @@ file,json,4,512,100000,4,25000,19,512,48,10,1.20,SUCCESS,
 ### File Destination
 
 #### JSON Format
-- **1 threads, 256MB:** 33333 rec/s (1.50% GC, Heap: 12/256MB)
-- **1 threads, 512MB:** 33333 rec/s (0.87% GC, Heap: 12/512MB)
-- **1 threads, 1024MB:** 33333 rec/s (0.53% GC, Heap: 11/1024MB)
-- **4 threads, 256MB:** 33333 rec/s (2.03% GC, Heap: 19/256MB)
-- **4 threads, 512MB:** 25000 rec/s (1.20% GC, Heap: 19/512MB)
-- **4 threads, 1024MB:** 33333 rec/s (0.77% GC, Heap: 18/1024MB)
-- **8 threads, 256MB:** 33333 rec/s (2.30% GC, Heap: 18/256MB)
-- **8 threads, 512MB:** 33333 rec/s (1.33% GC, Heap: 18/512MB)
-- **8 threads, 1024MB:** 33333 rec/s (0.87% GC, Heap: 18/1024MB)
+- **1 threads, 256MB:** 25000 rec/s (1.18% GC, Heap: 12/256MB)
+- **1 threads, 512MB:** 33333 rec/s (0.93% GC, Heap: 12/512MB)
+- **1 threads, 1024MB:** 25000 rec/s (0.40% GC, Heap: 11/1024MB)
+- **4 threads, 256MB:** 33333 rec/s (2.83% GC, Heap: 19/256MB)
+- **4 threads, 512MB:** 33333 rec/s (1.33% GC, Heap: 19/512MB)
+- **4 threads, 1024MB:** 33333 rec/s (0.73% GC, Heap: 18/1024MB)
+- **8 threads, 256MB:** 33333 rec/s (2.33% GC, Heap: 18/256MB)
+- **8 threads, 512MB:** 33333 rec/s (1.30% GC, Heap: 18/512MB)
+- **8 threads, 1024MB:** 33333 rec/s (0.77% GC, Heap: 18/1024MB)
 
 #### CSV Format
 
 
 #### Protobuf Format
-- **1 threads, 256MB:** 33333 rec/s (2.57% GC, Heap: 13/256MB)
-- **1 threads, 512MB:** 33333 rec/s (1.53% GC, Heap: 12/512MB)
-- **1 threads, 1024MB:** 33333 rec/s (1.03% GC, Heap: 13/1024MB)
-- **4 threads, 256MB:** 25000 rec/s (2.65% GC, Heap: 18/256MB)
-- **4 threads, 512MB:** 33333 rec/s (1.97% GC, Heap: 20/512MB)
-- **4 threads, 1024MB:** 25000 rec/s (0.88% GC, Heap: 19/1024MB)
-- **8 threads, 256MB:** 25000 rec/s (2.38% GC, Heap: 19/256MB)
-- **8 threads, 512MB:** 25000 rec/s (1.73% GC, Heap: 19/512MB)
-- **8 threads, 1024MB:** 33333 rec/s (1.27% GC, Heap: 18/1024MB)
+- **1 threads, 256MB:** 25000 rec/s (2.17% GC, Heap: 15/256MB)
+- **1 threads, 512MB:** 25000 rec/s (1.52% GC, Heap: 20/512MB)
+- **1 threads, 1024MB:** 33333 rec/s (1.20% GC, Heap: 14/1024MB)
+- **4 threads, 256MB:** 25000 rec/s (2.40% GC, Heap: 19/256MB)
+- **4 threads, 512MB:** 25000 rec/s (1.52% GC, Heap: 20/512MB)
+- **4 threads, 1024MB:** 33333 rec/s (1.27% GC, Heap: 18/1024MB)
+- **8 threads, 256MB:** 20000 rec/s (2.04% GC, Heap: 18/256MB)
+- **8 threads, 512MB:** 25000 rec/s (1.60% GC, Heap: 19/512MB)
+- **8 threads, 1024MB:** 25000 rec/s (1.00% GC, Heap: 18/1024MB)
 
 ### Kafka Destination
 
 #### JSON Format
-- **1 threads, 256MB:** 25000 rec/s (1.82% GC, Heap: 11/256MB)
-- **1 threads, 512MB:** 25000 rec/s (1.25% GC, Heap: 12/512MB)
-- **1 threads, 1024MB:** 25000 rec/s (0.97% GC, Heap: 12/1024MB)
-- **4 threads, 256MB:** 25000 rec/s (2.50% GC, Heap: 19/256MB)
-- **4 threads, 512MB:** 25000 rec/s (1.77% GC, Heap: 22/512MB)
-- **4 threads, 1024MB:** 25000 rec/s (1.15% GC, Heap: 19/1024MB)
-- **8 threads, 256MB:** 25000 rec/s (2.53% GC, Heap: 22/256MB)
-- **8 threads, 512MB:** 25000 rec/s (1.50% GC, Heap: 20/512MB)
-- **8 threads, 1024MB:** 25000 rec/s (0.85% GC, Heap: 18/1024MB)
+- **1 threads, 256MB:** 25000 rec/s (2.08% GC, Heap: 13/256MB)
+- **1 threads, 512MB:** 25000 rec/s (1.25% GC, Heap: 11/512MB)
+- **1 threads, 1024MB:** 20000 rec/s (0.60% GC, Heap: 11/1024MB)
+- **4 threads, 256MB:** 25000 rec/s (2.43% GC, Heap: 19/256MB)
+- **4 threads, 512MB:** 25000 rec/s (1.85% GC, Heap: 19/512MB)
+- **4 threads, 1024MB:** 25000 rec/s (1.27% GC, Heap: 20/1024MB)
+- **8 threads, 256MB:** 25000 rec/s (2.67% GC, Heap: 18/256MB)
+- **8 threads, 512MB:** 25000 rec/s (1.88% GC, Heap: 20/512MB)
+- **8 threads, 1024MB:** 25000 rec/s (1.05% GC, Heap: 18/1024MB)
 
 #### CSV Format
 
 
 #### Protobuf Format
-- **1 threads, 256MB:** 20000 rec/s (2.42% GC, Heap: 15/256MB)
-- **1 threads, 512MB:** 25000 rec/s (2.02% GC, Heap: 17/512MB)
-- **1 threads, 1024MB:** 25000 rec/s (1.40% GC, Heap: 19/1024MB)
-- **4 threads, 256MB:** 20000 rec/s (2.36% GC, Heap: 18/256MB)
-- **4 threads, 512MB:** 20000 rec/s (1.86% GC, Heap: 12/512MB)
-- **4 threads, 1024MB:** 20000 rec/s (1.12% GC, Heap: 19/1024MB)
-- **8 threads, 256MB:** 20000 rec/s (2.62% GC, Heap: 19/256MB)
-- **8 threads, 512MB:** 20000 rec/s (2.08% GC, Heap: 19/512MB)
-- **8 threads, 1024MB:** 20000 rec/s (1.00% GC, Heap: 19/1024MB)
+- **1 threads, 256MB:** 25000 rec/s (3.17% GC, Heap: 14/256MB)
+- **1 threads, 512MB:** 25000 rec/s (2.20% GC, Heap: 21/512MB)
+- **1 threads, 1024MB:** 20000 rec/s (1.16% GC, Heap: 18/1024MB)
+- **4 threads, 256MB:** 25000 rec/s (3.08% GC, Heap: 18/256MB)
+- **4 threads, 512MB:** 20000 rec/s (1.82% GC, Heap: 14/512MB)
+- **4 threads, 1024MB:** 20000 rec/s (1.08% GC, Heap: 18/1024MB)
+- **8 threads, 256MB:** 20000 rec/s (2.72% GC, Heap: 13/256MB)
+- **8 threads, 512MB:** 20000 rec/s (1.86% GC, Heap: 18/512MB)
+- **8 threads, 1024MB:** 20000 rec/s (0.86% GC, Heap: 18/1024MB)
 
 ### Database Destination (JDBC — no format dimension)
 
-_Binding strategy: Option B (DataType-aware). Serializer not used. Table: `passports` (11 columns, pre-existing)._
+_Stage 2 multi-table auto-decomposition. Each invoice record writes to 4 tables: `invoices` (root), `issuer`, `recipient`, `line_items` (1–10 rows each). Throughput is rec/s of root invoices; total DB writes are ~4–12× higher. batch_size=1000 root records, per_batch commit._
 
-- **1 threads, 256MB:** 25000 rec/s (1.77% GC, Heap: 49/256MB)
-- **1 threads, 512MB:** 25000 rec/s (1.50% GC, Heap: 46/512MB)
-- **1 threads, 1024MB:** 20000 rec/s (1.04% GC, Heap: 70/1024MB)
-- **4 threads, 256MB:** 25000 rec/s (1.27% GC, Heap: 47/256MB)
-- **4 threads, 512MB:** 25000 rec/s (1.18% GC, Heap: 44/512MB)
-- **4 threads, 1024MB:** 20000 rec/s (1.00% GC, Heap: 69/1024MB)
-- **8 threads, 256MB:** 25000 rec/s (1.27% GC, Heap: 44/256MB)
-- **8 threads, 512MB:** 25000 rec/s (1.70% GC, Heap: 73/512MB)
-- **8 threads, 1024MB:** 20000 rec/s (1.00% GC, Heap: 34/1024MB)
+- **1 threads, 256MB:** 694 rec/s (0.13% GC, Heap: 16/256MB)
+- **1 threads, 512MB:** 729 rec/s (0.08% GC, Heap: 16/512MB)
+- **1 threads, 1024MB:** 675 rec/s (0.04% GC, Heap: 16/1024MB)
+- **4 threads, 256MB:** 680 rec/s (0.10% GC, Heap: 13/256MB)
+- **4 threads, 512MB:** 561 rec/s (0.06% GC, Heap: 16/512MB)
+- **4 threads, 1024MB:** 588 rec/s (0.03% GC, Heap: 16/1024MB)
+- **8 threads, 256MB:** 684 rec/s (0.10% GC, Heap: 16/256MB)
+- **8 threads, 512MB:** 662 rec/s (0.07% GC, Heap: 16/512MB)
+- **8 threads, 1024MB:** 653 rec/s (0.03% GC, Heap: 16/1024MB)
+
 
 
 
@@ -119,23 +120,23 @@ _Binding strategy: Option B (DataType-aware). Serializer not used. Table: `passp
 
 ### 256MB Configuration
 - Success Rate: 15/15 tests
-- Average Heap Usage: 23MB
-- Average GC Time: 2.13%
+- Average Heap Usage: 16MB
+- Average GC Time: 1.96%
 
 ### 512MB Configuration
 - Success Rate: 15/15 tests
-- Average Heap Usage: 24MB
-- Average GC Time: 1.57%
+- Average Heap Usage: 17MB
+- Average GC Time: 1.28%
 
 ### 1GB Configuration
 - Success Rate: 15/15 tests
-- Average Heap Usage: 25MB
-- Average GC Time: 0.99%
+- Average Heap Usage: 17MB
+- Average GC Time: 0.77%
 
 ## Threading Impact
-- **1 thread(s):** Average 27666 rec/s (15 tests)
-- **4 thread(s):** Average 25333 rec/s (15 tests)
-- **8 thread(s):** Average 25888 rec/s (15 tests)
+- **1 thread(s):** Average 20584 rec/s (15 tests)
+- **4 thread(s):** Average 21677 rec/s (15 tests)
+- **8 thread(s):** Average 20466 rec/s (15 tests)
 
 ## Production Recommendations
 
@@ -143,7 +144,7 @@ _Binding strategy: Option B (DataType-aware). Serializer not used. Table: `passp
 
 **Recommended Configuration:**
 - **Memory:** 256MB (best observed performance)
-- **Threads:** 1 (optimal for this workload)
+- **Threads:** 4 (optimal for this workload)
 - **Format:** json (best throughput observed)
 - **Expected:** 24999-33333 rec/s
 
@@ -152,10 +153,10 @@ _Binding strategy: Option B (DataType-aware). Serializer not used. Table: `passp
 resources:
   requests:
     memory: "256Mi"
-    cpu: "1000m"
+    cpu: "4000m"
   limits:
     memory: "512Mi"
-    cpu: "2000m"
+    cpu: "8000m"
 ```
 
 ### For Kafka Streaming (Network-Bound)
@@ -177,22 +178,22 @@ resources:
     cpu: "2000m"
 ```
 
-### For Database Inserts (JDBC Batch)
+### For Database Inserts (JDBC Batch — Nested Multi-Table)
 
 
 **Recommended Configuration:**
-- **Memory:** 256MB (best observed performance)
+- **Memory:** 512MB (best observed performance)
 - **Threads:** 1 (optimal for this workload)
-- **Expected:** 18750-25000 rec/s (batch_size=1000, per_batch commit)
+- **Expected:** 546-729 invoice rec/s (4 tables, batch_size=1000, per_batch commit)
 
 **Kubernetes Resource Requests:**
 ```yaml
 resources:
   requests:
-    memory: "256Mi"
+    memory: "512Mi"
     cpu: "1000m"
   limits:
-    memory: "512Mi"
+    memory: "1024Mi"
     cpu: "2000m"
 ```
 
@@ -201,7 +202,7 @@ resources:
 **256MB Configuration:**
 - ✅ Works for most scenarios with 1-2 threads
 - **Recommendation:** Use 1-2 threads maximum
-- **Expected:** 20000-33333 rec/s
+- **Expected:** 680-33333 rec/s
 
 ## Known Limitations
 
@@ -220,9 +221,9 @@ _Isolated benchmarks are from JMH runs (static). End-to-End columns are computed
 | Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower (JMH) |
 | JSON Serializer | 2.9M ops/sec | - | 89× slower (JMH) |
 | CSV Serializer | Same as JSON | - | 89× slower (JMH) |
-| File I/O | 4.9M ops/sec | 25000-33333 rec/s | Disk-bound |
+| File I/O | 4.9M ops/sec | 20000-33333 rec/s | Disk-bound |
 | Kafka (async) | 3.5K rec/sec (sync) | 20000-25000 rec/s | Network-bound (localhost) |
-| Database (JDBC) | - | 20000-25000 rec/s | JDBC batch (batch_size=1000) |
+| Database (JDBC) | - | 561-729 rec/s | Nested 4 tables, batch_size=1000 |
 
 **Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka/database, disk for files).
 

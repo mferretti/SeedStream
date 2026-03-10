@@ -1,0 +1,18 @@
+# End-to-End Benchmark: Invoice (nested) → Database
+# Tests multi-table auto-decomposition via Stage 2:
+#   invoices → issuer (company), recipient (company), line_items
+# Used as the database benchmark scenario (closer to real-world than flat passport).
+
+source: db_invoice.yaml
+type: database
+seed:
+  type: embedded
+  value: 42
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  username: "testuser"
+  password: "testpass"
+  table: "invoices"
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch
