@@ -504,15 +504,22 @@
   - 10 unit tests (H2 in-memory) + 9 PostgreSQL integration tests (Testcontainers)
   - Task: TASK-018-destinations-database.md
 
-- [ ] **Destinations module - Database adapter (Stage 2)** 🔥 **NEXT PRIORITY (TASK-043)**
+- [x] **Destinations module - Database adapter (Stage 2)** ✅ **COMPLETE (March 10, 2026)**
   - Auto-decomposition: `object[X]` → child table INSERT; `array[object[X]]` → N child INSERTs
   - Context stack for FK injection (convention: `{parent_structure_name}_id`)
   - Recursive decomposition (works at any nesting depth)
   - Transaction management: parent + all children committed/rolled-back together
   - No composite PK (deferred); no `ref[]` cross-record references (requires TASK-012)
-  - Integration tests: order → line_items, 3-level nesting, FK verification
+  - 11 unit tests + 10 PostgreSQL integration tests (Testcontainers)
   - Task: TASK-043-database-stage2-nested-decomposition.md
   - User Story: US-043-database-nested-auto-decomposition.md
+
+- [x] **Database JMH Benchmarks** ✅ **COMPLETE (March 10, 2026)**
+  - 16 configurations: 4 batch sizes × 2 transaction strategies × 2 benchmark methods
+  - `benchmarkFlatInsert`: 1 INSERT/call into `benchmark_flat`
+  - `benchmarkNestedInsert`: 3 INSERTs/call (1 parent + 2 children) via `NestedRecordDecomposer`
+  - Schema auto-created/dropped; tables truncated between iterations
+  - Task: TASK-045-database-jmh-benchmarks.md
 
 ## Before Going Public 🚀
 

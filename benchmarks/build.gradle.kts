@@ -22,6 +22,9 @@ dependencies {
     
     // OpenCSV (for CSV serialization benchmarks)
     implementation(libs.opencsv)
+
+    // PostgreSQL driver — compileOnly in :destinations, so must be explicit here for JMH runtime
+    runtimeOnly(libs.postgresql)
     
     // Test dependencies for memory profiling tests
     testImplementation(platform(libs.junit.bom))

@@ -6,13 +6,13 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 44
-- **Completed**: 34 ✅
+- **Total Tasks**: 45
+- **Completed**: 35 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
 - **Not Started**: 1 (TASK-044)
 - **Deferred**: 2 (TASK-012 deferred; TASK-039 low priority)
-- **Overall Progress**: 92% (34/37 active tasks)
+- **Overall Progress**: 92% (35/38 active tasks)
 
 ---
 
@@ -275,6 +275,7 @@ These tasks block other work and should be completed first:
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-044 | Extras Directory — External JARs & Custom Datafaker Providers | 3-5h | Low | TASK-018, TASK-010 | ⏸️ Not Started |
+| TASK-045 | Database JMH Benchmarks — Insert Throughput & Batch Size Sensitivity | 3-4h | Low | TASK-043, TASK-026 | ✅ Complete |
 | TASK-041 | Datafaker Plugin Architecture | 16-20h | High | TASK-010 | ✅ Complete |
 
 **Description**: Implement extensible type registry allowing runtime registration of custom Datafaker types. Solves the problem of supporting only 28 of 110+ available Datafaker providers (~25% coverage) by enabling users to register any provider without code changes.
@@ -363,9 +364,9 @@ For an AI agent or developer working sequentially:
 | Phase 6 (Quality & Performance) | 7 | 24-33h | ✅ 6/7 (TASK-039 deferred) |
 | Phase 7 (Documentation) | 3 | 8-12h | ✅ 3/3 |
 | Phase 8 (Licensing) | 1 | 2-3h | ✅ 1/1 |
-| Phase 8 (Database Stage 2) | 1 | 20-25h | ✅ 1/1 (TASK-043) |
+| Phase 8 (Database Stage 2) | 2 | 23-29h | ✅ 2/2 (TASK-043, TASK-045) |
 | Phase 9 (Distribution) | 2 | 19-25h | ✅ 1/2 (TASK-044 not started) |
-| **TOTAL** | **37** | **180-236h** | **34/37 (92%)** |
+| **TOTAL** | **38** | **183-240h** | **35/38 (92%)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -530,7 +531,7 @@ TASK-001 (Project Setup)
 
 ## Completion Progress
 
-**Overall**: 34/37 active tasks complete (92%)
+**Overall**: 35/38 active tasks complete (92%)
 **Current Sprint**: Sprint 6 (Database Stage 2) — COMPLETE
 **Next Priority**: TASK-044 (Extras directory — decouple JDBC drivers from distribution)
 **Estimated Remaining Effort**: TASK-044 (3-5h); TASK-012 (8-10h, deferred); TASK-039 (4-6h, low priority)
