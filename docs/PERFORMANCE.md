@@ -9,7 +9,7 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 1. [Quick Reference](#quick-reference)
 2. [Benchmark Results](#benchmark-results)
 3. [Real-World Performance](#real-world-performance)
-4. [Performance Tuning](#performance-tuning)
+4. [Performance Tuning](#performance-tuning) — File, Database, Kafka, Format, Complexity
 5. [Hardware Requirements](#hardware-requirements)
 6. [Running Benchmarks](#running-benchmarks)
 
@@ -29,7 +29,7 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 | **Kafka output (JSON/CSV/Protobuf)** | 25,000-33,333 records/sec | Network-bound, all formats similar (E2E validated) |
 | **Database output (PostgreSQL, flat)** | 5,000-15,000 records/sec | Batch inserts via HikariCP; nested structures lower end |
 
-**⚠️ Benchmark Environment:** All tests run on **localhost** (Kafka in Docker container). Real-world production deployments with network latency will show **30-50% lower throughput** for Kafka destinations.
+**⚠️ Benchmark Environment:** All tests run on **localhost** (Kafka and PostgreSQL in Docker containers). Real-world production deployments with network latency will show **30-50% lower throughput** for Kafka destinations and **50-70% lower throughput** for database destinations.
 
 **Rule of Thumb**: Realistic Datafaker data is **1,000× slower** than primitives. Plan accordingly.
 
@@ -179,6 +179,8 @@ data:
 
 ### Scaling Analysis
 
+#### File / Kafka Destinations
+
 Measured with the **Passport** structure (11 fields, mixed Datafaker + primitives) after thread-local Faker cache optimization (March 2026):
 
 | Records | Threads | Time | Throughput | Scaling |
@@ -196,6 +198,22 @@ Measured with the **Passport** structure (11 fields, mixed Datafaker + primitive
 3. **100% Datafaker workloads** (e.g., customer): slightly lower (~20-25K rec/s); same threading behaviour
 
 **Conclusion**: 4 threads is a safe default. Beyond that, output I/O (file or network) is the bottleneck regardless of thread count.
+
+#### Database Destination
+
+Database throughput is dominated by network round-trips and commit overhead rather than generation speed. Measured against a localhost PostgreSQL instance:
+
+| Structure | Transaction Strategy | Batch Size | Throughput |
+|-----------|---------------------|------------|------------|
+| Flat (passport, 11 fields) | `BATCH` | 500 | ~10,000-15,000 rec/s |
+| Flat (passport, 11 fields) | `AUTO_COMMIT` | 500 | ~5,000-8,000 rec/s |
+| Nested (invoice → 3 child tables) | `BATCH` | 500 | ~3,000-7,000 rec/s |
+
+**Key Observations**:
+1. **Transaction strategy** is the dominant tuning lever — `BATCH` is 2-3× faster than `AUTO_COMMIT`
+2. **Nested structures** are significantly slower: each top-level record triggers multiple INSERT statements across multiple tables (parent + all child tables)
+3. **Network latency** has a much larger impact than for file/Kafka — a remote PostgreSQL instance will show 50-70% lower throughput than localhost
+4. **Thread count** has minimal impact: the writer thread is the bottleneck (single writer serialises all DB inserts)
 
 ---
 
@@ -268,7 +286,53 @@ conf:
 - **Compression (gzip)**: 70-80% smaller files, 30-40% slower writes
 - **Append mode**: Slightly slower due to seek operations
 
-### 4. Format Selection
+### 4. Database Output Optimization
+
+The three main knobs for database performance are **transaction strategy**, **batch size**, and **structure complexity**.
+
+**Configuration** (via job YAML `conf` block):
+```yaml
+conf:
+  url: jdbc:postgresql://localhost:5432/testdb
+  username: ${DB_USER}
+  password: ${DB_PASSWORD}
+  table: customers              # optional — defaults to structure name
+  batch_size: 500               # records per batch INSERT (default: 100)
+  transaction_strategy: BATCH   # AUTO_COMMIT | BATCH | SINGLE
+```
+
+**Transaction strategies**:
+
+| Strategy | Description | Throughput | Use Case |
+|----------|-------------|------------|----------|
+| `BATCH` | One transaction per batch | **Best** | Default recommendation |
+| `AUTO_COMMIT` | Commit after each batch | 2-3× slower | Resumable / observable jobs |
+| `SINGLE` | One transaction for entire job | Fastest (no commit overhead) | Small jobs only — holds lock for entire run |
+
+**Batch size guidelines**:
+
+| Batch Size | Throughput | Memory | Notes |
+|------------|------------|--------|-------|
+| 100 (default) | Baseline | Low | Safe starting point |
+| 500 | +30-50% | Medium | Recommended for most workloads |
+| 1000+ | +50-70% | Higher | Only if DB server can handle large transactions |
+
+**Nested structure considerations**:
+
+Nested structures (e.g., `invoice → line_items`) produce multiple INSERTs per top-level record.
+Each child record requires the parent's generated ID, so inserts are inherently sequential within a record tree:
+
+```
+1 invoice INSERT → get invoice.id
+  N line_item INSERTs (with invoices_id = invoice.id)
+    M line_item_attribute INSERTs (with line_items_id = line_item.id)
+```
+
+For nested structures, reduce `batch_size` to 100-200 to avoid large transactions with mixed table inserts.
+
+**JDBC driver**: SeedStream does not bundle JDBC drivers. Place the appropriate driver JAR in the `extras/` directory before running a database job. See `extras/README.txt` in the distribution.
+
+### 5. Format Selection
 
 | Format | Speed | Size | Use Case |
 |--------|-------|------|----------|
@@ -278,7 +342,7 @@ conf:
 
 **Recommendation**: Use CSV for simple flat data, JSON for everything else.
 
-### 5. Data Complexity
+### 6. Data Complexity
 
 **Impact of nesting**:
 
@@ -312,7 +376,9 @@ conf:
 - **Disk**: 200+ MB/s sequential write (SSD)
 - **Java**: 21 with G1GC or ZGC
 
-**Expected performance**: 10,000-20,000 Datafaker records/sec
+**Expected performance**:
+- File/Kafka: 25,000-33,000 Datafaker records/sec (E2E validated)
+- Database (localhost): 8,000-15,000 records/sec (flat), 3,000-7,000 records/sec (nested)
 
 ### High-Performance Configuration
 
@@ -321,7 +387,9 @@ conf:
 - **Disk**: 500+ MB/s (NVMe SSD)
 - **Java**: 21 with ZGC or Shenandoah GC
 
-**Expected performance**: 20,000-50,000 Datafaker records/sec (I/O becomes limit)
+**Expected performance**:
+- File/Kafka: 33,000-50,000 Datafaker records/sec (disk/network I/O bound)
+- Database: throughput limited by DB server capacity and network, not SeedStream
 
 ### Memory Considerations
 
@@ -436,6 +504,32 @@ For more details, see [benchmarks/README.md](../benchmarks/README.md).
 - Reduce thread count
 - Reduce batch size in destination config
 - Increase heap size
+
+### Issue: Slow database inserts
+
+**Diagnostics**:
+1. Check transaction strategy: `AUTO_COMMIT` is 2-3× slower than `BATCH`.
+2. Check batch size: default (100) is conservative — try 500.
+3. Check network: `localhost` vs remote DB makes a large throughput difference.
+4. Check nested depth: 3-level nested structures produce many INSERTs per record.
+
+**Solutions**:
+- Switch to `transaction_strategy: BATCH`
+- Increase `batch_size` to 500-1000
+- For nested structures, target a simpler schema or reduce array cardinality
+
+### Issue: Database connection refused / timeout
+
+**Cause**: JDBC driver not found, or database unreachable.
+
+**Diagnostics**:
+1. Confirm driver JAR is present in `extras/` directory.
+2. Confirm database is reachable: `psql -h host -U user -d db`
+3. Check connection URL format: `jdbc:postgresql://host:5432/db`
+
+**Solution**:
+- Place the correct JDBC driver JAR in `extras/` (see `extras/README.txt`)
+- Verify `url`, `username`, `password` in job YAML (use `${ENV_VAR}` for secrets)
 
 For more troubleshooting, see [README.md](../README.md#troubleshooting) or open a [GitHub Issue](https://github.com/mferretti/SeedStream/issues).
 
