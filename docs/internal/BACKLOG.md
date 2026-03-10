@@ -1,8 +1,17 @@
 # Project Backlog
 
-## ⚡ Current Priority Recommendation (March 9, 2026)
+## ⚡ Current Priority Recommendation (March 10, 2026)
 
-**Phase 8 (Database Destinations) — Stage 2 is the current priority**
+**Phase 8 (Database Destinations) — Stage 2 COMPLETE ✅**
+
+**Recently Accomplished (March 10, 2026):**
+- ✅ **Database Stage 2 — Nested Auto-Decomposition** (TASK-043):
+  - `NestedRecordDecomposer`: recursive depth-first decomposition, FK injection from immediate parent only
+  - `ParentContext`: record carrying `(tableName, parentId)` for `{tableName}_id` FK convention
+  - `DatabaseDestination`: auto-detects nested mode on first `write()`; per-table `PreparedStatement` cache
+  - 11 `NestedRecordDecomposerTest` unit tests; 10 `DatabaseDestinationNestedIT` IT tests
+  - E2E benchmark updated: invoice (invoices → issuer, recipient, line_items) replaces flat passport
+  - Branch `feature/database-stage2-nested-decomposition` ready to merge
 
 **Recently Accomplished (March 9, 2026):**
 - ✅ **Thread-local Faker cache** (TASK-040):
@@ -19,12 +28,6 @@
   - TypeParser invoked inside `open()` after connection established (fail-fast ordering)
   - Schema-aware JDBC binding with `JdbcTypeMapper`; fallback to `instanceof` when no schema
   - IT tests for schema-aware path (coerce String→Date, enum binding)
-- ✅ **Database Stage 2 design finalized** (TASK-043 created):
-  - Auto-decomposition: nested `object[X]` / `array[object[X]]` → multi-table INSERTs
-  - Context stack for FK injection (immediate parent only, no root bleed-through)
-  - Convention-based FK column: `{parent_structure_name}_id`
-  - Zero changes to generators, serializers, Kafka/File destinations
-  - Full design in `docs/DATABASE-DESTINATION-PLANNING.md` Stage 2 section
 
 **Phase 6 (Core Performance Validation) - COMPLETE ✅:**
 - ✅ Component benchmarks (primitives, Datafaker, JSON serialization, file I/O)
@@ -42,10 +45,11 @@
 4. ✅ Phase 6 Extended (Analysis & Optimization) - **COMPLETE** (profiling ✅, thread-local cache ✅)
 5. ✅ Phase 7 (Documentation) - **COMPLETE** (README, examples, performance docs)
 6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables, Option B type binding)
-7. 🔥 **Phase 8: Database Destinations Stage 2 (TASK-043) — NEXT PRIORITY**
-8. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
+7. ✅ **Phase 8: Database Destinations Stage 2 (TASK-043) — COMPLETE** (nested auto-decomposition, FK injection)
+8. 🔥 **NEXT: TASK-044 — Extras directory** (decouple JDBC drivers; enable custom Datafaker providers)
+9. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
 
-**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 complete (flat tables + schema-aware JDBC binding). Stage 2 (nested objects / FK auto-decomposition) is the current implementation priority. Branch `feature/typed-record-pipeline-option-b` held until Stage 2 complete.
+**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 (flat tables) and Stage 2 (nested objects / FK auto-decomposition) both complete. Branch `feature/database-stage2-nested-decomposition` ready to merge. JDBC drivers still bundled in distribution (GPL licensing concern) — TASK-044 addresses this.
 
 ---
 

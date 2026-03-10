@@ -6,13 +6,13 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 43
-- **Completed**: 33 ✅
+- **Total Tasks**: 44
+- **Completed**: 34 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
-- **Not Started**: 1 ⏸️ (TASK-043 — next priority)
-- **Deferred**: 2 (TASK-012 to after Stage 2; TASK-039 low priority)
-- **Overall Progress**: 94% (33/35 active tasks)
+- **Not Started**: 1 (TASK-044)
+- **Deferred**: 2 (TASK-012 deferred; TASK-039 low priority)
+- **Overall Progress**: 92% (34/37 active tasks)
 
 ---
 
@@ -43,11 +43,12 @@ This document provides a quick overview of all tasks. For detailed implementatio
   - `ProtobufSerializer` using DynamicMessage API; Base64-encoded binary output
   - All primitive types, dates, nested objects, arrays supported
   - 15 unit tests; verified in E2E benchmarks
-- 📋 TASK-043: Database Stage 2 Auto-Decomposition — design complete, implementation pending
-  - Design documented in `DATABASE-DESTINATION-PLANNING.md` Stage 2 section
-  - Task file: `TASK-043-database-stage2-nested-decomposition.md`
-  - User story: `US-043-database-nested-auto-decomposition.md`
-- **Total tests**: ~350 (unit) + 43 (integration) = **~393 total tests**
+- ✅ TASK-043: Database Stage 2 Auto-Decomposition — complete (March 10, 2026)
+  - `NestedRecordDecomposer` + `ParentContext`; FK convention `{parent}_id`
+  - `DatabaseDestination` auto-detects nested mode; per-table `PreparedStatement` cache
+  - 11 `NestedRecordDecomposerTest` unit tests; 10 `DatabaseDestinationNestedIT` IT tests
+  - E2E benchmark: invoice nested structure (invoices → issuer, recipient, line_items)
+- **Total tests**: 413 (unit) + 44 (integration) = **457 total tests**
 
 ## Recent Completions (March 6, 2026)
 
@@ -182,7 +183,7 @@ These tasks block other work and should be completed first:
 - ✅ All compression types tested (gzip, snappy, lz4, zstd)
 - ✅ Idempotent producer with acks="all" default
 
-**Stage 2**: Nested objects, arrays, FK injection — see TASK-043, DATABASE-DESTINATION-PLANNING.md
+**Stage 2** (✅ Complete): Nested objects, arrays, FK auto-injection — see TASK-043, DATABASE-DESTINATION-PLANNING.md
 
 ---
 
@@ -263,16 +264,17 @@ These tasks block other work and should be completed first:
 |------|-------|--------|------------|--------------|--------|
 | TASK-018 | Database Adapter Stage 1 (flat tables) | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
 | TASK-042 | JDBC Option B Type Binding | 4-6h | Medium | TASK-018 | ✅ Complete |
-| TASK-043 | Database Stage 2 — Nested Auto-Decomposition | 20-25h | High | TASK-018, TASK-042 | ⏸️ Not Started |
+| TASK-043 | Database Stage 2 — Nested Auto-Decomposition | 20-25h | High | TASK-018, TASK-042 | ✅ Complete |
 
-**TASK-043 Summary**: Destination-side decomposition of nested structures into multi-table INSERTs. Context stack for FK injection. Zero changes to generators, serializers, Kafka/File destinations.
+**TASK-043 Summary**: Destination-side decomposition of nested structures into multi-table INSERTs. FK convention `{parent_table}_id`. Zero changes to generators, serializers, Kafka/File destinations. 11 unit tests + 10 IT tests.
 
 ---
 
-## Phase 9: Future Enhancements
+## Phase 9: Distribution & Runtime Extensibility
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
+| TASK-044 | Extras Directory — External JARs & Custom Datafaker Providers | 3-5h | Low | TASK-018, TASK-010 | ⏸️ Not Started |
 | TASK-041 | Datafaker Plugin Architecture | 16-20h | High | TASK-010 | ✅ Complete |
 
 **Description**: Implement extensible type registry allowing runtime registration of custom Datafaker types. Solves the problem of supporting only 28 of 110+ available Datafaker providers (~25% coverage) by enabling users to register any provider without code changes.
@@ -361,9 +363,9 @@ For an AI agent or developer working sequentially:
 | Phase 6 (Quality & Performance) | 7 | 24-33h | ✅ 6/7 (TASK-039 deferred) |
 | Phase 7 (Documentation) | 3 | 8-12h | ✅ 3/3 |
 | Phase 8 (Licensing) | 1 | 2-3h | ✅ 1/1 |
-| Phase 8 (Database Stage 2) | 1 | 20-25h | ⏸️ 0/1 (TASK-043) |
-| Phase 9 (Future) | 1 | 16-20h | ✅ 1/1 |
-| **TOTAL** | **36** | **177-231h** | **33/36 (92%)** |
+| Phase 8 (Database Stage 2) | 1 | 20-25h | ✅ 1/1 (TASK-043) |
+| Phase 9 (Distribution) | 2 | 19-25h | ✅ 1/2 (TASK-044 not started) |
+| **TOTAL** | **37** | **180-236h** | **34/37 (92%)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -522,13 +524,13 @@ TASK-001 (Project Setup)
 
 ---
 
-**Last Updated**: March 9, 2026
+**Last Updated**: March 10, 2026
 
 ---
 
 ## Completion Progress
 
-**Overall**: 33/35 active tasks complete (94%)
-**Current Sprint**: Sprint 6 (Database Stage 2)
-**Next Priority**: TASK-043 (Database Stage 2 — nested auto-decomposition)
-**Estimated Remaining Effort**: 20-25 hours (TASK-043)
+**Overall**: 34/37 active tasks complete (92%)
+**Current Sprint**: Sprint 6 (Database Stage 2) — COMPLETE
+**Next Priority**: TASK-044 (Extras directory — decouple JDBC drivers from distribution)
+**Estimated Remaining Effort**: TASK-044 (3-5h); TASK-012 (8-10h, deferred); TASK-039 (4-6h, low priority)
