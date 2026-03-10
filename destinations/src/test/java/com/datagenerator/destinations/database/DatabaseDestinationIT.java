@@ -18,7 +18,6 @@ package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.IntegrationTest;
 import java.sql.Connection;
 import java.sql.Date;
@@ -349,17 +348,29 @@ class DatabaseDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldRejectNestedObjectWithClearError() {
-    Map<String, Object> invalidRecord = new LinkedHashMap<>();
-    invalidRecord.put("number", "AB123456");
-    invalidRecord.put("address", Map.of("city", "Rome")); // nested — Stage 1 not supported
+  void shouldHandleNestedObjectViaStage2Decomposition() throws SQLException {
+    // Stage 2: nested objects are auto-decomposed; no exception is thrown.
+    // The child table "address" must exist for the insert to succeed.
+    try (Statement st = verifyConnection.createStatement()) {
+      st.execute("CREATE TABLE address (id INT, city VARCHAR(255), passports_id VARCHAR(9))");
+    }
+
+    Map<String, Object> address = new LinkedHashMap<>();
+    address.put("id", 1);
+    address.put("city", "Rome");
+
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("number", "AB123456");
+    record.put("address", address);
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      assertThatThrownBy(() -> dest.write(invalidRecord))
-          .isInstanceOf(DestinationException.class)
-          .hasMessageContaining("nested objects")
-          .hasMessageContaining("address");
+      assertThatCode(() -> dest.write(record)).doesNotThrowAnyException();
+      dest.flush();
+    }
+
+    try (Statement st = verifyConnection.createStatement()) {
+      st.execute("DROP TABLE IF EXISTS address");
     }
   }
 
