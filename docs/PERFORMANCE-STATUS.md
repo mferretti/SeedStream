@@ -1,7 +1,7 @@
 # Performance Status - Current State
 
-**Last Updated:** March 8, 2026  
-**Version:** Post Thread-Local Faker Cache Optimization  
+**Last Updated:** March 10, 2026
+**Version:** Post Thread-Local Faker Cache Optimization + Database Stage 2 E2E
 
 ---
 
@@ -13,12 +13,14 @@ SeedStream achieves **25,000-33,333 records/second** for realistic data generati
 
 | Workload | Current Performance | Status |
 |----------|-------------------|--------|
-| **E2E File Generation (8 threads)** | 25-33K rec/s | ✅ Optimized |
-| **E2E File Generation (1 thread)** | 25-33K rec/s | ✅ Optimized |
+| **E2E File Generation (1 thread)** | 25-33K rec/s | ✅ Validated |
+| **E2E File Generation (4 threads)** | 33-50K rec/s | ✅ Validated |
+| **E2E Kafka Generation (1 thread)** | 25K rec/s | ✅ Validated |
+| **E2E Kafka Generation (4 threads)** | 25-33K rec/s | ✅ Validated |
 | **Primitive Generation (in-memory)** | 12-258M ops/s | ✅ Exceeds target |
 | **Datafaker Generation (isolated)** | 13-154K ops/s | ✅ Within expected range |
-| **Thread Efficiency (8 threads)** | 60-70% | ✅ Improved from 32% |
-| **Memory Usage** | 50-70MB typical | ✅ Efficient |
+| **Thread Efficiency (4 threads)** | best efficiency | ✅ 4T outperforms 8T (I/O bound) |
+| **Memory Usage** | 22-70MB typical | ✅ Efficient |
 | **GC Overhead** | <2.63% | ✅ Healthy |
 
 ---
@@ -28,29 +30,30 @@ SeedStream achieves **25,000-33,333 records/second** for realistic data generati
 ### End-to-End Performance (March 8, 2026)
 
 **Test Configuration:**
-- Data Structure: Passport (11 fields, ~200 bytes per record)
-- Record Count: 100,000 per test
-- Test Matrix: 2 destinations × 3 formats × 3 thread configs × 3 memory configs
+- Data Structure: Passport (11 fields, ~200 bytes per record) for File/Kafka; Invoice (nested: invoices + issuer + recipient + line_items) for Database
+- Record Count: 100,000 per test (File/Kafka); configurable for Database
+- Test Matrix (File/Kafka): 2 destinations × 3 formats × 3 thread configs × 3 memory configs = 54 tests
+- Database E2E: invoice nested structure, basic throughput validation (JMH benchmarks pending)
 
-**Results Summary:**
+**Results Summary (representative configurations):**
 
 | Configuration | Throughput | Duration | GC Time % |
 |---------------|------------|----------|-----------|
-| **File/JSON/1T/512M** | 33,333 rec/s | 3s | 1.90% |
-| **File/CSV/1T/256M** | 33,333 rec/s | 3s | 2.20% |
-| **File/Protobuf/1T/256M** | 33,333 rec/s | 3s | 2.63% |
-| **File/JSON/4T/512M** | 33,333 rec/s | 3s | 1.77% |
-| **File/CSV/4T/512M** | 33,333 rec/s | 3s | 1.90% |
-| **File/Protobuf/4T/512M** | 33,333 rec/s | 3s | 1.97% |
-| **File/JSON/8T/512M** | 33,333 rec/s | 3s | 1.27% |
-| **File/CSV/8T/512M** | 33,333 rec/s | 3s | 1.47% |
-| **File/Protobuf/8T/512M** | 33,333 rec/s | 3s | 1.37% |
+| **File/JSON/1T/512M** | 33,333 rec/s | 3s | 0.93% |
+| **File/CSV/4T/512M** | 50,000 rec/s | 2s | 1.35% |
+| **File/Protobuf/4T/512M** | 50,000 rec/s | 2s | 1.75% |
+| **File/JSON/8T/512M** | 33,333 rec/s | 3s | 1.00% |
+| **Kafka/JSON/1T/512M** | 25,000 rec/s | 4s | 0.92% |
+| **Kafka/CSV/4T/512M** | 33,333 rec/s | 3s | 1.77% |
+| **Kafka/Protobuf/4T/512M** | 25,000 rec/s | 4s | 1.18% |
+| **Kafka/JSON/8T/512M** | 25,000 rec/s | 4s | 0.90% |
 
 **Key Observations:**
-- Consistent 33,333 rec/s across most configurations
-- All formats perform similarly (JSON, CSV, Protobuf)
-- Memory configuration has minimal impact (256MB sufficient)
-- GC overhead remains healthy (<2.7% across all tests)
+- File destination: 25–50K rec/s depending on format and thread count; CSV at 4 threads peaks at 50K
+- Kafka destination: 25–33K rec/s; network overhead (loopback Docker) is the bottleneck
+- 4 threads outperforms 8 threads on average (35K vs 30K rec/s) — I/O-bound, not CPU-bound
+- Memory configuration has minimal impact (256MB sufficient, 512MB recommended)
+- GC overhead healthy across all tests (<2.7%)
 
 **Full E2E Results:** See [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md)
 
@@ -113,17 +116,17 @@ SeedStream achieves **25,000-33,333 records/second** for realistic data generati
 
 ### Threading Behavior
 
-**Thread Scaling (100K records):**
-- **1 thread:** 25-33K rec/s (baseline)
-- **4 threads:** 33K rec/s (efficient scaling)
-- **8 threads:** 25-33K rec/s (approaching CPU saturation)
+**Thread Scaling (100K records, E2E average across all formats and destinations):**
+- **1 thread:** ~28,700 rec/s (baseline)
+- **4 threads:** ~35,200 rec/s (best efficiency)
+- **8 threads:** ~30,600 rec/s (diminishing returns — I/O bound)
 
 **Thread Efficiency:**
 - Current: 60-70% (optimized)
 - Previous: 32% (before thread-local cache)
-- Theoretical maximum: ~80% (with perfect scaling)
+- 4T beats 8T: output I/O (disk/network) saturates before CPU does
 
-**Recommendation:** 4 threads provides best efficiency for most workloads
+**Recommendation:** 4 threads provides the best throughput/efficiency ratio for Datafaker-heavy workloads
 
 ### Memory Behavior
 
@@ -173,14 +176,14 @@ None currently identified. System meets all performance requirements.
 
 #### P2 - Medium Value
 
-1. **Kafka Destination Benchmarking**
-   - Current: No Kafka benchmarks available (requires running Kafka container)
-   - Expected: 10-20K rec/s with batching/compression
+1. **Kafka JMH Component Benchmarks**
+   - Current: E2E validated (25–33K rec/s); isolated producer JMH benchmarks not yet run
+   - Would measure: batch size sensitivity, compression overhead, acks impact in isolation
    - Effort: 2-3 hours (setup + run)
 
-2. **Database Destination Benchmarking**
-   - Current: No database benchmarks available
-   - Expected: 5-15K rec/s with connection pooling
+2. **Database JMH Component Benchmarks**
+   - Current: Basic E2E coverage added March 10 (invoice nested structure); JMH component benchmarks not yet run
+   - Expected: 5-15K rec/s flat, lower for nested (additional INSERT overhead per child record)
    - Effort: 3-4 hours (setup + run)
 
 #### P3 - Nice to Have
@@ -211,7 +214,7 @@ None currently identified. System meets all performance requirements.
 - Thread configs: 1, 4, 8
 - Memory configs: 256M, 512M, 1024M
 - Formats: JSON, CSV, Protobuf
-- Destinations: File, Kafka (when available)
+- Destinations: File, Kafka, Database (invoice nested structure — basic validation only)
 
 **Running:**
 ```bash
@@ -272,13 +275,13 @@ jmc benchmarks/build/jfr/profile_file_json_t8_m512m.jfr
 - CPU: 2 cores
 - RAM: 1GB
 - Disk: 10GB
-- Expected: 10-15K rec/s (single-thread)
+- Expected: 25-33K rec/s (single-thread, Datafaker workloads)
 
 **For Small Production (< 1M records/day):**
 - CPU: 4 cores
 - RAM: 2GB
 - Disk: 50GB SSD
-- Expected: 30-40K rec/s (4 threads)
+- Expected: 33-50K rec/s (4 threads, file destination)
 
 ### Recommended Configuration
 
@@ -286,13 +289,14 @@ jmc benchmarks/build/jfr/profile_file_json_t8_m512m.jfr
 - CPU: 8 cores
 - RAM: 4GB
 - Disk: 100GB SSD
-- Expected: 50-60K rec/s (8 threads)
+- Expected: 33-50K rec/s (4 threads optimal; 8 threads I/O-bound, no additional gain for Datafaker workloads)
 
 **For Large Production (> 10M records/day):**
 - CPU: 16+ cores
 - RAM: 8GB+
 - Disk: 500GB+ SSD (or distributed storage)
-- Expected: 100K+ rec/s (horizontal scaling with multiple instances)
+- Expected: 33-50K rec/s per instance (single JVM, 4 threads)
+- ⚠️ **Multi-instance note**: Running multiple SeedStream instances in parallel without external coordination is unsafe — instances with the same seed produce identical data (duplicates). Distinct seeds per instance can avoid this, but there is no built-in partitioning or deduplication guarantee. An external orchestrator that assigns non-overlapping seeds and record ranges is a planned future improvement.
 
 ### Current Development Hardware
 
@@ -347,10 +351,6 @@ java -Xms512m -Xmx512m \
 # Thread tuning
 --threads 4              # Match CPU cores (default: available processors)
 
-# Batch size tuning
---batch-size 1000        # Records per flush (default: 1000)
-                         # Increase for throughput, decrease for memory pressure
-
 # Seed tuning
 --seed 12345             # Fixed seed for reproducibility
                          # Different seeds = different data, same performance
@@ -360,10 +360,12 @@ java -Xms512m -Xmx512m \
 ```yaml
 # Destination-specific tuning examples
 
-# File destination (buffering)
+# File destination
 conf:
-  output_file: data.json
-  buffer_size: 65536     # 64KB (default: OS default)
+  path: output/data.json
+  compress: false        # gzip: 70-80% smaller, 30-40% slower
+  batch_size: 1000       # records per flush (default: 1000)
+  # Note: buffer_size is internal (64KB fixed default), not configurable via YAML
 
 # Kafka destination (batching)
 conf:
@@ -384,8 +386,8 @@ conf:
 |------|-----------|------------|-------|
 | March 5, 2026 | Initial E2E baseline | 7K rec/s (1T) | Before optimization |
 | March 8, 2026 | Thread-local Faker cache | 25-33K rec/s (1T) | **3.5-5.0× improvement** |
-| TBD | Kafka benchmarking | TBD | Requires container setup |
-| TBD | Database benchmarking | TBD | Requires DB setup |
+| March 10, 2026 | Database Stage 2 E2E | Basic coverage (invoice) | Nested multi-table inserts; JMH benchmarks pending |
+| TBD | Database JMH benchmarks | TBD | Requires PostgreSQL container setup |
 
 ### Lessons Learned
 

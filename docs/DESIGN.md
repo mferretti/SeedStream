@@ -1,10 +1,10 @@
-# Data Generator - Design Documentation
+# SeedStream - Design Documentation
 
-**Last Updated**: March 6, 2026 (v0.2.0)
+**Last Updated**: March 10, 2026 (v0.4.0)
 
 This document captures the architectural decisions, design patterns, issues encountered, and their resolutions during development. It serves as a reference for developers extending the project and for discussions around alternative approaches.
 
-**Status**: Core architecture complete (multi-threading, seeding, Kafka/File destinations). Database destination and plugin architecture planned for future releases.
+**Status**: Core architecture complete. All destinations implemented: File, Kafka, Database (Stage 1 flat tables + Stage 2 nested auto-decomposition). Plugin/registry architecture for Datafaker types complete.
 
 ---
 
@@ -104,8 +104,8 @@ graph LR
 - `SeedResolver`: Convert seed configurations to long values
 - `RandomProvider`: Provide deterministic thread-local Random instances
 - `SeedConfig`: Configuration model for seeds (moved from schema to break circular dependency)
-- Type system primitives (future)
-- Generation engine orchestration (future)
+- `TypeParser`: Parse YAML type syntax into `DataType` instances
+- `GenerationEngine`: Multi-threaded generation orchestration (worker pool, bounded queue, poison pill)
 
 **Why Separate?**:
 - Core has no dependencies (pure Java + SLF4J)
@@ -415,11 +415,16 @@ engine.generate(1_000_000); // Generate 1M records
 
 ### Current Status
 
-**Implemented**: Configuration parsing (schema module), seed resolution (core module).
+**Fully Implemented** ✅ (core + schema modules):
+- Primitive types with ranges: `int`, `decimal`, `char`, `boolean`
+- Date and timestamp types with range expressions (`now-30d..now`)
+- Enum types (`enum[A,B,C]`)
+- Nested objects (`object[structure_name]`)
+- Arrays with variable length (`array[inner_type, min..max]`)
+- Semantic/Datafaker types via `DatafakerRegistry` (48 built-in types)
+- Foreign key references (`ref[structure.field]`) — deferred, see TASK-012
 
-**In Progress**: Type system design (primitives with ranges, nested objects, arrays).
-
-### Planned Type Syntax
+### Implemented Type Syntax
 
 **Primitives with Ranges**:
 ```yaml
@@ -451,18 +456,11 @@ tags: array[char[1..20], 1..10]        # 1-10 strings
 items: array[object[line_item], 1..50] # 1-50 nested objects
 ```
 
-**Foreign Keys** (references to other records):
-```yaml
-user_id: ref[user.id]  # References generated user IDs
-```
-
 ### Design Challenges
 
-1. **Circular References**: Detect `object[A]` → `object[B]` → `object[A]` and fail fast
-2. **Array Memory**: Variable-length arrays can explode memory (1M records × 50 items each = 50M items)
-3. **Foreign Key Resolution**: How to track generated IDs for cross-record references?
-
-**Open for Discussion**: Alternative approaches welcome. See GitHub issues for proposals.
+1. **Circular References** ✅ Resolved: `object[A]` → `object[B]` → `object[A]` detected at parse time; fail fast with a clear error.
+2. **Array Memory** ✅ Resolved: Arrays generated element-by-element and streamed to the destination; no full array held in memory. See `ArrayGenerator.java`.
+3. **Foreign Key Resolution** ⏸️ Deferred (TASK-012): `ref[other_structure.field]` requires tracking generated IDs across records, which conflicts with the streaming architecture. Options under consideration: explicit ID pools, LRU ID cache, or two-pass generation. Workaround: use `int[1..N]` and rely on statistical overlap.
 
 ### Datafaker Type Registry (Semantic Types)
 
@@ -479,16 +477,24 @@ user_id: ref[user.id]  # References generated user IDs
 ```java
 // Registry stores type name → generator function mappings
 public class DatafakerRegistry {
-    private static final Map<String, Function<Faker, Object>> registry = 
+    private static final ConcurrentHashMap<String, DatafakerFunction> registry =
         new ConcurrentHashMap<>();
-    
-    static {
-        registerBuiltIns(); // 48+ types with 20+ aliases
+    private static final ConcurrentHashMap<String, String> aliasMap =
+        new ConcurrentHashMap<>();
+
+    @FunctionalInterface
+    public interface DatafakerFunction {
+        String generate(Faker faker, Random random);
     }
-    
-    public static void register(String typeName, Function<Faker, Object> generator);
+
+    static {
+        registerBuiltIns(); // 48 canonical types + 32 aliases
+    }
+
+    public static void register(String typeName, DatafakerFunction function);
+    public static void registerAlias(String alias, String canonicalName);
     public static boolean isRegistered(String typeName);
-    public static Object generate(Faker faker, String typeName);
+    public static String generate(String typeName, Faker faker, Random random);
 }
 
 // Lightweight type wrapper (replaces 42 enum values)
@@ -507,15 +513,17 @@ public record CustomDatafakerType(String typeName) implements DataType {}
 
 **Type Registration Example**:
 ```java
-DatafakerRegistry.register("name", Faker::name().fullName());
-DatafakerRegistry.register("email", Faker::internet().emailAddress());
-DatafakerRegistry.register("phone", Faker::phoneNumber().phoneNumber());
+// Register canonical types
+DatafakerRegistry.register("name", (faker, random) -> faker.name().name());
+DatafakerRegistry.register("email", (faker, random) -> faker.internet().emailAddress());
+DatafakerRegistry.register("phone_number", (faker, random) -> faker.phoneNumber().phoneNumber());
 
-// Aliases for common variations
-DatafakerRegistry.register("lat", Faker::address().latitude());
-DatafakerRegistry.register("latitude", Faker::address().latitude());
-DatafakerRegistry.register("lon", Faker::address().longitude());
-DatafakerRegistry.register("lng", Faker::address().longitude());
+// Register aliases (resolve to canonical type at lookup time)
+DatafakerRegistry.register("latitude", (faker, random) -> faker.address().latitude());
+DatafakerRegistry.registerAlias("lat", "latitude");
+DatafakerRegistry.register("longitude", (faker, random) -> faker.address().longitude());
+DatafakerRegistry.registerAlias("lon", "longitude");
+DatafakerRegistry.registerAlias("lng", "longitude");
 ```
 
 **Usage in YAML**:
@@ -533,7 +541,7 @@ location:
 - **Normalization**: Type names converted to lowercase and trimmed for flexible matching
 - **Validation**: Fail fast if unknown type referenced in YAML (clear error message)
 - **No ServiceLoader Yet**: Built-in types only for now; plugins deferred to post-1.0
-- **Functional Interface**: `Function<Faker, Object>` allows inline lambdas for simple cases
+- **Functional Interface**: `DatafakerFunction` — `(Faker, Random) → String` — takes a `Random` for determinism; returns `String` (all semantic types produce string output)
 
 **Performance Impact**: Negligible (ConcurrentHashMap lookup is O(1), no synchronized blocks)
 
@@ -571,7 +579,7 @@ private HttpClient getHttpClient() {
 
 ### 2. Connection Pooling
 
-**Implementation**: HikariCP for databases (future), producer reuse for Kafka (future).
+**Implementation**: HikariCP for databases (`DatabaseDestination`), producer reuse for Kafka (`KafkaDestination`).
 
 **Why**: Creating connections is expensive (TCP handshake, TLS, auth). Reuse amortizes cost.
 
@@ -721,7 +729,9 @@ GenerationEngine engine = GenerationEngine.builder()
     .build();
 ```
 
-**Result**: All 10 workers successful, 100,000 records generated in 14.4 seconds (6,923 records/sec).
+**Result**: All 10 workers successful, 100,000 records generated correctly.
+
+> **Note**: The 6,923 rec/s figure was pre-optimization throughput (pre-TASK-040). After the thread-local Faker cache optimization (TASK-040), equivalent jobs run at ~25,000–33,000 rec/s. See `docs/PERFORMANCE.md` for current benchmarks.
 
 **Lesson**: When using `ThreadLocal` state in multi-threaded environments, ensure each thread initializes its own context. Try-with-resources on main thread doesn't propagate to worker threads.
 
@@ -871,23 +881,24 @@ private void flushBatch() throws IOException {
 
 ### 2. Statistical Distributions
 
-**Question**: How to handle variable-length arrays without exploding memory?
+**Question**: Should numeric types support non-uniform statistical distributions?
 
 **Example**:
 ```yaml
-orders:
-  items: array[object[line_item], 1..100]  # Up to 100 items per order
+age: int[18..65, distribution=normal, mean=35, stddev=10]
+salary: decimal[30000..200000, distribution=zipfian]
+response_time_ms: int[1..5000, distribution=exponential, lambda=0.5]
 ```
 
-If generating 1M orders × 50 items average = 50M items in memory before serialization.
+**Use Case**: Realistic data often follows distributions (ages, salaries, response times, access patterns). Uniform ranges produce data that looks artificial in load tests.
 
-**Option A**: Stream arrays (serialize items as generated, don't hold in memory)
-**Option B**: Memory limits (fail if projected size exceeds threshold)
-**Option C**: Hybrid (stream for destinations like Kafka, in-memory for small jobs)
+**Challenge**: Maintaining reproducibility with distributions requires all parameters to be fully specified in config (no implicit state). Also adds significant complexity to the type parser and generators.
 
-**Current Decision**: Option C (stream for large destinations, in-memory for files/small jobs).
+**Current Decision**: Uniform distribution only. Deferred post-v0.4 (database destinations are now complete; advanced distributions remain a future enhancement).
 
-**Alternative Proposals Welcome**: Please discuss trade-offs in GitHub issues.
+**Rationale**: Most use cases satisfied by Datafaker (realistic data) or uniform primitives (load testing). Advanced distributions are niche.
+
+**Interested?**: Propose design in GitHub discussions.
 
 ---
 
@@ -908,7 +919,7 @@ orders:
 **Option C**: Explicit ID pools (user defines ID range, generator samples from pool)
 **Option D**: Deferred resolution via destination (database foreign keys, not generator concern)
 
-**Current Decision**: Deferred to v0.3. Option C (explicit ID pools) seems most flexible for file destinations. Option D (database-enforced FKs) for database destination.
+**Current Decision**: Deferred (TASK-012, post-v0.4). Option C (explicit ID pools) seems most flexible for file destinations. Option D (database-enforced FKs) is now partially addressed by Stage 2 nested decomposition, which auto-injects FK columns from parent inserts — but only within a single nested record tree, not across independent structures.
 
 **Workaround**: Use `int[1..100000]` for IDs and rely on statistical likelihood of matches.
 
@@ -929,7 +940,7 @@ age: int[18..65, distribution=normal, mean=35, stddev=10]
 
 **Challenge**: Maintaining reproducibility with distributions is complex (need to specify all params in config).
 
-**Current Decision**: Uniform distribution only (v0.2). Revisit in v0.4 after database destinations.
+**Current Decision**: Uniform distribution only. Deferred post-v0.4 (database destinations are now complete; advanced distributions remain a future enhancement).
 
 **Rationale**: Most use cases satisfied by Datafaker (realistic data) or uniform primitives (load testing). Advanced distributions are niche.
 
@@ -959,9 +970,9 @@ public class CustomDataGenerator implements DataTypeGenerator {
     }
 }
 
-// User registers via META-INF/services or programmatic API
-DatafakerRegistry.register("custom_type", faker -> 
-    // Custom generation logic
+// User registers via programmatic API
+DatafakerRegistry.register("custom_type", (faker, random) ->
+    // Custom generation logic — returns String
 );
 ```
 
@@ -993,8 +1004,8 @@ DatafakerRegistry.register("custom_type", faker ->
 ## Database Destination: Multi-Table Auto-Decomposition (Stage 2)
 
 **Decision Date**: March 9, 2026
-**Status**: Design complete, implementation pending (TASK-043)
-**Branch**: `feature/typed-record-pipeline-option-b`
+**Completed**: March 10, 2026 (TASK-043) ✅
+**Branch**: `feature/database-stage2-nested-decomposition`
 
 ---
 
@@ -1050,7 +1061,7 @@ Processing order:
 
 `{parent_structure_name}_id` — always. No YAML config needed.
 
-The structure name comes from the YAML `name:` field (or array field key — design detail TBD). The tester must name their FK columns to match.
+The structure name comes from the array field key in the parent YAML (e.g., a field `line_items: array[object[line_item], 1..10]` uses `line_items` as the child table name, producing FK column `invoices_id`). The tester must name their FK columns to match this convention.
 
 ---
 
@@ -1109,8 +1120,9 @@ This document is a living record. If you:
 | 2026-03-08 | Registry pattern: DatafakerRegistry, plugin foundation                  | Marco  |
 | 2026-03-09 | Database Stage 2: auto-decomposition + context stack design (TASK-043)  | Marco  |
 | 2026-03-09 | JDBC Option B: raw YAML type strings, TypeParser deferred to open()     | Marco  |
+| 2026-03-10 | TASK-043 complete: Stage 2 implemented; status/branch/TBDs updated      | Marco  |
 
 ---
 
-**Last Updated**: March 9, 2026
+**Last Updated**: March 10, 2026
 **Status**: Living document (updated as project evolves)

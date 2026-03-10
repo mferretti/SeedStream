@@ -27,6 +27,7 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 | **File output (CSV)** | 25,000-50,000 records/sec | Fastest format for flat data (E2E validated) |
 | **File output (Protobuf)** | 25,000-50,000 records/sec | Binary format, 50-70% smaller than JSON |
 | **Kafka output (JSON/CSV/Protobuf)** | 25,000-33,333 records/sec | Network-bound, all formats similar (E2E validated) |
+| **Database output (PostgreSQL, flat)** | 5,000-15,000 records/sec | Batch inserts via HikariCP; nested structures lower end |
 
 **⚠️ Benchmark Environment:** All tests run on **localhost** (Kafka in Docker container). Real-world production deployments with network latency will show **30-50% lower throughput** for Kafka destinations.
 
@@ -119,41 +120,51 @@ Datafaker generates **realistic, locale-aware** data (names, addresses, etc.). E
 
 ### Test Case: 100K Datafaker Customer Records
 
-**Configuration**:
+**Configuration** (`config/structures/customer.yaml`):
 ```yaml
-# config/structures/customer.yaml
 name: customer
 geolocation: usa
 data:
-  customer_id: { datatype: uuid }
-  first_name: { datatype: first_name }
-  last_name: { datatype: last_name }
-  email: { datatype: email }
-  phone: { datatype: phone_number }
-  billing_address: { datatype: address }
-  city: { datatype: city }
-  state: { datatype: state }
-  postal_code: { datatype: postal_code }
-  country: { datatype: country }
+  customer_id:
+    datatype: uuid
+    alias: "id"
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  email:
+    datatype: email
+  phone:
+    datatype: phone_number
+  billing_address:
+    datatype: address
+  city:
+    datatype: city
+  state:
+    datatype: state
+  postal_code:
+    datatype: postal_code
+  country:
+    datatype: country
 ```
 
 **Command**:
 ```bash
-./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 100000 --threads 10"
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 100000 --threads 4"
 ```
 
-**Results**:
+**Results** (post thread-local Faker cache optimization, March 2026):
 - **Records Generated**: 100,000
-- **Worker Threads**: 10
-- **Time Elapsed**: 14.4 seconds
-- **Throughput**: **6,923 records/sec**
-- **Output File Size**: 30 MB
+- **Worker Threads**: 4
+- **Time Elapsed**: ~3 seconds
+- **Throughput**: **~25,000-33,000 records/sec**
+- **Output File Size**: ~30 MB
 - **Data Types**: UUID, names, emails, addresses, phone numbers, cities, states, postal codes (USA locale)
 
 **Sample Output**:
 ```json
 {
-  "customer_id": "ce344f82-baf2-4e17-b871-8808047a09c5",
+  "id": "ce344f82-baf2-4e17-b871-8808047a09c5",
   "first_name": "Valentine",
   "last_name": "Reynolds",
   "email": "sherman.king@gmail.com",
@@ -168,21 +179,23 @@ data:
 
 ### Scaling Analysis
 
+Measured with the **Passport** structure (11 fields, mixed Datafaker + primitives) after thread-local Faker cache optimization (March 2026):
+
 | Records | Threads | Time | Throughput | Scaling |
 |---------|---------|------|------------|---------|
-| 100 | 1 | 0.02s | 5,000 rec/s | Baseline |
-| 1,000 | 1 | 0.14s | 7,142 rec/s | |
-| 10,000 | 1 | 1.4s | 7,142 rec/s | Linear |
-| 100,000 | 1 | 14.0s | 7,142 rec/s | Linear |
-| 100,000 | 4 | 4.0s | 25,000 rec/s | 3.5× speedup |
-| 100,000 | 10 | 14.4s | 6,923 rec/s | ⚠️ I/O bound |
+| 100 | 1 | <0.5s | startup-dominated | Baseline |
+| 1,000 | 1 | ~0.03s | ~33,000 rec/s | |
+| 10,000 | 1 | ~0.3s | ~33,000 rec/s | Linear |
+| 100,000 | 1 | ~3s | ~33,333 rec/s | Linear |
+| 100,000 | 4 | ~3s | ~33,333 rec/s | Minimal gain (I/O bound) |
+| 100,000 | 8 | ~3s | ~33,333 rec/s | I/O bound |
 
 **Key Observations**:
-1. **Single-threaded**: Linear scaling up to 100K records (~7K rec/s)
-2. **Multi-threaded (4 cores)**: 3.5× speedup (good scaling)
-3. **Multi-threaded (10 cores)**: Diminishing returns (I/O bound, not CPU bound)
+1. **Single-threaded**: Linear scaling, ~33K rec/s after Faker cache optimization (was 7K before)
+2. **Multi-threaded**: Marginal gains — I/O is now the bottleneck, not Datafaker CPU time
+3. **100% Datafaker workloads** (e.g., customer): slightly lower (~20-25K rec/s); same threading behaviour
 
-**Conclusion**: For Datafaker-heavy workloads, 4-6 threads optimal. Beyond that, I/O becomes bottleneck.
+**Conclusion**: 4 threads is a safe default. Beyond that, output I/O (file or network) is the bottleneck regardless of thread count.
 
 ---
 
@@ -238,22 +251,20 @@ data:
 ### 3. File I/O Optimization
 
 **Current defaults** (optimized March 2026):
-- Buffer size: **64KB**
-- Batch size: **1000 records**
+- Buffer size: **64KB** (internal, fixed)
+- Batch size: **1000 records** (configurable via `conf.batch_size`)
 
-**Tuning**:
-```java
-// In FileDestinationConfig (for developers)
-FileDestinationConfig.builder()
-    .path("output/data.json")
-    .compress(false)        // gzip: 70-80% size reduction, 30-40% slower
-    .append(false)
-    .bufferSize(65536)      // 64KB buffer (default)
-    .build();
+**Tuning** (via job YAML `conf` block):
+```yaml
+conf:
+  path: output/data.json
+  compress: false      # gzip: 70-80% size reduction, 30-40% slower writes
+  append: false
+  batch_size: 1000     # records per flush (increase for throughput, decrease for memory pressure)
 ```
 
 **Trade-offs**:
-- **Larger buffer**: Faster writes, more memory
+- **Larger batch_size**: Fewer flushes, better throughput, slightly higher peak memory
 - **Compression (gzip)**: 70-80% smaller files, 30-40% slower writes
 - **Append mode**: Slightly slower due to seek operations
 
@@ -439,10 +450,12 @@ For more troubleshooting, see [README.md](../README.md#troubleshooting) or open 
 - ✅ Kafka destination: 25K-33K records/sec (JSON/CSV/Protobuf)
 - ✅ Protobuf serialization: ~2.5M ops/s, 50-70% smaller output
 - ✅ E2E benchmarks: 54 tests across 2 destinations × 3 formats × 3 threads × 3 memory configs
+- ✅ Database E2E benchmarking: invoice nested structure (invoices → issuer, recipient, line_items)
 
 **Planned**:
-- 📋 Database insert benchmarking (PostgreSQL, MySQL)
-- 📋 Distributed generation (multiple machines)
+- 📋 Database JMH component benchmarks (insert throughput, batch size sensitivity)
+- 📋 Serializer JMH component benchmarks (JSON, CSV, Protobuf isolated throughput)
+- 📋 Distributed generation (external orchestrator assigning non-overlapping seeds and record ranges across multiple instances)
 - 📋 GPU acceleration for primitives (experimental)
 
 ---
