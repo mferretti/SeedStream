@@ -27,7 +27,8 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 | **File output (CSV)** | 25,000-50,000 records/sec | Fastest format for flat data (E2E validated) |
 | **File output (Protobuf)** | 25,000-50,000 records/sec | Binary format, 50-70% smaller than JSON |
 | **Kafka output (JSON/CSV/Protobuf)** | 25,000-33,333 records/sec | Network-bound, all formats similar (E2E validated) |
-| **Database output (PostgreSQL, flat)** | 5,000-15,000 records/sec | Batch inserts via HikariCP; nested structures lower end |
+| **Database output (PostgreSQL, flat)** | 57,000-85,000 records/sec | BIGSERIAL PK, JDBC batching, local Docker; see DB section for realistic production estimates |
+| **Database output (PostgreSQL, nested)** | 2,500-3,300 records/sec | 3 INSERTs per logical record (1 parent + 2 children), `per_batch` strategy |
 
 **⚠️ Benchmark Environment:** All tests run on **localhost** (Kafka and PostgreSQL in Docker containers). Real-world production deployments with network latency will show **30-50% lower throughput** for Kafka destinations and **50-70% lower throughput** for database destinations.
 
@@ -201,19 +202,32 @@ Measured with the **Passport** structure (11 fields, mixed Datafaker + primitive
 
 #### Database Destination
 
-Database throughput is dominated by network round-trips and commit overhead rather than generation speed. Measured against a localhost PostgreSQL instance:
+Database throughput is dominated by network round-trips and commit overhead rather than generation speed. Measured via JMH against a local PostgreSQL 17-alpine Docker instance (March 2026):
 
-| Structure | Transaction Strategy | Batch Size | Throughput |
-|-----------|---------------------|------------|------------|
-| Flat (passport, 11 fields) | `BATCH` | 500 | ~10,000-15,000 rec/s |
-| Flat (passport, 11 fields) | `AUTO_COMMIT` | 500 | ~5,000-8,000 rec/s |
-| Nested (invoice → 3 child tables) | `BATCH` | 500 | ~3,000-7,000 rec/s |
+**Flat Insert (`benchmark_flat`, BIGSERIAL PK, 5 fields):**
+
+| batchSize | `per_batch`    | `auto_commit`  |
+|-----------|----------------|----------------|
+| 100       | 56,809 ops/s   | 59,484 ops/s   |
+| 500       | 76,502 ops/s   | 71,004 ops/s   |
+| 1,000     | 81,958 ops/s   | 76,213 ops/s   |
+| 5,000     | 85,066 ops/s   | 75,563 ops/s   |
+
+**Nested Insert (`benchmark_order` + `order_items`, 1 parent + 2 children):**
+
+| batchSize | `per_batch`    | `auto_commit`  |
+|-----------|----------------|----------------|
+| 100       | 2,593 ops/s    | 794 ops/s      |
+| 500       | 2,462 ops/s    | 723 ops/s      |
+| 1,000     | 3,084 ops/s    | 653 ops/s      |
+| 5,000     | 3,328 ops/s    | 797 ops/s      |
 
 **Key Observations**:
-1. **Transaction strategy** is the dominant tuning lever — `BATCH` is 2-3× faster than `AUTO_COMMIT`
-2. **Nested structures** are significantly slower: each top-level record triggers multiple INSERT statements across multiple tables (parent + all child tables)
-3. **Network latency** has a much larger impact than for file/Kafka — a remote PostgreSQL instance will show 50-70% lower throughput than localhost
-4. **Thread count** has minimal impact: the writer thread is the bottleneck (single writer serialises all DB inserts)
+1. **Flat throughput is very high** under these micro-benchmark conditions: BIGSERIAL eliminates client-side ID generation, the same pre-built record is reused every call (no Datafaker overhead), and the Docker container uses shared memory sockets — not TCP — so network latency is effectively zero.
+2. **Nested `auto_commit`** is independent of `batchSize` (~650–800 ops/s regardless): per-statement commits dominate and negate any batch accumulation benefit.
+3. **Nested `per_batch`** scales modestly with `batchSize` (2,500→3,300 ops/s from 100→5000): the 3× INSERT fanout is the binding constraint, not commit frequency.
+4. **Flat vs Nested overhead factor**: ~25× (56K/2.6K) — far above the theoretical 3× INSERT fanout, confirming that decomposition overhead (FK injection, multi-table prepared-statement cache misses, parent-child dependency ordering) adds significant cost.
+5. **Production throughput will be substantially lower**: real workloads with Datafaker generation, TCP connections to a remote DB, and non-trivial record variety typically yield 5,000–15,000 rec/s (flat) and 1,000–3,000 rec/s (nested). Use the JMH numbers to compare configurations relative to each other, not as absolute production targets.
 
 ---
 
@@ -378,7 +392,8 @@ For nested structures, reduce `batch_size` to 100-200 to avoid large transaction
 
 **Expected performance**:
 - File/Kafka: 25,000-33,000 Datafaker records/sec (E2E validated)
-- Database (localhost): 8,000-15,000 records/sec (flat), 3,000-7,000 records/sec (nested)
+- Database (localhost Docker, JMH micro-benchmark): 57,000-85,000 rec/s (flat), 2,500-3,300 rec/s (nested)
+- Database (localhost, realistic Datafaker workload): 5,000-15,000 rec/s (flat), 1,000-3,000 rec/s (nested)
 
 ### High-Performance Configuration
 
@@ -545,9 +560,9 @@ For more troubleshooting, see [README.md](../README.md#troubleshooting) or open 
 - ✅ Protobuf serialization: ~2.5M ops/s, 50-70% smaller output
 - ✅ E2E benchmarks: 54 tests across 2 destinations × 3 formats × 3 threads × 3 memory configs
 - ✅ Database E2E benchmarking: invoice nested structure (invoices → issuer, recipient, line_items)
+- ✅ Database JMH component benchmarks: flat (57K–85K ops/s) and nested (2.5K–3.3K ops/s), 16-configuration matrix (4 batch sizes × 2 transaction strategies)
 
 **Planned**:
-- 📋 Database JMH component benchmarks (insert throughput, batch size sensitivity)
 - 📋 Serializer JMH component benchmarks (JSON, CSV, Protobuf isolated throughput)
 - 📋 Distributed generation (external orchestrator assigning non-overlapping seeds and record ranges across multiple instances)
 - 📋 GPU acceleration for primitives (experimental)

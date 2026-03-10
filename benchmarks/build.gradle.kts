@@ -58,7 +58,19 @@ jmh {
     // Output format
     resultFormat.set("JSON")
     resultsFile.set(project.file("${project.layout.buildDirectory.get()}/reports/jmh/results.json"))
-    
-    // Include all benchmarks
-    includes.set(listOf(".*"))
+
+    // Suite filter: ./gradlew :benchmarks:jmh -PjmhSuite=database|kafka|generators
+    // Without -PjmhSuite, all benchmarks run (default JMH behaviour — match everything).
+    if (project.hasProperty("jmhSuite")) {
+        val suite = project.property("jmhSuite") as String
+        val pattern = when (suite) {
+            "database"   -> listOf(".*DatabaseBenchmark.*")
+            "kafka"      -> listOf(".*KafkaBenchmark.*")
+            "generators" -> listOf(".*(PrimitiveGenerators|DatafakerGenerators|CompositeGenerators|Serializer|Destination)Benchmark.*")
+            else         -> throw GradleException("Unknown jmhSuite '$suite'. Valid values: database, kafka, generators")
+        }
+        includes.set(pattern)
+    }
+    // Do NOT set includes unconditionally here — me.champeau.jmh 0.7.x: an explicit
+    // includes.set(...) overrides -Pjmh.includes from the command line.
 }
