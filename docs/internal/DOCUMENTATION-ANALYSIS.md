@@ -88,11 +88,11 @@ docs/
 #### D. Missing Cross-References
 
 **Should link to (instead of duplicating):**
-- "See [DESIGN.md](docs/DESIGN.md#module-architecture) for architecture details" (line ~189)
-- "See [PERFORMANCE.md](docs/PERFORMANCE.md) for detailed benchmarks" (line ~223)
-- "See [DESIGN.md](docs/DESIGN.md#seeding--reproducibility) for seeding internals" (line ~348)
-- "See [CONFIGURATION.md](docs/CONFIGURATION.md) for full type system reference" (line ~410)
-- "See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development guidelines" (line ~395)
+- `"See docs/DESIGN.md#module-architecture for architecture details"` (line ~189)
+- `"See docs/PERFORMANCE.md for detailed benchmarks"` (line ~223)
+- `"See docs/DESIGN.md#seeding--reproducibility for seeding internals"` (line ~348)
+- `"See docs/CONFIGURATION.md for full type system reference"` (line ~410) — CONFIGURATION.md planned
+- `"See docs/CONTRIBUTING.md for development guidelines"` (line ~395)
 
 #### E. Specific Content Issues
 
@@ -684,7 +684,7 @@ Create **docs/PERFORMANCE.md** that includes:
   - Realistic data: 12-154K ops/s (Datafaker)
   - File I/O: 800+ MB/s throughput
   
-  See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for detailed benchmarks.
+  See [PERFORMANCE.md](../PERFORMANCE.md) for detailed benchmarks.
   ```
 
 ---
@@ -799,7 +799,7 @@ SeedStream is designed for memory-efficient operation:
 -Xms128m -Xmx1g -XX:+UseSerialGC
 ```
 
-For detailed profiling results, see [internal/MEMORY-PROFILING.md](internal/MEMORY-PROFILING.md).
+For detailed profiling results, see [MEMORY-PROFILING.md](MEMORY-PROFILING.md).
 ```
 
 **UPDATE README:**
@@ -859,19 +859,19 @@ For detailed profiling results, see [internal/MEMORY-PROFILING.md](internal/MEMO
 
 ### For Users
 - **Quick Start**: See [Quick Start](#quick-start) above
-- **Configuration Guide**: See [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
-- **Performance**: See [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
-- **Troubleshooting**: See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- **Configuration Guide**: See `docs/CONFIGURATION.md` (planned)
+- **Performance**: See [PERFORMANCE.md](../PERFORMANCE.md)
+- **Troubleshooting**: See `docs/TROUBLESHOOTING.md` (planned)
 
 ### For Contributors
-- **Architecture**: See [docs/DESIGN.md](docs/DESIGN.md) (start here!)
-- **Contributing Guide**: See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
-- **Code Quality**: See [docs/CONTRIBUTING.md#code-quality](docs/CONTRIBUTING.md#code-quality)
+- **Architecture**: See [DESIGN.md](../DESIGN.md) (start here!)
+- **Contributing Guide**: See [CONTRIBUTING.md](../CONTRIBUTING.md)
+- **Code Quality**: See [CONTRIBUTING.md#code-quality](../CONTRIBUTING.md#code-quality)
 
 ### Project Information
-- **Changelog**: See [CHANGELOG.md](CHANGELOG.md)
-- **Roadmap**: See [docs/ROADMAP.md](docs/ROADMAP.md)
-- **License**: [Apache 2.0](LICENSE)
+- **Changelog**: See [CHANGELOG.md](../../CHANGELOG.md)
+- **Roadmap**: See `docs/ROADMAP.md` (planned)
+- **License**: [Apache 2.0](../../LICENSE)
 ```
 
 ### 3. Public vs. Internal Confusion
@@ -977,7 +977,7 @@ git mv docs/MEMORY-PROFILING.md docs/internal/MEMORY-PROFILING.md
    # Document Title
    
    **⚠️ INTERNAL DOCUMENT**: This is internal planning documentation.
-   For public-facing docs, see [docs/](../docs/).
+   For public-facing docs, see [docs/](../).
    ```
 
 ### Phase 6: Final Review (30 min)

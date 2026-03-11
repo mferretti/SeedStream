@@ -408,7 +408,7 @@ data:
 
 **Acceptance Criteria**: ✅ Parse complex structures with nested objects and arrays (6 tests passing)
 
-**Example**: See [config/structures/invoice.yaml](config/structures/invoice.yaml)
+**Example**: See [config/structures/invoice.yaml](../../config/structures/invoice.yaml)
 
 ---
 
@@ -439,8 +439,8 @@ conf:
 **Acceptance Criteria**: ✅ Parse job definitions for all destination types with seed validation (9 tests passing)
 
 **Examples**:
-- Kafka: [config/jobs/kafka_address.yaml](config/jobs/kafka_address.yaml)
-- File: [config/jobs/file_address.yaml](config/jobs/file_address.yaml)
+- Kafka: [config/jobs/kafka_address.yaml](../../config/jobs/kafka_address.yaml)
+- File: [config/jobs/file_address.yaml](../../config/jobs/file_address.yaml)
 
 ---
 

@@ -16,6 +16,8 @@
 
 package com.datagenerator.core.registry;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -291,10 +293,13 @@ public class DatafakerRegistry {
    * @return Normalized type name
    */
   private static String normalizeTypeName(String typeName) {
-    return typeName.trim().toLowerCase();
+    return typeName.trim().toLowerCase(Locale.ROOT);
   }
 
   /** Private constructor to prevent instantiation. */
+  @SuppressFBWarnings(
+      value = "CT_CONSTRUCTOR_THROW",
+      justification = "Utility class pattern; not Serializable, not subject to finalizer attacks")
   private DatafakerRegistry() {
     throw new UnsupportedOperationException("Utility class cannot be instantiated");
   }

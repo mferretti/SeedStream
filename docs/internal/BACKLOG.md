@@ -1,8 +1,27 @@
 # Project Backlog
 
-## ⚡ Current Priority Recommendation (March 9, 2026)
+## ⚡ Current Priority Recommendation (March 10, 2026)
 
-**Phase 8 (Database Destinations) — Stage 1 COMPLETE ✅**
+**Phase 8 (Database Destinations) — Stage 2 COMPLETE ✅**
+
+**Recently Accomplished (March 10, 2026):**
+- ✅ **Benchmark Suite Filter** (TASK-046):
+  - `jmhSuite` Gradle property: `database` / `kafka` / `generators` — runs only the requested suite
+  - Removed unconditional `includes.set(listOf(".*"))` from `benchmarks/build.gradle.kts`; replaced with
+    conditional block so `-Pjmh.includes` still works for fine-grained filtering
+  - Root cause: `me.champeau.jmh` 0.7.x configuration-phase assignment overrides runtime Gradle properties
+- ✅ **Database JMH Benchmarks** (TASK-045):
+  - `DatabaseBenchmark`: 16-configuration matrix (4 batch sizes × 2 transaction strategies × 2 methods)
+  - Flat: BIGSERIAL PK, same pre-built record reused → 57K–85K ops/s (micro-benchmark conditions)
+  - Nested: 3 INSERTs/record via `NestedRecordDecomposer` → 2.5K–3.3K ops/s (`per_batch`)
+  - `PERFORMANCE.md` and `DATABASE-BENCHMARK-GUIDE.md` updated with actual measured results
+- ✅ **Database Stage 2 — Nested Auto-Decomposition** (TASK-043):
+  - `NestedRecordDecomposer`: recursive depth-first decomposition, FK injection from immediate parent only
+  - `ParentContext`: record carrying `(tableName, parentId)` for `{tableName}_id` FK convention
+  - `DatabaseDestination`: auto-detects nested mode on first `write()`; per-table `PreparedStatement` cache
+  - 11 `NestedRecordDecomposerTest` unit tests; 10 `DatabaseDestinationNestedIT` IT tests
+  - E2E benchmark updated: invoice (invoices → issuer, recipient, line_items) replaces flat passport
+  - Branch `feature/database-stage2-nested-decomposition` ready to merge
 
 **Recently Accomplished (March 9, 2026):**
 - ✅ **Thread-local Faker cache** (TASK-040):
@@ -14,6 +33,11 @@
   - PostgreSQL destination via JDBC/HikariCP, batch inserts, 3 transaction strategies
   - 10 unit tests (H2) + 9 integration tests (Testcontainers PostgreSQL)
   - Env var substitution, table name override, flat-only guard
+- ✅ **JDBC Option B type binding** (TASK-042):
+  - `DatabaseDestination` accepts `Map<String, String>` raw YAML type strings
+  - TypeParser invoked inside `open()` after connection established (fail-fast ordering)
+  - Schema-aware JDBC binding with `JdbcTypeMapper`; fallback to `instanceof` when no schema
+  - IT tests for schema-aware path (coerce String→Date, enum binding)
 
 **Phase 6 (Core Performance Validation) - COMPLETE ✅:**
 - ✅ Component benchmarks (primitives, Datafaker, JSON serialization, file I/O)
@@ -30,10 +54,13 @@
 3. ✅ Phase 6 (Performance Validation) - **COMPLETE**
 4. ✅ Phase 6 Extended (Analysis & Optimization) - **COMPLETE** (profiling ✅, thread-local cache ✅)
 5. ✅ Phase 7 (Documentation) - **COMPLETE** (README, examples, performance docs)
-6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables)
-7. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
+6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables, Option B type binding)
+7. ✅ **Phase 8: Database Destinations Stage 2 (TASK-043) — COMPLETE** (nested auto-decomposition, FK injection)
+8. ✅ **Phase 8: Database JMH Benchmarks (TASK-045, TASK-046) — COMPLETE** (insert throughput, batch size sensitivity, suite filter)
+9. 🔥 **NEXT: TASK-044 — Extras directory** (decouple JDBC drivers; enable custom Datafaker providers)
+9. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
 
-**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database destinations Stage 1 complete (flat tables). Stage 2 (nested objects/FK) deferred.
+**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 (flat tables) and Stage 2 (nested objects / FK auto-decomposition) both complete. Database JMH benchmarks complete (16-config matrix, measured results in `docs/PERFORMANCE.md`). Benchmark suite filter (`-PjmhSuite=database|kafka|generators`) in place. Branch `feature/database-stage2-nested-decomposition` ready to merge. JDBC drivers still bundled in distribution (GPL licensing concern) — TASK-044 addresses this.
 
 ---
 
@@ -488,14 +515,22 @@
   - 10 unit tests (H2 in-memory) + 9 PostgreSQL integration tests (Testcontainers)
   - Task: TASK-018-destinations-database.md
 
-- [ ] **Destinations module - Database adapter (Stage 2)** 💤 **DEFERRED**
-  - Nested objects → separate table inserts with FK injection
-  - Arrays → child table inserts with FK injection
-  - Insert ordering (topological sort for dependencies)
-  - Transaction management across related tables
-  - `ref[]` type support (requires TASK-042 decision first)
-  - MySQL integration tests
-  - Task: TASK-018-destinations-database.md (Stage 2 section)
+- [x] **Destinations module - Database adapter (Stage 2)** ✅ **COMPLETE (March 10, 2026)**
+  - Auto-decomposition: `object[X]` → child table INSERT; `array[object[X]]` → N child INSERTs
+  - Context stack for FK injection (convention: `{parent_structure_name}_id`)
+  - Recursive decomposition (works at any nesting depth)
+  - Transaction management: parent + all children committed/rolled-back together
+  - No composite PK (deferred); no `ref[]` cross-record references (requires TASK-012)
+  - 11 unit tests + 10 PostgreSQL integration tests (Testcontainers)
+  - Task: TASK-043-database-stage2-nested-decomposition.md
+  - User Story: US-043-database-nested-auto-decomposition.md
+
+- [x] **Database JMH Benchmarks** ✅ **COMPLETE (March 10, 2026)**
+  - 16 configurations: 4 batch sizes × 2 transaction strategies × 2 benchmark methods
+  - `benchmarkFlatInsert`: 1 INSERT/call into `benchmark_flat`
+  - `benchmarkNestedInsert`: 3 INSERTs/call (1 parent + 2 children) via `NestedRecordDecomposer`
+  - Schema auto-created/dropped; tables truncated between iterations
+  - Task: TASK-045-database-jmh-benchmarks.md
 
 ## Before Going Public 🚀
 

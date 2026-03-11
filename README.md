@@ -1,11 +1,12 @@
 # SeedStream
 
 [![Build Status](https://github.com/mferretti/SeedStream/actions/workflows/build.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/build.yml)
+[![Security Scan](https://github.com/mferretti/SeedStream/actions/workflows/security.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/security.yml)
+[![Code Quality](https://github.com/mferretti/SeedStream/actions/workflows/code-quality.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/code-quality.yml)
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
 [![Gradle](https://img.shields.io/badge/Gradle-9.3-brightgreen.svg)](https://gradle.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/mferretti/SeedStream/branch/main/graph/badge.svg)](https://codecov.io/gh/mferretti/SeedStream)
-![SpotBugs](https://img.shields.io/badge/SpotBugs-passing-brightgreen.svg)
 
 A high-performance, configurable test data generator for enterprise applications.
 
@@ -18,7 +19,7 @@ A high-performance, configurable test data generator for enterprise applications
 
 ## Overview
 
-Data Generator is a Java-based tool designed to generate large volumes of realistic test data for various destinations (Kafka, databases, files) with reproducible results using seed-based pseudo-random generation.
+SeedStream is a Java-based tool designed to generate large volumes of realistic test data for various destinations (Kafka, databases, files) with reproducible results using seed-based pseudo-random generation.
 
 ## Features
 
@@ -174,26 +175,26 @@ brew install gradle
 
 ### Performance Example
 
-Generate 100,000 realistic customer records with Datafaker using 10 worker threads:
+Generate 100,000 realistic customer records with Datafaker using 4 worker threads:
 
 ```bash
-./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 100000 --threads 10"
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 100000 --threads 4"
 ```
 
-**Results:**
+**Results** (post thread-local Faker cache optimization, March 2026):
 - **Records Generated**: 100,000
-- **Worker Threads**: 10
-- **Time Elapsed**: 14.4 seconds
-- **Throughput**: ~6,923 records/sec
-- **Output File Size**: 30 MB
+- **Worker Threads**: 4
+- **Time Elapsed**: ~3 seconds
+- **Throughput**: ~25,000–33,000 records/sec
+- **Output File Size**: ~30 MB
 - **Data Types**: UUID, names, emails, addresses, phone numbers, cities, states, postal codes (USA locale)
 
 **Sample Output:**
 ```json
 {
-  "customer_id": "ce344f82-baf2-4e17-b871-8808047a09c5",
+  "id": "ce344f82-baf2-4e17-b871-8808047a09c5",
   "first_name": "Valentine",
-  "last_name": "Reynolds", 
+  "last_name": "Reynolds",
   "email": "sherman.king@gmail.com",
   "phone": "(256) 511-6029",
   "billing_address": "Suite 233 33062 Verlie Corners, East Berryberg, WI 35149",
@@ -204,11 +205,11 @@ Generate 100,000 realistic customer records with Datafaker using 10 worker threa
 }
 ```
 
-**Note**: Performance varies based on data complexity. Simple primitive types achieve **millions of records/sec** (57M for int, 12M for char) for in-memory generation, while complex Datafaker objects with nested structures generate at 5,000-10,000 records/sec.
+**Note**: Performance varies based on data complexity. Simple primitive types achieve **millions of records/sec** (57M for int, 12M for char) for in-memory generation. Datafaker-heavy workloads generate at 25,000–33,000 records/sec (E2E validated).
 
 **Available Options:**
 - `--job`: Path to job configuration file (required)
-- `--format`: Output format: `json` or `csv` (default: `json`)
+- `--format`: Output format: `json`, `csv`, or `protobuf` (default: `json`)
 - `--count`: Number of records to generate (default: `100`)
 - `--seed`: Seed override for deterministic generation (optional)
 - `--threads`: Number of worker threads for parallel generation (default: CPU cores, use 1 for single-threaded)
@@ -279,7 +280,7 @@ conf:
 
 See [Kafka Integration](#kafka-integration) section for full configuration options.
 
-**Database destination** (planned for Phase 8).
+**Database destination** — see [Database Integration](#database-integration) below.
 
 #### Seed Configuration
 
@@ -332,7 +333,7 @@ cli → destinations → formats → generators → schema → core
 
 Each module has a clear responsibility (generation, serialization, delivery) and can be extended independently.
 
-**Current status** (v0.2 - March 2026): Core, schema, generators, formats (JSON, CSV, Protobuf), destinations (File, Kafka), and CLI are fully implemented with 70%+ test coverage. Database destination is planned for v0.3.
+**Current status** (v0.4 - March 2026): Core, schema, generators, formats (JSON, CSV, Protobuf), destinations (File, Kafka, PostgreSQL), and CLI are fully implemented with 70%+ test coverage. Database Stage 1 (flat tables) and Stage 2 (nested structures with FK auto-injection) are both complete.
 
 For detailed architecture, design decisions, and the multi-threading reproducibility model, see **[DESIGN.md](docs/DESIGN.md)**.
 
@@ -358,7 +359,7 @@ For detailed architecture, design decisions, and the multi-threading reproducibi
 
 - **Primitive types**: 12-258M records/sec (in-memory) — Boolean fastest (258M), char slowest (12M)
 - **Realistic Datafaker data**: 13-154K records/sec — Company names fastest (154K), phones slowest (13K)
-- **Real-world example**: 100,000 customer records (10 Datafaker fields) in 14.4 seconds = **6,923 records/sec**
+- **Real-world example**: 100,000 customer records (10 Datafaker fields) in ~3 seconds = **~25,000–33,000 records/sec** (post thread-local Faker cache optimization)
 
 **Rule of thumb**: Datafaker is ~1,000× slower than primitives. Use primitives for volume, Datafaker for realism.
 
@@ -606,7 +607,7 @@ data:
 
 **Fallback**: Unknown geolocations fall back to English (US) with a warning log.
 
-For the complete locale mapping, see [LocaleMapper.java](generators/src/main/java/com/datagenerator/generators/locale/LocaleMapper.java).
+For the complete locale mapping, see [LocaleMapper.java](generators/src/main/java/com/datagenerator/generators/LocaleMapper.java).
 
 ## Advanced Topics
 
@@ -636,8 +637,8 @@ For large datasets, use the `--threads` option to parallelize generation:
 
 **Performance Scaling**:
 - Linear scaling for primitive types (10M ops/s × N threads)
-- Sub-linear scaling for Datafaker (I/O bound, ~20K ops/s regardless of threads)
-- Optimal thread count: CPU cores for primitive-heavy data, 2-4× cores for Datafaker-heavy data
+- I/O-bound for Datafaker workloads: 25–33K rec/s at any thread count after thread-local Faker cache optimization
+- Optimal thread count: CPU cores for primitive-heavy data; 4 threads sufficient for Datafaker-heavy data
 
 ### Reproducibility & Determinism
 
@@ -669,13 +670,13 @@ shasum -a 256 cli/output/addresses.json
 ### Performance Tuning
 
 **1. File I/O Optimization** (March 2026 updates):
-- **Buffer size**: 64KB (default, configurable in FileDestinationConfig)
-- **Batch writes**: 1000 records per batch (configurable via `batchSize`)
+- **Buffer size**: 64KB (internal default)
+- **Batch writes**: 1000 records per batch (configurable via `conf.batch_size` in job YAML)
 - **Compression**: Use `compress: true` for 70-80% size reduction (slower writes)
 
 **2. Generator Selection**:
 - **Primitive types** (int, char, boolean): 10M+ ops/s
-- **Semantic types** (Datafaker): ~20K ops/s (100-500× slower)
+- **Semantic types** (Datafaker): 13–154K ops/s (~1,000× slower on average)
 - **Trade-off**: Use primitives for volume, semantic types for realism
 
 **3. Data Complexity**:
@@ -702,7 +703,7 @@ shasum -a 256 cli/output/addresses.json
 
 ### Kafka Integration
 
-**Status**: ✅ Fully implemented with comprehensive testing (43 integration tests).
+**Status**: ✅ Fully implemented with comprehensive testing (44 integration tests).
 
 **Configuration example**:
 ```yaml
@@ -737,17 +738,50 @@ conf:
 
 **Requirements**: Running Kafka instance (local, Docker, or cloud). See config examples in `config/jobs/kafka_*.yaml`.
 
-### Database Integration (Planned)
+### Database Integration
 
-**Coming in Phase 8:**
-- PostgreSQL and MySQL support
-- HikariCP connection pooling
-- Batch inserts (configurable batch size)
-- Auto-table creation from structure definitions
-- Complex type mapping (arrays → JSONB, objects → nested columns)
-- Transaction management
+**Status**: ✅ Fully implemented — Stage 1 (flat tables) and Stage 2 (nested structures with FK auto-injection).
 
-**Design decisions pending**: Schema auto-creation vs manual, migration strategy
+**Configuration example** (flat structure — `config/jobs/db_passport.yaml`):
+```yaml
+source: passport.yaml
+type: database
+seed:
+  type: embedded
+  value: 42
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"      # supports ${ENV_VAR} substitution
+  table: "passports"              # optional — defaults to structure name
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch  # per_batch | per_job | auto_commit
+```
+
+**Nested structures** (Stage 2): When the source structure contains `object[X]` or `array[object[X]]` fields, SeedStream automatically decomposes the record tree into multi-table INSERTs. The parent record is inserted first; each child gets a `{parent_table}_id` FK column injected automatically.
+
+```yaml
+# invoice.yaml has: issuer: object[company], line_items: array[object[line_item], 1..20]
+# → SeedStream inserts into: invoices, issuer, recipient, line_items (in depth-first order)
+source: invoice.yaml
+type: database
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  table: "invoices"
+  transaction_strategy: per_batch
+```
+
+**Features**:
+- ✅ PostgreSQL support (MySQL driver included, untested)
+- ✅ HikariCP connection pooling
+- ✅ Batch inserts with configurable batch size
+- ✅ Three transaction strategies: `per_batch`, `per_job`, `auto_commit`
+- ✅ Schema-aware JDBC binding (DataType → correct `setXxx()` method)
+- ✅ `${ENV_VAR}` substitution for credentials
+- ✅ Nested structure auto-decomposition with FK injection (Stage 2)
+- ⚠️ Tables must pre-exist — no DDL generation
+- ⚠️ Parent `id` field required for FK injection in nested structures
 
 ## Troubleshooting
 
@@ -877,7 +911,7 @@ created_at:
 A: `char` generates random alphanumeric strings (e.g., "AbCdEf"). `name` uses Datafaker to generate realistic person names (e.g., "John Smith").
 
 **Q: Can I contribute new generators or destinations?**  
-A: Yes! See [CONTRIBUTING.md](CONTRIBUTING.md) (coming soon) for guidelines. We welcome PRs for:
+A: Yes! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines. We welcome PRs for:
 - New semantic types (e.g., vehicle VIN, ISBN)
 - New destinations (e.g., S3, Azure Blob, Elasticsearch)
 - New formats (e.g., Avro, Parquet)
@@ -894,27 +928,31 @@ A: All generated data is **synthetic** and not real PII. However:
 
 ## Roadmap
 
-**Current Version**: v0.2.0 (March 2026)
+**Current Version**: v0.4.0 (March 2026)
 
 **Phase 6** - Performance Validation: ✅ **COMPLETE**
 - ✅ JMH benchmarks (TASK-026) - NFR-1 validated
 - ✅ File I/O optimization (600-800 MB/s achieved)
 - ✅ Memory profiling (TASK-027) - No leaks, linear scaling
-- ✅ Integration tests (TASK-022-025) - 43 tests passing
+- ✅ Integration tests (TASK-022-025) - 44 tests passing
 
 **Phase 7** - Documentation: ✅ **COMPLETE**
 - ✅ README completion (TASK-028)
 - ✅ Example configurations (TASK-029)
 - ✅ JavaDoc completion (TASK-030)
 
-**Phase 8 (Future)** - Database & Advanced Features:
-- 📋 Database destination adapter (PostgreSQL, MySQL)
-- 📋 Reference generator for foreign keys
+**Phase 8** - Database Destinations: ✅ **COMPLETE**
+- ✅ Database adapter Stage 1 — PostgreSQL flat tables, HikariCP, 3 transaction strategies
+- ✅ JDBC type binding — schema-aware `setXxx()` dispatch
+- ✅ Database adapter Stage 2 — nested structure auto-decomposition, FK injection
+
+**Phase 9 (Future)** - Advanced Features:
+- 📋 Reference generator for cross-record foreign keys
 - 📋 Avro format serializer
 - 📋 Statistical distributions
 - 📋 REST/gRPC API module
 
-**Phase 9 (Long-term)** - Enterprise Features:
+**Phase 10 (Long-term)** - Enterprise Features:
 - 📋 Schema registry integration (Confluent, AWS Glue)
 - 📋 Data masking and anonymization
 - 📋 Plugin marketplace
@@ -941,7 +979,6 @@ Comprehensive documentation is available in the `docs/` directory:
 
 **Additional Resources:**
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history, release notes, and roadmap
-- **[AGENTIC-PLATFORM-DISCUSSION.md](AGENTIC-PLATFORM-DISCUSSION.md)** - AI-assisted development discussion
 - **[benchmarks/README.md](benchmarks/README.md)** - Benchmark execution guide
 
 **Internal Planning** (for project contributors):

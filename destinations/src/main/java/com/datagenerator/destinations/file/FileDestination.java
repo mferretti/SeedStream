@@ -80,7 +80,7 @@ public class FileDestination implements DestinationAdapter {
   // Batch writing optimization
   private final List<String> batchBuffer;
   private final StringBuilder batchBuilder;
-  private final int estimatedRecordSize = 300; // Average JSON record size in bytes
+  private static final int ESTIMATED_RECORD_SIZE = 300; // Average JSON record size in bytes
 
   /**
    * Create file destination with configuration and serializer.
@@ -92,7 +92,7 @@ public class FileDestination implements DestinationAdapter {
     this.config = config;
     this.serializer = serializer;
     this.batchBuffer = new ArrayList<>(config.getBatchSize());
-    this.batchBuilder = new StringBuilder(config.getBatchSize() * estimatedRecordSize);
+    this.batchBuilder = new StringBuilder(config.getBatchSize() * ESTIMATED_RECORD_SIZE);
   }
 
   @Override

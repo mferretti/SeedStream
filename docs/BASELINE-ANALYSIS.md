@@ -176,7 +176,7 @@ Faker faker = new Faker(locale, random);  // NEW INSTANCE EVERY TIME!
 - CPU saturation due to repeated initialization overhead
 
 **Solution:** Thread-local Faker cache (reuse instances per thread per locale)
-- See detailed implementation: [THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)
+- See detailed implementation: [THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](internal/benchmarks/THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)
 
 **Potential Improvement:**
 - **Conservative:** 1.7-2.0× improvement (34K-40K rec/s at 8 threads)
@@ -255,7 +255,7 @@ Result: 3.5-5× single-thread improvement when we fixed OUR bug
   Target:  8 threads × 10K rec/s per thread × 0.625 efficiency = 50K rec/s
   ```
 
-**Detailed Implementation Guide:** [THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)
+**Detailed Implementation Guide:** [THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](internal/benchmarks/THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)
 
 ### Priority 3: Buffer Size Tuning ⭐⭐⭐
 
@@ -372,7 +372,7 @@ Result: 3.5-5× single-thread improvement when we fixed OUR bug
    - Modify DatafakerGenerator to use cache (1 line change)
    - Add cleanup in GenerationEngine
    - **Expected result:** 2× improvement (20K → 40K rec/s)
-   - **See:** [THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)
+   - **See:** [THREAD-LOCAL-OPTIMIZATION-STRATEGY.md](internal/benchmarks/THREAD-LOCAL-OPTIMIZATION-STRATEGY.md)
 
 5. **Re-run E2E benchmarks with thread optimization** to validate gains
    ```bash

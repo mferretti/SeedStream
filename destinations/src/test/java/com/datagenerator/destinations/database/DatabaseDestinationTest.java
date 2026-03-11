@@ -137,17 +137,28 @@ class DatabaseDestinationTest {
   }
 
   @Test
-  void shouldFailFastOnNestedObject() {
+  void shouldHandleNestedObjectViaStage2Decomposition() throws SQLException {
+    // Stage 2: nested objects are auto-decomposed into child-table inserts (no exception thrown)
+    try (Statement st = h2Connection.createStatement()) {
+      st.execute("CREATE TABLE IF NOT EXISTS address (id INT, city VARCHAR(255), users_id INT)");
+    }
+
+    Map<String, Object> address = new LinkedHashMap<>();
+    address.put("id", 200);
+    address.put("city", "Rome");
+
     Map<String, Object> nestedRecord = new LinkedHashMap<>();
     nestedRecord.put("id", 1);
-    nestedRecord.put("address", Map.of("city", "Rome")); // nested — not allowed in Stage 1
+    nestedRecord.put("address", address);
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      assertThatThrownBy(() -> dest.write(nestedRecord))
-          .isInstanceOf(DestinationException.class)
-          .hasMessageContaining("nested objects")
-          .hasMessageContaining("address");
+      assertThatCode(() -> dest.write(nestedRecord)).doesNotThrowAnyException();
+      dest.flush();
+    }
+
+    try (Statement st = h2Connection.createStatement()) {
+      st.execute("DROP TABLE IF EXISTS address");
     }
   }
 
@@ -240,6 +251,128 @@ class DatabaseDestinationTest {
     }
 
     assertThat(countRows()).isEqualTo(5);
+  }
+
+  // -------------------------------------------------------------------------
+  // Option B — schema-aware binding
+  // -------------------------------------------------------------------------
+
+  @Test
+  void shouldInsertWithSchemaUsingTypedBinding() throws SQLException {
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
+      dest.open();
+      dest.write(record(1, "Alice", true));
+      dest.flush();
+    }
+
+    assertThat(countRows()).isEqualTo(1);
+    assertThat(fetchName(1)).isEqualTo("Alice");
+  }
+
+  @Test
+  void shouldCoerceStringValueToIntWhenSchemaDeclaresIntType() throws SQLException {
+    // Simulates a Datafaker numeric type returning a String (e.g. age, quantity)
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
+
+    Map<String, Object> recordWithStringId = new LinkedHashMap<>();
+    recordWithStringId.put("id", "7"); // String instead of Integer — coercion expected
+    recordWithStringId.put("name", "Bob");
+    recordWithStringId.put("active", true);
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
+      dest.open();
+      dest.write(recordWithStringId);
+      dest.flush();
+    }
+
+    // Verify the record was inserted and id was correctly bound as INT
+    try (Statement st = h2Connection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT id FROM users WHERE name = 'Bob'")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getInt("id")).isEqualTo(7);
+    }
+  }
+
+  @Test
+  void shouldHandleNullWithTypedSchemaForCorrectSqlType() throws SQLException {
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
+
+    Map<String, Object> recordWithNull = new LinkedHashMap<>();
+    recordWithNull.put("id", 5);
+    recordWithNull.put("name", null); // null with schema → setNull(Types.VARCHAR)
+    recordWithNull.put("active", false);
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
+      dest.open();
+      dest.write(recordWithNull);
+      dest.flush();
+    }
+
+    try (Statement st = h2Connection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT name FROM users WHERE id = 5")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getString("name")).isNull();
+    }
+  }
+
+  @Test
+  void shouldFallBackToOptionAForFieldsNotInSchema() throws SQLException {
+    // Schema only covers 'id' — 'name' and 'active' fall back to Option A instanceof binding
+    Map<String, String> partialSchema = Map.of("id", "int[1..9999]");
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), partialSchema)) {
+      dest.open();
+      dest.write(record(3, "Carol", true));
+      dest.flush();
+    }
+
+    assertThat(countRows()).isEqualTo(1);
+    assertThat(fetchName(3)).isEqualTo("Carol");
+  }
+
+  @Test
+  void shouldBindEnumFieldAsStringWithSchema() throws SQLException {
+    // Create a table with a status column
+    try (Statement st = h2Connection.createStatement()) {
+      st.execute("CREATE TABLE IF NOT EXISTS statuses (id INT, status VARCHAR(20))");
+    }
+
+    DatabaseDestinationConfig statusConfig =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl(JDBC_URL)
+            .username(USERNAME)
+            .password(PASSWORD)
+            .tableName("statuses")
+            .batchSize(10)
+            .build();
+
+    Map<String, String> schema =
+        Map.of("id", "int[1..9999]", "status", "enum[ACTIVE,INACTIVE,PENDING]");
+
+    Map<String, Object> statusRecord = new LinkedHashMap<>();
+    statusRecord.put("id", 1);
+    statusRecord.put("status", "ACTIVE");
+
+    try (DatabaseDestination dest = new DatabaseDestination(statusConfig, schema)) {
+      dest.open();
+      dest.write(statusRecord);
+      dest.flush();
+    }
+
+    try (Statement st = h2Connection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT status FROM statuses WHERE id = 1")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getString("status")).isEqualTo("ACTIVE");
+    }
+
+    try (Statement st = h2Connection.createStatement()) {
+      st.execute("DROP TABLE IF EXISTS statuses");
+    }
   }
 
   // --- Helpers ---

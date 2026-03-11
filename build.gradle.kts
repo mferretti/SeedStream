@@ -158,7 +158,7 @@ subprojects {
         effort.set(com.github.spotbugs.snom.Effort.MAX)
         reportLevel.set(com.github.spotbugs.snom.Confidence.LOW)
         excludeFilter.set(file("$rootDir/config/spotbugs-exclude.xml"))
-        ignoreFailures.set(true)
+        ignoreFailures.set(false)
     }
 
     tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
