@@ -64,7 +64,7 @@ public class LocaleMapper {
       return Locale.US;
     }
 
-    String normalized = geolocation.toLowerCase().trim().replace("_", "-");
+    String normalized = geolocation.toLowerCase(Locale.ROOT).trim().replace("_", "-");
 
     Locale locale =
         switch (normalized) {

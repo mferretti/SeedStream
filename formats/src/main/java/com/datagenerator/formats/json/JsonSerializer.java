@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
@@ -64,6 +65,10 @@ public class JsonSerializer implements FormatSerializer {
    *
    * @param mapper custom configured ObjectMapper
    */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification =
+          "ObjectMapper is a thread-safe, shared serialization service; storing reference is intentional")
   public JsonSerializer(ObjectMapper mapper) {
     this.mapper = mapper;
   }

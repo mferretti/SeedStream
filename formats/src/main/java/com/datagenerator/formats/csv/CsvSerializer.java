@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.opencsv.CSVWriter;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -71,6 +73,10 @@ public class CsvSerializer implements FormatSerializer {
    *
    * @param jsonMapper mapper for serializing nested objects/arrays
    */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification =
+          "ObjectMapper is a thread-safe, shared serialization service; storing reference is intentional")
   public CsvSerializer(ObjectMapper jsonMapper) {
     this.jsonMapper = jsonMapper;
   }
@@ -98,7 +104,7 @@ public class CsvSerializer implements FormatSerializer {
     try (CSVWriter csvWriter = new CSVWriter(stringWriter)) {
       String[] headers = record.keySet().toArray(new String[0]);
       csvWriter.writeNext(headers, true); // true = always quote
-    } catch (Exception e) {
+    } catch (IOException e) {
       log.error("Failed to serialize CSV header: {}", record.keySet(), e);
       throw new SerializationException("CSV header serialization failed", e);
     }
@@ -122,7 +128,7 @@ public class CsvSerializer implements FormatSerializer {
       }
 
       csvWriter.writeNext(values, true); // true = always quote
-    } catch (Exception e) {
+    } catch (IOException e) {
       log.error("Failed to serialize record to CSV: {}", record, e);
       throw new SerializationException("CSV serialization failed", e);
     }

@@ -22,10 +22,13 @@ import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -166,7 +169,8 @@ public class DatabaseDestination implements DestinationAdapter {
    */
   public DatabaseDestination(DatabaseDestinationConfig config, Map<String, String> rawFieldTypes) {
     this.config = config;
-    this.rawFieldTypes = rawFieldTypes;
+    this.rawFieldTypes =
+        rawFieldTypes != null ? Collections.unmodifiableMap(new HashMap<>(rawFieldTypes)) : null;
     this.batch = new ArrayList<>(config.getBatchSize());
   }
 
@@ -326,6 +330,11 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
+  @SuppressFBWarnings(
+      value = "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
+      justification =
+          "SQL is built from schema-derived column names, not from user-supplied input; "
+              + "not a SQL injection risk")
   private void initializeStatement(Map<String, Object> firstRecord) {
     columnNames = new ArrayList<>(firstRecord.keySet());
 
@@ -430,6 +439,15 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
+  @SuppressFBWarnings(
+      value = {
+        "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
+        "OBL_UNSATISFIED_OBLIGATION"
+      },
+      justification =
+          "SQL is built from schema-derived column names (not user input); "
+              + "PreparedStatement is stored in nestedStatements immediately after creation — "
+              + "no resource leak path exists")
   private void initNestedStatementIfAbsent(String tableName, Map<String, Object> firstRecord) {
     if (nestedStatements.containsKey(tableName)) return;
 

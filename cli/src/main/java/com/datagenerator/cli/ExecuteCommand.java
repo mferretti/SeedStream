@@ -39,6 +39,7 @@ import com.datagenerator.formats.protobuf.ProtobufSerializer;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
+import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.semantic.FakerCache;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.JobConfig;
@@ -47,6 +48,7 @@ import com.datagenerator.schema.parser.JobConfigParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -387,8 +389,9 @@ public class ExecuteCommand implements Callable<Integer> {
     } else {
       // Default to config/structures relative to job file location
       Path jobDir = jobFile.getParent();
-      if (jobDir != null && jobDir.endsWith("jobs")) {
-        structuresPath = jobDir.getParent().resolve("structures");
+      Path jobDirParent = jobDir != null ? jobDir.getParent() : null;
+      if (jobDir != null && jobDir.endsWith("jobs") && jobDirParent != null) {
+        structuresPath = jobDirParent.resolve("structures");
       } else {
         structuresPath = Paths.get("config/structures");
       }
@@ -511,7 +514,7 @@ public class ExecuteCommand implements Callable<Integer> {
    * @throws IllegalArgumentException if format is unsupported
    */
   private FormatSerializer createSerializer(String format) {
-    return switch (format.toLowerCase()) {
+    return switch (format.toLowerCase(Locale.ROOT)) {
       case "json" -> new JsonSerializer();
       case "csv" -> new CsvSerializer();
       case "protobuf" -> new ProtobufSerializer();
@@ -524,7 +527,7 @@ public class ExecuteCommand implements Callable<Integer> {
     String type = jobConfig.getType();
     JsonNode conf = jobConfig.getConf();
 
-    return switch (type.toLowerCase()) {
+    return switch (type.toLowerCase(Locale.ROOT)) {
       case "file" -> createFileDestination(conf, serializer);
       case "kafka" -> createKafkaDestination(conf, serializer);
       case "database" -> createDatabaseDestination(jobConfig, dataStructure);
@@ -684,7 +687,7 @@ public class ExecuteCommand implements Callable<Integer> {
                         Map.Entry::getKey,
                         entry -> typeParser.parse(entry.getValue().getDatatype())));
           } catch (Exception e) {
-            throw new RuntimeException("Failed to load structure: " + structureName, e);
+            throw new GeneratorException("Failed to load structure: " + structureName, e);
           }
         };
 
