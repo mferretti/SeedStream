@@ -20,6 +20,8 @@ import com.datagenerator.core.util.LogUtils;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.formats.FormatSerializer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
@@ -81,6 +83,11 @@ public class KafkaDestination implements DestinationAdapter {
    * @param config Kafka connection and producer configuration
    * @param serializer format serializer (JSON, CSV, etc.)
    */
+  @SuppressFBWarnings(
+      value = "CT_CONSTRUCTOR_THROW",
+      justification =
+          "Fail-fast config validation in constructor is intentional; "
+              + "KafkaDestination is not Serializable and not subject to finalizer attacks")
   public KafkaDestination(KafkaDestinationConfig config, FormatSerializer serializer) {
     if (config.getBootstrap() == null || config.getBootstrap().isBlank()) {
       throw new DestinationException("Kafka bootstrap servers required");
@@ -164,7 +171,7 @@ public class KafkaDestination implements DestinationAdapter {
     try {
       // Serialize record to bytes
       String serializedRecord = serializer.serialize(record);
-      byte[] recordBytes = serializedRecord.getBytes();
+      byte[] recordBytes = serializedRecord.getBytes(StandardCharsets.UTF_8);
 
       // Create producer record (null key, uses default partitioning)
       ProducerRecord<String, byte[]> producerRecord =

@@ -59,8 +59,8 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project team responsible for enforcement at
-[marco.ferretti@example.com](mailto:marco.ferretti@example.com).
+reported by contacting the maintainer directly via GitHub:
+[@mferretti](https://github.com/mferretti).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

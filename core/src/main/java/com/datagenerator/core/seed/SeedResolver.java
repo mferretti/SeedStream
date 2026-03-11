@@ -171,7 +171,9 @@ public class SeedResolver {
             throw new SeedResolutionException("Username and password required for basic auth");
           }
           String credentials = auth.getUsername() + ":" + auth.getPassword();
-          String encoded = java.util.Base64.getEncoder().encodeToString(credentials.getBytes());
+          String encoded =
+              java.util.Base64.getEncoder()
+                  .encodeToString(credentials.getBytes(java.nio.charset.StandardCharsets.UTF_8));
           requestBuilder.header("Authorization", "Basic " + encoded);
           break;
         case "api_key":

@@ -1,19 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <FindBugsFilter>
-    <!-- Exclude generated code -->
+    <!-- Exclude generated code (anonymous/inner classes) -->
     <Match>
         <Class name="~.*\$.*"/>
     </Match>
-    
-    <!-- Exclude test code from certain checks -->
-    <Match>
-        <Class name="~.*Test"/>
-        <Bug pattern="DM_DEFAULT_ENCODING"/>
-    </Match>
-    
+
     <!-- Lombok generated methods -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
         <Class name="~.*\.schema\.model\..*"/>
+    </Match>
+
+    <!--
+      Test and integration test classes: suppress low-signal patterns that are
+      standard JUnit idioms or safe-by-design in test contexts.
+
+      THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION  — JUnit 5 allows 'throws Exception'; no value in tightening test signatures
+      THROWS_METHOD_THROWS_RUNTIMEEXCEPTION        — test helpers intentionally throw unchecked exceptions
+      RV_RETURN_VALUE_IGNORED_BAD_PRACTICE         — Future/FutureTask from ExecutorService.submit() in tests; synchronisation is external
+      RV_RETURN_VALUE_IGNORED                      — same, relaxed variant
+      SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE     — test DDL/DML is hard-coded and not user-controlled
+      DMI_EMPTY_DB_PASSWORD                        — test databases use well-known credentials; not a production concern
+      NM_CONFUSING                                 — setUp/setup naming across unrelated test classes is harmless
+      UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR     — @BeforeEach / @Setup initialise fields; SpotBugs cannot see JUnit lifecycle
+      BX_UNBOXING_IMMEDIATELY_REBOXED              — test assertion / comparison idiom; readability > micro-optimisation
+      ICAST_INTEGER_MULTIPLY_CAST_TO_LONG          — test data arithmetic; no risk of production overflow
+      DM_DEFAULT_ENCODING                          — test output / string helpers use platform encoding harmlessly
+    -->
+    <Match>
+        <Class name="~.*(Test|IT|Benchmark).*"/>
+        <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION,
+                      THROWS_METHOD_THROWS_RUNTIMEEXCEPTION,
+                      RV_RETURN_VALUE_IGNORED_BAD_PRACTICE,
+                      RV_RETURN_VALUE_IGNORED,
+                      SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE,
+                      DMI_EMPTY_DB_PASSWORD,
+                      NM_CONFUSING,
+                      UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR,
+                      BX_UNBOXING_IMMEDIATELY_REBOXED,
+                      ICAST_INTEGER_MULTIPLY_CAST_TO_LONG,
+                      DM_DEFAULT_ENCODING,
+                      DE_MIGHT_IGNORE,
+                      REC_CATCH_EXCEPTION,
+                      CNT_ROUGH_CONSTANT_VALUE"/>
     </Match>
 </FindBugsFilter>

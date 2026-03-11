@@ -66,6 +66,56 @@ DESTINATIONS=("file" "kafka")
 THREADS=(1 4 8)
 MEMORY_LIMITS=("256m" "512m" "1024m")
 
+# Global unified test counter (set by compute_total_tests, incremented by both run functions)
+CURRENT_TEST=0
+TOTAL_TESTS=0
+
+# Database test matrix (no format dimension — JDBC binding, not serialization)
+# Uses the invoice nested structure (Stage 2): invoices → issuer, recipient, line_items.
+# This is a more realistic benchmark than a flat table.
+DB_JOB_FILE="${PROJECT_ROOT}/config/jobs/e2e_test_database_invoice.yaml"
+POSTGRES_CONTAINER="postgres-benchmark"
+POSTGRES_PORT=5432
+POSTGRES_DB="testdb"
+POSTGRES_USER="testuser"
+POSTGRES_PASS="testpass"
+
+# DDL for the invoice multi-table schema.
+# Column names match original YAML field names (NOT aliases) — ObjectGenerator uses original keys.
+# Root table: invoices (must have `id` for FK injection into child tables).
+# Child tables: issuer, recipient (from object[company]), line_items (from array[object[line_item]]).
+# FK convention: {parent_table_name}_id (e.g. invoices_id in all child tables).
+INVOICES_DDL="
+CREATE TABLE invoices (
+  id              INT,
+  invoice_number  INT,
+  invoice_date    DATE,
+  gross_total     DECIMAL(12,2),
+  total_vat       DECIMAL(12,2),
+  net_total       DECIMAL(12,2)
+);
+CREATE TABLE issuer (
+  name         VARCHAR(255),
+  vat_number   VARCHAR(20),
+  address      VARCHAR(255),
+  city         VARCHAR(100),
+  invoices_id  INT
+);
+CREATE TABLE recipient (
+  name         VARCHAR(255),
+  vat_number   VARCHAR(20),
+  address      VARCHAR(255),
+  city         VARCHAR(100),
+  invoices_id  INT
+);
+CREATE TABLE line_items (
+  description  VARCHAR(255),
+  quantity     INT,
+  unit_price   DECIMAL(12,2),
+  vat_rate     VARCHAR(10),
+  invoices_id  INT
+);"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -104,6 +154,37 @@ check_prerequisites() {
     else
         log_warn "Kafka container not running - Kafka tests will be skipped"
         log_info "Start Kafka with: docker run -d --name kafka-benchmark -p 9092:9092 ..."
+    fi
+
+    # Check if PostgreSQL is running (for database destination tests)
+    if docker ps --filter "name=${POSTGRES_CONTAINER}" --format "{{.Names}}" | grep -q "${POSTGRES_CONTAINER}"; then
+        log_success "PostgreSQL container is running"
+    else
+        log_info "PostgreSQL container not running - attempting to start..."
+        if docker run -d \
+            --name "${POSTGRES_CONTAINER}" \
+            -p "${POSTGRES_PORT}:5432" \
+            -e POSTGRES_DB="${POSTGRES_DB}" \
+            -e POSTGRES_USER="${POSTGRES_USER}" \
+            -e POSTGRES_PASSWORD="${POSTGRES_PASS}" \
+            postgres:16-alpine >/dev/null 2>&1; then
+            log_info "Waiting for PostgreSQL to be ready..."
+            local retries=20
+            while [[ $retries -gt 0 ]]; do
+                if docker exec "${POSTGRES_CONTAINER}" pg_isready -U "${POSTGRES_USER}" -q 2>/dev/null; then
+                    log_success "PostgreSQL is ready"
+                    break
+                fi
+                sleep 2
+                retries=$((retries - 1))
+            done
+            if [[ $retries -eq 0 ]]; then
+                log_warn "PostgreSQL did not become ready in time - database tests will be skipped"
+            fi
+        else
+            log_warn "Failed to start PostgreSQL container - database tests will be skipped"
+            log_info "Start manually with: docker run -d --name ${POSTGRES_CONTAINER} -p ${POSTGRES_PORT}:5432 -e POSTGRES_DB=${POSTGRES_DB} -e POSTGRES_USER=${POSTGRES_USER} -e POSTGRES_PASSWORD=${POSTGRES_PASS} postgres:16-alpine"
+        fi
     fi
     
     # Check if gradle wrapper exists
@@ -211,14 +292,17 @@ run_test() {
         mkdir -p "${OUTPUT_DIR}/e2e_passport_file_${format}"
     fi
     
-    # Set JAVA_OPTS for memory constraints (warmup)
-    export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
-    
-    # Warmup run (10K records, skip metrics)
-    log_info "  Warmup: $WARMUP_COUNT records..."
-    if ! "$CLI_SCRIPT" execute --job "$job_file" --format "$format" --count $WARMUP_COUNT --threads $threads \
-        >/dev/null 2>&1; then
-        log_warn "  Warmup failed - may indicate memory issue"
+    # Warmup run (skip if WARMUP_COUNT=0)
+    if [[ $WARMUP_COUNT -gt 0 ]]; then
+        export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
+        log_info "  Warmup: $WARMUP_COUNT records..."
+        if ! "$CLI_SCRIPT" execute --job "$job_file" --format "$format" --count $WARMUP_COUNT --threads $threads \
+            >/dev/null 2>&1; then
+            log_warn "  Warmup failed - may indicate memory issue"
+        fi
+        unset JAVA_OPTS
+    else
+        log_info "  Warmup: skipped"
     fi
     
     # Main benchmark run
@@ -289,34 +373,197 @@ run_test() {
     unset JAVA_OPTS
 }
 
-# Run all tests
+# Drop and recreate all invoice tables for a clean test run
+prepare_invoice_tables() {
+    docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        -c "DROP TABLE IF EXISTS line_items; DROP TABLE IF EXISTS issuer; DROP TABLE IF EXISTS recipient; DROP TABLE IF EXISTS invoices;" \
+        -c "${INVOICES_DDL}" \
+        >/dev/null 2>&1
+}
+
+# Count rows in the invoices (root) table after a test run
+count_invoice_rows() {
+    docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        -t -c "SELECT COUNT(*) FROM invoices;" 2>/dev/null | tr -d ' \n'
+}
+
+# Count total child rows inserted across all child tables
+count_invoice_child_rows() {
+    docker exec "${POSTGRES_CONTAINER}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
+        -t -c "SELECT (SELECT COUNT(*) FROM issuer) + (SELECT COUNT(*) FROM recipient) + (SELECT COUNT(*) FROM line_items);" \
+        2>/dev/null | tr -d ' \n'
+}
+
+# Run a single database benchmark test (invoice nested structure)
+run_database_test() {
+    local threads=$1
+    local memory=$2
+
+    local memory_mb="${memory%m}"
+    local gc_log_file="${GC_LOG_DIR}/gc_database_invoice_t${threads}_m${memory}.log"
+    local output_file="${GC_LOG_DIR}/output_database_invoice_t${threads}_m${memory}.log"
+    local test_name="database/invoice/t${threads}/m${memory}"
+
+    log_info "Running test: $test_name"
+
+    # Skip if PostgreSQL is not available
+    if ! docker ps --filter "name=${POSTGRES_CONTAINER}" --format "{{.Names}}" | grep -q "${POSTGRES_CONTAINER}"; then
+        log_warn "Skipping database test (PostgreSQL not running): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,PostgreSQL not running" >> "$RESULTS_FILE"
+        return
+    fi
+
+    # Prepare clean tables (invoices + issuer + recipient + line_items)
+    if ! prepare_invoice_tables; then
+        log_warn "Skipping database test (could not prepare tables): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table setup failed" >> "$RESULTS_FILE"
+        return
+    fi
+
+    # Warmup run (skip if WARMUP_COUNT=0)
+    if [[ $WARMUP_COUNT -gt 0 ]]; then
+        log_info "  Warmup: $WARMUP_COUNT records..."
+        export JAVA_OPTS="-Xmx${memory} -Xms${memory}"
+        if ! "$CLI_SCRIPT" execute --job "$DB_JOB_FILE" --count $WARMUP_COUNT --threads $threads \
+            >/dev/null 2>&1; then
+            log_warn "  Warmup failed"
+        fi
+        unset JAVA_OPTS
+    else
+        log_info "  Warmup: skipped"
+    fi
+
+    # Reset tables before main run
+    if ! prepare_invoice_tables; then
+        log_warn "Skipping database test (could not reset tables before main run): $test_name"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,SKIPPED,Table reset failed" >> "$RESULTS_FILE"
+        return
+    fi
+
+    # Main benchmark run
+    log_info "  Benchmark: $RECORD_COUNT records..."
+    local start_time
+    start_time=$(date +%s)
+    local status="SUCCESS"
+    local error_msg=""
+
+    local java_opts="-Xmx${memory} -Xms${memory} -Xlog:gc*:file=${gc_log_file}:time,level,tags"
+    if [[ "$PROFILE_MODE" == true ]]; then
+        local jfr_file="${JFR_OUTPUT_DIR}/profile_database_invoice_t${threads}_m${memory}.jfr"
+        java_opts="${java_opts} -XX:StartFlightRecording=filename=${jfr_file},settings=profile"
+        log_info "  JFR profiling enabled: $jfr_file"
+    fi
+    export JAVA_OPTS="$java_opts"
+
+    if "$CLI_SCRIPT" execute --job "$DB_JOB_FILE" --count $RECORD_COUNT --threads $threads \
+        >"$output_file" 2>&1; then
+
+        local end_time
+        end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        local throughput=0
+        [[ $duration -gt 0 ]] && throughput=$((RECORD_COUNT / duration))
+
+        # Verify root row count (invoices table must equal RECORD_COUNT)
+        local actual_invoices
+        actual_invoices=$(count_invoice_rows || echo "unknown")
+        local actual_children
+        actual_children=$(count_invoice_child_rows || echo "unknown")
+        if [[ "$actual_invoices" != "$RECORD_COUNT" ]]; then
+            log_warn "  Row count mismatch: expected $RECORD_COUNT invoices, got $actual_invoices"
+            status="WARN"
+            error_msg="Row count mismatch: expected $RECORD_COUNT got $actual_invoices"
+        fi
+
+        local gc_stats
+        gc_stats=$(parse_gc_log "$gc_log_file")
+        IFS=',' read -r heap_used heap_max gc_time gc_count gc_time_percent <<< "$gc_stats"
+
+        if [[ $duration -gt 0 ]]; then
+            gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / ($duration * 1000)) * 100}")
+        fi
+
+        log_success "  Duration: ${duration}s | Throughput: ${throughput} rec/s | Invoices: ${actual_invoices} | Child rows: ${actual_children} | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,$duration,$throughput,$heap_used,$heap_max,$gc_time,$gc_count,$gc_time_percent,$status,$error_msg" >> "$RESULTS_FILE"
+
+    else
+        status="FAILED"
+        error_msg="Execution failed"
+        if grep -q "OutOfMemoryError" "$output_file" 2>/dev/null; then
+            error_msg="OutOfMemoryError"
+            log_error "  OutOfMemoryError - insufficient memory"
+        elif grep -q "Exception" "$output_file" 2>/dev/null; then
+            error_msg=$(grep -m 1 "Exception" "$output_file" | cut -d: -f1 | head -c 50)
+            log_error "  Exception: $error_msg"
+        else
+            log_error "  Test failed (see log: $output_file)"
+        fi
+        echo "database,none,$threads,$memory_mb,$RECORD_COUNT,0,0,0,0,0,0,0.0,$status,$error_msg" >> "$RESULTS_FILE"
+    fi
+
+    unset JAVA_OPTS
+}
+
+# Run all database tests (no format dimension)
+run_database_tests() {
+    log_info "Starting database benchmark tests..."
+
+    for threads in "${THREADS[@]}"; do
+        for memory in "${MEMORY_LIMITS[@]}"; do
+            CURRENT_TEST=$((CURRENT_TEST + 1))
+            echo ""
+            log_info "═══════════════════════════════════════════════════════════"
+            log_info "Test $CURRENT_TEST of $TOTAL_TESTS"
+            log_info "═══════════════════════════════════════════════════════════"
+            run_database_test "$threads" "$memory"
+            sleep 2
+        done
+    done
+
+    log_success "Database tests complete!"
+}
+
+# Compute the unified total test count across all destinations.
+# Counts only file/kafka combos where the job file actually exists, plus all database tests.
+compute_total_tests() {
+    local runnable=0
+    for dest in "${DESTINATIONS[@]}"; do
+        for fmt in "${FORMATS[@]}"; do
+            local job_file="${PROJECT_ROOT}/config/jobs/e2e_test_${dest}_${fmt}.yaml"
+            if [[ -f "$job_file" ]]; then
+                runnable=$(( runnable + ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+            fi
+        done
+    done
+    local db_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    TOTAL_TESTS=$(( runnable + db_tests ))
+    log_info "Unified test count: ${runnable} file/kafka + ${db_tests} database = ${TOTAL_TESTS} total"
+}
+
+# Run all file/kafka tests
 run_all_tests() {
-    log_info "Starting end-to-end benchmark suite..."
-    log_info "Test matrix: ${#DESTINATIONS[@]} destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread configs × ${#MEMORY_LIMITS[@]} memory limits"
-    
-    local total_tests=$((${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]}))
-    local current_test=0
-    
+    log_info "Starting file/kafka benchmark tests..."
+
     for destination in "${DESTINATIONS[@]}"; do
         for format in "${FORMATS[@]}"; do
             for threads in "${THREADS[@]}"; do
                 for memory in "${MEMORY_LIMITS[@]}"; do
-                    current_test=$((current_test + 1))
+                    CURRENT_TEST=$((CURRENT_TEST + 1))
                     echo ""
                     log_info "═══════════════════════════════════════════════════════════"
-                    log_info "Test $current_test of $total_tests"
+                    log_info "Test $CURRENT_TEST of $TOTAL_TESTS"
                     log_info "═══════════════════════════════════════════════════════════"
-                    
+
                     run_test "$destination" "$format" "$threads" "$memory"
-                    
+
                     # Small delay between tests
                     sleep 2
                 done
             done
         done
     done
-    
-    log_success "All tests complete!"
+
+    log_success "File/Kafka tests complete!"
 }
 
 # Generate markdown report
@@ -328,7 +575,9 @@ generate_report() {
     local report_file="${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
 
     local elapsed_min=$(( (SECONDS - BENCHMARK_START_SECONDS) / 60 ))
-    local total_tests=$(( ${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local file_kafka_tests=$(( ${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local db_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
+    local total_tests=$(( file_kafka_tests + db_tests ))
 
     # Best file scenario: max throughput, tie-break by min memory then min threads
     local file_best file_fmt file_thr file_mem file_tps
@@ -353,6 +602,18 @@ generate_report() {
     local kafka_mem_lim=$(( kafka_mem * 2 ))
     local kafka_cpu_req=$(( kafka_thr * 1000 ))
     local kafka_cpu_lim=$(( kafka_thr * 2000 ))
+
+    # Best database scenario: max throughput, tie-break by min memory then min threads
+    local db_best db_thr db_mem db_tps
+    db_best=$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {
+        key = $7 * 100000 - $4 * 10 - $3
+        if (key > best) { best=key; thr=$3+0; mem=$4+0; tps=$7+0 }
+    } END { printf "%d|%d|%d", thr, mem, tps }' "$RESULTS_FILE")
+    IFS='|' read -r db_thr db_mem db_tps <<< "$db_best"
+    local db_tps_low=$(( db_tps * 3 / 4 ))
+    local db_mem_lim=$(( db_mem * 2 ))
+    local db_cpu_req=$(( db_thr * 1000 ))
+    local db_cpu_lim=$(( db_thr * 2000 ))
 
     # 256MB viability check
     local mem256_status
@@ -381,9 +642,9 @@ generate_report() {
 **Date:** ${date_str}
 **Test Duration:** ~${elapsed_min} minutes
 **Tests:** ${tests_run} executed, ${tests_skipped} skipped, ${total_tests} total
-**Data Structure:** Passport (11 fields, ~200 bytes)
+**Data Structures:** Invoice nested (invoices → issuer, recipient, line_items) for database; Passport (11 fields) for file/kafka
 **Record Count:** ${RECORD_COUNT} per test
-**Test Matrix:** ${#DESTINATIONS[@]} destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread counts × ${#MEMORY_LIMITS[@]} memory limits = ${total_tests} tests
+**Test Matrix:** ${#DESTINATIONS[@]} file/kafka destinations × ${#FORMATS[@]} formats × ${#THREADS[@]} thread counts × ${#MEMORY_LIMITS[@]} memory limits + ${db_tests} database tests = ${total_tests} tests
 
 **⚠️ LOCAL TESTING ENVIRONMENT:**
 All tests execute on a **single machine** with:
@@ -439,6 +700,15 @@ $(awk -F',' 'NR>1 && $1=="kafka" && $2=="csv" && $13=="SUCCESS" {printf "- **%d 
 
 #### Protobuf Format
 $(awk -F',' 'NR>1 && $1=="kafka" && $2=="protobuf" && $13=="SUCCESS" {printf "- **%d threads, %dMB:** %d rec/s (%.2f%% GC, Heap: %d/%dMB)\n", $3, $4, $7, $12, $8, $9}' "$RESULTS_FILE")
+
+### Database Destination (JDBC — no format dimension)
+
+_Stage 2 multi-table auto-decomposition. Each invoice record writes to 4 tables: \`invoices\` (root), \`issuer\`, \`recipient\`, \`line_items\` (1–10 rows each). Throughput is rec/s of root invoices; total DB writes are ~4–12× higher. batch_size=1000 root records, per_batch commit._
+
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {printf "- **%d threads, %dMB:** %d rec/s (%.2f%% GC, Heap: %d/%dMB)\n", $3, $4, $7, $12, $8, $9}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13=="WARN" {printf "- **%d threads, %dMB:** %d rec/s ⚠️ %s\n", $3, $4, $7, $14}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SKIPPED" {print "_(Tests skipped — PostgreSQL container not running)_"; exit}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13!="SKIPPED" {found=1; exit} END {if (!found) print "_(No database tests ran)_"}' "$RESULTS_FILE")
 
 ## Memory Analysis
 
@@ -502,6 +772,28 @@ resources:
     cpu: "${kafka_cpu_lim}m"
 \`\`\`
 
+### For Database Inserts (JDBC Batch — Nested Multi-Table)
+
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {found=1; exit} END {if (!found) print "_No successful database tests — PostgreSQL was not available._"}' "$RESULTS_FILE")
+$(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" {found=1; exit} END {if (found) print "**Recommended Configuration:**"}' "$RESULTS_FILE")
+$(if [[ -n "$db_tps" && "$db_tps" -gt 0 ]]; then cat <<DBREC
+- **Memory:** ${db_mem}MB (best observed performance)
+- **Threads:** ${db_thr} (optimal for this workload)
+- **Expected:** ${db_tps_low}-${db_tps} invoice rec/s (4 tables, batch_size=1000, per_batch commit)
+
+**Kubernetes Resource Requests:**
+\`\`\`yaml
+resources:
+  requests:
+    memory: "${db_mem}Mi"
+    cpu: "${db_cpu_req}m"
+  limits:
+    memory: "${db_mem_lim}Mi"
+    cpu: "${db_cpu_lim}m"
+\`\`\`
+DBREC
+fi)
+
 ### Memory-Constrained Environments
 
 **256MB Configuration:**
@@ -512,22 +804,25 @@ resources:
 ## Known Limitations
 
 1. **Async Kafka Mode:** Not tested (config issue with idempotence)
-2. **Database Destination:** Not included in this benchmark suite
-3. **Local Testing:** All Kafka tests use Docker on localhost - production network latency not reflected (see warning at top)
+2. **Database Destination:** Requires a running \`${POSTGRES_CONTAINER}\` Docker container — tests skipped automatically if unavailable
+3. **Local Testing:** All Kafka and database tests use Docker on localhost - production network latency not reflected (see warning at top)
 4. **Disk Speed:** File throughput depends on storage type (SSD vs HDD)
 
 ## Comparison with Component Benchmarks
 
-| Component | Isolated Benchmark | End-to-End Performance | Overhead |
-|-----------|-------------------|----------------------|----------|
-| Primitive Generators | 259M ops/sec | - | Baseline |
-| Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower |
-| JSON Serializer | 2.9M ops/sec | - | 89× slower |
-| CSV Serializer | Same as JSON | - | 89× slower |
-| File I/O | 4.9M ops/sec | 50K-100K rec/s | 49-98× slower |
-| Kafka (sync) | 3.5K rec/sec | 15K-25K rec/s | Pipeline optimization |
+_Isolated benchmarks are from JMH runs (static). End-to-End columns are computed from this run's results._
 
-**Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka, disk for files).
+| Component | Isolated Benchmark | End-to-End (this run) | Notes |
+|-----------|-------------------|----------------------|-------|
+| Primitive Generators | 259M ops/sec | - | Baseline (JMH) |
+| Datafaker Generators | 12K-154K ops/sec | - | 1,680× slower (JMH) |
+| JSON Serializer | 2.9M ops/sec | - | 89× slower (JMH) |
+| CSV Serializer | Same as JSON | - | 89× slower (JMH) |
+| File I/O | 4.9M ops/sec | $(awk -F',' 'NR>1 && $1=="file" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { printf "%d-%d rec/s", min+0, max+0 }' "$RESULTS_FILE") | Disk-bound |
+| Kafka (async) | 3.5K rec/sec (sync) | $(awk -F',' 'NR>1 && $1=="kafka" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { printf "%d-%d rec/s", min+0, max+0 }' "$RESULTS_FILE") | Network-bound (localhost) |
+| Database (JDBC) | - | $(awk -F',' 'NR>1 && $1=="database" && $13=="SUCCESS" { if($7+0>max+0) max=$7+0; if(min==0||$7+0<min+0) min=$7+0 } END { if(max>0) printf "%d-%d rec/s", min+0, max+0; else print "skipped" }' "$RESULTS_FILE") | Nested 4 tables, batch_size=1000 |
+
+**Insight:** End-to-end performance is **dominated by the slowest component** (Datafaker generation for complex fields) and **I/O operations** (network for Kafka/database, disk for files).
 
 ## Raw Data
 
@@ -548,8 +843,10 @@ main() {
     check_prerequisites
     build_project
     init_results_file
+    compute_total_tests
     BENCHMARK_START_SECONDS=$SECONDS
     run_all_tests
+    run_database_tests
     generate_report
     
     echo ""

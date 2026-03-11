@@ -54,8 +54,8 @@ cd SeedStream
 ### Understanding the Codebase
 
 Before making changes, familiarize yourself with:
-- **[DESIGN.md](docs/DESIGN.md)** - Architecture and design decisions
-- **[README.md](README.md)** - Features and quick start
+- **[DESIGN.md](DESIGN.md)** - Architecture and design decisions
+- **[README.md](../README.md)** - Features and quick start
 - **Module structure**: `core → schema → generators → formats → destinations → cli`
 
 The project follows a **dependency-first architecture**: each module only depends on modules to its right (no circular dependencies).
@@ -458,7 +458,7 @@ int workerId = workerIdCounter.getAndIncrement();
 - **Questions?** Open a [GitHub Discussion](https://github.com/mferretti/SeedStream/discussions)
 - **Bug reports?** Open a [GitHub Issue](https://github.com/mferretti/SeedStream/issues)
 - **Feature requests?** Open a [GitHub Issue](https://github.com/mferretti/SeedStream/issues) with `enhancement` label
-- **Architecture questions?** Read [DESIGN.md](docs/DESIGN.md) first, then ask in Discussions
+- **Architecture questions?** Read [DESIGN.md](DESIGN.md) first, then ask in Discussions
 
 ---
 
@@ -519,4 +519,4 @@ By contributing, you agree that your contributions will be licensed under the Ap
 
 **Thank you for making SeedStream better! 🚀**
 
-For more details on the project architecture and design decisions, see [DESIGN.md](docs/DESIGN.md).
+For more details on the project architecture and design decisions, see [DESIGN.md](DESIGN.md).

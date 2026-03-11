@@ -1,170 +1,198 @@
 # Datafaker Coverage Analysis
 
-**Project:** SeedStream  
-**Datafaker Version:** 2.5.4  
-**Analysis Date:** March 8, 2026
+**Project:** SeedStream
+**Datafaker Version:** 2.5.4
+**Analysis Date:** March 10, 2026 (updated to reflect TASK-041 completion)
 
 ---
 
-## Currently Implemented Types (28 total)
+## Currently Implemented Types (48 canonical types + 32 aliases)
 
-### Person & Identity (7 types)
-- ✅ `NAME` → `faker.name().name()`
-- ✅ `FIRST_NAME` → `faker.name().firstName()`
-- ✅ `LAST_NAME` → `faker.name().lastName()`
-- ✅ `FULL_NAME` → `faker.name().fullName()`
-- ✅ `USERNAME` → custom (firstName + number)
-- ✅ `TITLE` → `faker.name().title()`
-- ✅ `OCCUPATION` → `faker.job().title()`
+All types are registered in `DatafakerRegistry` (`core/src/main/java/.../registry/DatafakerRegistry.java`).
+Aliases are case-insensitive and normalized at lookup time.
 
-###Address (7 types)
-- ✅ `ADDRESS` → `faker.address().fullAddress()`
-- ✅ `STREET_NAME` → `faker.address().streetName()`
-- ✅ `STREET_NUMBER` → `faker.address().streetAddressNumber()`
-- ✅ `CITY` → `faker.address().city()`
-- ✅ `STATE` → `faker.address().state()`
-- ✅ `POSTAL_CODE` → `faker.address().zipCode()`
-- ✅ `COUNTRY` → `faker.address().country()`
+### Person & Identity (11 types)
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `name` | `faker.name().name()` | — |
+| `first_name` | `faker.name().firstName()` | `firstname` |
+| `last_name` | `faker.name().lastName()` | `lastname` |
+| `full_name` | `faker.name().fullName()` | `fullname` |
+| `username` | `faker.credentials().username()` | — |
+| `title` | `faker.name().title()` | — |
+| `occupation` | `faker.job().title()` | — |
+| `prefix` | `faker.name().prefix()` | — |
+| `suffix` | `faker.name().suffix()` | — |
+| `password` | `faker.credentials().password()` | — |
+| `ssn` | `faker.idNumber().valid()` | — |
+
+### Address (11 types)
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `address` | `faker.address().fullAddress()` | — |
+| `street_name` | `faker.address().streetName()` | `streetname` |
+| `street_number` | `faker.address().streetAddressNumber()` | `streetnumber` |
+| `city` | `faker.address().city()` | — |
+| `state` | `faker.address().state()` | — |
+| `postal_code` | `faker.address().zipCode()` | `postalcode`, `zipcode`, `zip` |
+| `country` | `faker.address().country()` | — |
+| `latitude` | `faker.address().latitude()` | `lat` |
+| `longitude` | `faker.address().longitude()` | `lon`, `lng`, `long` |
+| `country_code` | `faker.address().countryCode()` | `countrycode` |
+| `time_zone` | `faker.address().timeZone()` | `timezone` |
 
 ### Contact (2 types)
-- ✅ `EMAIL` → `faker.internet().emailAddress()`
-- ✅ `PHONE_NUMBER` → `faker.phoneNumber().phoneNumber()`
 
-### Finance & Business (5 types)
-- ✅ `COMPANY` → `faker.company().name()`
-- ✅ `CREDIT_CARD` → `faker.finance().creditCard()`
-- ✅ `IBAN` → `faker.finance().iban()`
-- ✅ `CURRENCY` → `faker.money().currencyCode()`
-- ✅ `PRICE` → `faker.commerce().price()`
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `email` | `faker.internet().emailAddress()` | — |
+| `phone_number` | `faker.phoneNumber().phoneNumber()` | `phonenumber`, `phone` |
+
+### Finance & Business (9 types)
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `company` | `faker.company().name()` | — |
+| `credit_card` | `faker.finance().creditCard()` | `creditcard` |
+| `iban` | `faker.finance().iban()` | — |
+| `currency` | `faker.money().currencyCode()` | — |
+| `price` | `faker.commerce().price()` | — |
+| `bic` | `faker.finance().bic()` | `swift` |
+| `cvv` | `faker.number().numberBetween(100, 999)` | `cvc` |
+| `credit_card_type` | `faker.finance().creditCard().split(" ")[0]` | `creditcardtype` |
+| `stock_market` | `faker.stock().nsdqSymbol()` | `stockmarket`, `stock`, `ticker` |
 
 ### Internet (5 types)
-- ✅ `DOMAIN` → `faker.internet().domainName()`
-- ✅ `URL` → `faker.internet().url()`
-- ✅ `IPV4` → `faker.internet().ipV4Address()`
-- ✅ `IPV6` → `faker.internet().ipV6Address()`
-- ✅ `MAC_ADDRESS` → `faker.internet().macAddress()`
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `domain` | `faker.internet().domainName()` | — |
+| `url` | `faker.internet().url()` | — |
+| `ipv4` | `faker.internet().ipV4Address()` | — |
+| `ipv6` | `faker.internet().ipV6Address()` | — |
+| `mac_address` | `faker.internet().macAddress()` | `macaddress` |
+
+### Commerce (5 types)
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `product_name` | `faker.commerce().productName()` | `productname`, `product` |
+| `department` | `faker.commerce().department()` | — |
+| `color` | `faker.color().name()` | — |
+| `material` | `faker.commerce().material()` | — |
+| `promotion_code` | `faker.commerce().promotionCode()` | `promotioncode`, `promo`, `coupon` |
+
+### Text / Lorem (3 types)
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `lorem_word` | `faker.lorem().word()` | `loremword` |
+| `lorem_sentence` | `faker.lorem().sentence()` | `loremsentence` |
+| `lorem_paragraph` | `faker.lorem().paragraph()` | `loremparagraph` |
 
 ### Codes & Identifiers (2 types)
-- ✅ `ISBN` → `faker.code().isbn13()`
-- ✅ `UUID` → `faker.internet().uuid()`
+
+| Type | Datafaker call | Aliases |
+|---|---|---|
+| `isbn` | `faker.code().isbn13()` | — |
+| `uuid` | `faker.internet().uuid()` | — |
 
 ---
 
-## Available But NOT Implemented
+## Available But NOT Yet Implemented
+
+These types are available in Datafaker but not pre-registered in `DatafakerRegistry`. They can be added
+as custom types at runtime via `DatafakerRegistry.register(name, fn)` — no code changes required.
 
 ### Person & Identity Extensions
-- ❌ `PASSWORD` → `faker.internet().password()`
-- ❌ `SSN` / `SOCIAL_SECURITY` → `faker.idNumber().valid()` or `ssnValid()`
-- ❌ `BLOOD_TYPE` → `faker.medical().bloodType()`
-- ❌ `PREFIX` → `faker.name().prefix()` (Mr., Mrs., Dr., etc.)
-- ❌ `SUFFIX` → `faker.name().suffix()` (Jr., Sr., III, etc.)
+- ❌ `blood_type` → `faker.medical().bloodType()`
+- ❌ `social_security` → `faker.idNumber().ssnValid()` (note: `ssn` IS implemented via `faker.idNumber().valid()`)
 
 ### Address Extensions
-- ❌ `LATITUDE` → `faker.address().latitude()`
-- ❌ `LONGITUDE` → `faker.address().longitude()`
-- ❌ `BUILDING_NUMBER` → `faker.address().buildingNumber()`
-- ❌ `STREET_ADDRESS` → `faker.address().streetAddress()`
-- ❌ `SECONDARY_ADDRESS` → `faker.address().secondaryAddress()` (Apt, Suite)
-- ❌ `CITY_PREFIX` → `faker.address().cityPrefix()`
-- ❌ `CITY_SUFFIX` → `faker.address().citySuffix()`
-- ❌ `COUNTRY_CODE` → `faker.address().countryCode()` (US, IT, FR, etc.)
-- ❌ `TIME_ZONE` → `faker.address().timeZone()`
+- ❌ `building_number` → `faker.address().buildingNumber()`
+- ❌ `street_address` → `faker.address().streetAddress()`
+- ❌ `secondary_address` → `faker.address().secondaryAddress()` (Apt, Suite)
+- ❌ `city_prefix` → `faker.address().cityPrefix()`
+- ❌ `city_suffix` → `faker.address().citySuffix()`
 
 ### Finance & Business Extensions
-- ❌ `BIC` / `SWIFT` → `faker.finance().bic()`
-- ❌ `CREDIT_CARD_CVV` → `faker.finance().creditCardCvv()`
-- ❌ `CREDIT_CARD_TYPE` → `faker.finance().creditCardType()` (Visa, Mastercard)
-- ❌ `STOCK_MARKET` → `faker.stock().nyseSymbol()`, `nasdaqSymbol()`
-- ❌ `BITCOIN_ADDRESS` → `faker.crypto().sha256()` or Bitcoin
-- ❌ `COMPANY_SUFFIX` → `faker.company().suffix()` (Inc., LLC, Corp.)
-- ❌ `INDUSTRY` → `faker.company().industry()`
-- ❌ `PROFESSION` → `faker.company().profession()`
-- ❌ `BUZZWORD` → `faker.company().buzzword()`
-- ❌ `CATCHPHRASE` → `faker.company().catchPhrase()`
-- ❌ `BS` → `faker.company().bs()` (business speak)
+- ❌ `bitcoin_address` → `faker.crypto().sha256()` (approximation)
+- ❌ `company_suffix` → `faker.company().suffix()` (Inc., LLC, Corp.)
+- ❌ `industry` → `faker.company().industry()`
+- ❌ `profession` → `faker.company().profession()`
+- ❌ `buzzword` → `faker.company().buzzword()`
+- ❌ `catchphrase` → `faker.company().catchPhrase()`
 
 ### Internet Extensions
-- ❌ `SLUG` → `faker.internet().slug()`
-- ❌ `USER_AGENT` → `faker.internet().userAgentAny()`
-- ❌ `HTTP_METHOD` → "GET", "POST", "PUT", "DELETE", etc.
-- ❌ `HTTP_STATUS_CODE` → 200, 404, 500, etc.
-- ❌ `PORT` → `faker.internet().port()`
-- ❌ `PUBLIC_IPV4` → `faker.internet().publicIpV4Address()`
-- ❌ `PRIVATE_IPV4` → `faker.internet().privateIpV4Address()`
-
-### Commerce (entire category missing)
-- ❌ `PRODUCT_NAME` → `faker.commerce().productName()`
-- ❌ `DEPARTMENT` → `faker.commerce().department()`
-- ❌ `MATERIAL` → `faker.commerce().material()`
-- ❌ `PROMOTION_CODE` → `faker.commerce().promotionCode()`
-- ❌ `COLOR` → `faker.color().name()`
+- ❌ `slug` → `faker.internet().slug()`
+- ❌ `user_agent` → `faker.internet().userAgentAny()`
+- ❌ `http_method` → `"GET"`, `"POST"`, `"PUT"`, `"DELETE"`, etc.
+- ❌ `http_status_code` → 200, 404, 500, etc.
+- ❌ `port` → `faker.internet().port()`
+- ❌ `public_ipv4` → `faker.internet().publicIpV4Address()`
+- ❌ `private_ipv4` → `faker.internet().privateIpV4Address()`
 
 ### Code & Identifiers Extensions
-- ❌ `EAN8` → `faker.code().ean8()`
-- ❌ `EAN13` → `faker.code().ean13()`
-- ❌ `ISBN10` → `faker.code().isbn10()`
-- ❌ `IMEI` → `faker.code().imei()`
-- ❌ `ASIN` → `faker.code().asin()`
-- ❌ `BARCODE` → Generic barcode generation
+- ❌ `ean8` → `faker.code().ean8()`
+- ❌ `ean13` → `faker.code().ean13()`
+- ❌ `isbn10` → `faker.code().isbn10()`
+- ❌ `imei` → `faker.code().imei()`
+- ❌ `asin` → `faker.code().asin()`
 
 ### DateTime (entire category missing)
-- ❌ `DAY_OF_WEEK` → `faker.date().dayOfWeek()`
-- ❌ `MONTH_NAME` → `faker.date().monthName()`
-- ❌ `TIMEZONE_NAME` → `faker.date().timeZoneName()`
-- ❌ `PAST_DATE` → `faker.date().past()`
-- ❌ `FUTURE_DATE` → `faker.date().future()`
-- ❌ `BIRTHDAY` → `faker.date().birthday()`
+- ❌ `day_of_week` → `faker.date().dayOfWeek()`
+- ❌ `month_name` → `faker.date().monthName()`
+- ❌ `past_date` → `faker.date().past()`
+- ❌ `future_date` → `faker.date().future()`
+- ❌ `birthday` → `faker.date().birthday()`
 
 ### Medical (entire category missing)
-- ❌ `MEDICINE_NAME` → `faker.medical().medicineName()`
-- ❌ `DISEASE` → `faker.medical().diseaseName()`
-- ❌ `HOSPITAL` → `faker.medical().hospitalName()`
-- ❌ `SYMPTOMS` → `faker.medical().symptoms()`
+- ❌ `medicine_name` → `faker.medical().medicineName()`
+- ❌ `disease` → `faker.medical().diseaseName()`
+- ❌ `hospital` → `faker.medical().hospitalName()`
+- ❌ `symptoms` → `faker.medical().symptoms()`
 
 ### Education (entire category missing)
-- ❌ `UNIVERSITY` → `faker.university().name()`
-- ❌ `DEGREE` → `faker.university().degree()`  
-- ❌ `MAJOR` → `faker.university().major()`
+- ❌ `university` → `faker.university().name()`
+- ❌ `degree` → `faker.university().degree()`
+- ❌ `major` → `faker.university().major()`
 
 ### Entertainment (entire category missing)
-- ❌ `BOOK_TITLE` → `faker.book().title()`
-- ❌ `BOOK_AUTHOR` → `faker.book().author()`
-- ❌ `BOOK_GENRE` → `faker.book().genre()`
-- ❌ `MOVIE_TITLE` → `faker.movie().title()`
-- ❌ `MUSIC_GENRE` → `faker.music().genre()`
-- ❌ `ARTIST` → `faker.artist().name()`
+- ❌ `book_title` → `faker.book().title()`
+- ❌ `book_author` → `faker.book().author()`
+- ❌ `book_genre` → `faker.book().genre()`
+- ❌ `movie_title` → `faker.movie().title()`
+- ❌ `music_genre` → `faker.music().genre()`
+- ❌ `artist` → `faker.artist().name()`
 
 ### Games & Pop Culture (entire category missing)
-- ❌ `POKEMON` → `faker.pokemon().name()`
-- ❌ `SUPERHERO` → `faker.superhero().name()`
-- ❌ `GAME_TITLE` → `faker.videoGame().title()`
-- ❌ `ESPORTS_TEAM` → `faker.esports().team()`
+- ❌ `pokemon` → `faker.pokemon().name()`
+- ❌ `superhero` → `faker.superhero().name()`
+- ❌ `game_title` → `faker.videoGame().title()`
+- ❌ `esports_team` → `faker.esports().team()`
 
 ### Food & Drink (entire category missing)
-- ❌ `FOOD_DISH` → `faker.food().dish()`
-- ❌ `FOOD_INGREDIENT` → `faker.food().ingredient()`
-- ❌ `BEER_NAME` → `faker.beer().name()`
-- ❌ `BEER_STYLE` → `faker.beer().style()`
-- ❌ `COCKTAIL` → `faker.drink().name()`
+- ❌ `food_dish` → `faker.food().dish()`
+- ❌ `food_ingredient` → `faker.food().ingredient()`
+- ❌ `beer_name` → `faker.beer().name()`
+- ❌ `beer_style` → `faker.beer().style()`
+- ❌ `cocktail` → `faker.drink().name()`
 
 ### Nature & Science (entire category missing)
-- ❌ `ANIMAL` → `faker.animal().name()`
-- ❌ `PLANT` → `faker.plant().name()`
-- ❌ `ELEMENT` → `faker.chemistr().element()`
-- ❌ `PLANET` → `faker.space().planet()`
+- ❌ `animal` → `faker.animal().name()`
+- ❌ `plant` → `faker.plant().name()`
+- ❌ `element` → `faker.chemistry().element()`
+- ❌ `planet` → `faker.space().planet()`
 
 ### Vehicles & Aviation (entire category missing)
-- ❌ `CAR_MAKE` → `faker.vehicle().manufacturer()`
-- ❌ `CAR_MODEL` → `faker.vehicle().model()`
-- ❌ `VIN` → `faker.vehicle().vin()`
-- ❌ `LICENSE_PLATE` → `faker.vehicle().licensePlate()`
-- ❌ `AIRCRAFT` → `faker.aviation().aircraft()`
-- ❌ `AIRPORT` → `faker.aviation().airport()`
-
-### Text & Lorem (entire category missing)
-- ❌ `LOREM_WORD` → `faker.lorem().word()`
-- ❌ `LOREM_SENTENCE` → `faker.lorem().sentence()`
-- ❌ `LOREM_PARAGRAPH` → `faker.lorem().paragraph()`
+- ❌ `car_make` → `faker.vehicle().manufacturer()`
+- ❌ `car_model` → `faker.vehicle().model()`
+- ❌ `vin` → `faker.vehicle().vin()`
+- ❌ `license_plate` → `faker.vehicle().licensePlate()`
+- ❌ `aircraft` → `faker.aviation().aircraft()`
+- ❌ `airport` → `faker.aviation().airport()`
 
 ---
 
@@ -172,81 +200,84 @@
 
 | Category | Implemented | Available | Coverage |
 |----------|-------------|-----------|----------|
-| **Person & Identity** | 7 | ~12 | 58% |
-| **Address** | 7 | ~16 | 44% |
+| **Person & Identity** | 11 | ~13 | 85% |
+| **Address** | 11 | ~16 | 69% |
 | **Contact** | 2 | ~2 | 100% |
-| **Finance & Business** | 5 | ~17 | 29% |
+| **Finance & Business** | 9 | ~17 | 53% |
 | **Internet** | 5 | ~13 | 38% |
 | **Codes & Identifiers** | 2 | ~7 | 29% |
-| **Commerce** | 0 | ~5 | 0% |
-| **DateTime** | 0 | ~6 | 0% |
+| **Commerce** | 5 | ~5 | 100% |
+| **Text & Lorem** | 3 | ~3 | 100% |
+| **DateTime** | 0 | ~5 | 0% |
 | **Medical** | 0 | ~4 | 0% |
 | **Education** | 0 | ~3 | 0% |
 | **Entertainment** | 0 | ~6 | 0% |
 | **Games & Pop Culture** | 0 | ~4 | 0% |
 | **Food & Drink** | 0 | ~5 | 0% |
 | **Nature & Science** | 0 | ~4 | 0% |
-| **Vehicles & Aviation** | 0 | ~5 | 0% |
-| **Text & Lorem** | 0 | ~3 | 0% |
-| **TOTAL** | **28** | **~110+** | **25%** |
+| **Vehicles & Aviation** | 0 | ~6 | 0% |
+| **TOTAL** | **48** | **~113+** | **42%** |
 
 ---
 
 ## Priority Recommendations
 
-### High Priority (commonly needed in testing)
-1. **Commerce**: `PRODUCT_NAME`, `DEPARTMENT`, `MATERIAL`, `COLOR`
-2. **Text**: `LOREM_SENTENCE`, `LOREM_PARAGRAPH` (for content fields)
-3. **Person Extensions**: `PASSWORD`, `SSN`, `PREFIX`, `SUFFIX`
-4. **Finance Extensions**: `BIC`, `CREDIT_CARD_CVV`, `STOCK_MARKET`
-5. **Address Extensions**: `LATITUDE`, `LONGITUDE`, `COUNTRY_CODE`
+### Already Done (Phase 1 — Complete ✅ March 2026)
+
+All high-priority types from the original Phase 1 plan were added in TASK-041:
+- ✅ Commerce: `product_name`, `department`, `material`, `color`, `promotion_code`
+- ✅ Text: `lorem_word`, `lorem_sentence`, `lorem_paragraph`
+- ✅ Person extensions: `password`, `ssn`, `prefix`, `suffix`
+- ✅ Finance extensions: `bic`/`swift`, `cvv`/`cvc`, `credit_card_type`, `stock_market`
+- ✅ Address extensions: `latitude`, `longitude`, `country_code`, `time_zone`
+
+### High Priority (Phase 2 — commonly needed in testing)
+1. **DateTime extensions**: `past_date`, `future_date`, `birthday`, `day_of_week`, `month_name`
+2. **Internet extensions**: `user_agent`, `slug`, `http_method`, `http_status_code`
+3. **Codes extensions**: `ean13`, `ean8`, `isbn10`, `imei`
+4. **Finance extensions**: `company_suffix`, `industry`, `profession`
 
 ### Medium Priority (industry-specific)
-1. **Medical**: Useful for healthcare testing
-2. **Education**: Useful for academic/learning systems
-3. **Vehicles**: Useful for automotive/logistics testing
-4. **DateTime Extensions**: More flexible date generation
+1. **Medical**: Useful for healthcare testing (`medicine_name`, `disease`, `hospital`)
+2. **Education**: Useful for academic/learning systems (`university`, `degree`, `major`)
+3. **Vehicles**: Useful for automotive/logistics (`car_make`, `car_model`, `vin`, `license_plate`)
 
 ### Low Priority (niche use cases)
-1. **Games & Pop Culture**: Pokemon, Superhero names
-2. **Food & Drink**: Beer, Cocktails
-3. **Nature & Science**: Animals, Plants, Elements
-4. **Entertainment**: Books, Movies, Music
+1. **Games & Pop Culture**: `pokemon`, `superhero`, `game_title`
+2. **Food & Drink**: `food_dish`, `beer_name`, `cocktail`
+3. **Nature & Science**: `animal`, `planet`, `element`
+4. **Entertainment**: `book_title`, `movie_title`, `artist`
 
 ---
 
-## Implementation Impact
+## How to Add Types
 
-### Effort to Add Support (per category)
-- **Easy** (1-2 hours): Commerce, Text, Person Extensions
-  - Just add enum values and switch cases
-  - Direct Datafaker method calls
-  
-- **Medium** (2-4 hours): Finance Extensions, Address Extensions, DateTime
-  - May need custom logic or formatting
-  - Testing locale behavior
+### Option A: Register at runtime (no code changes)
 
-- **Low Value** (questionable ROI): Games, Food, Nature
-  - Very specific use cases
-  - Limited demand
+Users can register custom types via `DatafakerRegistry.register()` before job execution:
 
-### Breaking Changes: None
-All additions would be new enum values. Existing code unaffected.
+```java
+DatafakerRegistry.register("pokemon", (faker, random) -> faker.pokemon().name());
+DatafakerRegistry.register("hospital", (faker, random) -> faker.medical().hospitalName());
+```
+
+### Option B: Add to built-ins (code change — one line)
+
+To permanently add a type to the built-in set, add one line to `registerBuiltIns()` in
+`DatafakerRegistry.java`:
+
+```java
+register("pokemon", (faker, random) -> faker.pokemon().name());
+```
+
+No interface changes, no schema changes, no breaking changes. Existing YAML configs are unaffected.
+
+### Option C: External JAR via `extras/` directory (planned — TASK-044)
+
+Once TASK-044 is implemented, users will be able to drop a JAR containing pre-registered types
+into the `extras/` directory. The JAR uses Datafaker's Service Loader mechanism, and `DatafakerRegistry`
+picks up any pre-registered custom types on startup.
 
 ---
 
-## Recommendation
-
-**Phase 1** (Next sprint): Add high-priority types (~15 new types)
-- Commerce (5): product, department, material, color, promotion_code
-- Text (3): lorem_word, lorem_sentence, lorem_paragraph
-- Person (4): password, ssn, prefix, suffix
-- Finance (3): bic, cvv, credit_card_type
-
-**Phase 2** (Future): Add medium-priority categories based on user demand
-- Medical (4 types)
-- Education (3 types)
-- Vehicles (4 types)
-- DateTime extensions (6 types)
-
-**Phase 3** (On-demand): Niche categories only if requested
+**Last Updated**: March 10, 2026

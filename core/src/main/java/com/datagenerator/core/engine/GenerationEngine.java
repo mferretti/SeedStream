@@ -18,6 +18,7 @@ package com.datagenerator.core.engine;
 
 import com.datagenerator.core.seed.RandomProvider;
 import com.datagenerator.core.util.LogUtils;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -160,6 +161,11 @@ public class GenerationEngine {
    * @param count Number of records to generate
    * @throws InterruptedException if interrupted
    */
+  @SuppressFBWarnings(
+      value = "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE",
+      justification =
+          "Worker Future is intentionally not stored; exceptions are logged in the lambda "
+              + "and the writer thread propagates failures via the queue poison-pill shutdown")
   private void generateMultiThreaded(long count) throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
@@ -193,7 +199,7 @@ public class GenerationEngine {
                 log.error("Writer thread interrupted", e);
               } catch (Exception e) {
                 log.error("Writer thread failed", e);
-                throw new RuntimeException("Writer thread failed", e);
+                throw new IllegalStateException("Writer thread failed", e);
               }
             },
             "writer-thread");
@@ -226,7 +232,7 @@ public class GenerationEngine {
               log.error("Worker {} interrupted", finalWorkerId, e);
             } catch (Exception e) {
               log.error("Worker {} failed", finalWorkerId, e);
-              throw new RuntimeException("Worker " + finalWorkerId + " failed", e);
+              throw new IllegalStateException("Worker " + finalWorkerId + " failed", e);
             }
           });
     }

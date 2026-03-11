@@ -20,6 +20,7 @@ import com.datagenerator.core.exception.TypeParseException;
 import com.datagenerator.core.registry.DatafakerRegistry;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,7 +68,7 @@ public class TypeParser {
       String min = primitiveMatcher.group(2);
       String max = primitiveMatcher.group(3);
       return new PrimitiveType(
-          PrimitiveType.Kind.valueOf(kind.toUpperCase()), min.trim(), max.trim());
+          PrimitiveType.Kind.valueOf(kind.toUpperCase(Locale.ROOT)), min.trim(), max.trim());
     }
 
     // Enum

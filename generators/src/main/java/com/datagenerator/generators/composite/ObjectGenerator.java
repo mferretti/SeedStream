@@ -23,6 +23,7 @@ import com.datagenerator.core.util.LogUtils;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -67,6 +68,11 @@ public class ObjectGenerator implements DataGenerator {
   private final StructureRegistry structureRegistry;
   private final Path structuresPath;
 
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification =
+          "StructureRegistry is a shared, thread-safe service object injected by the engine; "
+              + "storing the reference is intentional")
   public ObjectGenerator(StructureRegistry structureRegistry, Path structuresPath) {
     this.structureRegistry = structureRegistry;
     this.structuresPath = structuresPath;

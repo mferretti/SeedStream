@@ -6,13 +6,13 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 42
-- **Completed**: 31 ✅
+- **Total Tasks**: 46
+- **Completed**: 36 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
-- **Not Started**: 2 ⏸️
-- **Deferred**: 2 (TASK-012 to Stage 2; TASK-039 low priority)
-- **Overall Progress**: 91% (31/34 active tasks)
+- **Not Started**: 1 (TASK-044)
+- **Deferred**: 2 (TASK-012 deferred; TASK-039 low priority)
+- **Overall Progress**: 92% (36/39 active tasks)
 
 ---
 
@@ -32,10 +32,23 @@ This document provides a quick overview of all tasks. For detailed implementatio
   - `DatabaseDestinationIT` using Testcontainers (`postgres:16-alpine`)
   - Passport structure (all Stage 1 field types: VARCHAR, DATE, enum-as-string)
   - 9 tests: insert, field values, date round-trip, multi-batch, partial flush, all 3 strategies, table override, nested rejection
-- ✅ TASK-042: JDBC Type Binding Strategy decision task created
-  - Documents Option A (implemented) vs Option B (deferred) trade-offs
-  - Must be resolved before Stage 2 database work
-- **Total tests**: 338 (unit) + 41 (integration) = **379 total tests**
+  - + 2 Option B schema-aware tests (schema build in `open()`, String→Date coercion)
+- ✅ TASK-042: JDBC Type Binding — Option B implemented
+  - `DatabaseDestination(config, Map<String, String>)` accepts raw YAML type strings
+  - `TypeParser` invoked inside `open()` after connection established
+  - Schema-aware `JdbcTypeMapper.bind()` path; `instanceof` fallback when no schema
+  - `ExecuteCommand` extracts raw field types from `DataStructure` (no `TypeParser` in CLI)
+  - 11 Option B unit tests in `DatabaseDestinationTest`; 2 IT tests in `DatabaseDestinationIT`
+- ✅ TASK-015: Protobuf Serializer — confirmed complete
+  - `ProtobufSerializer` using DynamicMessage API; Base64-encoded binary output
+  - All primitive types, dates, nested objects, arrays supported
+  - 15 unit tests; verified in E2E benchmarks
+- ✅ TASK-043: Database Stage 2 Auto-Decomposition — complete (March 10, 2026)
+  - `NestedRecordDecomposer` + `ParentContext`; FK convention `{parent}_id`
+  - `DatabaseDestination` auto-detects nested mode; per-table `PreparedStatement` cache
+  - 11 `NestedRecordDecomposerTest` unit tests; 10 `DatabaseDestinationNestedIT` IT tests
+  - E2E benchmark: invoice nested structure (invoices → issuer, recipient, line_items)
+- **Total tests**: 413 (unit) + 44 (integration) = **457 total tests**
 
 ## Recent Completions (March 6, 2026)
 
@@ -141,35 +154,36 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 3: Output Formats (✅ 67% Complete)
+## Phase 3: Output Formats (✅ Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-013 | JSON Serializer | 3-4h | Low | TASK-007, TASK-008 | ✅ Complete |
 | TASK-014 | CSV Serializer | 4-5h | Medium | TASK-007, TASK-008 | ✅ Complete |
-| TASK-015 | Protobuf Serializer | 6-8h | High | TASK-007, TASK-008 | ⏸️ Not Started |
+| TASK-015 | Protobuf Serializer | 6-8h | High | TASK-007, TASK-008 | ✅ Complete |
 
-**Completed**: JSON (16 tests), CSV (17 tests)  
-**Remaining**: Protobuf serializer
+**Completed**: JSON (16 tests), CSV (17 tests), Protobuf (15 tests — DynamicMessage API, Base64 output)
 
 ---
 
-## Phase 4: Destinations (✅ 67% Complete)
+## Phase 4: Destinations (✅ Complete — Stage 1)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-016 | File Destination Adapter | 4-5h | Medium | TASK-013, TASK-014 | ✅ Complete |
 | TASK-017 | Kafka Destination Adapter | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
 | TASK-018 | Database Destination Adapter (Stage 1) | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
+| TASK-042 | JDBC Option B Type Binding | 4-6h | Medium | TASK-018 | ✅ Complete |
 
 **Completed**:
 - ✅ File destination (16 unit tests, 6 integration tests)
 - ✅ Kafka destination (8 unit tests, 18 integration tests)
 - ✅ Database destination Stage 1 (10 unit tests, 9 PostgreSQL integration tests)
+- ✅ JDBC Option B schema-aware binding (11 unit tests, 2 IT tests)
 - ✅ All compression types tested (gzip, snappy, lz4, zstd)
 - ✅ Idempotent producer with acks="all" default
 
-**Stage 2 (future)**: Nested objects, arrays, FK injection — see DATABASE-DESTINATION-PLANNING.md
+**Stage 2** (✅ Complete): Nested objects, arrays, FK auto-injection — see TASK-043, DATABASE-DESTINATION-PLANNING.md
 
 ---
 
@@ -244,10 +258,25 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 9: Future Enhancements
+## Phase 8: Database Destinations
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
+| TASK-018 | Database Adapter Stage 1 (flat tables) | 6-8h | High | TASK-013, TASK-014 | ✅ Complete |
+| TASK-042 | JDBC Option B Type Binding | 4-6h | Medium | TASK-018 | ✅ Complete |
+| TASK-043 | Database Stage 2 — Nested Auto-Decomposition | 20-25h | High | TASK-018, TASK-042 | ✅ Complete |
+
+**TASK-043 Summary**: Destination-side decomposition of nested structures into multi-table INSERTs. FK convention `{parent_table}_id`. Zero changes to generators, serializers, Kafka/File destinations. 11 unit tests + 10 IT tests.
+
+---
+
+## Phase 9: Distribution & Runtime Extensibility
+
+| Task | Title | Effort | Complexity | Dependencies | Status |
+|------|-------|--------|------------|--------------|--------|
+| TASK-044 | Extras Directory — External JARs & Custom Datafaker Providers | 3-5h | Low | TASK-018, TASK-010 | ⏸️ Not Started |
+| TASK-045 | Database JMH Benchmarks — Insert Throughput & Batch Size Sensitivity | 3-4h | Low | TASK-043, TASK-026 | ✅ Complete |
+| TASK-046 | Benchmark Suite Filter (`jmhSuite` Gradle property) | 1h | Low | TASK-045, TASK-026 | ✅ Complete |
 | TASK-041 | Datafaker Plugin Architecture | 16-20h | High | TASK-010 | ✅ Complete |
 
 **Description**: Implement extensible type registry allowing runtime registration of custom Datafaker types. Solves the problem of supporting only 28 of 110+ available Datafaker providers (~25% coverage) by enabling users to register any provider without code changes.
@@ -328,16 +357,17 @@ For an AI agent or developer working sequentially:
 
 | Phase | Tasks | Estimated Hours | Completed |
 |-------|-------|-----------------|----------|
-| Phase 1 (Complete) | 9 | 40-50h | ✅ 9/9 |
-| Phase 2 | 3 | 18-23h | ✅ 2/3 (67%) |
-| Phase 3 | 3 | 13-17h | ✅ 2/3 (67%) |
-| Phase 4 | 3 | 16-21h | ✅ 2/3 (67%) |
-| Phase 5 | 4 | 16-21h | ✅ 3/4 (75%) |
-| Phase 6 | 7 | 24-33h | ✅ 5/7 (71%) |
-| Phase 7 | 3 | 8-12h | ✅ 2/3 (67%) |
-| Phase 8 (Complete) | 1 | 2-3h | ✅ 1/1 |
-| Phase 9 (Future) | 1 | 16-20h | ⏸️ 0/1 |
-| **TOTAL** | **34** | **153-200h** | **26/34 (76%)** |
+| Phase 1 (Foundation) | 9 | 40-50h | ✅ 9/9 |
+| Phase 2 (Data Generation) | 3 | 18-23h | ✅ 2/3 (TASK-012 deferred) |
+| Phase 3 (Output Formats) | 3 | 13-17h | ✅ 3/3 |
+| Phase 4 (Destinations Stage 1) | 4 | 20-27h | ✅ 4/4 |
+| Phase 5 (CLI & Threading) | 4 | 16-21h | ✅ 4/4 |
+| Phase 6 (Quality & Performance) | 7 | 24-33h | ✅ 6/7 (TASK-039 deferred) |
+| Phase 7 (Documentation) | 3 | 8-12h | ✅ 3/3 |
+| Phase 8 (Licensing) | 1 | 2-3h | ✅ 1/1 |
+| Phase 8 (Database Stage 2) | 3 | 24-30h | ✅ 3/3 (TASK-043, TASK-045, TASK-046) |
+| Phase 9 (Distribution) | 2 | 19-25h | ✅ 1/2 (TASK-044 not started) |
+| **TOTAL** | **39** | **184-241h** | **36/39 (92%)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -496,13 +526,13 @@ TASK-001 (Project Setup)
 
 ---
 
-**Last Updated**: February 21, 2026
+**Last Updated**: March 10, 2026
 
 ---
 
 ## Completion Progress
 
-**Overall**: 13/31 tasks complete (42%)  
-**Current Sprint**: Sprint 2 (Add Formats & Parallelism)  
-**Next Priority**: TASK-010 (Datafaker Integration) or TASK-020 (Multi-Threading Engine)  
-**Estimated Remaining Effort**: 65-90 hours
+**Overall**: 35/38 active tasks complete (92%)
+**Current Sprint**: Sprint 6 (Database Stage 2) — COMPLETE
+**Next Priority**: TASK-044 (Extras directory — decouple JDBC drivers from distribution)
+**Estimated Remaining Effort**: TASK-044 (3-5h); TASK-012 (8-10h, deferred); TASK-039 (4-6h, low priority)

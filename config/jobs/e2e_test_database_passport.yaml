@@ -1,0 +1,13 @@
+source: passport.yaml
+type: database
+seed:
+  type: embedded
+  value: 42
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  username: "testuser"
+  password: "testpass"
+  table: "passports"
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch

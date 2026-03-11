@@ -16,6 +16,7 @@
 
 package com.datagenerator.core.type;
 
+import java.util.Locale;
 import lombok.Value;
 
 /**
@@ -57,8 +58,8 @@ public class PrimitiveType implements DataType {
       return "boolean";
     }
     if (minValue == null || maxValue == null) {
-      return kind.name().toLowerCase();
+      return kind.name().toLowerCase(Locale.ROOT);
     }
-    return kind.name().toLowerCase() + "[" + minValue + ".." + maxValue + "]";
+    return kind.name().toLowerCase(Locale.ROOT) + "[" + minValue + ".." + maxValue + "]";
   }
 }

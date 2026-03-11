@@ -86,10 +86,46 @@ Licensed under the Apache License 2.0
 https://github.com/awaitility/awaitility
 
 --------------------------------------------------------------------------------
-HikariCP (optional, runtime dependency)
+HikariCP
 Copyright 2013-2024 Brett Wooldridge
 Licensed under the Apache License 2.0
 https://github.com/brettwooldridge/HikariCP
+
+--------------------------------------------------------------------------------
+Protocol Buffers (protobuf-java)
+Copyright 2008 Google Inc.
+Licensed under the BSD 3-Clause License
+https://github.com/protocolbuffers/protobuf
+
+--------------------------------------------------------------------------------
+PostgreSQL JDBC Driver
+Copyright 1997 PostgreSQL Global Development Group
+Licensed under the BSD 2-Clause License
+https://jdbc.postgresql.org/
+
+--------------------------------------------------------------------------------
+MySQL Connector/J
+Copyright 2023 Oracle Corporation
+Licensed under the GNU General Public License v2.0 with FOSS Exception
+https://dev.mysql.com/doc/connector-j/en/
+
+--------------------------------------------------------------------------------
+Jakarta Bean Validation API
+Copyright 2019-2024 Eclipse Foundation
+Licensed under the Apache License 2.0
+https://beanvalidation.org/
+
+--------------------------------------------------------------------------------
+Hibernate Validator
+Copyright 2007-2024 Red Hat Inc. and others
+Licensed under the Apache License 2.0
+https://hibernate.org/validator/
+
+--------------------------------------------------------------------------------
+Jakarta Expression Language (GlassFish)
+Copyright 2018-2024 Eclipse Foundation
+Licensed under the Eclipse Public License v2.0
+https://eclipse-ee4j.github.io/el-ri/
 
 ================================================================================
 

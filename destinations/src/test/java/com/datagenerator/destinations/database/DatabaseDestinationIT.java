@@ -18,7 +18,6 @@ package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.IntegrationTest;
 import java.sql.Connection;
 import java.sql.Date;
@@ -349,17 +348,99 @@ class DatabaseDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldRejectNestedObjectWithClearError() {
-    Map<String, Object> invalidRecord = new LinkedHashMap<>();
-    invalidRecord.put("number", "AB123456");
-    invalidRecord.put("address", Map.of("city", "Rome")); // nested — Stage 1 not supported
+  void shouldHandleNestedObjectViaStage2Decomposition() throws SQLException {
+    // Stage 2: nested objects are auto-decomposed; no exception is thrown.
+    // The child table "address" must exist for the insert to succeed.
+    try (Statement st = verifyConnection.createStatement()) {
+      st.execute("CREATE TABLE address (id INT, city VARCHAR(255), passports_id VARCHAR(9))");
+    }
+
+    Map<String, Object> address = new LinkedHashMap<>();
+    address.put("id", 1);
+    address.put("city", "Rome");
+
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("number", "AB123456");
+    record.put("address", address);
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      assertThatThrownBy(() -> dest.write(invalidRecord))
-          .isInstanceOf(DestinationException.class)
-          .hasMessageContaining("nested objects")
-          .hasMessageContaining("address");
+      assertThatCode(() -> dest.write(record)).doesNotThrowAnyException();
+      dest.flush();
     }
+
+    try (Statement st = verifyConnection.createStatement()) {
+      st.execute("DROP TABLE IF EXISTS address");
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Option B — schema-aware binding against real PostgreSQL
+  // -------------------------------------------------------------------------
+
+  @Test
+  void shouldInsertPassportRecordsWithSchema() throws SQLException {
+    try (DatabaseDestination dest = new DatabaseDestination(config(), passportSchema())) {
+      dest.open();
+      for (int i = 0; i < 5; i++) {
+        dest.write(samplePassport(i));
+      }
+      dest.flush();
+    }
+
+    assertThat(countRows()).isEqualTo(5);
+  }
+
+  @Test
+  void shouldCoerceStringToDateWithSchemaAgainstPostgres() throws SQLException {
+    // Pass ISO-8601 String for date fields instead of LocalDate — schema triggers coercion
+    Map<String, Object> recordWithStringDates = new LinkedHashMap<>();
+    recordWithStringDates.put("number", "ZZ000001");
+    recordWithStringDates.put("first_name", "Test");
+    recordWithStringDates.put("last_name", "User");
+    recordWithStringDates.put("full_name", "Test User");
+    recordWithStringDates.put("dob", "1990-06-15"); // String, not LocalDate
+    recordWithStringDates.put("nationality", "Italy");
+    recordWithStringDates.put("place_of_birth", "Rome");
+    recordWithStringDates.put("issue_date", "2020-03-01"); // String, not LocalDate
+    recordWithStringDates.put("expiry_date", "2030-03-01"); // String, not LocalDate
+    recordWithStringDates.put("authority", "Ministry of Interior");
+    recordWithStringDates.put("sex", "M");
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), passportSchema())) {
+      dest.open();
+      dest.write(recordWithStringDates);
+      dest.flush();
+    }
+
+    try (Statement st = verifyConnection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT dob, issue_date FROM passports")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getDate("dob")).isEqualTo(Date.valueOf(LocalDate.of(1990, 6, 15)));
+      assertThat(rs.getDate("issue_date")).isEqualTo(Date.valueOf(LocalDate.of(2020, 3, 1)));
+    }
+  }
+
+  // --- Schema helper ---
+
+  /**
+   * Raw YAML type strings for the passport table columns used in this test class.
+   *
+   * <p>Keys use alias names (number, dob, authority) to match the record field names produced by
+   * {@link #samplePassport(int)} and {@link #passportRecord}, which mirror the DB column names.
+   */
+  private Map<String, String> passportSchema() {
+    return Map.ofEntries(
+        Map.entry("number", "char[8..9]"),
+        Map.entry("first_name", "first_name"),
+        Map.entry("last_name", "last_name"),
+        Map.entry("full_name", "full_name"),
+        Map.entry("dob", "date[1950-01-01..2006-12-31]"),
+        Map.entry("nationality", "country"),
+        Map.entry("place_of_birth", "city"),
+        Map.entry("issue_date", "date[2015-01-01..2024-12-31]"),
+        Map.entry("expiry_date", "date[2025-01-01..2034-12-31]"),
+        Map.entry("authority", "company"),
+        Map.entry("sex", "enum[M,F,X]"));
   }
 }

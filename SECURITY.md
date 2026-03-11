@@ -6,9 +6,9 @@ We release security updates for the following versions:
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 0.2.x   | :white_check_mark: | Current stable release |
-| 0.1.x   | :x:                | No longer supported |
-| < 0.1   | :x:                | Development versions |
+| 0.4.x   | :white_check_mark: | Current stable release |
+| 0.3.x   | :x:                | No longer supported |
+| < 0.3   | :x:                | No longer supported |
 
 **Recommendation**: Always use the latest release for the most up-to-date security fixes.
 
@@ -54,10 +54,9 @@ Instead, please report security issues privately:
    - Click "Report a vulnerability"
    - Provide detailed information about the vulnerability
 
-2. **Email** (Alternative):
-   - Send to: [marco.ferretti@example.com](mailto:marco.ferretti@example.com)
-   - Subject: "[SECURITY] SeedStream Vulnerability Report"
-   - Include:
+2. **Direct GitHub Contact** (Alternative):
+   - Contact the maintainer directly via GitHub: [@mferretti](https://github.com/mferretti)
+   - Include in your message:
      - Description of the vulnerability
      - Steps to reproduce
      - Potential impact
@@ -136,9 +135,9 @@ open core/build/reports/dependency-check-report.html
 - Credentials should be stored in environment variables or secure vaults (not in YAML)
 - Example: `bootstrap: ${KAFKA_BOOTSTRAP}` instead of hardcoded URLs
 
-**Database Destination** (planned v0.3):
-- Will support connection pooling with secure credential handling
-- Recommend using connection strings from environment variables
+**Database Destination** (complete as of v0.4):
+- Connection pooling via HikariCP with secure credential handling
+- Use connection strings from environment variables: `url: ${DB_URL}`, `password: ${DB_PASSWORD}`
 
 **Remote Seed API**:
 - Supports bearer tokens, API keys, and basic auth
@@ -233,4 +232,4 @@ For vulnerability reports, use the private channels described above.
 
 ---
 
-**Last Updated**: March 6, 2026
+**Last Updated**: March 10, 2026
