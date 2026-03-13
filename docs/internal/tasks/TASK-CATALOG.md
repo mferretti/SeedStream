@@ -6,13 +6,13 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 46
+- **Total Tasks**: 52
 - **Completed**: 36 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
 - **Not Started**: 1 (TASK-044)
-- **Deferred**: 2 (TASK-012 deferred; TASK-039 low priority)
-- **Overall Progress**: 92% (36/39 active tasks)
+- **Deferred**: 8 (TASK-012, TASK-039; TASK-047–TASK-052 as future enhancements)
+- **Overall Progress**: 92% of active backlog (36/39 non-deferred tasks)
 
 ---
 
@@ -526,7 +526,33 @@ TASK-001 (Project Setup)
 
 ---
 
-**Last Updated**: March 10, 2026
+---
+
+## Phase 10: Biometric Data Generation
+
+| Task | Title | Effort | Complexity | Dependencies | Status |
+|------|-------|--------|------------|--------------|--------|
+| TASK-047 | Biometric YAML Structure Definitions | 2–3h | Low | None | ⏸️ Deferred (Future) |
+| TASK-048 | CBEFF JSON Wrapper Serializer | 3–4h | Low | TASK-047 | ⏸️ Deferred (Future) |
+| TASK-049 | BiometricValidator + `validate` CLI Command | 5–7h | Medium | TASK-047 | ⏸️ Deferred (Future) |
+| TASK-050 | Example Biometric Datasets | 2–3h | Low | TASK-047, TASK-048 | ⏸️ Deferred (Future) |
+| TASK-051 | Biometric ISO Field Mapping Documentation | 2–3h | Low | TASK-047 | ⏸️ Deferred (Future) |
+| TASK-052 | Binary FMR-like Serializer (Phase 2/optional) | 8–12h | High | TASK-047, TASK-048 | ⏸️ Deferred (Future) |
+
+**Recommended execution order within Phase 10:**
+1. TASK-047 (structures — no code, pure YAML)
+2. TASK-051 (documentation — while structures are being reviewed)
+3. TASK-048 (CBEFF serializer — low effort, enables sample generation)
+4. TASK-050 (sample datasets — depends on structures + optionally CBEFF)
+5. TASK-049 (validator — meaningful once sample data exists)
+6. TASK-052 (binary — optional, needs ISO PDF purchase first)
+
+**Scope boundary:** Pixel-level image generation, biometric matching (FAR/FRR), and intra-subject
+cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETRIC-DISCUSSION.md`.
+
+---
+
+**Last Updated**: March 13, 2026
 
 ---
 

@@ -6,11 +6,12 @@ This document provides a quick overview of all user stories for sprint planning 
 
 ## Summary Statistics
 
-- **Total Stories**: 39
+- **Total Stories**: 44
 - **Completed**: 13 ✅
 - **Partially Complete**: 2 🔄
 - **In Progress**: 0 🚧
 - **Not Started**: 23 ⏸️
+- **Deferred (Future Enhancement)**: 5 (US-044–US-048)
 - **Blocked**: 1 🔒
 
 ---
@@ -358,8 +359,27 @@ These stories cannot be completed without human judgment:
 
 ---
 
-**Last Updated**: February 21, 2026  
-**For Detailed Stories**: See individual US-*.md files  
+---
+
+## Phase 10: Biometric Data Generation (New — March 2026)
+
+| ID | Title | Priority | Effort | Dependencies | Task |
+|----|-------|----------|--------|--------------|------|
+| US-044 | Generate Fingerprint Minutiae Records (ISO/IEC 19794-2 JSON) | P3 | 2–3h | None | TASK-047 |
+| US-045 | Generate Face Image Container Records (ISO/IEC 19794-5 JSON) | P3 | 2–3h | None | TASK-047 |
+| US-046 | CBEFF-like JSON Envelope Format | P3 | 3–4h | US-044/US-045 | TASK-048 |
+| US-047 | Biometric Structural Validator | P3 | 5–7h | US-044/US-045 | TASK-049 |
+| US-048 | Example Biometric Datasets | P3 | 2–3h | US-044/US-045 | TASK-050 |
+
+All biometric stories are **deferred as future enhancements** (status: ⏸️ Deferred).
+
+**Scope boundary:** Pixel-level image generation, biometric matching (FAR/FRR), and intra-subject
+cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETRIC-DISCUSSION.md`.
+
+---
+
+**Last Updated**: March 13, 2026
+**For Detailed Stories**: See individual US-*.md files
 **For AI Tasks**: See tasks/ directory
 
 ---
