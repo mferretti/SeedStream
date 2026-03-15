@@ -1,0 +1,34 @@
+name: face_image
+data:
+  record_format:
+    datatype: enum[FAC]
+  version:
+    datatype: enum[19794-5:2011,19794-5:2005]
+  subject_id:
+    datatype: char[8..20]
+  sample_id:
+    datatype: int[0..9]
+  image_type:
+    datatype: enum[still_controlled,still_uncontrolled,video]
+  width:
+    datatype: int[640..2048]
+  height:
+    datatype: int[480..1536]
+  color_space:
+    datatype: enum[RGB,YUV]
+  compression:
+    datatype: enum[JPEG,JPEG2000]
+  capture_device:
+    datatype: char[5..30]
+  capture_time:
+    datatype: timestamp[now-365d..now]
+  image_file:
+    datatype: char[10..40]
+  face_box:
+    datatype: object[face_bounding_box]
+  landmarks:
+    datatype: object[face_landmarks]
+  pose:
+    datatype: object[face_pose]
+  quality:
+    datatype: object[face_quality]

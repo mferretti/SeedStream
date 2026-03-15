@@ -1,0 +1,12 @@
+name: face_landmarks
+data:
+  left_eye:
+    datatype: object[image_point]
+  right_eye:
+    datatype: object[image_point]
+  nose_tip:
+    datatype: object[image_point]
+  mouth_left:
+    datatype: object[image_point]
+  mouth_right:
+    datatype: object[image_point]
