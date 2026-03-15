@@ -1,0 +1,8 @@
+name: face_pose
+data:
+  yaw:
+    datatype: decimal[-30.0..30.0]
+  pitch:
+    datatype: decimal[-20.0..20.0]
+  roll:
+    datatype: decimal[-15.0..15.0]

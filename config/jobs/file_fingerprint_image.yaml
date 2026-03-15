@@ -1,0 +1,7 @@
+source: fingerprint_image.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: output/fingerprint_image

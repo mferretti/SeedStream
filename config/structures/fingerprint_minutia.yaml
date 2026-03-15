@@ -1,0 +1,12 @@
+name: fingerprint_minutia
+data:
+  x:
+    datatype: int[0..799]
+  y:
+    datatype: int[0..799]
+  angle_deg:
+    datatype: decimal[0.0..359.9]
+  type:
+    datatype: enum[ending,bifurcation]
+  quality:
+    datatype: int[0..100]

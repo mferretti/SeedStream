@@ -1,0 +1,10 @@
+name: face_bounding_box
+data:
+  x:
+    datatype: int[100..500]
+  y:
+    datatype: int[80..350]
+  width:
+    datatype: int[300..700]
+  height:
+    datatype: int[400..900]

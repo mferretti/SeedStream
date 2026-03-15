@@ -1,0 +1,6 @@
+name: image_point
+data:
+  x:
+    datatype: int[0..2047]
+  y:
+    datatype: int[0..1535]

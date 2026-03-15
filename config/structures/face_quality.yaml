@@ -1,0 +1,8 @@
+name: face_quality
+data:
+  overall:
+    datatype: int[0..100]
+  occlusion:
+    datatype: int[0..100]
+  illumination:
+    datatype: int[0..100]

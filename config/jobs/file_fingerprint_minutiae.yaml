@@ -1,0 +1,7 @@
+source: fingerprint_minutiae.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: output/fingerprint_minutiae

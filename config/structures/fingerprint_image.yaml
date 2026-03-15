@@ -1,0 +1,24 @@
+name: fingerprint_image
+data:
+  record_format:
+    datatype: enum[FIR]
+  version:
+    datatype: enum[19794-4:2011,19794-4:2005]
+  subject_id:
+    datatype: char[8..20]
+  sample_id:
+    datatype: int[0..9]
+  image_type:
+    datatype: enum[plain,rolled,partial]
+  width:
+    datatype: int[300..1000]
+  height:
+    datatype: int[300..1000]
+  resolution_dpi:
+    datatype: enum[500,1000]
+  color_space:
+    datatype: enum[GRAY,YUV,RGB]
+  compression:
+    datatype: enum[none,JPEG,WSQ,JPEG2000]
+  image_file:
+    datatype: char[10..40]
