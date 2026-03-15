@@ -98,9 +98,12 @@ Each task lists dependencies on other tasks. Always complete dependencies before
 - [TASK-036: Security - File Permission Checks](TASK-036-security-permissions.md) ⏸️
 - [TASK-044: Extras Directory — External JARs and Custom Datafaker Providers](TASK-044-extras-directory-plugin-loading.md) ✅
 
-### Phase 10: Future Enhancements (⏸️ Not Started)
+### Phase 10: Future Enhancements (🔄 In Progress)
 - [TASK-037: API - REST Interface](TASK-037-api-rest.md) ⏸️ (future enhancement)
 - [TASK-038: API - gRPC Interface](TASK-038-api-grpc.md) ⏸️ (future enhancement)
+- [TASK-047: Biometric YAML Structure Definitions](TASK-047-biometric-yaml-structures.md) ✅
+- [TASK-048: CBEFF JSON Wrapper Serializer](TASK-048-cbeff-json-serializer.md) ✅
+- [TASK-049: BiometricValidator and validate CLI command](TASK-049-biometric-validator.md) ⏸️
 
 ---
 
