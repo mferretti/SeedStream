@@ -19,6 +19,7 @@ package com.datagenerator.cli;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.datagenerator.core.engine.GenerationEngine;
+import com.datagenerator.core.security.FilePermissionValidator;
 import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
@@ -378,6 +379,13 @@ public class ExecuteCommand implements Callable<Integer> {
     JobConfigParser jobParser = new JobConfigParser();
     JobConfig jobConfig = jobParser.parse(jobFile);
     log.info("Loaded job config: source={}, type={}", jobConfig.getSource(), jobConfig.getType());
+
+    // 1a. Validate file permissions
+    FilePermissionValidator permValidator = new FilePermissionValidator();
+    permValidator.validateConfigFile(jobFile);
+    if (jobConfig.getSeed() instanceof SeedConfig.FileSeed fileSeed) {
+      permValidator.validateSeedFile(Path.of(fileSeed.getPath()));
+    }
 
     // 2. Resolve seed
     long seed = resolveSeed(jobConfig);
