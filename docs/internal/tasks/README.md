@@ -92,10 +92,11 @@ Each task lists dependencies on other tasks. Always complete dependencies before
 ### Phase 8: Licensing & Open Source (✅ Complete)
 - [TASK-031: Licensing - Choose and Apply License](TASK-031-licensing.md) ✅
 
-### Phase 9: Security & Compliance (⏸️ Not Started)
+### Phase 9: Security & Compliance (🔄 In Progress)
 - [TASK-034: Security - Secret Management](TASK-034-security-secrets.md) ⏸️
-- [TASK-035: Security - Dependency Vulnerability Scanning](TASK-035-security-dependencies.md) ⏸️
+- [TASK-035: Security - Dependency Vulnerability Scanning](TASK-035-security-dependencies.md) ✅
 - [TASK-036: Security - File Permission Checks](TASK-036-security-permissions.md) ⏸️
+- [TASK-044: Extras Directory — External JARs and Custom Datafaker Providers](TASK-044-extras-directory-plugin-loading.md) ✅
 
 ### Phase 10: Future Enhancements (⏸️ Not Started)
 - [TASK-037: API - REST Interface](TASK-037-api-rest.md) ⏸️ (future enhancement)

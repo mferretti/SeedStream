@@ -19,10 +19,9 @@ dependencies {
     // Logback for programmatic log level control
     implementation(libs.logback.classic)
     
-    // Runtime dependencies for destinations (users can override versions)
+    // Runtime dependencies for destinations
     runtimeOnly(libs.kafka.clients)
-    runtimeOnly(libs.postgresql)
-    runtimeOnly(libs.mysql.connector.j)
+    // JDBC drivers are NOT bundled — users drop them into extras/ at runtime
 }
 
 application {
@@ -32,5 +31,24 @@ application {
 tasks.jar {
     manifest {
         attributes["Main-Class"] = "com.datagenerator.cli.DataGeneratorCli"
+    }
+}
+
+tasks.startScripts {
+    doLast {
+        // Unix: prepend extras/* to CLASSPATH so JARs dropped there are picked up at startup
+        unixScript.writeText(
+            unixScript.readText().replace(
+                "CLASSPATH=\$APP_HOME/lib/",
+                "CLASSPATH=\$APP_HOME/extras/*:\$APP_HOME/lib/"
+            )
+        )
+        // Windows: same for the batch script
+        windowsScript.writeText(
+            windowsScript.readText().replace(
+                "set CLASSPATH=%APP_HOME%\\lib\\",
+                "set CLASSPATH=%APP_HOME%\\extras\\*;%APP_HOME%\\lib\\"
+            )
+        )
     }
 }
