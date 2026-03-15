@@ -33,6 +33,7 @@ import com.datagenerator.destinations.file.FileDestinationConfig;
 import com.datagenerator.destinations.kafka.KafkaDestination;
 import com.datagenerator.destinations.kafka.KafkaDestinationConfig;
 import com.datagenerator.formats.FormatSerializer;
+import com.datagenerator.formats.cbeff.CbeffSerializer;
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
 import com.datagenerator.formats.protobuf.ProtobufSerializer;
@@ -406,7 +407,7 @@ public class ExecuteCommand implements Callable<Integer> {
         dataStructure.getData().size());
 
     // 4. Create format serializer
-    FormatSerializer serializer = createSerializer(format);
+    FormatSerializer serializer = createSerializer(format, jobConfig);
     log.info("Created serializer: {}", serializer.getFormatName());
 
     // 5. Create destination adapter
@@ -509,15 +510,28 @@ public class ExecuteCommand implements Callable<Integer> {
   /**
    * Creates a format serializer based on the specified format string.
    *
-   * @param format format name ("json" or "csv", case-insensitive)
+   * @param format format name ("json", "csv", "protobuf", "cbeff", case-insensitive)
+   * @param jobConfig job configuration (used for cbeff-specific conf values)
    * @return serializer instance for the specified format
    * @throws IllegalArgumentException if format is unsupported
    */
-  private FormatSerializer createSerializer(String format) {
+  private FormatSerializer createSerializer(String format, JobConfig jobConfig) {
     return switch (format.toLowerCase(Locale.ROOT)) {
       case "json" -> new JsonSerializer();
       case "csv" -> new CsvSerializer();
       case "protobuf" -> new ProtobufSerializer();
+      case "cbeff" -> {
+        JsonNode conf = jobConfig.getConf();
+        String owner =
+            conf != null && conf.has("cbeff_format_owner")
+                ? conf.get("cbeff_format_owner").asText()
+                : CbeffSerializer.DEFAULT_FORMAT_OWNER;
+        String type =
+            conf != null && conf.has("cbeff_format_type")
+                ? conf.get("cbeff_format_type").asText()
+                : CbeffSerializer.DEFAULT_FORMAT_TYPE;
+        yield new CbeffSerializer(owner, type);
+      }
       default -> throw new IllegalArgumentException("Unsupported format: " + format);
     };
   }
