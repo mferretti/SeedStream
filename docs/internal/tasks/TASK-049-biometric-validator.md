@@ -1,6 +1,7 @@
 # TASK-049: BiometricValidator Component and `validate` CLI Command
 
-**Status:** Deferred ⏸️ (Future Enhancement)
+**Status:** ✅ Complete
+**Completion Date:** March 15, 2026
 **Priority:** P3
 **Phase:** Phase 10 (Biometric Data Generation)
 **Effort:** 5–7h
@@ -87,14 +88,14 @@ Usage: datagenerator validate --input <file.ndjson> [--modality fingerprint|face
 
 ## Acceptance Criteria
 
-- [ ] `validate` subcommand registered in `DataGeneratorCli`
-- [ ] Fingerprint rules: all 8 rules implemented and tested
-- [ ] Face rules: all 7 rules implemented and tested
-- [ ] Unknown `record_format` produces a clear error, not a NullPointerException
-- [ ] Unit tests in `core/src/test/java/.../BiometricValidatorTest.java` (≥ 20 test cases)
-- [ ] Integration test: generate 100 fingerprint + 100 face records → validate → zero violations
-- [ ] Exit code 0 on clean validation, 1 on any violation
-- [ ] Spotless compliant, Apache 2.0 license header
+- ✅ `validate` subcommand registered in `DataGeneratorCli`
+- ✅ Fingerprint rules: all 8 rules implemented and tested
+- ✅ Face rules: all 7 rules implemented and tested
+- ✅ Unknown `record_format` produces a clear error, not a NullPointerException
+- ✅ Unit tests in `core/src/test/java/.../BiometricValidatorTest.java` (28 test cases)
+- ✅ Integration test: generate 100 fingerprint + 100 face records → validate → zero violations
+- ✅ Exit code 0 on clean validation, 1 on any violation
+- ✅ Spotless compliant, Apache 2.0 license header
 
 ---
 

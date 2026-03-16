@@ -1,9 +1,9 @@
 name: fingerprint_minutia
 data:
   x:
-    datatype: int[0..799]
+    datatype: int[0..299]
   y:
-    datatype: int[0..799]
+    datatype: int[0..299]
   angle_deg:
     datatype: decimal[0.0..359.9]
   type:
