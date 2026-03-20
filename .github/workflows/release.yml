@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Check code formatting
+      run: ./gradlew spotlessCheck
+
+    - name: Build and test
+      run: ./gradlew build
+
+    - name: Build distribution archives
+      run: ./gradlew :cli:distZip :cli:distTar
+
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: "SeedStream ${{ github.ref_name }}"
+        body_path: CHANGELOG.md
+        files: |
+          cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.zip
+          cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.tar
+        draft: false
+        prerelease: false

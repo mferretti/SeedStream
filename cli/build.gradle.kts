@@ -31,6 +31,7 @@ application {
 tasks.jar {
     manifest {
         attributes["Main-Class"] = "com.datagenerator.cli.DataGeneratorCli"
+        attributes["Implementation-Version"] = project.version
     }
 }
 

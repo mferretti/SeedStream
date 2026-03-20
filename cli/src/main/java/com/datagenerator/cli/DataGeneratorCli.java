@@ -16,8 +16,13 @@
 
 package com.datagenerator.cli;
 
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.IVersionProvider;
 
 /**
  * Main entry point for the Data Generator CLI.
@@ -33,7 +38,7 @@ import picocli.CommandLine.Command;
 @Command(
     name = "datagenerator",
     mixinStandardHelpOptions = true,
-    version = "1.0.0",
+    versionProvider = DataGeneratorCli.ManifestVersionProvider.class,
     description = "High-performance test data generator",
     subcommands = {ExecuteCommand.class, ValidateCommand.class})
 public class DataGeneratorCli implements Runnable {
@@ -47,5 +52,22 @@ public class DataGeneratorCli implements Runnable {
   public void run() {
     // Show help when no subcommand is specified
     CommandLine.usage(this, System.out);
+  }
+
+  static class ManifestVersionProvider implements IVersionProvider {
+    @Override
+    public String[] getVersion() throws Exception {
+      Enumeration<URL> resources =
+          DataGeneratorCli.class.getClassLoader().getResources("META-INF/MANIFEST.MF");
+      while (resources.hasMoreElements()) {
+        Manifest manifest = new Manifest(resources.nextElement().openStream());
+        Attributes attrs = manifest.getMainAttributes();
+        if ("com.datagenerator.cli.DataGeneratorCli".equals(attrs.getValue("Main-Class"))) {
+          String version = attrs.getValue("Implementation-Version");
+          return new String[] {version != null ? version : "(unknown)"};
+        }
+      }
+      return new String[] {"(unknown)"};
+    }
   }
 }
