@@ -569,4 +569,46 @@ For more troubleshooting, see [README.md](../README.md#troubleshooting) or open 
 
 ---
 
+## Performance Tuning Guide
+
+### 1. Generator Selection
+
+| Type | Throughput | Use when |
+|------|-----------|----------|
+| Primitives (`int`, `boolean`, `char`) | 10M+ ops/s | Volume testing, load generation |
+| Semantic / Datafaker | 13–154K ops/s | Realism required (names, emails, etc.) |
+
+**Rule of thumb**: Datafaker is ~1,000× slower. Use primitives for volume, semantic types for realism.
+
+### 2. Data Complexity
+
+| Structure | Throughput |
+|-----------|-----------|
+| Flat object (5 fields) | ~100K ops/s |
+| Nested objects (2–3 levels) | ~10–50K ops/s |
+| Arrays (10–100 elements) | ~50K–1M ops/s |
+
+### 3. Thread Count
+
+```bash
+--threads $(nproc)             # primitive-heavy: use all CPU cores
+--threads 4                    # Datafaker-heavy: I/O bound, 4 is enough
+--threads 2                    # memory-constrained environments
+```
+
+### 4. File I/O
+
+- **Buffer**: 64KB internal default
+- **Batch writes**: 1,000 records/batch (configurable via `conf.batch_size`)
+- **Compression**: `compress: true` gives 70–80% size reduction at the cost of slower writes
+- **Format**: CSV serialises ~same speed as JSON (~2.6M ops/s); use CSV for flat tabular data, JSON for nested structures, Protobuf for 50–70% smaller binary output
+
+### 5. Kafka / Database
+
+- Increase `conf.batch_size` to amortise round-trip latency (start at 1,000, tune up)
+- Use `sync: false` (async) for Kafka throughput; `sync: true` for reliability
+- Use `transaction_strategy: per_batch` for DB — `per_job` holds one transaction open for the full run
+
+---
+
 **For architectural details on the multi-threading engine and reproducibility guarantees, see [DESIGN.md](DESIGN.md).**

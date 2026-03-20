@@ -520,6 +520,192 @@ export EVENT_SEED=54321
 
 ---
 
+---
+
+## Type System Reference
+
+All types are specified in the `datatype` field of a structure definition.
+
+### Primitive Types
+
+```yaml
+name:        { datatype: char[3..15] }        # Random string, 3–15 chars (a-zA-Z)
+age:         { datatype: int[18..65] }         # Random integer, inclusive range
+price:       { datatype: decimal[0.01..999.99] }
+is_active:   { datatype: boolean }             # true or false (50/50)
+birth_date:  { datatype: date[1960-01-01..2005-12-31] }   # ISO-8601
+created_at:  { datatype: timestamp[now-365d..now] }        # relative or absolute
+status:      { datatype: enum[PENDING,ACTIVE,CANCELLED] }  # uniform pick
+```
+
+### Semantic Types (Datafaker)
+
+Generate realistic, locale-aware data. All types respect the `geolocation` field.
+
+**Person & Identity**
+```yaml
+uuid:         { datatype: uuid }          # "ce344f82-baf2-4e17-b871-8808047a09c5"
+name:         { datatype: name }          # "John Smith"
+first_name:   { datatype: first_name }
+last_name:    { datatype: last_name }
+email:        { datatype: email }
+phone_number: { datatype: phone_number }
+ssn:          { datatype: ssn }           # US Social Security Number
+```
+
+**Location**
+```yaml
+address:     { datatype: address }
+city:        { datatype: city }
+state:       { datatype: state }
+country:     { datatype: country }
+postal_code: { datatype: postal_code }
+latitude:    { datatype: latitude }       # alias: lat
+longitude:   { datatype: longitude }      # aliases: lon, lng
+```
+
+**Business**
+```yaml
+company:    { datatype: company }
+industry:   { datatype: industry }
+job_title:  { datatype: job_title }
+department: { datatype: department }
+```
+
+**Internet**
+```yaml
+url:        { datatype: url }
+domain:     { datatype: domain }
+ip_address: { datatype: ip_address }
+username:   { datatype: username }
+```
+
+**Finance**
+```yaml
+iban:        { datatype: iban }           # alias: bic, swift
+credit_card: { datatype: credit_card }
+```
+
+**48+ types total** with 20+ aliases. Register custom types at runtime via `DatafakerRegistry`.
+See [generators module](../generators/) for the complete list.
+
+### Composite Types
+
+```yaml
+# Nested object — references another structure file
+billing_address: { datatype: object[address] }
+
+# Variable-length array
+tags:       { datatype: "array[char[5..10], 3..8]" }    # 3–8 strings
+line_items: { datatype: "array[object[line_item], 1..20]" }  # 1–20 nested objects
+```
+
+Referenced structure files are loaded from `structures_path` (default: `config/structures/`).
+
+### Field Aliases
+
+```yaml
+name: address
+geolocation: italy
+data:
+  name:        { datatype: char[3..15], alias: "nome" }
+  city:        { datatype: char[3..40], alias: "citta" }
+  postal_code: { datatype: int[10000..99999], alias: "cap" }
+```
+
+Output: `{"nome": "Mario", "citta": "Milano", "cap": "20100"}`
+
+### Geolocation & Locales
+
+Set `geolocation` at the structure level:
+
+```yaml
+name: customer
+geolocation: usa   # drives Datafaker locale for all semantic types
+```
+
+**Supported locales** (62 total):
+- **Americas**: `usa`, `canada`, `mexico`, `brazil`, `argentina`, `chile`
+- **Europe**: `uk`, `ireland`, `france`, `germany`, `italy`, `spain`, `portugal`, `netherlands`, `belgium`, `switzerland`, `austria`, `sweden`, `norway`, `denmark`, `finland`, `poland`, `czech_republic`, `slovakia`, `hungary`, `romania`, `ukraine`, `russia`, `greece`, `turkey`
+- **Asia**: `china`, `japan`, `korea`, `india`, `indonesia`, `thailand`, `vietnam`, `malaysia`, `singapore`, `philippines`, `pakistan`, `bangladesh`
+- **Middle East**: `saudi_arabia`, `uae`, `israel`
+- **Oceania**: `australia`, `new_zealand`
+- **Africa**: `south_africa`, `egypt`, `nigeria`, `kenya`
+
+Unknown geolocations fall back to English (US) with a warning.
+
+---
+
+## Kafka Destination Reference
+
+**Status**: ✅ Fully implemented (44 integration tests).
+
+```yaml
+source: address.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 12345
+conf:
+  bootstrap: localhost:9092        # broker(s), comma-separated
+  topic: addresses
+  batch_size: 1000                 # records per batch (default: 100)
+  linger_ms: 10                    # wait time for batching (default: 0)
+  compression: gzip                # gzip | snappy | lz4 | zstd | none
+  acks: "all"                      # "0" | "1" | "all"
+  sync: false                      # false=async (default), true=sync
+  # SASL/SSL authentication (optional):
+  sasl_mechanism: PLAIN            # PLAIN | SCRAM-SHA-256 | SCRAM-SHA-512
+  security_protocol: SASL_SSL      # PLAINTEXT | SSL | SASL_PLAINTEXT | SASL_SSL
+  username: ${KAFKA_USERNAME}
+  password: ${KAFKA_PASSWORD}
+```
+
+Features: async/sync modes, gzip/snappy/lz4/zstd compression, SASL/SSL auth, idempotent producer (`acks=all`), configurable batching.
+
+---
+
+## Database Destination Reference
+
+**Status**: ✅ Fully implemented — Stage 1 (flat tables) and Stage 2 (nested auto-decomposition).
+
+```yaml
+source: passport.yaml
+type: database
+seed:
+  type: embedded
+  value: 42
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"       # ${ENV_VAR} substitution supported
+  table: "passports"               # optional — defaults to structure name
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch  # per_batch | per_job | auto_commit
+```
+
+**Nested structures (Stage 2)**: When a structure contains `object[X]` or `array[object[X]]` fields, SeedStream automatically decomposes the tree into multi-table INSERTs. The parent is inserted first; each child gets a `{parent_table}_id` FK column injected automatically.
+
+```yaml
+# invoice.yaml has: issuer: object[company], line_items: array[object[line_item], 1..20]
+# SeedStream inserts into: invoices → company (issuer) → company (recipient) → line_items
+source: invoice.yaml
+type: database
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  table: "invoices"
+  transaction_strategy: per_batch
+```
+
+**JDBC drivers**: Not bundled. Drop the driver JAR into the `extras/` directory — it is automatically added to the classpath at startup.
+
+Constraints:
+- ⚠️ Tables must pre-exist — no DDL generation
+- ⚠️ Parent `id` field required for FK injection in nested structures
+
+---
+
 ## Troubleshooting
 
 ### Issue: "Structure file not found"

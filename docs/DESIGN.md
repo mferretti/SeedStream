@@ -1124,5 +1124,52 @@ This document is a living record. If you:
 
 ---
 
-**Last Updated**: March 10, 2026
+**Last Updated**: March 20, 2026
 **Status**: Living document (updated as project evolves)
+
+---
+
+## Multi-Threaded Generation
+
+Use `--threads` to parallelise generation for large datasets:
+
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --count 1000000 --threads 8"
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --threads 1"   # single-threaded debug
+```
+
+**Automatic optimisation**:
+- Jobs < 1,000 records: single-threaded (avoids thread pool overhead)
+- Jobs ≥ 1,000 records: worker pool with configurable thread count
+
+**Thread safety guarantees**:
+- Each worker holds its own `Random` instance derived from the master seed
+- `ThreadLocal<GeneratorContext>` isolates nested object generation per thread
+- A single writer thread serialises output, ensuring consistent record ordering
+
+**Scaling characteristics**:
+- Primitive-heavy workloads: near-linear scaling (10M ops/s × N threads)
+- Datafaker-heavy workloads: I/O-bound — 4 threads is typically optimal regardless of core count (thread-local Faker cache eliminates contention)
+
+---
+
+## Reproducibility & Determinism
+
+**Guarantee**: Same seed + same config + same count = identical output, byte-for-byte, across JVM restarts, machines, and thread counts.
+
+**How it works**:
+1. Master seed comes from the job config or `--seed` CLI override
+2. Each worker is assigned a **logical ID** (0, 1, 2, ...) — not a JVM thread ID
+3. Worker seed = `deriveSeed(masterSeed, logicalWorkerId)`
+4. Each worker generates a deterministic, non-overlapping subset of records
+
+Using logical IDs rather than JVM thread IDs is the key design decision — JVM thread IDs are non-deterministic across runs, while logical IDs are always assigned in the same order.
+
+**Verifying reproducibility**:
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 12345 --count 1000"
+sha256sum cli/output/addresses.json
+# Re-run — hash must be identical
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 12345 --count 1000"
+sha256sum cli/output/addresses.json
+```

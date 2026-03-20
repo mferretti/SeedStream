@@ -28,14 +28,24 @@ This project and everyone participating in it is governed by the [SeedStream Cod
 ### Prerequisites
 
 - **Java 21** or higher (Amazon Corretto, OpenJDK, or GraalVM)
-- **Gradle 8.5+** (wrapper included, no system installation required)
+- **Gradle 9.4+** (wrapper included — no system installation required)
 - **Git** for version control
+- **Docker** (optional, for integration tests with Testcontainers)
 
 Recommended: Use [SDKMAN!](https://sdkman.io/) to manage Java and Gradle versions:
 ```bash
+# Install SDKMAN! (if not already installed)
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+# Install Java 21
 sdk install java 21.0.9-amzn
-sdk install gradle 8.5
+
+# Install Gradle (only needed to regenerate the wrapper)
+sdk install gradle 9.4.0
 ```
+
+Once you have the repo cloned, use `./gradlew` for everything — the wrapper handles the correct Gradle version automatically.
 
 ### Clone and Build
 
@@ -242,10 +252,10 @@ Integration tests use **Testcontainers** (requires Docker):
 Benchmarks are **not run automatically** (they take 10-15 minutes):
 
 ```bash
-# Run all benchmarks
-./benchmarks/run_benchmarks.sh
+# Run E2E benchmark suite (preferred)
+./benchmarks/run_e2e_test.sh
 
-# Or manually
+# Run JMH component benchmarks directly
 ./gradlew :benchmarks:jmh
 python3 benchmarks/format_results.py > BENCHMARK-RESULTS.md
 ```
