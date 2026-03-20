@@ -31,7 +31,7 @@ jobs:
       run: ./gradlew build
 
     - name: Build distribution archives
-      run: ./gradlew :cli:distZip :cli:shadowJar
+      run: ./gradlew :cli:distZip :cli:fatJar
 
     - name: Extract version from tag
       id: version
