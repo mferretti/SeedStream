@@ -32,6 +32,12 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew test jacocoTestReport
 
+    - name: Analyze with SonarCloud
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: ./gradlew sonar
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
       with:

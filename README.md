@@ -2,9 +2,9 @@
 
 [![Build Status](https://github.com/mferretti/SeedStream/actions/workflows/build.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/build.yml)
 [![Security Scan](https://github.com/mferretti/SeedStream/actions/workflows/security.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/security.yml)
-[![Code Quality](https://github.com/mferretti/SeedStream/actions/workflows/code-quality.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/code-quality.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mferretti_SeedStream&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=mferretti_SeedStream)
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-[![Gradle](https://img.shields.io/badge/Gradle-9.3-brightgreen.svg)](https://gradle.org)
+[![Gradle](https://img.shields.io/badge/Gradle-9.4-brightgreen.svg)](https://gradle.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/mferretti/SeedStream/branch/main/graph/badge.svg)](https://codecov.io/gh/mferretti/SeedStream)
 
@@ -35,7 +35,7 @@ SeedStream is a Java-based tool designed to generate large volumes of realistic 
 ## Requirements
 
 - **Java 21 or higher** (tested with Amazon Corretto, OpenJDK, and GraalVM)
-- **Gradle 8.5 or higher** (wrapper included, no system installation required)
+- **Gradle 9.4 or higher** (wrapper included, no system installation required)
 
 ## Dependency Management
 
@@ -106,12 +106,12 @@ sdk use java 21.0.9-amzn
 #### Install Gradle (for initial wrapper generation)
 
 ```bash
-# Install Gradle 8.5
-sdk install gradle 8.5
+# Install Gradle 9.4
+sdk install gradle 9.4.0
 
 # Generate wrapper scripts in the project
 cd /path/to/datagenerator
-gradle wrapper --gradle-version 8.5
+gradle wrapper --gradle-version 9.4.0
 ```
 
 Once the wrapper is generated, you can use `./gradlew` for all builds. System-wide Gradle is no longer needed.
