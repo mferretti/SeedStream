@@ -7,27 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.4.0] - 2026-03-20
+
+**Release**: Database destination complete, biometric data support, security hardening.
+
+### Added
+
+#### Database Destination (Stage 2)
+- **Nested object auto-decomposition**: Automatically flattens nested structures into relational columns
+- **JMH benchmarks** for database write throughput
+
+#### Biometric Support
+- **Biometric structure definitions**: Face and fingerprint data schemas (`config/structures/`)
+- **Biometric job definitions**: Pre-built jobs for face/fingerprint test data generation
+- **`BiometricValidator`**: Validates biometric field constraints (dimensions, quality scores, ISO/IEC 19794 ranges)
+- **`validate` CLI subcommand**: Validates YAML configurations without executing a job
+
+#### Formats
+- **CBEFF format** (`CbeffSerializer`): CBEFF-like JSON envelope format for biometric payloads
+
+#### Distribution
+- **`extras/` directory**: Ships with the distribution for JDBC drivers and custom Datafaker providers; contents are automatically added to the classpath at startup
+
+#### Security
+- **File permission validation**: Startup check verifies config files are not world-writable (fails fast on unsafe permissions)
+
+#### Build
+- **Gradle configuration cache**: Enabled for faster incremental builds
+- **CI consolidation**: SpotBugs moved into the security workflow alongside OWASP Dependency-Check
 
 ### Changed
-- **Registry-based type system**: Refactored semantic types to use `DatafakerRegistry` instead of enum-based `PrimitiveType.Kind`
-  - Removed 42 semantic enum values (NAME, EMAIL, ADDRESS, etc.)
-  - Created `DatafakerRegistry` with 48+ built-in types and 20+ aliases
-  - Introduced `CustomDatafakerType` to replace enum-based semantic types
-  - Simplified `TypeParser` (~150 lines deleted) by replacing switch statement with registry lookup
-  - Simplified `DatafakerGenerator` (~220 lines deleted) by delegating to registry
-  - Total code reduction: ~350 lines of duplicated switch logic eliminated
-  - Benefits: Single source of truth, runtime extensibility, cleaner architecture
-
-### Technical Details
-- Registry uses `ConcurrentHashMap` for thread-safe, lock-free type registration
-- Type names normalized (lowercase, trimmed) for flexible matching
-- Aliases support common variations (lat/latitude, lon/lng/longitude, swift/bic, etc.)
-- Foundation for future plugin architecture without enum bloat
+- Database destination benchmark suite now supports a filter flag to run a subset of scenarios
 
 ---
 
-## [0.2.0] - March 2026
+## [0.3.0] - 2026-03-08
+
+**Release**: Registry-based type system, extended Datafaker coverage, database destination (Stage 1).
+
+### Added
+
+#### Data Generators
+- **20 new Datafaker semantic types** (Phase 1): expanded coverage for realistic data (passport, finance, biometric-adjacent fields, etc.)
+- **Thread-local Faker cache**: Eliminates repeated Faker instantiation in hot paths; significant throughput improvement for Datafaker-heavy jobs
+
+#### Database Destination (Stage 1)
+- **JDBC destination**: Write generated records to any JDBC-compatible database
+- **HikariCP connection pooling**: Configurable pool size, timeout, and keepalive
+- **Batch SQL insert**: Configurable batch size to amortize round-trip latency
+
+### Changed
+- **Registry-based type system** (`DatafakerRegistry`): Replaces the enum-based `PrimitiveType.Kind` with a `ConcurrentHashMap`-backed registry
+  - Removed 42 semantic enum values (NAME, EMAIL, ADDRESS, etc.)
+  - 48+ built-in types registered at startup; 20+ aliases (lat/latitude, swift/bic, etc.)
+  - `CustomDatafakerType` replaces enum-based semantic types
+  - `TypeParser` simplified (~150 lines removed); `DatafakerGenerator` simplified (~220 lines removed)
+  - Total reduction: ~350 lines of duplicated switch logic eliminated
+  - Foundation for future plugin architecture (runtime type registration without recompilation)
+
+### Fixed
+- Removed deprecated static factory methods from generator classes
+- Fixed `FakerCacheTest` ThreadLocal pollution between test cases
+
+---
+
+## [0.2.0] - 2026-02-01
 
 **Major Release**: Core features complete, production-ready for file and Kafka destinations.
 
@@ -96,12 +140,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Real-world**: 100K customer records in 14.4 seconds (6,923 rec/sec, 10 threads)
 - **Scaling**: 3.7× speedup with 4 workers (92% efficiency)
 
-### Known Limitations
-- **Database destination**: Not yet implemented (planned for v0.3)
-- **Reference generator**: Foreign keys (`ref[structure.field]`) not supported
-- **Statistical distributions**: Only uniform distribution (normal/Zipfian planned for v0.4)
-- **Plugin architecture**: Fixed generators/destinations (extensibility planned for v1.0)
-
 ### Security
 - **License**: Apache 2.0 (permissive, enterprise-friendly)
 - **Dependencies**: OWASP Dependency-Check integrated, no known CVEs
@@ -112,7 +150,7 @@ None (first public release).
 
 ---
 
-## [0.1.0] - December 2025
+## [0.1.0] - 2025-12-01
 
 **Initial Development Release**: Internal testing and validation.
 
@@ -130,20 +168,13 @@ Not publicly released. Internal prototype for architecture validation.
 
 ## Roadmap
 
-### v0.3.0 (Planned - Q2 2026)
-- Database destination adapter (PostgreSQL, MySQL)
+### v0.5.0 (Planned - Q2 2026)
 - Reference generator for foreign keys (`ref[structure.field]`)
-- Protobuf format support
-- Connection pooling (HikariCP)
-- Batch SQL insert optimization
-
-### v0.4.0 (Planned - Q3 2026)
 - Statistical distributions (normal, Zipfian, exponential)
-- Advanced Datafaker integration (correlations, constraints)
-- Performance tuning for Kafka (benchmark-driven optimization)
+- Advanced Datafaker correlations and constraints
 - Memory profiling tooling
 
-### v0.5.0 (Planned - Q4 2026)
+### v0.6.0 (Planned - Q3 2026)
 - REST API module
 - gRPC API module
 - Docker image and Kubernetes deployment
