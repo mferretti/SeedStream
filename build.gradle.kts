@@ -7,7 +7,6 @@ plugins {
     alias(libs.plugins.spotless) apply false
     alias(libs.plugins.spotbugs) apply false
     alias(libs.plugins.dependency.check) apply false
-    alias(libs.plugins.sonarqube)
 }
 
 allprojects {
@@ -17,19 +16,6 @@ allprojects {
 
     repositories {
         mavenCentral()
-    }
-}
-
-sonar {
-    properties {
-        property("sonar.projectKey", "mferretti_SeedStream")
-        property("sonar.organization", "mferretti")
-        property("sonar.host.url", "https://sonarcloud.io")
-        property("sonar.java.source", "21")
-        // Aggregate JaCoCo XML reports from all submodules
-        property("sonar.coverage.jacoco.xmlReportPaths", "**/build/reports/jacoco/test/jacocoTestReport.xml")
-        // Exclude benchmarks module and generated sources from analysis
-        property("sonar.exclusions", "benchmarks/**,**/generated/**")
     }
 }
 
