@@ -232,4 +232,4 @@ For vulnerability reports, use the private channels described above.
 
 ---
 
-**Last Updated**: March 10, 2026
+**Last Updated**: March 20, 2026
