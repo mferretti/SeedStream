@@ -31,7 +31,7 @@ mysql = "9.6.0"  # Updated from 9.1.0
 
 # Testing
 junit = "6.0.3"
-h2 = "2.3.232"
+h2 = "2.4.240"
 mockito = "5.21.0"
 assertj = "3.27.7"
 testcontainers = "1.21.4"
