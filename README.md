@@ -367,7 +367,7 @@ For comprehensive benchmarks, tuning guidance, and hardware recommendations, see
 
 To run benchmarks yourself:
 ```bash
-./benchmarks/run_benchmarks.sh  # Takes 10-15 minutes
+./benchmarks/run_e2e_test.sh  # Takes 10-15 minutes
 ```
 
 ## Type System Reference
@@ -872,7 +872,7 @@ Enable verbose logging for troubleshooting:
 
 **Diagnostics**:
 1. **Check data complexity**: Semantic types (Datafaker) are 100-500× slower than primitives
-2. **Measure with benchmarks**: Run `./benchmarks/run_benchmarks.sh` to baseline hardware
+2. **Measure with benchmarks**: Run `./benchmarks/run_e2e_test.sh` to baseline hardware
 3. **Profile with JMH**: Add custom benchmarks for your specific data structures
 4. **Monitor threads**: Use `--verbose` to see worker activity
 
