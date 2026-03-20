@@ -31,7 +31,7 @@ jobs:
       run: ./gradlew build
 
     - name: Build distribution archives
-      run: ./gradlew :cli:distZip :cli:distTar
+      run: ./gradlew :cli:distZip :cli:shadowJar
 
     - name: Extract version from tag
       id: version
@@ -44,6 +44,6 @@ jobs:
         body_path: CHANGELOG.md
         files: |
           cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.zip
-          cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.tar
+          cli/build/libs/seedstream-${{ steps.version.outputs.VERSION }}.jar
         draft: false
         prerelease: false
