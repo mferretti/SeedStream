@@ -1,6 +1,5 @@
 plugins {
     application
-    alias(libs.plugins.shadow)
 }
 
 dependencies {
@@ -36,14 +35,21 @@ tasks.jar {
     }
 }
 
-tasks.shadowJar {
+tasks.register<Jar>("fatJar") {
     archiveBaseName.set("seedstream")
     archiveClassifier.set("")
-    mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes["Main-Class"] = "com.datagenerator.cli.DataGeneratorCli"
         attributes["Implementation-Version"] = project.version
     }
+    // Merge all runtime dependency JARs into one, excluding signature files that would
+    // invalidate the merged JAR
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }) {
+        exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+    }
+    from(sourceSets.main.get().output)
+    dependsOn(configurations.runtimeClasspath)
 }
 
 tasks.startScripts {
