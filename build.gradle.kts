@@ -65,7 +65,7 @@ subprojects {
 
         // Force newer versions to address security vulnerabilities
         constraints {
-            implementation("com.google.protobuf:protobuf-java:4.34.0") // CVE-2024-7254
+            implementation("com.google.protobuf:protobuf-java:4.34.1") // CVE-2024-7254
             implementation("com.mysql:mysql-connector-j:9.6.0") // Brings newer protobuf
             implementation("org.apache.logging.log4j:log4j-core:2.26.0") // CVE-2025-68161
             implementation("org.apache.logging.log4j:log4j-api:2.26.0")

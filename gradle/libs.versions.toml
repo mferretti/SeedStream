@@ -19,7 +19,7 @@ jakarta-el = "4.0.2"
 
 # I/O & Serialization
 opencsv = "5.12.0"
-protobuf = "4.34.0"  # Updated from 3.25.5 (major version upgrade)
+protobuf = "4.34.1"  # Updated from 3.25.5 (major version upgrade)
 
 # Messaging
 kafka = "4.2.0"
