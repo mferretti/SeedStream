@@ -45,7 +45,7 @@ jmh-plugin = "0.7.3"
 lombok-plugin = "9.2.0"
 spotless-plugin = "8.3.0"
 spotbugs-plugin = "6.4.8"
-dependency-check-plugin = "12.2.0"
+dependency-check-plugin = "12.2.1"
 
 [libraries]
 # Lombok
