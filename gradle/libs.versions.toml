@@ -44,7 +44,7 @@ log4j = "2.26.0"
 jmh-plugin = "0.7.3"
 lombok-plugin = "9.2.0"
 spotless-plugin = "8.3.0"
-spotbugs-plugin = "6.4.8"
+spotbugs-plugin = "6.5.1"
 dependency-check-plugin = "12.2.0"
 
 [libraries]
