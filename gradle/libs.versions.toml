@@ -42,7 +42,7 @@ log4j = "2.26.0"
 
 # Build Plugins
 jmh-plugin = "0.7.3"
-lombok-plugin = "9.2.0"
+lombok-plugin = "9.4.0"
 spotless-plugin = "8.3.0"
 spotbugs-plugin = "6.4.8"
 dependency-check-plugin = "12.2.0"
