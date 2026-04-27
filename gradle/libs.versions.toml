@@ -27,7 +27,7 @@ kafka = "4.2.0"
 # Database
 hikaricp = "7.0.2"
 postgresql = "42.7.10"
-mysql = "9.6.0"  # Updated from 9.1.0
+mysql = "9.7.0"  # Updated from 9.1.0
 
 # Testing
 junit = "6.0.3"
