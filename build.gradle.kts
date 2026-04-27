@@ -57,7 +57,7 @@ subprojects {
 
     dependencies {
         // Lombok for reducing boilerplate
-        val lombok = "org.projectlombok:lombok:1.18.44"
+        val lombok = "org.projectlombok:lombok:1.18.46"
         "compileOnly"(lombok)
         "annotationProcessor"(lombok)
         "testCompileOnly"(lombok)
