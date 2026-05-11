@@ -57,10 +57,10 @@
 6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables, Option B type binding)
 7. ✅ **Phase 8: Database Destinations Stage 2 (TASK-043) — COMPLETE** (nested auto-decomposition, FK injection)
 8. ✅ **Phase 8: Database JMH Benchmarks (TASK-045, TASK-046) — COMPLETE** (insert throughput, batch size sensitivity, suite filter)
-9. 🔥 **NEXT: TASK-044 — Extras directory** (decouple JDBC drivers; enable custom Datafaker providers)
-9. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
+9. ✅ **TASK-044 — Extras directory** (JDBC drivers decoupled; extras/* on classpath at startup)
+10. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
 
-**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 (flat tables) and Stage 2 (nested objects / FK auto-decomposition) both complete. Database JMH benchmarks complete (16-config matrix, measured results in `docs/PERFORMANCE.md`). Benchmark suite filter (`-PjmhSuite=database|kafka|generators`) in place. Branch `feature/database-stage2-nested-decomposition` ready to merge. JDBC drivers still bundled in distribution (GPL licensing concern) — TASK-044 addresses this.
+**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 (flat tables) and Stage 2 (nested objects / FK auto-decomposition) both complete. Database JMH benchmarks complete (16-config matrix, measured results in `docs/PERFORMANCE.md`). Benchmark suite filter (`-PjmhSuite=database|kafka|generators`) in place. JDBC drivers decoupled into `extras/` directory (TASK-044 complete). Datafaker plugin registry live (TASK-041 complete).
 
 ---
 
@@ -458,7 +458,7 @@
 3. **Low**: Platform-specific paths (niche use case)
 4. **Defer**: Schema/Relational data (we already have ObjectGenerator with nested structures)
 
-- [ ] **Datafaker Plugin Architecture** (TASK-041, US-041) 🔌 **PLANNED**
+- [x] **Datafaker Plugin Architecture** (TASK-041, US-041) ✅ **COMPLETE**
   - **Problem**: Only 28 of 110+ Datafaker types currently supported (~25% coverage)
   - **Solution**: Runtime type registry allowing users to register custom Datafaker providers
   - **Benefits**:
