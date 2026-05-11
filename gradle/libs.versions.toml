@@ -27,7 +27,6 @@ kafka = "4.2.0"
 # Database
 hikaricp = "7.0.2"
 postgresql = "42.7.10"
-mysql = "9.7.0"  # Updated from 9.1.0
 
 # Testing
 junit = "6.0.3"
@@ -82,7 +81,6 @@ kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafk
 # Database
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
-mysql-connector-j = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
 
 # Testing - JUnit
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -103,7 +101,6 @@ testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-testcontainers-mysql = { module = "org.testcontainers:mysql", version.ref = "testcontainers" }
 
 # Testing - Awaitility
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
@@ -131,7 +128,6 @@ testcontainers = [
     "testcontainers-junit-jupiter",
     "testcontainers-kafka",
     "testcontainers-postgresql",
-    "testcontainers-mysql",
 ]
 
 # Jackson bundle (JSON support)
