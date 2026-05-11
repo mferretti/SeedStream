@@ -26,7 +26,7 @@ kafka = "4.2.0"
 
 # Database
 hikaricp = "7.0.2"
-postgresql = "42.7.10"
+postgresql = "42.7.11"
 
 # Testing
 junit = "6.0.3"
