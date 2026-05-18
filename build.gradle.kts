@@ -66,9 +66,20 @@ subprojects {
         // Force newer versions to address security vulnerabilities
         constraints {
             implementation("com.google.protobuf:protobuf-java:4.34.1") // CVE-2024-7254
-            implementation("org.apache.logging.log4j:log4j-core:2.26.0") // CVE-2025-68161
-            implementation("org.apache.logging.log4j:log4j-api:2.26.0")
         }
+    }
+
+    // Force log4j version across ALL configurations (including those scanned by OWASP).
+    // constraints { implementation(...) } only covers implementation-derived configs,
+    // which lets Kafka's `strictly [2.17.1,3)` transitive constraint resolve to 2.25.2.
+    configurations.all {
+        resolutionStrategy.force(
+            "org.apache.logging.log4j:log4j-core:2.26.0",
+            "org.apache.logging.log4j:log4j-api:2.26.0"
+        )
+    }
+
+    dependencies {
 
         // Logging
         implementation("org.slf4j:slf4j-api:2.0.18")
