@@ -5,7 +5,7 @@
 # Core Libraries
 jackson = "2.21.3"
 lombok = "1.18.46"
-slf4j = "2.0.17"
+slf4j = "2.0.18"
 logback = "1.5.32"
 picocli = "4.7.7"
 
