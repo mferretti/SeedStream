@@ -29,7 +29,7 @@ hikaricp = "7.0.2"
 postgresql = "42.7.11"
 
 # Testing
-junit = "6.0.3"
+junit = "6.1.0"
 h2 = "2.4.240"
 mockito = "5.21.0"
 assertj = "3.27.7"
