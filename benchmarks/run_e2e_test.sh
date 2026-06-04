@@ -222,7 +222,7 @@ build_project() {
 # Initialize results file
 init_results_file() {
     log_info "Initializing results file: $RESULTS_FILE"
-    echo "destination,format,threads,memory_mb,record_count,duration_sec,throughput_rps,heap_used_mb,heap_max_mb,gc_time_ms,gc_count,gc_time_percent,status,error" > "$RESULTS_FILE"
+    echo "destination,format,threads,memory_mb,record_count,duration_ms,throughput_rps,heap_used_mb,heap_max_mb,gc_time_ms,gc_count,gc_time_percent,status,error" > "$RESULTS_FILE"
     log_success "Results file created"
 }
 
@@ -308,10 +308,10 @@ run_test() {
     # Main benchmark run
     log_info "  Benchmark: $RECORD_COUNT records..."
     
-    local start_time=$(date +%s)
+    local start_time=$(date +%s%3N)
     local status="SUCCESS"
     local error_msg=""
-    
+
     # Build JAVA_OPTS with GC logging and optional JFR profiling
     local java_opts="-Xmx${memory} -Xms${memory} -Xlog:gc*:file=${gc_log_file}:time,level,tags"
     
@@ -327,25 +327,25 @@ run_test() {
     if "$CLI_SCRIPT" execute --job "$job_file" --format "$format" --count $RECORD_COUNT --threads $threads \
         >"$output_file" 2>&1; then
         
-        local end_time=$(date +%s)
+        local end_time=$(date +%s%3N)
         local duration=$((end_time - start_time))
-        
+
         # Calculate throughput
         local throughput=0
         if [[ $duration -gt 0 ]]; then
-            throughput=$((RECORD_COUNT / duration))
+            throughput=$((RECORD_COUNT * 1000 / duration))
         fi
-        
+
         # Parse GC log
         local gc_stats=$(parse_gc_log "$gc_log_file")
         IFS=',' read -r heap_used heap_max gc_time gc_count gc_time_percent <<< "$gc_stats"
-        
+
         # Calculate GC time percentage
         if [[ $duration -gt 0 ]]; then
-            gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / ($duration * 1000)) * 100}")
+            gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / $duration) * 100}")
         fi
-        
-        log_success "  Duration: ${duration}s | Throughput: ${throughput} rec/s | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
+
+        log_success "  Duration: ${duration}ms | Throughput: ${throughput} rec/s | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
         
         # Save results
         echo "$destination,$format,$threads,$memory_mb,$RECORD_COUNT,$duration,$throughput,$heap_used,$heap_max,$gc_time,$gc_count,$gc_time_percent,$status,$error_msg" >> "$RESULTS_FILE"
@@ -443,7 +443,7 @@ run_database_test() {
     # Main benchmark run
     log_info "  Benchmark: $RECORD_COUNT records..."
     local start_time
-    start_time=$(date +%s)
+    start_time=$(date +%s%3N)
     local status="SUCCESS"
     local error_msg=""
 
@@ -459,10 +459,10 @@ run_database_test() {
         >"$output_file" 2>&1; then
 
         local end_time
-        end_time=$(date +%s)
+        end_time=$(date +%s%3N)
         local duration=$((end_time - start_time))
         local throughput=0
-        [[ $duration -gt 0 ]] && throughput=$((RECORD_COUNT / duration))
+        [[ $duration -gt 0 ]] && throughput=$((RECORD_COUNT * 1000 / duration))
 
         # Verify root row count (invoices table must equal RECORD_COUNT)
         local actual_invoices
@@ -480,10 +480,10 @@ run_database_test() {
         IFS=',' read -r heap_used heap_max gc_time gc_count gc_time_percent <<< "$gc_stats"
 
         if [[ $duration -gt 0 ]]; then
-            gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / ($duration * 1000)) * 100}")
+            gc_time_percent=$(awk "BEGIN {printf \"%.2f\", ($gc_time / $duration) * 100}")
         fi
 
-        log_success "  Duration: ${duration}s | Throughput: ${throughput} rec/s | Invoices: ${actual_invoices} | Child rows: ${actual_children} | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
+        log_success "  Duration: ${duration}ms | Throughput: ${throughput} rec/s | Invoices: ${actual_invoices} | Child rows: ${actual_children} | Heap: ${heap_used}/${heap_max}MB | GC: ${gc_time}ms (${gc_time_percent}%)"
         echo "database,none,$threads,$memory_mb,$RECORD_COUNT,$duration,$throughput,$heap_used,$heap_max,$gc_time,$gc_count,$gc_time_percent,$status,$error_msg" >> "$RESULTS_FILE"
 
     else

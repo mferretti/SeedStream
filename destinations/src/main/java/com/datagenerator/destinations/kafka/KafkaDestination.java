@@ -135,8 +135,10 @@ public class KafkaDestination implements DestinationAdapter {
     props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, config.getCompression());
     props.put(ProducerConfig.ACKS_CONFIG, config.getAcks());
 
-    // Enable idempotence for exactly-once semantics
-    props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+    // Idempotence requires acks=all; skip for acks=1/0 (test data generation)
+    if ("all".equals(config.getAcks()) || "-1".equals(config.getAcks())) {
+      props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+    }
 
     // Authentication (SASL/SSL)
     if (config.getSecurityProtocol() != null) {

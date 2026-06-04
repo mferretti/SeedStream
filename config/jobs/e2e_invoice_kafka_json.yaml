@@ -10,5 +10,7 @@ conf:
   bootstrap: localhost:9092
   topic: benchmark-topic
   sync: false
-  batchSize: 16384
+  acks: "1"
+  batch_size: 65536
+  linger_ms: 20
   compression: snappy
