@@ -42,6 +42,12 @@ public class TypeParser {
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
   private static final Pattern REF_PATTERN = Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+)\\]$");
 
+  private static final Pattern REF_RANGE_PATTERN =
+      Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+
+  private static final Pattern REF_COUNT_PATTERN =
+      Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.count\\]$");
+
   /**
    * Parse a datatype string into a DataType object.
    *
@@ -93,12 +99,35 @@ public class TypeParser {
       return new ObjectType(structureName);
     }
 
-    // Reference
+    // Reference with dynamic count bound: ref[user.id, 1..count]
+    Matcher refCountMatcher = REF_COUNT_PATTERN.matcher(trimmed);
+    if (refCountMatcher.matches()) {
+      String targetStructure = refCountMatcher.group(1);
+      String targetField = refCountMatcher.group(2);
+      long min = Long.parseLong(refCountMatcher.group(3));
+      return new ReferenceType(targetStructure, targetField, min, null, true);
+    }
+
+    // Reference with static pool range: ref[user.id, 1..1000]
+    Matcher refRangeMatcher = REF_RANGE_PATTERN.matcher(trimmed);
+    if (refRangeMatcher.matches()) {
+      String targetStructure = refRangeMatcher.group(1);
+      String targetField = refRangeMatcher.group(2);
+      long min = Long.parseLong(refRangeMatcher.group(3));
+      long max = Long.parseLong(refRangeMatcher.group(4));
+      if (min > max) {
+        throw new TypeParseException(
+            "Invalid ref range: min (%d) > max (%d) in: %s".formatted(min, max, typeString));
+      }
+      return new ReferenceType(targetStructure, targetField, min, max, false);
+    }
+
+    // Reference without pool range: ref[user.id]
     Matcher refMatcher = REF_PATTERN.matcher(trimmed);
     if (refMatcher.matches()) {
       String targetStructure = refMatcher.group(1);
       String targetField = refMatcher.group(2);
-      return new ReferenceType(targetStructure, targetField);
+      return new ReferenceType(targetStructure, targetField, null, null, false);
     }
 
     // Array (recursive)

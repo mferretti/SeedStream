@@ -1,0 +1,10 @@
+name: it_order
+data:
+  id:
+    datatype: int[1..100]
+  customer_id:
+    datatype: ref[it_customer.id, 1..count]
+  status:
+    datatype: enum[pending,processing,shipped,delivered,cancelled]
+  total:
+    datatype: decimal[10.00..999.99]

@@ -39,23 +39,39 @@ package com.datagenerator.generators;
 public class GeneratorContext implements AutoCloseable {
   private static final ThreadLocal<DataGeneratorFactory> FACTORY = new ThreadLocal<>();
   private static final ThreadLocal<String> GEOLOCATION = new ThreadLocal<>();
+  private static final ThreadLocal<Long> JOB_COUNT = new ThreadLocal<>();
 
   private GeneratorContext() {}
 
   /**
-   * Enter a new generator context with the given factory and geolocation.
+   * Enter a new generator context.
+   *
+   * @param factory the factory to use for nested generation
+   * @param geolocation the geolocation for locale-specific data (can be null)
+   * @param jobCount total record count for this job; used to resolve {@code ref[s.f, min..count]}
+   * @return AutoCloseable context (use with try-with-resources)
+   */
+  public static GeneratorContext enter(
+      DataGeneratorFactory factory, String geolocation, long jobCount) {
+    if (FACTORY.get() != null) {
+      throw new IllegalStateException("GeneratorContext already active in this thread");
+    }
+    FACTORY.set(factory);
+    GEOLOCATION.set(geolocation);
+    JOB_COUNT.set(jobCount);
+    return new GeneratorContext();
+  }
+
+  /**
+   * Enter a new generator context without a job count (jobCount defaults to 0). Using {@code
+   * ref[s.f, min..count]} in this context will throw at generation time.
    *
    * @param factory the factory to use for nested generation
    * @param geolocation the geolocation for locale-specific data (can be null)
    * @return AutoCloseable context (use with try-with-resources)
    */
   public static GeneratorContext enter(DataGeneratorFactory factory, String geolocation) {
-    if (FACTORY.get() != null) {
-      throw new IllegalStateException("GeneratorContext already active in this thread");
-    }
-    FACTORY.set(factory);
-    GEOLOCATION.set(geolocation);
-    return new GeneratorContext();
+    return enter(factory, geolocation, 0L);
   }
 
   /**
@@ -82,6 +98,18 @@ public class GeneratorContext implements AutoCloseable {
     return GEOLOCATION.get();
   }
 
+  /**
+   * Get the current job count from context. Used by {@link
+   * com.datagenerator.generators.composite.ReferenceGenerator} to resolve {@code ref[s.f,
+   * min..count]}.
+   *
+   * @return the job count for this thread (0 if not set)
+   */
+  public static long getJobCount() {
+    Long count = JOB_COUNT.get();
+    return count != null ? count : 0L;
+  }
+
   /** Check if a context is currently active. */
   public static boolean isActive() {
     return FACTORY.get() != null;
@@ -91,5 +119,6 @@ public class GeneratorContext implements AutoCloseable {
   public void close() {
     FACTORY.remove();
     GEOLOCATION.remove();
+    JOB_COUNT.remove();
   }
 }

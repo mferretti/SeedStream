@@ -1,0 +1,8 @@
+name: it_customer
+data:
+  id:
+    datatype: int[1..50]
+  name:
+    datatype: full_name
+  email:
+    datatype: email

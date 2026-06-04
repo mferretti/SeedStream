@@ -20,15 +20,33 @@ import lombok.Value;
 
 /**
  * Represents a foreign key reference to another structure's field. Used to create relationships
- * between generated records.
+ * between generated records by sampling a random ID from an explicit pool range.
+ *
+ * <p><b>Syntax:</b>
+ *
+ * <ul>
+ *   <li>{@code ref[user.id, 1..1000]} — sample random long from [1, 1000]
+ *   <li>{@code ref[user.id, 1..count]} — max resolves to the current job's {@code --count} at
+ *       runtime; range tracks parent count automatically without hardcoding
+ *   <li>{@code ref[user.id]} — parsed without pool; generation fails at runtime
+ * </ul>
  */
 @Value
 public class ReferenceType implements DataType {
   String targetStructure;
   String targetField;
+  Long min;
+  Long max;
+
+  /** When true, {@code max} is ignored and the runtime job count is used as the upper bound. */
+  boolean maxIsCount;
 
   @Override
   public String describe() {
+    if (min != null) {
+      String maxStr = maxIsCount ? "count" : String.valueOf(max);
+      return "ref[" + targetStructure + "." + targetField + ", " + min + ".." + maxStr + "]";
+    }
     return "ref[" + targetStructure + "." + targetField + "]";
   }
 }

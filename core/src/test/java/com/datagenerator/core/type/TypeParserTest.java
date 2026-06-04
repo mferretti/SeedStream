@@ -124,7 +124,46 @@ class TypeParserTest {
     ReferenceType refType = (ReferenceType) type;
     assertThat(refType.getTargetStructure()).isEqualTo("user");
     assertThat(refType.getTargetField()).isEqualTo("id");
+    assertThat(refType.getMin()).isNull();
+    assertThat(refType.getMax()).isNull();
+    assertThat(refType.isMaxIsCount()).isFalse();
     assertThat(refType.describe()).isEqualTo("ref[user.id]");
+  }
+
+  @Test
+  void shouldParseReferenceTypeWithStaticRange() {
+    DataType type = parser.parse("ref[order.user_id, 1..1000]");
+
+    assertThat(type).isInstanceOf(ReferenceType.class);
+    ReferenceType refType = (ReferenceType) type;
+    assertThat(refType.getTargetStructure()).isEqualTo("order");
+    assertThat(refType.getTargetField()).isEqualTo("user_id");
+    assertThat(refType.getMin()).isEqualTo(1L);
+    assertThat(refType.getMax()).isEqualTo(1000L);
+    assertThat(refType.isMaxIsCount()).isFalse();
+    assertThat(refType.describe()).isEqualTo("ref[order.user_id, 1..1000]");
+  }
+
+  @Test
+  void shouldParseReferenceTypeWithCountBound() {
+    DataType type = parser.parse("ref[customer.id, 1..count]");
+
+    assertThat(type).isInstanceOf(ReferenceType.class);
+    ReferenceType refType = (ReferenceType) type;
+    assertThat(refType.getTargetStructure()).isEqualTo("customer");
+    assertThat(refType.getTargetField()).isEqualTo("id");
+    assertThat(refType.getMin()).isEqualTo(1L);
+    assertThat(refType.getMax()).isNull();
+    assertThat(refType.isMaxIsCount()).isTrue();
+    assertThat(refType.describe()).isEqualTo("ref[customer.id, 1..count]");
+  }
+
+  @Test
+  void shouldRejectReferenceTypeWithInvalidRange() {
+    assertThatThrownBy(() -> parser.parse("ref[user.id, 100..1]"))
+        .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("min")
+        .hasMessageContaining("max");
   }
 
   @Test

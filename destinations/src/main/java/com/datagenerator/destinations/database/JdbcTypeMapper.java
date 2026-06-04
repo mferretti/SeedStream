@@ -20,6 +20,7 @@ import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.ReferenceType;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -136,6 +137,14 @@ public class JdbcTypeMapper {
       return;
     }
 
+    if (type instanceof ReferenceType) {
+      // ref[] generates Long; bind as BIGINT (fits INT columns when value is in range)
+      if (value instanceof Long l) ps.setLong(index, l);
+      else if (value instanceof Integer i) ps.setLong(index, i);
+      else ps.setLong(index, Long.parseLong(value.toString()));
+      return;
+    }
+
     // EnumType, CustomDatafakerType, and anything else → setString
     ps.setString(index, value.toString());
   }
@@ -159,6 +168,7 @@ public class JdbcTypeMapper {
         case TIMESTAMP -> Types.TIMESTAMP;
       };
     }
+    if (type instanceof ReferenceType) return Types.BIGINT;
     return Types.VARCHAR; // EnumType, CustomDatafakerType
   }
 

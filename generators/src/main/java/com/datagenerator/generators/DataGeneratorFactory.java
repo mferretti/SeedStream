@@ -20,6 +20,7 @@ import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.generators.composite.ArrayGenerator;
 import com.datagenerator.generators.composite.ObjectGenerator;
+import com.datagenerator.generators.composite.ReferenceGenerator;
 import com.datagenerator.generators.primitive.BooleanGenerator;
 import com.datagenerator.generators.primitive.CharGenerator;
 import com.datagenerator.generators.primitive.DateGenerator;
@@ -75,6 +76,7 @@ public class DataGeneratorFactory {
 
     // Register composite generators (stateless)
     STATELESS_GENERATORS.add(new ArrayGenerator());
+    STATELESS_GENERATORS.add(new ReferenceGenerator());
 
     // NOTE: ObjectGenerator is stateful and created with context
   }

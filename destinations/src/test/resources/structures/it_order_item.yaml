@@ -1,0 +1,12 @@
+name: it_order_item
+data:
+  id:
+    datatype: int[1..500]
+  order_id:
+    datatype: ref[it_order.id, 1..count]
+  product:
+    datatype: product_name
+  quantity:
+    datatype: int[1..10]
+  unit_price:
+    datatype: decimal[1.00..199.99]

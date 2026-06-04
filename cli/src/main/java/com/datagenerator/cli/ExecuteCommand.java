@@ -442,7 +442,7 @@ public class ExecuteCommand implements Callable<Integer> {
             .recordGenerator(
                 (random) -> {
                   // Each worker thread needs its own GeneratorContext
-                  try (var ctx = GeneratorContext.enter(factory, geolocation)) {
+                  try (var ctx = GeneratorContext.enter(factory, geolocation, count)) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> record =
                         (Map<String, Object>) generator.generate(random, objectType);

@@ -51,11 +51,7 @@
 - ✅ Integration tests infrastructure (Testcontainers 1.21.4, Docker 29.x compatible)
 - ✅ Performance benchmarks (JMH, 5 suites, 23 scenarios, NFR-1 validated)
 
-**Deferred to Phase 8:**
-- ⏸️ Database destination with JDBC and HikariCP (requires careful design)
-- ⏸️ Reference generator for foreign keys
-
-**Test Coverage**: 309 tests passing (276 unit + 33 integration) across 6 modules (80%+ coverage)
+**Test Coverage**: 320 tests passing (285 unit + 35 integration) across 6 modules (80%+ coverage)
 
 ### Key Differentiators
 
@@ -235,32 +231,34 @@ data:
 
 ---
 
-#### FR-4: Foreign Key References (Future)
+#### FR-4: Foreign Key References
 **Priority**: P2 (Medium)  
-**Status**: 🔄 Deferred
+**Status**: ✅ Implemented
 
 The system SHALL support foreign key references between structures:
 
 ```yaml
-# Syntax: ref[structure.field]
+# Static range
 orders:
   user_id:
-    datatype: ref[user.id]  # References generated user IDs
+    datatype: ref[user.id, 1..1000]
+
+# Dynamic range — upper bound tracks --count at runtime
+orders:
+  user_id:
+    datatype: ref[user.id, 1..count]
 ```
 
-**Requirements**:
-- Track generated IDs from referenced structures
-- Random sampling from ID pool for cross-record references
-- Order-aware generation (users before orders)
+**Implementation**: Option C (explicit ID pool). `ReferenceGenerator` samples a random
+`long` from `[min, max]` inclusive. When `max` is the keyword `count`, the upper bound
+resolves to the current job's `--count` value via `GeneratorContext`, so the FK range
+automatically scales without editing YAML.
 
-**Design Considerations**:
-- **Option A**: Two-pass generation (generate users → store IDs → generate orders)
-- **Option B**: LRU cache of recent IDs (memory-bounded random sampling)
-- **Option C**: Explicit ID pools (user defines range, generator samples from pool)
-
-**Current Decision**: Option C (most flexible, no memory concerns)
-
-**Acceptance Criteria**: TBD (when implemented)
+**Acceptance Criteria**:
+- ✅ `ref[s.f, min..max]` — static pool, samples uniform random long in [min, max]
+- ✅ `ref[s.f, min..count]` — dynamic pool, max = job count injected at runtime
+- ✅ `JdbcTypeMapper` binds `ReferenceType` values as `BIGINT`
+- ✅ End-to-end IT: 3-table chain (customer → order → order_item) against PostgreSQL
 
 ---
 
@@ -1792,20 +1790,21 @@ public long resolveEmbedded(EmbeddedSeed seed) {
 
 ---
 
-### Phase 2: Data Generation 🔄 (In Progress)
+### Phase 2: Data Generation ✅ (Complete)
 
 **Priority**: P1 (High)  
 **Target Date**: Q1 2026
 
-**Remaining Tasks**:
-- [ ] Datafaker integration (realistic data for 40+ types)
-- [ ] Locale-specific data generation (62 locales)
-- [ ] ReferenceGenerator (foreign keys) - deferred to Phase 4
+**Deliverables**:
+- ✅ Datafaker integration (realistic data for 48+ semantic types)
+- ✅ Locale-specific data generation (62 locales)
+- ✅ ReferenceGenerator (foreign keys — `ref[s.f, min..max]` and `ref[s.f, min..count]`)
 
 **Acceptance Criteria**:
-- Generate realistic names, addresses, emails for 62 locales
-- Deterministic output (same seed → same realistic data)
-- 90% test coverage for Datafaker generators
+- ✅ Generate realistic names, addresses, emails for 62 locales
+- ✅ Deterministic output (same seed → same realistic data)
+- ✅ 90% test coverage for Datafaker generators
+- ✅ FK references sampled from explicit pool; `count` keyword resolves at runtime
 
 ---
 
