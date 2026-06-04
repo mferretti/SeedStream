@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-06-04
+
+**Release**: Foreign key reference generator (`ref[]`), dynamic count-based ID pools.
+
+### Added
+
+#### Foreign Key Reference Generator
+- **`ref[structure.field, min..max]`** — samples a uniform random `long` from the given static pool
+- **`ref[structure.field, min..count]`** — dynamic variant: `count` resolves to the job's `--count` at runtime, so FK ranges scale automatically without YAML edits
+- **`ReferenceGenerator`** — stateless `DataGenerator` wired into `DataGeneratorFactory`
+- **`GeneratorContext.jobCount`** — new `ThreadLocal<Long>` carries the job count into each worker thread; `enter(factory, geo, count)` overload added; backward-compatible `enter(factory, geo)` overload retained
+- **`JdbcTypeMapper`** — binds `ReferenceType` values as `BIGINT` (Option B schema-aware path)
+- **End-to-end integration test** (`DatabaseReferenceIT`) — 3-table FK chain (`it_customer → it_order → it_order_item`) verified against a real PostgreSQL container via Testcontainers; 5 test cases covering row counts, bound assertions, determinism, and scaling
+
+### Changed
+- `ExecuteCommand` passes `count` into `GeneratorContext` so `ref[s.f, min..count]` resolves correctly in multi-threaded jobs
+- `ReferenceType` gains `min`, `max`, `maxIsCount` fields; `describe()` emits the canonical syntax
+
+---
+
 ## [0.4.0] - 2026-03-20
 
 **Release**: Database destination complete, biometric data support, security hardening.

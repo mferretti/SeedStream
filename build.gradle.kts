@@ -11,7 +11,7 @@ plugins {
 
 allprojects {
     group = "com.datagenerator"
-    version = "0.4.0"
+    version = "0.5.0"
     description = "High-performance test data generator for enterprise applications"
 
     repositories {

@@ -50,7 +50,8 @@ import org.openjdk.jmh.annotations.Warmup;
  * <ul>
  *   <li>Regexify with warm (reused) Faker — cache already hot, both versions similar
  *   <li>Regexify with fresh Faker per invocation — static cache benefits 2.6.0-SNAPSHOT
- *   <li>Expression lookup with fresh Faker per invocation — static RECIPE_MAP benefits 2.6.0-SNAPSHOT
+ *   <li>Expression lookup with fresh Faker per invocation — static RECIPE_MAP benefits
+ *       2.6.0-SNAPSHOT
  *   <li>Full JSON generation with complex datafaker fields including regexify
  * </ul>
  */
@@ -69,8 +70,7 @@ public class DatafakerRegexpBenchmark {
       "[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}";
 
   // Expression-style (goes through resolveExpression + regexify)
-  private static final String EXPRESSION_REGEXIFY =
-      "#{regexify '[A-Z]{2}[0-9]{4}[a-z]{2}'}";
+  private static final String EXPRESSION_REGEXIFY = "#{regexify '[A-Z]{2}[0-9]{4}[a-z]{2}'}";
   private static final String EXPRESSION_NAME = "#{Name.firstName} #{Name.lastName}";
 
   private Random random;
@@ -178,7 +178,9 @@ public class DatafakerRegexpBenchmark {
     record.put("productCode", faker.regexify(PATTERN_SHORT));
     record.put("orderId", faker.regexify(PATTERN_MEDIUM));
     record.put("trackingId", faker.regexify(PATTERN_UUID_LIKE));
-    record.put("birthDate", LocalDate.of(1980 + random.nextInt(40), 1 + random.nextInt(12), 1 + random.nextInt(28)));
+    record.put(
+        "birthDate",
+        LocalDate.of(1980 + random.nextInt(40), 1 + random.nextInt(12), 1 + random.nextInt(28)));
     record.put("registeredAt", Instant.now());
     record.put("balance", new BigDecimal(String.valueOf(random.nextDouble() * 100_000)));
     record.put("active", random.nextBoolean());

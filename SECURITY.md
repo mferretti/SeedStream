@@ -6,9 +6,9 @@ We release security updates for the following versions:
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 0.4.x   | :white_check_mark: | Current stable release |
-| 0.3.x   | :x:                | No longer supported |
-| < 0.3   | :x:                | No longer supported |
+| 0.5.x   | :white_check_mark: | Current stable release |
+| 0.4.x   | :x:                | No longer supported |
+| < 0.4   | :x:                | No longer supported |
 
 **Recommendation**: Always use the latest release for the most up-to-date security fixes.
 
@@ -16,7 +16,7 @@ We release security updates for the following versions:
 
 ## Current Security Posture
 
-**Status as of March 2026:**
+**Status as of June 2026:**
 
 | Metric | Status | Details |
 |--------|--------|---------|
@@ -24,12 +24,12 @@ We release security updates for the following versions:
 | **Dependency Versions** | ✅ **Latest Stable** | All libraries upgraded to latest stable releases |
 | **OWASP Dependency-Check** | ✅ **Enabled** | Automated scanning in CI/CD pipeline |
 | **Suppressions** | ✅ **Minimal** | Only 1 low-risk suppression (log4j 2.25.2 in benchmarks module, CVSS 4.8) |
-| **Last Full Audit** | ✅ **March 2026** | All modules scanned, 0 vulnerabilities found |
+| **Last Full Audit** | ✅ **June 2026** | All modules scanned, 0 vulnerabilities found |
 
 **Key Dependency Versions:**
-- Jackson: 2.21.1 (latest)
+- Jackson: 2.22.0 (latest)
 - Kafka: 4.2.0 (latest)
-- Protobuf: 4.34.0 (latest, resolved CVE-2024-7254)
+- Protobuf: 4.35.0 (latest)
 - MySQL Connector: 9.6.0 (latest)
 - All other dependencies at latest stable versions
 
@@ -135,7 +135,7 @@ open core/build/reports/dependency-check-report.html
 - Credentials should be stored in environment variables or secure vaults (not in YAML)
 - Example: `bootstrap: ${KAFKA_BOOTSTRAP}` instead of hardcoded URLs
 
-**Database Destination** (complete as of v0.4):
+**Database Destination** (complete as of v0.4, FK references as of v0.5):
 - Connection pooling via HikariCP with secure credential handling
 - Use connection strings from environment variables: `url: ${DB_URL}`, `password: ${DB_PASSWORD}`
 
@@ -232,4 +232,4 @@ For vulnerability reports, use the private channels described above.
 
 ---
 
-**Last Updated**: March 20, 2026
+**Last Updated**: June 4, 2026

@@ -602,6 +602,24 @@ line_items: { datatype: "array[object[line_item], 1..20]" }  # 1–20 nested obj
 
 Referenced structure files are loaded from `structures_path` (default: `config/structures/`).
 
+### Foreign Key References
+
+Sample a random ID from a declared pool — no DB round-trips, no memory overhead.
+
+```yaml
+# Static pool: customer_id is always in [1..50]
+customer_id: { datatype: ref[customer.id, 1..50] }
+
+# Dynamic pool: max resolves to the job's --count at runtime
+# Run parent and child jobs with the same --count to maintain FK consistency
+customer_id: { datatype: ref[customer.id, 1..count] }
+order_id:    { datatype: ref[order.id, 1..count] }
+```
+
+**`count` keyword**: `ref[s.f, 1..count]` — the `count` placeholder expands to the value of `--count` passed to the CLI (or configured in the job). Use it so FK ranges scale automatically without editing YAML when the count changes.
+
+**Limitation**: `count` refers to the *current* job's count. For a parent→child FK chain, run both jobs with the same `--count`, or use a static range derived from the parent job's count.
+
 ### Field Aliases
 
 ```yaml

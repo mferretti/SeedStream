@@ -1,10 +1,10 @@
 # SeedStream - Design Documentation
 
-**Last Updated**: March 10, 2026 (v0.4.0)
+**Last Updated**: June 4, 2026 (v0.5.0)
 
 This document captures the architectural decisions, design patterns, issues encountered, and their resolutions during development. It serves as a reference for developers extending the project and for discussions around alternative approaches.
 
-**Status**: Core architecture complete. All destinations implemented: File, Kafka, Database (Stage 1 flat tables + Stage 2 nested auto-decomposition). Plugin/registry architecture for Datafaker types complete.
+**Status**: Core architecture complete. All destinations implemented: File, Kafka, Database (Stage 1 flat tables + Stage 2 nested auto-decomposition). Plugin/registry architecture for Datafaker types complete. Foreign key reference generator (`ref[]`) implemented in v0.5.0.
 
 ---
 
@@ -422,7 +422,7 @@ engine.generate(1_000_000); // Generate 1M records
 - Nested objects (`object[structure_name]`)
 - Arrays with variable length (`array[inner_type, min..max]`)
 - Semantic/Datafaker types via `DatafakerRegistry` (48 built-in types)
-- Foreign key references (`ref[structure.field]`) — deferred, see TASK-012
+- Foreign key references (`ref[structure.field, min..max]` and `ref[structure.field, min..count]`) — see [Foreign Key Reference Generator](#foreign-key-reference-generator)
 
 ### Implemented Type Syntax
 
@@ -902,28 +902,26 @@ response_time_ms: int[1..5000, distribution=exponential, lambda=0.5]
 
 ---
 
-### 3. Foreign Key Resolution
+### 3. Foreign Key Reference Generator
 
-**Question**: How to implement `ref[other_structure.field]` for cross-record references?
+**Status**: ✅ Implemented (v0.5.0, June 2026)
 
-**Example**:
+**Syntax**:
 ```yaml
 orders:
-  user_id: ref[user.id]  # Reference generated user IDs
+  customer_id: ref[customer.id, 1..count]   # dynamic: max = job --count at runtime
+  region_id:   ref[region.id, 1..50]        # static: max = 50
 ```
 
-**Challenge**: Need to track generated IDs, but streaming architecture doesn't hold records in memory.
+**Chosen Approach**: Option C — explicit ID pools. User declares the range in YAML; `ReferenceGenerator` samples a uniform random `long` from `[min, max]`. The `count` keyword resolves to the job's `--count` value at runtime via `GeneratorContext.getJobCount()`.
 
-**Option A**: Two-pass generation (generate users, store IDs, generate orders)
-**Option B**: ID cache (LRU cache of recent IDs for random sampling)
-**Option C**: Explicit ID pools (user defines ID range, generator samples from pool)
-**Option D**: Deferred resolution via destination (database foreign keys, not generator concern)
+**Design Decisions**:
+- `count` keyword eliminates hardcoded ranges that break when `--count` changes. Parent and child jobs must use the same `--count` value to maintain referential consistency.
+- No streaming violation: the generator never stores generated IDs. The pool is defined by range, not by actual generated values.
+- `ReferenceGenerator` is stateless — safe for concurrent use across worker threads.
+- `JdbcTypeMapper` binds ref values as `BIGINT` (fits INT columns when value is in range).
 
-**Current Decision**: Deferred (TASK-012, post-v0.4). Option C (explicit ID pools) seems most flexible for file destinations. Option D (database-enforced FKs) is now partially addressed by Stage 2 nested decomposition, which auto-injects FK columns from parent inserts — but only within a single nested record tree, not across independent structures.
-
-**Workaround**: Use `int[1..100000]` for IDs and rely on statistical likelihood of matches.
-
-**Discussion**: Interested in graph-based data generation? Open a GitHub discussion.
+**Limitation**: `count` tracks the *current* job's count, not the parent entity count. For a correct FK chain, run parent and child jobs with the same `--count`, or use a static `min..max` range derived from the parent job's count.
 
 ---
 
@@ -1121,10 +1119,11 @@ This document is a living record. If you:
 | 2026-03-09 | Database Stage 2: auto-decomposition + context stack design (TASK-043)  | Marco  |
 | 2026-03-09 | JDBC Option B: raw YAML type strings, TypeParser deferred to open()     | Marco  |
 | 2026-03-10 | TASK-043 complete: Stage 2 implemented; status/branch/TBDs updated      | Marco  |
+| 2026-06-04 | v0.5.0: FK reference generator (`ref[]`) implemented; TASK-012 closed   | Marco  |
 
 ---
 
-**Last Updated**: March 20, 2026
+**Last Updated**: June 4, 2026
 **Status**: Living document (updated as project evolves)
 
 ---

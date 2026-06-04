@@ -18,7 +18,8 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
 - 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), CBEFF (biometric envelope)
-- 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, FK injection)
+- 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition)
+- 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
 - 🔐 **Secure by Default**: File permission validation, `${ENV_VAR}` substitution for credentials
@@ -42,17 +43,17 @@ Download the release JAR and run immediately. You still need the config files, s
 
 ```bash
 git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
-wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.4.0.jar
-java -jar seedstream-0.4.0.jar execute --job config/jobs/file_address.yaml --count 100
+wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.5.0.jar
+java -jar seedstream-0.5.0.jar execute --job config/jobs/file_address.yaml --count 100
 ```
 
 ### Option 2 — Distribution zip
 
 ```bash
-wget https://github.com/mferretti/SeedStream/releases/latest/download/cli-0.4.0.zip
-unzip cli-0.4.0.zip
+wget https://github.com/mferretti/SeedStream/releases/latest/download/cli-0.5.0.zip
+unzip cli-0.5.0.zip
 # Point to your own job configs or clone the repo for examples
-cli-0.4.0/bin/datagenerator execute --job /path/to/job.yaml --count 100
+cli-0.5.0/bin/datagenerator execute --job /path/to/job.yaml --count 100
 ```
 
 ### Option 3 — Build from source
