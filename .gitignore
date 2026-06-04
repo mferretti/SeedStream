@@ -47,3 +47,6 @@ profiling-output/
 
 # Internal planning documents (work in progress, not for publication)
 docs/DATABASE-DESTINATION-PLANNING.md
+
+# Claude Code — machine-specific permissions (local only)
+.claude/settings.local.json
