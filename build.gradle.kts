@@ -69,13 +69,18 @@ subprojects {
         }
     }
 
-    // Force log4j version across ALL configurations (including those scanned by OWASP).
-    // constraints { implementation(...) } only covers implementation-derived configs,
-    // which lets Kafka's `strictly [2.17.1,3)` transitive constraint resolve to 2.25.2.
+    // Force versions across ALL configurations (including those scanned by OWASP).
+    // constraints { implementation(...) } only covers implementation-derived configs —
+    // compileClasspath and other configs may still resolve older transitive versions,
+    // which OWASP DC flags even when runtimeClasspath overrides them correctly.
     configurations.all {
         resolutionStrategy.force(
             "org.apache.logging.log4j:log4j-core:2.26.0",
-            "org.apache.logging.log4j:log4j-api:2.26.0"
+            "org.apache.logging.log4j:log4j-api:2.26.0",
+            // commons-lang3: compileClasspath resolves 3.14.0 (from AWS SDK transitive)
+            // while runtimeClasspath correctly overrides to 3.18.0. Force 3.18.0 everywhere
+            // so OWASP DC never sees 3.14.0 on any configuration.
+            "org.apache.commons:commons-lang3:3.18.0"
         )
     }
 

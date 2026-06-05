@@ -7,18 +7,31 @@ This document provides a quick overview of all tasks. For detailed implementatio
 ## Task Summary Statistics
 
 - **Total Tasks**: 59
-- **Completed**: 51 ✅
+- **Completed**: 58 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
 - **Not Started**: 0
-- **Deferred**: 5 (TASK-039; TASK-052, TASK-054, TASK-056, TASK-057)
-- **Overall Progress**: 100% of active backlog (50/50 non-deferred tasks)
+- **Deferred**: 1 (TASK-052)
+- **Overall Progress**: 100% of active backlog (58/58 non-deferred tasks)
 
 ---
 
 ## Recent Completions (June 2026)
 
 **Completed June 5, 2026 (v0.6.0):**
+- ✅ TASK-039: Jackson Streaming API Optimization — `FormatSerializer.StreamWriter`, flush-suppressing proxy in `JsonSerializer`
+  - `FileDestination` writes via `StreamWriter` (no intermediate String allocation per record)
+  - Flush-suppressing `OutputStream` proxy prevents `gen.flush()` from draining `BufferedOutputStream` per record
+  - Tests: 7 `StreamWriter` tests including flush-suppression verification
+- ✅ TASK-057: AES-256-GCM Encrypted Config Files — `AesGcmCrypto`, `EncryptedFileResolver`, `encrypt` CLI command
+  - `${SECRET:enc:AES256GCM:BASE64}` syntax; key via env var or file; `SpotBugs`-clean (`DMI_RANDOM_USED_ONLY_ONCE` fixed)
+  - Tests: `AesGcmCryptoTest`, `EncryptCommandTest`, `SecretResolverFactoryTest`, `ConfigSubstitutorTest` end-to-end
+- ✅ TASK-056: Azure Key Vault Backend — `AzureKeyVaultResolver`
+  - `DefaultAzureCredential` chain; `azure_vault_url` config; `#` field suffix for JSON secrets
+  - Tests: `AzureKeyVaultResolverTest` (8 tests, mock `SecretClient`)
+- ✅ TASK-054: Confluent Schema Registry Avro Serializer — `ConfluentAvroSerializer`
+  - Wire format with 5-byte magic prefix; schema auto-registration; `KafkaDestination` wired
+  - Tests: `ConfluentAvroSerializerTest` (mock registry client)
 - ✅ TASK-055: AWS Secrets Manager Backend — `AwsSecretsManagerResolver`
   - Default AWS credential chain; `aws_region` config + `AWS_DEFAULT_REGION` fallback
   - JSON secrets with `#field` suffix; plain-string secrets; ARN paths supported
@@ -254,7 +267,7 @@ These tasks block other work and should be completed first:
 - ✅ TASK-024 (Database integration tests — 9 PostgreSQL tests)
 - ✅ File I/O optimizations
 - **Total integration tests**: 41 (6 file + 18 Kafka + 9 database + 8 seed resolver)  
-**Deferred**: TASK-039 Jackson streaming (marginal gain, high effort, target already met)
+**Completed**: ✅ All 7 Phase 6 tasks (including TASK-039 Jackson streaming)
 
 ---
 
@@ -394,14 +407,14 @@ For an AI agent or developer working sequentially:
 | Phase 3 (Output Formats) | 3 | 13-17h | ✅ 3/3 |
 | Phase 4 (Destinations Stage 1) | 4 | 20-27h | ✅ 4/4 |
 | Phase 5 (CLI & Threading) | 4 | 16-21h | ✅ 4/4 |
-| Phase 6 (Quality & Performance) | 7 | 24-33h | ✅ 6/7 (TASK-039 deferred) |
+| Phase 6 (Quality & Performance) | 7 | 24-33h | ✅ 7/7 |
 | Phase 7 (Documentation) | 3 | 8-12h | ✅ 3/3 |
 | Phase 8 (Licensing) | 1 | 2-3h | ✅ 1/1 |
 | Phase 8 (Database Stage 2) | 3 | 24-30h | ✅ 3/3 (TASK-043, TASK-045, TASK-046) |
 | Phase 9 (Distribution) | 4 | 22-30h | ✅ 4/4 |
 | Phase 10 (Biometric) | 6 | 22-30h | ✅ 4/6 (TASK-051, TASK-052 deferred) |
-| Security/Quality (TASK-033–036, 055–057) | 7 | 20-28h | ✅ 4/7 (055-057 deferred) |
-| **TOTAL** | **59** | **240-330h** | **48/59 (81% total; 98% of active)** |
+| Security/Quality (TASK-033–036, 055–057) | 7 | 20-28h | ✅ 7/7 |
+| **TOTAL** | **59** | **240-330h** | **58/59 (98% total; 100% of active)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -614,7 +627,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 ## Completion Progress
 
-**Overall**: 50/59 tasks tracked (85%); 50/50 active (100% excl. deferred)
-**Current Sprint**: v0.6.0 shipped — Avro + retry + secret management + biometric ISO docs complete
-**Next Priority**: TASK-039 (Jackson streaming, low priority); deferred tasks as needed
-**Estimated Remaining Effort**: TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional); TASK-054/055/056/057 (deferred)
+**Overall**: 58/59 tasks tracked (98%); 58/58 active (100% excl. deferred)
+**Current Sprint**: v0.6.0 complete — Jackson streaming, AES-256-GCM, Azure Key Vault, Confluent Avro, AWS Secrets Manager all shipped
+**Next Priority**: TASK-052 (binary serializer, optional/deferred)
+**Estimated Remaining Effort**: TASK-052 (8-12h, optional)

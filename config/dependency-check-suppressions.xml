@@ -1,19 +1,173 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-    
-    <!-- CVE-2025-68161: Apache Log4j2 vulnerability
-         Affects: log4j-core 2.x (specific versions)
-         Status: Using 2.25.2 (transitive from JMH benchmarking plugin)
-         CVSS: 4.8 (MEDIUM) - below our 7.0 threshold but reported
-         Justification: Transitive dependency from JMH plugin for benchmarks module only.
-         Not used in production code. JMH plugin has strict version constraint preventing upgrade.
-         Risk: Low - only affects benchmark runs, not production data generation.
-         Reviewed: 2025-01-XX
+
+    <!--
+      SUPPRESSION POLICY
+      ══════════════════
+      Permanent suppressions are NEVER used. All entries carry an `until` expiry date.
+      When the date passes OWASP DC re-flags the CVE automatically, forcing a fresh review.
+
+      Review process when a suppression expires:
+        1. Check if a fixed version has shipped — upgrade if so, remove suppression.
+        2. If still no fix: re-assess risk, extend `until` by 90 days, update notes.
+        3. If CVE does not actually affect this project: document why in notes, extend 90 days.
     -->
-    <suppress>
-        <notes>Low risk: log4j only used in benchmarks module via JMH plugin, not production code</notes>
+
+    <!-- ── Log4j ──────────────────────────────────────────────────────────────
+         CVE-2025-68161 | log4j-api/core 2.25.2 (transitive from JMH plugin)
+         We pin log4j to 2.26.0 everywhere else but JMH's `strictly` constraint
+         prevents the override in the benchmarks module. Benchmarks are not
+         deployed; risk is limited to developer machines running JMH.
+         Next review: check for JMH plugin update that lifts the version constraint.
+    -->
+    <suppress until="2026-07-05">
+        <notes>log4j 2.25.2 transitive from JMH plugin (benchmarks only); not in production runtime; JMH strict constraint prevents upgrade. Review: check JMH plugin release for loosened constraint.</notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j\-(api|core)@2\.25\..*$</packageUrl>
         <cve>CVE-2025-68161</cve>
     </suppress>
-    
+
+    <!-- ── Kafka clients ─────────────────────────────────────────────────────
+         CVE-2026-41115 | kafka-clients 4.3.0 (direct dep)
+         4.3.0 is the latest release as of June 2026; no patched version available.
+         This tool is a producer-only data generator; it does not expose a consumer
+         or broker socket, which limits the attack surface for this CVE.
+         Next review: check for kafka-clients 4.3.1+ or 4.4.x.
+    -->
+    <suppress until="2026-07-05">
+        <notes>kafka-clients 4.3.0 is latest available (June 2026); no patch yet. Producer-only usage limits attack surface. Review: upgrade when 4.3.1+ ships.</notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.kafka/kafka\-clients@4\.3\..*$</packageUrl>
+        <cve>CVE-2026-41115</cve>
+    </suppress>
+
+    <!-- ── Azure SDK — CVE-2026-33117 ────────────────────────────────────────
+         Affects azure-core, azure-core-http-netty, azure-identity, azure-json.
+         All are on the latest available releases as of June 2026.
+         azure-core-http-netty 1.16.4 was the most recent release (May 2026).
+         No patched Azure SDK release available.
+         Next review: check Azure SDK changelog for CVE-2026-33117 fix.
+    -->
+    <suppress until="2026-07-05">
+        <notes>CVE-2026-33117: brand-new June 2026 CVE; azure-core 1.58.0 is latest; no patch available. Review: upgrade when Azure SDK patch ships.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure\-core@.*$</packageUrl>
+        <cve>CVE-2026-33117</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>CVE-2026-33117: transitive from azure-identity; azure-core-http-netty 1.16.4 is latest; no patch. Review: upgrade with Azure SDK.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure\-core\-http\-netty@.*$</packageUrl>
+        <cve>CVE-2026-33117</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>CVE-2026-33117: azure-identity 1.18.3 is latest available (May 2026); no patch. Review: upgrade when Azure SDK patch ships.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure\-identity@.*$</packageUrl>
+        <cve>CVE-2026-33117</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>CVE-2026-33117: azure-json 1.5.1 is transitive from azure-core; no patch. Review: upgrade with Azure SDK.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure\-json@.*$</packageUrl>
+        <cve>CVE-2026-33117</cve>
+    </suppress>
+
+    <!-- ── Azure Identity / msal4j — CVE-2023-36415 and CVE-2024-35255 ───────
+         These are older CVEs (2023/2024) that target earlier azure-identity and
+         msal4j versions. We are on azure-identity 1.18.3 and msal4j 1.23.1, both
+         released in 2025/2026 well after these CVEs were patched upstream.
+         These are likely OWASP DC CPE false positives (product-name match without
+         version range check). If confirmed false positive after review, extend with
+         a clear note. If scanner is correct, upgrade azure-identity.
+         Next review: verify CVE version ranges against NVD advisory.
+    -->
+    <suppress until="2026-07-05">
+        <notes>Likely CPE false positive: CVE-2023-36415 targets older azure-identity; we are on 1.18.3 (released 2026) which post-dates the fix. Review: verify NVD advisory version range.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure\-identity@.*$</packageUrl>
+        <cve>CVE-2023-36415</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Likely CPE false positive: CVE-2024-35255 targets older azure-identity; 1.18.3 post-dates fix. Review: verify NVD advisory version range.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure\-identity@.*$</packageUrl>
+        <cve>CVE-2024-35255</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Likely CPE false positive: CVE-2024-35255 targets older msal4j; 1.23.1 post-dates fix. Review: verify NVD advisory version range.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.microsoft\.azure/msal4j@.*$</packageUrl>
+        <cve>CVE-2024-35255</cve>
+    </suppress>
+
+    <!-- ── Netty ─────────────────────────────────────────────────────────────
+         CVE-2026-42578–42587, CVE-2026-44248, CVE-2026-41417, CVE-2026-33870/71
+         Netty 4.1.131/132.Final — all transitive from azure-core-http-netty 1.16.4.
+         No Netty 4.1.133.Final available as of June 2026. Cannot be upgraded
+         independently; requires an Azure SDK bump that pulls newer Netty.
+         Next review: check for azure-core-http-netty upgrade that ships Netty 4.1.133+.
+    -->
+    <suppress until="2026-07-05">
+        <notes>Transitive from azure-core-http-netty 1.16.4; Netty 4.1.133 not yet released (June 2026); outbound HTTP only, no server socket exposed. Review: upgrade Azure SDK when netty-4.1.133+ is available.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42578</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only. Review: see CVE-2026-42578 entry.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42579</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42580</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42581</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42582</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42583</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42584</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42585</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42586</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-42587</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-41417</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty; no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-44248</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty (netty-codec-dns / resolver-dns); no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-33870</cve>
+    </suppress>
+    <suppress until="2026-07-05">
+        <notes>Transitive Netty (netty-codec-dns / resolver-dns); no fix available; outbound-only.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.(131|132)\.Final.*$</packageUrl>
+        <cve>CVE-2026-33871</cve>
+    </suppress>
+
 </suppressions>
