@@ -20,6 +20,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
+import com.datagenerator.destinations.retry.RetryPolicy;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -33,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -99,6 +101,7 @@ public class DatabaseDestination implements DestinationAdapter {
   private static final String STRATEGY_AUTO_COMMIT = "auto_commit";
 
   private final DatabaseDestinationConfig config;
+  private final RetryPolicy retryPolicy;
 
   /**
    * Optional raw YAML type strings for DataType-aware JDBC binding (Option B).
@@ -108,10 +111,16 @@ public class DatabaseDestination implements DestinationAdapter {
    */
   private final Map<String, String> rawFieldTypes;
 
+  /**
+   * Non-null only when injected via the package-private test constructor. When set, {@code open()}
+   * uses this DataSource instead of creating a HikariCP pool.
+   */
+  private final DataSource injectedDataSource;
+
   /** Parsed schema built from {@link #rawFieldTypes} in {@link #open()}. Null for Option A. */
   private Map<String, DataType> schema;
 
-  private HikariDataSource dataSource;
+  private DataSource dataSource;
   private Connection connection;
 
   // --- Flat mode state ---
@@ -150,7 +159,7 @@ public class DatabaseDestination implements DestinationAdapter {
    * @param config connection and batch settings
    */
   public DatabaseDestination(DatabaseDestinationConfig config) {
-    this(config, null);
+    this(config, (Map<String, String>) null);
   }
 
   /**
@@ -171,6 +180,17 @@ public class DatabaseDestination implements DestinationAdapter {
     this.config = config;
     this.rawFieldTypes =
         rawFieldTypes != null ? Collections.unmodifiableMap(new HashMap<>(rawFieldTypes)) : null;
+    this.injectedDataSource = null;
+    this.retryPolicy = RetryPolicy.of(config.getMaxRetries(), config.getRetryDelayMs());
+    this.batch = new ArrayList<>(config.getBatchSize());
+  }
+
+  /** Package-private: injects a DataSource for unit testing (bypasses HikariCP). */
+  DatabaseDestination(DatabaseDestinationConfig config, DataSource injectedDataSource) {
+    this.config = config;
+    this.rawFieldTypes = null;
+    this.injectedDataSource = injectedDataSource;
+    this.retryPolicy = RetryPolicy.of(config.getMaxRetries(), config.getRetryDelayMs());
     this.batch = new ArrayList<>(config.getBatchSize());
   }
 
@@ -182,8 +202,23 @@ public class DatabaseDestination implements DestinationAdapter {
     }
 
     validateTransactionStrategy(config.getTransactionStrategy());
+    retryPolicy.execute("open database connection to " + config.getJdbcUrl(), this::openConnection);
+  }
 
-    try {
+  private void openConnection() throws SQLException {
+    if (injectedDataSource != null) {
+      connection = injectedDataSource.getConnection();
+    } else {
+      // Close any pool left over from a previous failed attempt before creating a new one.
+      if (dataSource instanceof AutoCloseable closeable) {
+        try {
+          closeable.close();
+        } catch (Exception e) {
+          log.warn("Failed to close stale DataSource before retry", e);
+        }
+        dataSource = null;
+      }
+
       HikariConfig hikariConfig = new HikariConfig();
       hikariConfig.setJdbcUrl(config.getJdbcUrl());
       hikariConfig.setUsername(config.getUsername());
@@ -193,30 +228,26 @@ public class DatabaseDestination implements DestinationAdapter {
 
       dataSource = new HikariDataSource(hikariConfig);
       connection = dataSource.getConnection();
-
-      if (!STRATEGY_AUTO_COMMIT.equals(config.getTransactionStrategy())) {
-        connection.setAutoCommit(false);
-      }
-
-      if (rawFieldTypes != null) {
-        TypeParser typeParser = new TypeParser();
-        schema =
-            rawFieldTypes.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> typeParser.parse(e.getValue())));
-        log.debug("Built field schema with {} typed fields", schema.size());
-      }
-
-      isOpen = true;
-      log.info(
-          "Opened database destination: table={}, strategy={}, batchSize={}",
-          config.getTableName(),
-          config.getTransactionStrategy(),
-          config.getBatchSize());
-
-    } catch (SQLException e) {
-      throw new DestinationException(
-          "Failed to open database connection to: " + config.getJdbcUrl(), e);
     }
+
+    if (!STRATEGY_AUTO_COMMIT.equals(config.getTransactionStrategy())) {
+      connection.setAutoCommit(false);
+    }
+
+    if (rawFieldTypes != null) {
+      TypeParser typeParser = new TypeParser();
+      schema =
+          rawFieldTypes.entrySet().stream()
+              .collect(Collectors.toMap(Map.Entry::getKey, e -> typeParser.parse(e.getValue())));
+      log.debug("Built field schema with {} typed fields", schema.size());
+    }
+
+    isOpen = true;
+    log.info(
+        "Opened database destination: table={}, strategy={}, batchSize={}",
+        config.getTableName(),
+        config.getTransactionStrategy(),
+        config.getBatchSize());
   }
 
   @Override
@@ -538,8 +569,12 @@ public class DatabaseDestination implements DestinationAdapter {
     } catch (SQLException e) {
       log.warn("Failed to close Connection", e);
     }
-    if (dataSource != null) {
-      dataSource.close();
+    if (dataSource instanceof AutoCloseable closeable) {
+      try {
+        closeable.close();
+      } catch (Exception e) {
+        log.warn("Failed to close DataSource", e);
+      }
     }
   }
 }

@@ -17,6 +17,10 @@
 package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.datagenerator.destinations.DestinationException;
 import java.sql.Connection;
@@ -27,6 +31,7 @@ import java.sql.Statement;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -373,6 +378,55 @@ class DatabaseDestinationTest {
     try (Statement st = h2Connection.createStatement()) {
       st.execute("DROP TABLE IF EXISTS statuses");
     }
+  }
+
+  @Test
+  void shouldRetryConnectionOnTransientOpenFailure() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    when(mockDs.getConnection())
+        .thenThrow(new SQLException("Connection refused"))
+        .thenReturn(mockConn);
+
+    DatabaseDestinationConfig config =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl("jdbc:irrelevant")
+            .username("u")
+            .password("p")
+            .tableName("test")
+            .transactionStrategy("auto_commit")
+            .maxRetries(3)
+            .retryDelayMs(0)
+            .build();
+
+    DatabaseDestination dest = new DatabaseDestination(config, mockDs);
+    dest.open(); // should succeed after one retry
+
+    verify(mockDs, times(2)).getConnection();
+  }
+
+  @Test
+  void shouldFailOpenAfterExhaustingConnectionRetries() throws Exception {
+    DataSource mockDs = mock(DataSource.class);
+    when(mockDs.getConnection()).thenThrow(new SQLException("always down"));
+
+    DatabaseDestinationConfig config =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl("jdbc:irrelevant")
+            .username("u")
+            .password("p")
+            .tableName("test")
+            .maxRetries(2)
+            .retryDelayMs(0)
+            .build();
+
+    DatabaseDestination dest = new DatabaseDestination(config, mockDs);
+
+    assertThatThrownBy(dest::open)
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("failed after 2 attempt");
+
+    verify(mockDs, times(2)).getConnection();
   }
 
   // --- Helpers ---

@@ -78,4 +78,14 @@ public class KafkaDestinationConfig {
 
   /** Password for SSL keystore. Optional. */
   String sslKeystorePassword;
+
+  // Retry policy (sync mode only)
+  /**
+   * Maximum send attempts for synchronous writes (sync=true). Default: 3. Set to 1 to disable
+   * retries.
+   */
+  @Builder.Default int maxRetries = 3;
+
+  /** Initial delay in milliseconds between retry attempts. Doubles on each retry. Default: 1000. */
+  @Builder.Default long retryDelayMs = 1000;
 }

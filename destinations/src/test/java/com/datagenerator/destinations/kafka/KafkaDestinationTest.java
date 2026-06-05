@@ -18,10 +18,19 @@ package com.datagenerator.destinations.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.formats.json.JsonSerializer;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
 
 class KafkaDestinationTest {
@@ -145,6 +154,61 @@ class KafkaDestinationTest {
     try (KafkaDestination destination = new KafkaDestination(config, new JsonSerializer())) {
       assertThat(destination).isNotNull();
     }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void shouldRetrySyncSendOnTransientFailure() throws Exception {
+    Future<RecordMetadata> failedFuture = mock(Future.class);
+    when(failedFuture.get()).thenThrow(new ExecutionException(new RuntimeException("transient")));
+
+    Future<RecordMetadata> successFuture = mock(Future.class);
+    when(successFuture.get()).thenReturn(null);
+
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+    when(mockProducer.send(any())).thenReturn(failedFuture, successFuture);
+
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap("localhost:9092")
+            .topic("test-topic")
+            .sync(true)
+            .maxRetries(3)
+            .retryDelayMs(0)
+            .build();
+
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+    dest.write(Map.of("key", "value")); // should succeed after retry
+
+    verify(mockProducer, times(2)).send(any());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void shouldFailAfterExhaustingRetriesForSyncSend() throws Exception {
+    Future<RecordMetadata> failedFuture = mock(Future.class);
+    when(failedFuture.get())
+        .thenThrow(new ExecutionException(new RuntimeException("persistent failure")));
+
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+    when(mockProducer.send(any())).thenReturn(failedFuture);
+
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap("localhost:9092")
+            .topic("test-topic")
+            .sync(true)
+            .maxRetries(2)
+            .retryDelayMs(0)
+            .build();
+
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+
+    assertThatThrownBy(() -> dest.write(Map.of("key", "value")))
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("failed after 2 attempt");
+
+    verify(mockProducer, times(2)).send(any());
   }
 
   // Note: Integration tests with actual Kafka broker using Testcontainers

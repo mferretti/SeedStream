@@ -600,6 +600,13 @@ public class ExecuteCommand implements Callable<Integer> {
       configBuilder.acks(conf.get("acks").asText());
     }
 
+    if (conf.has("max_retries")) {
+      configBuilder.maxRetries(conf.get("max_retries").asInt());
+    }
+    if (conf.has("retry_delay_ms")) {
+      configBuilder.retryDelayMs(conf.get("retry_delay_ms").asLong());
+    }
+
     // SASL/SSL configuration
     if (conf.has("security_protocol")) {
       configBuilder.securityProtocol(conf.get("security_protocol").asText());
@@ -654,6 +661,12 @@ public class ExecuteCommand implements Callable<Integer> {
     }
     if (conf.has("transaction_strategy")) {
       builder.transactionStrategy(conf.get("transaction_strategy").asText());
+    }
+    if (conf.has("max_retries")) {
+      builder.maxRetries(conf.get("max_retries").asInt());
+    }
+    if (conf.has("retry_delay_ms")) {
+      builder.retryDelayMs(conf.get("retry_delay_ms").asLong());
     }
 
     DatabaseDestinationConfig dbConfig = builder.build();

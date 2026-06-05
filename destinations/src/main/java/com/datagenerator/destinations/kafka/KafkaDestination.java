@@ -19,14 +19,15 @@ package com.datagenerator.destinations.kafka;
 import com.datagenerator.core.util.LogUtils;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
+import com.datagenerator.destinations.retry.RetryPolicy;
 import com.datagenerator.formats.FormatSerializer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -72,8 +73,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 public class KafkaDestination implements DestinationAdapter {
   private final KafkaDestinationConfig config;
   private final FormatSerializer serializer;
+  private final RetryPolicy retryPolicy;
 
-  private KafkaProducer<String, byte[]> producer;
+  private Producer<String, byte[]> producer;
   private boolean isOpen = false;
   private long recordCount = 0;
 
@@ -98,6 +100,22 @@ public class KafkaDestination implements DestinationAdapter {
 
     this.config = config;
     this.serializer = serializer;
+    this.retryPolicy = RetryPolicy.of(config.getMaxRetries(), config.getRetryDelayMs());
+  }
+
+  /** Package-private: injects a pre-built producer for unit testing. */
+  @SuppressFBWarnings(
+      value = "CT_CONSTRUCTOR_THROW",
+      justification =
+          "Fail-fast config validation is intentional; "
+              + "KafkaDestination is not Serializable and not subject to finalizer attacks")
+  KafkaDestination(
+      KafkaDestinationConfig config,
+      FormatSerializer serializer,
+      Producer<String, byte[]> producer) {
+    this(config, serializer);
+    this.producer = producer;
+    this.isOpen = true;
   }
 
   @Override
@@ -180,8 +198,8 @@ public class KafkaDestination implements DestinationAdapter {
           new ProducerRecord<>(config.getTopic(), null, recordBytes);
 
       if (config.isSync()) {
-        // Synchronous send - wait for acknowledgment
-        producer.send(producerRecord).get();
+        retryPolicy.execute(
+            "Kafka sync send to " + config.getTopic(), () -> producer.send(producerRecord).get());
       } else {
         // Asynchronous send - fire and forget with callback
         producer.send(
@@ -208,11 +226,8 @@ public class KafkaDestination implements DestinationAdapter {
         log.info("Sent {} records to Kafka topic: {}", recordCount, config.getTopic());
       }
 
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new DestinationException("Interrupted while sending record to Kafka", e);
-    } catch (ExecutionException e) {
-      throw new DestinationException("Failed to send record to Kafka", e.getCause());
+    } catch (DestinationException e) {
+      throw e;
     } catch (Exception e) {
       throw new DestinationException("Error writing to Kafka", e);
     }

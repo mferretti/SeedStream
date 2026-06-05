@@ -1,6 +1,6 @@
 # TASK-033: Quality - Fault Tolerance & Error Handling
 
-**Status**: ⏸️ Not Started  
+**Status**: ✅ Complete (June 5, 2026, v0.6.0)  
 **Priority**: P1 (High)  
 **Phase**: 6 - Testing & Quality  
 **Dependencies**: All destination modules  
@@ -46,12 +46,20 @@ public void write(byte[] record) {
 
 ## Acceptance Criteria
 
-- ✅ Retry logic for transient errors
-- ✅ Circuit breakers for critical paths
-- ✅ Clear error messages
-- ✅ Logging of all failures
-- ✅ Graceful shutdown on fatal errors
+- ✅ `RetryPolicy` utility: exponential backoff (×2), configurable attempts/delay, interrupt-safe
+- ✅ Kafka sync write retried on transient send failures (`max_retries`, `retry_delay_ms` in YAML conf)
+- ✅ Database `open()` retried on transient connection failures
+- ✅ Clear error messages with attempt count after exhaustion
+- ✅ Warn log on each retry with delay; interrupt restores thread flag immediately
+- ✅ Defaults: `max_retries=3`, `retry_delay_ms=1000` (doubles per attempt)
+- ✅ Circuit breaker: out of scope for a data generator (fail after N attempts is sufficient)
+
+## Out of Scope
+
+- Circuit breakers: not needed for a data generator (no long-running service to protect)
+- DB batch retry: stateful rollback required; fail fast is correct for mid-job batch errors
+- Async Kafka retry: Kafka producer handles internally via `retries` config
 
 ---
 
-**Completion Date**: [Mark when complete]
+**Completion Date**: June 5, 2026

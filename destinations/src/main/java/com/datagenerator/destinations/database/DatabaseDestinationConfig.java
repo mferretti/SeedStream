@@ -84,4 +84,13 @@ public class DatabaseDestinationConfig {
    * Default: {@code per_batch}.
    */
   @Builder.Default String transactionStrategy = "per_batch";
+
+  /** Maximum connection attempts during {@code open()}. Default: 3. Set to 1 to disable retries. */
+  @Builder.Default int maxRetries = 3;
+
+  /**
+   * Initial delay in milliseconds between connection retry attempts. Doubles on each retry.
+   * Default: 1000.
+   */
+  @Builder.Default long retryDelayMs = 1000;
 }

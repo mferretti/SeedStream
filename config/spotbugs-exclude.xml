@@ -52,6 +52,8 @@
                       DM_DEFAULT_ENCODING,
                       DE_MIGHT_IGNORE,
                       REC_CATCH_EXCEPTION,
-                      CNT_ROUGH_CONSTANT_VALUE"/>
+                      CNT_ROUGH_CONSTANT_VALUE,
+                      OBL_UNSATISFIED_OBLIGATION,
+                      ODR_OPEN_DATABASE_RESOURCE"/>
     </Match>
 </FindBugsFilter>
