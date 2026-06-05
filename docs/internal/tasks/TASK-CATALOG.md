@@ -6,12 +6,12 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 56
+- **Total Tasks**: 59
 - **Completed**: 48 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
 - **Not Started**: 1 (TASK-034)
-- **Deferred**: 4 (TASK-039; TASK-051, TASK-052, TASK-054)
+- **Deferred**: 7 (TASK-039; TASK-051, TASK-052, TASK-054, TASK-055, TASK-056, TASK-057)
 - **Overall Progress**: 98% of active backlog (48/49 non-deferred tasks)
 
 ---
@@ -387,8 +387,8 @@ For an AI agent or developer working sequentially:
 | Phase 8 (Database Stage 2) | 3 | 24-30h | ✅ 3/3 (TASK-043, TASK-045, TASK-046) |
 | Phase 9 (Distribution) | 4 | 22-30h | ✅ 4/4 |
 | Phase 10 (Biometric) | 6 | 22-30h | ✅ 4/6 (TASK-051, TASK-052 deferred) |
-| Security/Quality (TASK-033–036) | 4 | 10-15h | ✅ 3/4 (TASK-034 not started) |
-| **TOTAL** | **56** | **230-310h** | **48/56 (86% total; 98% of active)** |
+| Security/Quality (TASK-033–036, 055–057) | 7 | 20-28h | ✅ 3/7 (TASK-034 not started; 055-057 deferred) |
+| **TOTAL** | **59** | **240-330h** | **48/59 (81% total; 98% of active)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -575,9 +575,12 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 | Task | Title | Effort | Complexity | Status |
 |------|-------|--------|------------|--------|
 | TASK-033 | Fault Tolerance & Error Handling | 3-5h | Medium | ✅ Complete (June 5, 2026) |
-| TASK-034 | Secret Management | 3-4h | Medium | ⏸️ Not Started |
+| TASK-034 | Secret Management — Interface + Vault | 4-6h | Medium | ⏸️ Not Started |
 | TASK-035 | Dependency Vulnerability Scanning | 2-3h | Low | ✅ Complete (March 2026) |
 | TASK-036 | File Permission Checks | 2-3h | Low | ✅ Complete (v0.4.0) |
+| TASK-055 | AWS Secrets Manager Backend | 3-4h | Low | ⏸️ Deferred (needs TASK-034) |
+| TASK-056 | Azure Key Vault Backend | 3-4h | Low | ⏸️ Deferred (needs TASK-034) |
+| TASK-057 | Encrypted Config File Backend | 4-5h | Medium | ⏸️ Deferred (needs TASK-034) |
 
 ---
 
@@ -598,7 +601,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 ## Completion Progress
 
-**Overall**: 48/56 tasks tracked (86%); 48/49 active (98% excl. deferred)
+**Overall**: 48/59 tasks tracked (81%); 48/49 active (98% excl. deferred)
 **Current Sprint**: v0.6.0 shipped — Avro serializer + retry/fault tolerance complete
-**Next Priority**: TASK-034 (secret management, P2); TASK-051 (biometric docs, P3)
-**Estimated Remaining Effort**: TASK-034 (3-4h); TASK-051 (2-3h); TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional); TASK-054 (8-12h, deferred)
+**Next Priority**: TASK-034 (secret management: interface + Vault, P2); TASK-051 (biometric docs, P3)
+**Estimated Remaining Effort**: TASK-034 (4-6h); TASK-051 (2-3h); TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional); TASK-054/055/056/057 (deferred)

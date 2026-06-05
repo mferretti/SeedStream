@@ -17,7 +17,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 25–33K rec/sec for realistic Datafaker data
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
 - 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
-- 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), CBEFF (biometric envelope)
+- 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF container), CBEFF (biometric envelope)
 - 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
@@ -43,8 +43,8 @@ Download the release JAR and run immediately. You still need the config files, s
 
 ```bash
 git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
-wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.5.0.jar
-java -jar seedstream-0.5.0.jar execute --job config/jobs/file_address.yaml --count 100
+wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.6.0.jar
+java -jar seedstream-0.6.0.jar execute --job config/jobs/file_address.yaml --count 100
 ```
 
 ### Option 2 — Distribution zip

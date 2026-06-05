@@ -34,7 +34,10 @@
 **Current Status:** v0.6.0 production-ready. All core generation features complete: file/Kafka/PostgreSQL destinations; JSON/CSV/Protobuf/Avro/CBEFF formats; biometric structures; FK references (`ref[]`); plugin registry; extras classpath loader; retry/fault tolerance. 48/56 tracked tasks complete.
 
 **Remaining open work:**
-- TASK-034: Secret management (P2, not started)
+- TASK-034: Secret management — interface + Vault backend (P2, not started)
+- TASK-055: AWS Secrets Manager backend (P3, deferred — needs TASK-034)
+- TASK-056: Azure Key Vault backend (P3, deferred — needs TASK-034)
+- TASK-057: Encrypted config file backend (P3, deferred — needs TASK-034)
 - TASK-051: Biometric ISO field mapping docs (P3, deferred)
 - TASK-039: Jackson streaming API optimization (low priority, deferred)
 - TASK-052: Binary FMR-like serializer (optional, needs ISO PDF)
@@ -514,6 +517,12 @@
   - Task: TASK-045-database-jmh-benchmarks.md
 
 ## Phase 9: Distribution, Security & Biometric (v0.4.0)
+
+- [ ] **Secret management** (TASK-034) — **P2, not started**
+  - `SecretResolver` interface + `EnvSecretResolver` (backward-compatible) + `VaultSecretResolver` (KV v2 over HTTPS)
+  - `${SECRET:path}` syntax for resolver-backed values; `${ENV_VAR}` unchanged
+  - Optional `secrets:` block in job YAML; Vault token from `VAULT_TOKEN` env var only
+  - Deferred backends: AWS (TASK-055), Azure (TASK-056), Encrypted file (TASK-057)
 
 - [x] **Extras directory** ✅ **COMPLETE (v0.4.0)** — JDBC drivers + custom Datafaker providers loaded from `extras/` at startup; contents auto-added to classpath
 - [x] **File permission validation** ✅ **COMPLETE (v0.4.0)** — Startup check: world-writable config files → fail fast (`FilePermissionValidator`)
