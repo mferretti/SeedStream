@@ -48,6 +48,9 @@ import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.JobConfig;
 import com.datagenerator.schema.parser.DataStructureParser;
 import com.datagenerator.schema.parser.JobConfigParser;
+import com.datagenerator.schema.secret.ConfigSubstitutor;
+import com.datagenerator.schema.secret.SecretResolver;
+import com.datagenerator.schema.secret.SecretResolverFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -550,13 +553,14 @@ public class ExecuteCommand implements Callable<Integer> {
 
   private DestinationAdapter createDestination(
       JobConfig jobConfig, FormatSerializer serializer, DataStructure dataStructure) {
+    SecretResolver secretResolver = SecretResolverFactory.create(jobConfig.getSecrets());
     String type = jobConfig.getType();
     JsonNode conf = jobConfig.getConf();
 
     return switch (type.toLowerCase(Locale.ROOT)) {
       case "file" -> createFileDestination(conf, serializer);
-      case "kafka" -> createKafkaDestination(conf, serializer);
-      case "database" -> createDatabaseDestination(jobConfig, dataStructure);
+      case "kafka" -> createKafkaDestination(conf, serializer, secretResolver);
+      case "database" -> createDatabaseDestination(jobConfig, dataStructure, secretResolver);
       default -> throw new IllegalArgumentException("Unsupported destination type: " + type);
     };
   }
@@ -576,7 +580,8 @@ public class ExecuteCommand implements Callable<Integer> {
     return new FileDestination(config, serializer);
   }
 
-  private KafkaDestination createKafkaDestination(JsonNode conf, FormatSerializer serializer) {
+  private KafkaDestination createKafkaDestination(
+      JsonNode conf, FormatSerializer serializer, SecretResolver secretResolver) {
     String bootstrap = conf.get("bootstrap").asText();
     String topic = conf.get("topic").asText();
 
@@ -607,7 +612,7 @@ public class ExecuteCommand implements Callable<Integer> {
       configBuilder.retryDelayMs(conf.get("retry_delay_ms").asLong());
     }
 
-    // SASL/SSL configuration
+    // SASL/SSL configuration — credential fields support ${VAR} and ${SECRET:path} substitution
     if (conf.has("security_protocol")) {
       configBuilder.securityProtocol(conf.get("security_protocol").asText());
     }
@@ -615,36 +620,42 @@ public class ExecuteCommand implements Callable<Integer> {
       configBuilder.saslMechanism(conf.get("sasl_mechanism").asText());
     }
     if (conf.has("sasl_jaas_config")) {
-      configBuilder.saslJaasConfig(conf.get("sasl_jaas_config").asText());
+      configBuilder.saslJaasConfig(
+          ConfigSubstitutor.substitute(conf.get("sasl_jaas_config").asText(), secretResolver));
     }
     if (conf.has("ssl_truststore_location")) {
       configBuilder.sslTruststoreLocation(conf.get("ssl_truststore_location").asText());
     }
     if (conf.has("ssl_truststore_password")) {
-      configBuilder.sslTruststorePassword(conf.get("ssl_truststore_password").asText());
+      configBuilder.sslTruststorePassword(
+          ConfigSubstitutor.substitute(
+              conf.get("ssl_truststore_password").asText(), secretResolver));
     }
     if (conf.has("ssl_keystore_location")) {
       configBuilder.sslKeystoreLocation(conf.get("ssl_keystore_location").asText());
     }
     if (conf.has("ssl_keystore_password")) {
-      configBuilder.sslKeystorePassword(conf.get("ssl_keystore_password").asText());
+      configBuilder.sslKeystorePassword(
+          ConfigSubstitutor.substitute(conf.get("ssl_keystore_password").asText(), secretResolver));
     }
 
     return new KafkaDestination(configBuilder.build(), serializer);
   }
 
   private DatabaseDestination createDatabaseDestination(
-      JobConfig jobConfig, DataStructure dataStructure) {
+      JobConfig jobConfig, DataStructure dataStructure, SecretResolver secretResolver) {
     JsonNode conf = jobConfig.getConf();
 
-    String jdbcUrl = resolveEnvVar(conf.get("jdbc_url").asText());
-    String username = resolveEnvVar(conf.get("username").asText());
-    String password = resolveEnvVar(conf.get("password").asText());
+    String jdbcUrl = ConfigSubstitutor.substitute(conf.get("jdbc_url").asText(), secretResolver);
+    String username = ConfigSubstitutor.substitute(conf.get("username").asText(), secretResolver);
+    String password = ConfigSubstitutor.substitute(conf.get("password").asText(), secretResolver);
 
     // Table name: explicit override > structure name (strip .yaml extension if present)
     String structureName = jobConfig.getSource().replaceAll("\\.yaml$", "");
     String tableName =
-        conf.has("table") ? resolveEnvVar(conf.get("table").asText()) : structureName;
+        conf.has("table")
+            ? ConfigSubstitutor.substitute(conf.get("table").asText(), secretResolver)
+            : structureName;
 
     DatabaseDestinationConfig.DatabaseDestinationConfigBuilder builder =
         DatabaseDestinationConfig.builder()
@@ -683,31 +694,6 @@ public class ExecuteCommand implements Callable<Integer> {
             .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype()));
 
     return new DatabaseDestination(dbConfig, rawFieldTypes);
-  }
-
-  /**
-   * Resolve a config string value: if it matches {@code ${VAR_NAME}}, the value is read from the
-   * environment variable {@code VAR_NAME}. Throws if the variable is not set.
-   *
-   * @param value raw config string (may or may not be an env var reference)
-   * @return resolved string value
-   * @throws IllegalArgumentException if an env var reference cannot be resolved
-   */
-  private String resolveEnvVar(String value) {
-    if (value != null && value.startsWith("${") && value.endsWith("}")) {
-      String varName = value.substring(2, value.length() - 1);
-      String envValue = System.getenv(varName);
-      if (envValue == null) {
-        throw new IllegalArgumentException(
-            "Environment variable '"
-                + varName
-                + "' is not set (referenced as '"
-                + value
-                + "' in job config)");
-      }
-      return envValue;
-    }
-    return value;
   }
 
   private StructureRegistry createStructureRegistry(Path structuresPath) {

@@ -26,7 +26,8 @@ import lombok.Value;
 
 /**
  * Represents a complete job definition loaded from YAML. Contains source reference, destination
- * type, seed config, structures path, and destination-specific configuration.
+ * type, seed config, structures path, optional secrets config, and destination-specific
+ * configuration.
  */
 @Value
 public class JobConfig {
@@ -39,6 +40,8 @@ public class JobConfig {
   String
       structuresPath; // Optional path for loading nested structures (default: config/structures/)
 
+  @Valid SecretsConfig secrets; // Optional secrets resolver config (default: env var resolution)
+
   @NotNull JsonNode conf; // Destination-specific config (parsed based on type)
 
   @JsonCreator
@@ -47,11 +50,13 @@ public class JobConfig {
       @JsonProperty("type") String type,
       @JsonProperty("seed") SeedConfig seed,
       @JsonProperty("structures_path") String structuresPath,
+      @JsonProperty("secrets") SecretsConfig secrets,
       @JsonProperty("conf") JsonNode conf) {
     this.source = source;
     this.type = type;
     this.seed = seed;
     this.structuresPath = structuresPath;
+    this.secrets = secrets;
     this.conf = conf;
   }
 }

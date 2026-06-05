@@ -31,7 +31,7 @@
 - ✅ **Database Stage 2** (TASK-043): Nested auto-decomposition, FK injection via `{parent}_id` convention
 - ✅ **Database JMH Benchmarks** (TASK-045, TASK-046): 16-config matrix; suite filter (`-PjmhSuite=database|kafka|generators`)
 
-**Current Status:** v0.6.0 production-ready. All core generation features complete: file/Kafka/PostgreSQL destinations; JSON/CSV/Protobuf/Avro/CBEFF formats; biometric structures; FK references (`ref[]`); plugin registry; extras classpath loader; retry/fault tolerance. 48/56 tracked tasks complete.
+**Current Status:** v0.6.0 production-ready. All core generation features complete: file/Kafka/PostgreSQL destinations; JSON/CSV/Protobuf/Avro/CBEFF formats; biometric structures; FK references (`ref[]`); plugin registry; extras classpath loader; retry/fault tolerance; secret management (env + Vault). 49/59 tracked tasks complete.
 
 **Remaining open work:**
 - TASK-034: Secret management — interface + Vault backend (P2, not started)

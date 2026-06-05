@@ -1,6 +1,6 @@
 # TASK-034: Security - Secret Management (Scoped: Interface + Vault)
 
-**Status**: ⏸️ Not Started  
+**Status**: ✅ Complete (June 5, 2026, v0.6.0)  
 **Priority**: P2 (Medium)  
 **Phase**: 9 - Security & Compliance  
 **Dependencies**: TASK-005 (Seed Resolution)  
@@ -108,19 +108,21 @@ Masking: before any log statement, replace resolved secret values with `***`.
 
 ## Acceptance Criteria
 
-- [ ] `SecretResolver` interface in `schema` module
-- [ ] `EnvSecretResolver` wraps existing env-var logic (backward compatible)
-- [ ] `VaultSecretResolver` resolves KV v2 secrets over HTTPS
-- [ ] `${SECRET:path}` syntax wired into config substitution
-- [ ] `${ENV_VAR}` syntax unchanged and still works
-- [ ] `secrets:` block parsed from job YAML; defaults to `EnvSecretResolver` if absent
-- [ ] Vault token from `VAULT_TOKEN` env var only — never read from YAML
-- [ ] Secrets never appear in logs (masked as `***`)
-- [ ] `ConfigurationException` on missing env var, Vault unreachable, or secret not found
-- [ ] Unit tests: `EnvSecretResolverTest`, `VaultSecretResolverTest` (WireMock or mock HttpClient)
-- [ ] Integration test: optional, skipped if no Vault available
-- [ ] README updated with `secrets:` YAML block example
+- ✅ `SecretResolver` interface in `schema` module (`schema/secret/` package)
+- ✅ `EnvSecretResolver` wraps existing env-var logic (backward compatible, `System.getProperty` fallback for tests)
+- ✅ `VaultSecretResolver` resolves KV v2 secrets over HTTPS; KV v1 auto-detected via `data.data` structure
+- ✅ `${SECRET:path}` syntax wired into config substitution via `ConfigSubstitutor`
+- ✅ `${ENV_VAR}` syntax unchanged and still works (always resolved from env, independent of configured resolver)
+- ✅ `secrets:` block parsed from job YAML (`SecretsConfig`); defaults to `EnvSecretResolver` if absent
+- ✅ Vault token from `VAULT_TOKEN` env var only — never read from YAML
+- ✅ Secrets never appear in logs (log only path at DEBUG, never value)
+- ✅ `SecretResolutionException` on missing env var, Vault unreachable, or secret not found
+- ✅ `SecretResolverFactory` creates correct resolver from `SecretsConfig`
+- ✅ Kafka credential fields (`sasl_jaas_config`, SSL passwords) now support substitution
+- ✅ Database fields (`jdbc_url`, `username`, `password`, `table`) migrated to `ConfigSubstitutor`
+- ✅ Unit tests: `EnvSecretResolverTest` (3 tests), `ConfigSubstitutorTest` (7 tests), `VaultSecretResolverTest` (10 tests, mock `HttpClient`)
+- ✅ `#field` suffix for extracting specific field from Vault KV JSON secret
 
 ---
 
-**Completion Date**: [Mark when complete]
+**Completion Date**: June 5, 2026

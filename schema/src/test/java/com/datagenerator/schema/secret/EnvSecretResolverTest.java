@@ -1,0 +1,49 @@
+/*
+ * Copyright 2026 Marco Ferretti
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.datagenerator.schema.secret;
+
+import static org.assertj.core.api.Assertions.*;
+
+import com.datagenerator.schema.exception.SecretResolutionException;
+import org.junit.jupiter.api.Test;
+
+class EnvSecretResolverTest {
+
+  @Test
+  void shouldResolveSystemProperty() {
+    System.setProperty("SEEDSTREAM_TEST_SECRET_ABC", "resolved-value");
+    try {
+      assertThat(EnvSecretResolver.INSTANCE.resolve("SEEDSTREAM_TEST_SECRET_ABC"))
+          .isEqualTo("resolved-value");
+    } finally {
+      System.clearProperty("SEEDSTREAM_TEST_SECRET_ABC");
+    }
+  }
+
+  @Test
+  void shouldThrowForUnsetVariable() {
+    assertThatThrownBy(
+            () -> EnvSecretResolver.INSTANCE.resolve("SEEDSTREAM_DEFINITELY_NOT_SET_XYZ789"))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("SEEDSTREAM_DEFINITELY_NOT_SET_XYZ789");
+  }
+
+  @Test
+  void shouldReturnSingletonInstance() {
+    assertThat(EnvSecretResolver.INSTANCE).isSameAs(EnvSecretResolver.INSTANCE);
+  }
+}
