@@ -7,18 +7,22 @@ This document provides a quick overview of all tasks. For detailed implementatio
 ## Task Summary Statistics
 
 - **Total Tasks**: 59
-- **Completed**: 49 ✅
+- **Completed**: 50 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
 - **Not Started**: 0
-- **Deferred**: 7 (TASK-039; TASK-051, TASK-052, TASK-054, TASK-055, TASK-056, TASK-057)
-- **Overall Progress**: 100% of active backlog (49/49 non-deferred tasks)
+- **Deferred**: 6 (TASK-039; TASK-052, TASK-054, TASK-055, TASK-056, TASK-057)
+- **Overall Progress**: 100% of active backlog (50/50 non-deferred tasks)
 
 ---
 
 ## Recent Completions (June 2026)
 
 **Completed June 5, 2026 (v0.6.0):**
+- ✅ TASK-051: Biometric ISO Field Mapping Documentation — `docs/BIOMETRIC-FIELD-MAPPING.md`
+  - Full field tables for ISO/IEC 19794-2 (minutiae), 19794-4 (fingerprint image), 19794-5 (face)
+  - Binary encoding notes, finger/impression code tables, CBEFF envelope mapping
+  - Known limitations and references sections
 - ✅ TASK-034: Secret Management (Interface + Vault) — `SecretResolver` interface, `EnvSecretResolver`, `VaultSecretResolver`
   - `ConfigSubstitutor`: `${SECRET:path}` → configured resolver; `${VAR}` → always env (backward compat)
   - `SecretResolverFactory` wired into `ExecuteCommand`; Kafka + DB credential fields support substitution
@@ -561,7 +565,7 @@ TASK-001 (Project Setup)
 | TASK-048 | CBEFF JSON Wrapper Serializer | 3–4h | Low | TASK-047 | ✅ Complete (v0.4.0) |
 | TASK-049 | BiometricValidator + `validate` CLI Command | 5–7h | Medium | TASK-047 | ✅ Complete (v0.4.0) |
 | TASK-050 | Example Biometric Datasets | 2–3h | Low | TASK-047, TASK-048 | ✅ Complete (v0.4.0) |
-| TASK-051 | Biometric ISO Field Mapping Documentation | 2–3h | Low | TASK-047 | ⏸️ Deferred |
+| TASK-051 | Biometric ISO Field Mapping Documentation | 2–3h | Low | TASK-047 | ✅ Complete (June 5, 2026) |
 | TASK-052 | Binary FMR-like Serializer (Phase 2/optional) | 8–12h | High | TASK-047, TASK-048 | ⏸️ Deferred |
 
 **Completed (v0.4.0):** YAML structures (face/fingerprint), CBEFF serializer, BiometricValidator + `validate` CLI, example datasets in `cli/output/`.  
@@ -605,7 +609,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 ## Completion Progress
 
-**Overall**: 49/59 tasks tracked (83%); 49/49 active (100% excl. deferred)
-**Current Sprint**: v0.6.0 shipped — Avro serializer + retry/fault tolerance + secret management complete
-**Next Priority**: TASK-051 (biometric docs, P3); TASK-039 (Jackson streaming, low priority)
-**Estimated Remaining Effort**: TASK-051 (2-3h); TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional); TASK-054/055/056/057 (deferred)
+**Overall**: 50/59 tasks tracked (85%); 50/50 active (100% excl. deferred)
+**Current Sprint**: v0.6.0 shipped — Avro + retry + secret management + biometric ISO docs complete
+**Next Priority**: TASK-039 (Jackson streaming, low priority); deferred tasks as needed
+**Estimated Remaining Effort**: TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional); TASK-054/055/056/057 (deferred)

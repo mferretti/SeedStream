@@ -1,6 +1,6 @@
 # TASK-051: Biometric ISO Field Mapping Documentation
 
-**Status:** Deferred ⏸️ (Future Enhancement)
+**Status:** ✅ Complete (June 5, 2026, v0.6.0)
 **Priority:** P3
 **Phase:** Phase 10 (Biometric Data Generation)
 **Effort:** 2–3h
@@ -37,10 +37,10 @@ Sections:
 
 ## Acceptance Criteria
 
-- [ ] `docs/BIOMETRIC-FIELD-MAPPING.md` created and renders correctly on GitHub
-- [ ] Every field in every YAML structure has a row in the mapping table
-- [ ] Known limitations section explicitly states what is out of scope
-- [ ] References section includes all links from BIOMETRIC-DISCUSSION.md section C/E
+- [x] `docs/BIOMETRIC-FIELD-MAPPING.md` created and renders correctly on GitHub
+- [x] Every field in every YAML structure has a row in the mapping table
+- [x] Known limitations section explicitly states what is out of scope
+- [x] References section includes all links from BIOMETRIC-DISCUSSION.md section C/E
 
 ---
 
