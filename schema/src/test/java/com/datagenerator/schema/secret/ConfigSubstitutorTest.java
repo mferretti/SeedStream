@@ -79,6 +79,20 @@ class ConfigSubstitutorTest {
   }
 
   @Test
+  void shouldResolveEncryptedSecretViaEncryptedFileResolver() {
+    byte[] key = new byte[32];
+    EncryptedFileResolver encryptedResolver = new EncryptedFileResolver(key);
+    String plaintext = "db-password";
+    String ciphertext = AesGcmCrypto.encrypt(key, plaintext);
+    // ConfigSubstitutor strips "${SECRET:" and "}", passing "enc:AES256GCM:BASE64" to resolve()
+    String encPath =
+        EncryptedFileResolver.ENC_PREFIX + ciphertext.substring(AesGcmCrypto.PREFIX.length());
+    String yamlValue = "${SECRET:" + encPath + "}";
+
+    assertThat(ConfigSubstitutor.substitute(yamlValue, encryptedResolver)).isEqualTo(plaintext);
+  }
+
+  @Test
   void shouldUseEnvResolverNotSecretResolverForDollarBracePattern() {
     // ${VAR} always goes to env, regardless of the configured secretResolver
     System.setProperty("SEEDSTREAM_TEST_ENV_ONLY", "from-env");

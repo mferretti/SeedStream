@@ -40,13 +40,24 @@ import lombok.Value;
  *
  * <p><b>Vault token:</b> Always read from the {@code VAULT_TOKEN} environment variable — never
  * stored in the job YAML.
+ *
+ * <p><b>Example — Encrypted file (AES-256-GCM):</b>
+ *
+ * <pre>
+ * secrets:
+ *   resolver: encrypted_file
+ *   key_env: SEEDSTREAM_ENCRYPTION_KEY   # optional; this is the default
+ *
+ * conf:
+ *   password: "${SECRET:enc:AES256GCM:BASE64CIPHERTEXT...}"
+ * </pre>
  */
 @Value
 public class SecretsConfig {
 
   /**
    * Resolver backend. Supported values: {@code env} (default), {@code vault}, {@code aws}, {@code
-   * azure_keyvault}.
+   * azure_keyvault}, {@code encrypted_file}.
    */
   String resolver;
 
@@ -71,17 +82,33 @@ public class SecretsConfig {
    */
   String vaultUri;
 
+  /**
+   * Environment variable name holding the 64-char hex AES-256 key for the {@code encrypted_file}
+   * resolver. Defaults to {@code SEEDSTREAM_ENCRYPTION_KEY} when absent.
+   */
+  String keyEnv;
+
+  /**
+   * Path to a file containing the 64-char hex AES-256 key for the {@code encrypted_file} resolver.
+   * Takes precedence over {@code key_env} when both are set.
+   */
+  String keyFile;
+
   @JsonCreator
   public SecretsConfig(
       @JsonProperty("resolver") String resolver,
       @JsonProperty("vault_addr") String vaultAddr,
       @JsonProperty("vault_namespace") String vaultNamespace,
       @JsonProperty("aws_region") String awsRegion,
-      @JsonProperty("vault_uri") String vaultUri) {
+      @JsonProperty("vault_uri") String vaultUri,
+      @JsonProperty("key_env") String keyEnv,
+      @JsonProperty("key_file") String keyFile) {
     this.resolver = resolver;
     this.vaultAddr = vaultAddr;
     this.vaultNamespace = vaultNamespace;
     this.awsRegion = awsRegion;
     this.vaultUri = vaultUri;
+    this.keyEnv = keyEnv;
+    this.keyFile = keyFile;
   }
 }

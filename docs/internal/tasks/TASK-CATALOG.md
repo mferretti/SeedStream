@@ -593,7 +593,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 | TASK-036 | File Permission Checks | 2-3h | Low | ✅ Complete (v0.4.0) |
 | TASK-055 | AWS Secrets Manager Backend | 3-4h | Low | ✅ Complete (June 5, 2026) |
 | TASK-056 | Azure Key Vault Backend | 3-4h | Low | ✅ Complete (June 5, 2026) |
-| TASK-057 | Encrypted Config File Backend | 4-5h | Medium | ⏸️ Deferred (needs TASK-034) |
+| TASK-057 | Encrypted Config File Backend | 4-5h | Medium | ✅ Complete (June 5, 2026) |
 
 ---
 

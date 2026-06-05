@@ -313,6 +313,56 @@ class JobConfigParserTest {
   }
 
   @Test
+  void shouldParseJobWithEncryptedFileSecretsConfig() throws Exception {
+    String yaml =
+        """
+            source: data.yaml
+            type: database
+            secrets:
+              resolver: encrypted_file
+              key_env: MY_ENC_KEY
+            conf:
+              jdbc_url: jdbc:postgresql://localhost/mydb
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    SecretsConfig secrets = config.getSecrets();
+    assertThat(secrets).isNotNull();
+    assertThat(secrets.getResolver()).isEqualTo("encrypted_file");
+    assertThat(secrets.getKeyEnv()).isEqualTo("MY_ENC_KEY");
+    assertThat(secrets.getKeyFile()).isNull();
+  }
+
+  @Test
+  void shouldParseJobWithEncryptedFileSecretsConfigKeyFile() throws Exception {
+    String yaml =
+        """
+            source: data.yaml
+            type: database
+            secrets:
+              resolver: encrypted_file
+              key_file: /etc/seedstream/key.hex
+            conf:
+              jdbc_url: jdbc:postgresql://localhost/mydb
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    SecretsConfig secrets = config.getSecrets();
+    assertThat(secrets).isNotNull();
+    assertThat(secrets.getResolver()).isEqualTo("encrypted_file");
+    assertThat(secrets.getKeyFile()).isEqualTo("/etc/seedstream/key.hex");
+    assertThat(secrets.getKeyEnv()).isNull();
+  }
+
+  @Test
   void shouldFailWhenFileDoesNotExist() {
     Path nonExistent = tempDir.resolve("missing.yaml");
 
