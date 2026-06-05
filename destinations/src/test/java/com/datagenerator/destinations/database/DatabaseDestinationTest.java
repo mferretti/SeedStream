@@ -44,9 +44,11 @@ import org.junit.jupiter.api.Test;
  */
 class DatabaseDestinationTest {
 
+  // H2 in-memory test database — empty password is the standard H2 default, not a real credential
+  @SuppressWarnings("SpellCheckingInspection")
   private static final String JDBC_URL = "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1";
   private static final String USERNAME = "sa";
-  private static final String PASSWORD = "";
+  private static final String PASSWORD = ""; // H2 default: no password required
 
   private Connection h2Connection;
 

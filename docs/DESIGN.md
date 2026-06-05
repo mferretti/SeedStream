@@ -422,7 +422,7 @@ engine.generate(1_000_000); // Generate 1M records
 - Nested objects (`object[structure_name]`)
 - Arrays with variable length (`array[inner_type, min..max]`)
 - Semantic/Datafaker types via `DatafakerRegistry` (48 built-in types)
-- Foreign key references (`ref[structure.field, min..max]` and `ref[structure.field, min..count]`) — see [Foreign Key Reference Generator](#foreign-key-reference-generator)
+- Foreign key references (`ref[structure.field, min..max]` and `ref[structure.field, min..count]`) — see [Foreign Key Reference Generator](#3-foreign-key-reference-generator)
 
 ### Implemented Type Syntax
 

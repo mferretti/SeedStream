@@ -1,3 +1,6 @@
+# End-to-End Test: Passport → Database
+# Credentials below are well-known local test values for the E2E PostgreSQL container.
+# Not real secrets — never used in production environments.
 source: passport.yaml
 type: database
 seed:
@@ -6,7 +9,7 @@ seed:
 conf:
   jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
   username: "testuser"
-  password: "testpass"
+  password: "testpass"  # local e2e test credential — not a real secret
   table: "passports"
   batch_size: 1000
   pool_size: 5

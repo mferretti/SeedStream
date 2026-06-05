@@ -11,21 +11,21 @@
 
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [Project Vision & Objectives](#project-vision--objectives)
-3. [Functional Requirements](#functional-requirements)
-4. [Non-Functional Requirements](#non-functional-requirements)
-5. [System Architecture](#system-architecture)
-6. [Data Model & Type System](#data-model--type-system)
-7. [Configuration Specification](#configuration-specification)
-8. [API & Interfaces](#api--interfaces)
-9. [Security & Compliance](#security--compliance)
-10. [Quality Standards](#quality-standards)
-11. [Development Standards](#development-standards)
-12. [Implementation Phases](#implementation-phases)
-13. [Success Criteria](#success-criteria)
-14. [Constraints & Assumptions](#constraints--assumptions)
-15. [Glossary](#glossary)
+1. [Executive Summary](#1-executive-summary)
+2. [Project Vision & Objectives](#2-project-vision--objectives)
+3. [Functional Requirements](#3-functional-requirements)
+4. [Non-Functional Requirements](#4-non-functional-requirements)
+5. [System Architecture](#5-system-architecture)
+6. [Data Model & Type System](#6-data-model--type-system)
+7. [Configuration Specification](#7-configuration-specification)
+8. [API & Interfaces](#8-api--interfaces)
+9. [Security & Compliance](#9-security--compliance)
+10. [Quality Standards](#10-quality-standards)
+11. [Development Standards](#11-development-standards)
+12. [Implementation Phases](#12-implementation-phases)
+13. [Success Criteria](#13-success-criteria)
+14. [Constraints & Assumptions](#14-constraints--assumptions)
+15. [Glossary](#15-glossary)
 
 ---
 

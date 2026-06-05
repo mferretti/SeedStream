@@ -102,10 +102,10 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
     HttpResponse<String> response;
     try {
       response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-    } catch (IOException | InterruptedException e) {
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SchemaRegistryException("Failed to connect to Schema Registry at " + baseUrl, e);
+    } catch (IOException e) {
       throw new SchemaRegistryException("Failed to connect to Schema Registry at " + baseUrl, e);
     }
 

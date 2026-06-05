@@ -63,6 +63,7 @@ public final class AesGcmCrypto {
   public static String encrypt(byte[] key, String plaintext) {
     validateKey(key);
     try {
+      // Fresh 12-byte IV generated via SecureRandom on every call — never reused.
       byte[] iv = new byte[IV_BYTES];
       SECURE_RANDOM.nextBytes(iv);
 

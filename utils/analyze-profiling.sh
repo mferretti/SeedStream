@@ -22,7 +22,7 @@ fi
 echo "GC Log Analysis:"
 echo "----------------"
 GC_COUNT=$(grep -c "GC(" "$GC_LOG" | head -1)
-echo "Total GC cycles: $(( $GC_COUNT / 2 ))"
+echo "Total GC cycles: $(( GC_COUNT / 2 ))"
 
 echo ""
 echo "Last 5 GC events:"

@@ -90,7 +90,7 @@ public class FakerCache {
     if (storedRandom == null) {
       THREAD_RANDOM.set(random);
       log.debug("Initialized FakerCache for thread: {}", Thread.currentThread().getName());
-    } else if (storedRandom != random) {
+    } else if (!storedRandom.equals(random)) {
       // This should NEVER happen with RandomProvider (thread-local Random)
       // But catch it to prevent subtle bugs if API is misused
       log.warn(

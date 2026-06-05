@@ -347,6 +347,8 @@ class DatabaseReferenceIT extends IntegrationTest {
     return new StructureRegistry(loader);
   }
 
+  // table and column are hardcoded test constants, never user input — not a real SQL injection risk
+  @SuppressWarnings("SqlSourceToSinkFlow")
   private int countRows(String table) throws SQLException {
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
@@ -355,6 +357,7 @@ class DatabaseReferenceIT extends IntegrationTest {
     }
   }
 
+  @SuppressWarnings("SqlSourceToSinkFlow")
   private long sumColumn(String table, String column) throws SQLException {
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT SUM(" + column + ") FROM " + table)) {

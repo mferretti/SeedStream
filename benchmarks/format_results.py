@@ -88,14 +88,14 @@ def main():
         max_primitive = max(p[1] for p in primitives)
         print(f"✓ Fastest primitive generator: {max_primitive:,.0f} ops/s")
         if max_primitive >= 10_000_000:
-            print(f"  ✓ PASSED NFR-1 requirement (10M ops/s)")
+            print("  ✓ PASSED NFR-1 requirement (10M ops/s)")
         else:
             print(f"  ⚠ BELOW NFR-1 target: {(max_primitive/10_000_000)*100:.1f}% of target")
     
     if datafaker:
         avg_datafaker = sum(d[1] for d in datafaker) / len(datafaker)
         print(f"\n✓ Average Datafaker throughput: {avg_datafaker:,.0f} ops/s")
-        print(f"  (Expected: Lower than primitives due to realistic data generation overhead)")
+        print("  (Expected: Lower than primitives due to realistic data generation overhead)")
     
     if serializers:
         json_serializers = [s for s in serializers if 'Json' in s[0]]
@@ -105,7 +105,7 @@ def main():
     
     if destinations:
         print(f"\n✓ File I/O benchmarks completed: {len(destinations)} tests")
-        print(f"  (Results show raw I/O vs serialization+I/O comparison)")
+        print("  (Results show raw I/O vs serialization+I/O comparison)")
     
     print("\n" + "="*100)
     print("NOTES")

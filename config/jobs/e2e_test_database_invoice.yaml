@@ -11,7 +11,7 @@ seed:
 conf:
   jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
   username: "testuser"
-  password: "testpass"
+  password: "testpass"  # local e2e test credential — not a real secret
   table: "invoices"
   batch_size: 1000
   pool_size: 5

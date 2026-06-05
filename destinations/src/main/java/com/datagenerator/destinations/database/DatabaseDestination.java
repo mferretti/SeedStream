@@ -470,6 +470,7 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
+  @SuppressWarnings("SqlSourceToSinkFlow") // table name from job config YAML, not user runtime input
   @SuppressFBWarnings(
       value = {
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
