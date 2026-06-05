@@ -188,7 +188,7 @@ class AvroSerializerTest {
   }
 
   @Test
-  void shouldSerializeMultipleRecordsWithSameSchema() {
+  void shouldRoundTripMultipleRecordsPreservingFieldValues() throws Exception {
     Map<String, Object> r1 = new LinkedHashMap<>();
     r1.put("name", "Alice");
     r1.put("age", 30);
@@ -197,11 +197,19 @@ class AvroSerializerTest {
     r2.put("name", "Bob");
     r2.put("age", 25);
 
-    String s1 = serializer.serialize(r1);
-    String s2 = serializer.serialize(r2);
+    Map<String, Object> r3 = new LinkedHashMap<>();
+    r3.put("name", "Carol");
+    r3.put("age", 42);
 
-    assertThat(s1).isNotEqualTo(s2);
-    assertThat(serializer.getSchema()).isNotNull();
+    List<GenericRecord> results = roundTripAll(List.of(r1, r2, r3));
+
+    assertThat(results).hasSize(3);
+    assertThat(results.get(0).get("name").toString()).isEqualTo("Alice");
+    assertThat(results.get(0).get("age")).isEqualTo(30);
+    assertThat(results.get(1).get("name").toString()).isEqualTo("Bob");
+    assertThat(results.get(1).get("age")).isEqualTo(25);
+    assertThat(results.get(2).get("name").toString()).isEqualTo("Carol");
+    assertThat(results.get(2).get("age")).isEqualTo(42);
   }
 
   @Test
@@ -250,5 +258,13 @@ class AvroSerializerTest {
     GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(serializer.getSchema());
     return reader.read(
         null, DecoderFactory.get().binaryDecoder(new ByteArrayInputStream(binary), null));
+  }
+
+  private List<GenericRecord> roundTripAll(List<Map<String, Object>> records) throws Exception {
+    List<GenericRecord> result = new java.util.ArrayList<>();
+    for (Map<String, Object> record : records) {
+      result.add(roundTrip(record));
+    }
+    return result;
   }
 }
