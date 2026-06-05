@@ -1,6 +1,6 @@
 # TASK-053: Formats Module — Avro Serializer (Phase 1, no Schema Registry)
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete (June 5, 2026, v0.6.0)
 **Priority:** P2
 **Phase:** Phase 11 (Avro Support)
 **Effort:** 4–6h
@@ -19,24 +19,18 @@ Base64-encoded binary output, no Schema Registry dependency. Plugs into the exis
 
 ## Acceptance Criteria
 
-- [ ] `AvroSerializer` implements `FormatSerializer`
-- [ ] `getFormatName()` returns `"avro"`
-- [ ] Schema inferred from first record; subsequent records use same schema (thread-safe)
-- [ ] Type mapping:
-  - `String` → Avro `string`
-  - `Integer` → Avro `int`
-  - `Long` → Avro `long`
-  - `Boolean` → Avro `boolean`
-  - `Double`, `Float`, `BigDecimal` → Avro `double`
-  - `LocalDate` → Avro `int` with `date` logical type (days since epoch)
-  - `Instant` → Avro `long` with `timestamp-millis` logical type
-  - `List` → Avro `array` of `string`
-  - `Map` (nested object) → Avro `string` (JSON-encoded, same as Protobuf)
-  - All fields nullable (`["null", <type>]` union, null default)
-- [ ] Output: Base64-encoded binary (one line per record, same convention as Protobuf)
-- [ ] `--format avro` wired into `ExecuteCommand`
-- [ ] ≥ 12 unit tests passing (round-trip deserialization, type coverage, null safety)
-- [ ] `./gradlew spotlessCheck` passes
+- [x] `AvroSerializer` implements `FormatSerializer`
+- [x] `getFormatName()` returns `"avro"`
+- [x] Schema inferred from first record; subsequent records use same schema (thread-safe)
+- [x] Type mapping: all types covered including logical types (date, timestamp-millis)
+- [x] All fields nullable (`["null", <type>]` union, null default)
+- [x] Field name sanitization: invalid chars replaced with `_`; digit-leading names prefixed `_`
+- [x] Kafka output: Base64-encoded binary per record
+- [x] File output: Avro Object Container Format via `DataFileWriter` (readable by `avro-tools`, Spark, Python avro)
+- [x] Optional deflate compression for file output (`compress: true` → `CodecFactory.deflateCodec(6)`)
+- [x] `--format avro` wired into `ExecuteCommand`
+- [x] 17 unit/integration tests passing
+- [x] `./gradlew build` passes (spotless + SpotBugs + tests)
 
 ---
 

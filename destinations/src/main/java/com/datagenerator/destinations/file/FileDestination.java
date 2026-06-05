@@ -19,8 +19,10 @@ package com.datagenerator.destinations.file;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.formats.FormatSerializer;
+import com.datagenerator.formats.avro.AvroSerializer;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,6 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.file.CodecFactory;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
 
 /**
  * Writes generated records to files using Java NIO for high performance.
@@ -77,7 +83,12 @@ public class FileDestination implements DestinationAdapter {
   private boolean isOpen = false;
   private boolean headerWritten = false;
 
-  // Batch writing optimization
+  // Avro container-format state (used only when serializer is AvroSerializer)
+  private final boolean isAvro;
+  private OutputStream avroRawOut;
+  private DataFileWriter<GenericRecord> avroFileWriter;
+
+  // Batch writing optimization (text formats only)
   private final List<String> batchBuffer;
   private final StringBuilder batchBuilder;
   private static final int ESTIMATED_RECORD_SIZE = 300; // Average JSON record size in bytes
@@ -91,6 +102,7 @@ public class FileDestination implements DestinationAdapter {
   public FileDestination(FileDestinationConfig config, FormatSerializer serializer) {
     this.config = config;
     this.serializer = serializer;
+    this.isAvro = serializer instanceof AvroSerializer;
     this.batchBuffer = new ArrayList<>(config.getBatchSize());
     this.batchBuilder = new StringBuilder(config.getBatchSize() * ESTIMATED_RECORD_SIZE);
   }
@@ -112,12 +124,6 @@ public class FileDestination implements DestinationAdapter {
         log.debug("Created parent directories: {}", parentDir);
       }
 
-      // Add .gz extension if compression enabled
-      if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
-        filePath = Path.of(filePath.toString() + ".gz");
-      }
-
-      // Open file for writing
       StandardOpenOption[] openOptions =
           config.isAppend()
               ? new StandardOpenOption[] {
@@ -129,21 +135,29 @@ public class FileDestination implements DestinationAdapter {
                 StandardOpenOption.WRITE
               };
 
-      if (config.isCompress()) {
-        // Gzip compressed output
-        writer =
-            new BufferedWriter(
-                new OutputStreamWriter(
-                    new GZIPOutputStream(Files.newOutputStream(filePath, openOptions)),
-                    StandardCharsets.UTF_8),
-                config.getBufferSize());
+      if (isAvro) {
+        // Avro Object Container Format — DataFileWriter handles its own buffering and compression.
+        // The DataFileWriter is initialized lazily on first write when the schema is known.
+        avroRawOut = Files.newOutputStream(filePath, openOptions);
       } else {
-        // Plain text output
-        writer =
-            new BufferedWriter(
-                new OutputStreamWriter(
-                    Files.newOutputStream(filePath, openOptions), StandardCharsets.UTF_8),
-                config.getBufferSize());
+        // Add .gz extension for text formats if compression enabled
+        if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
+          filePath = Path.of(filePath.toString() + ".gz");
+        }
+        if (config.isCompress()) {
+          writer =
+              new BufferedWriter(
+                  new OutputStreamWriter(
+                      new GZIPOutputStream(Files.newOutputStream(filePath, openOptions)),
+                      StandardCharsets.UTF_8),
+                  config.getBufferSize());
+        } else {
+          writer =
+              new BufferedWriter(
+                  new OutputStreamWriter(
+                      Files.newOutputStream(filePath, openOptions), StandardCharsets.UTF_8),
+                  config.getBufferSize());
+        }
       }
 
       isOpen = true;
@@ -164,6 +178,11 @@ public class FileDestination implements DestinationAdapter {
   public void write(Map<String, Object> record) {
     if (!isOpen) {
       throw new DestinationException("File destination not open. Call open() first.");
+    }
+
+    if (isAvro) {
+      writeAvro(record);
+      return;
     }
 
     try {
@@ -190,6 +209,24 @@ public class FileDestination implements DestinationAdapter {
 
     } catch (IOException e) {
       throw new DestinationException("Failed to write record to file", e);
+    }
+  }
+
+  private void writeAvro(Map<String, Object> record) {
+    try {
+      AvroSerializer avroSer = (AvroSerializer) serializer;
+      if (avroFileWriter == null) {
+        avroSer.ensureInitialized(record);
+        GenericDatumWriter<GenericRecord> dw = new GenericDatumWriter<>(avroSer.getSchema());
+        avroFileWriter = new DataFileWriter<>(dw);
+        if (config.isCompress()) {
+          avroFileWriter.setCodec(CodecFactory.deflateCodec(6));
+        }
+        avroFileWriter.create(avroSer.getSchema(), avroRawOut);
+      }
+      avroFileWriter.append(avroSer.buildGenericRecord(record));
+    } catch (IOException e) {
+      throw new DestinationException("Failed to write Avro record", e);
     }
   }
 
@@ -225,10 +262,14 @@ public class FileDestination implements DestinationAdapter {
     }
 
     try {
-      // Flush any remaining batch records first
-      flushBatch();
-      // Then flush the underlying writer
-      writer.flush();
+      if (isAvro) {
+        if (avroFileWriter != null) {
+          avroFileWriter.flush();
+        }
+      } else {
+        flushBatch();
+        writer.flush();
+      }
       log.debug("Flushed file destination: {}", config.getFilePath());
     } catch (IOException e) {
       throw new DestinationException("Failed to flush file", e);
@@ -243,8 +284,16 @@ public class FileDestination implements DestinationAdapter {
     }
 
     try {
-      flush();
-      writer.close();
+      if (isAvro) {
+        if (avroFileWriter != null) {
+          avroFileWriter.close(); // also closes avroRawOut
+        } else if (avroRawOut != null) {
+          avroRawOut.close();
+        }
+      } else {
+        flush();
+        writer.close();
+      }
       isOpen = false;
       log.info("Closed file destination: {}", config.getFilePath());
     } catch (IOException e) {

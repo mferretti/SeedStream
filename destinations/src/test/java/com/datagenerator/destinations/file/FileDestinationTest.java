@@ -20,16 +20,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datagenerator.destinations.DestinationException;
+import com.datagenerator.formats.avro.AvroSerializer;
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -219,6 +224,63 @@ class FileDestinationTest {
     List<String> lines = Files.readAllLines(outputFile);
     assertThat(lines).hasSize(1);
     assertThat(lines.get(0)).isEqualTo("{}");
+  }
+
+  @Test
+  void shouldWriteAvroContainerFileReadableByDataFileReader() throws Exception {
+    Path outputFile = tempDir.resolve("output.avro");
+    FileDestinationConfig config = configBuilder.filePath(outputFile).build();
+
+    Map<String, Object> record1 = new LinkedHashMap<>();
+    record1.put("name", "Alice");
+    record1.put("age", 30);
+
+    Map<String, Object> record2 = new LinkedHashMap<>();
+    record2.put("name", "Bob");
+    record2.put("age", 25);
+
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      destination.write(record1);
+      destination.write(record2);
+    }
+
+    assertThat(outputFile).exists();
+    List<GenericRecord> records = new ArrayList<>();
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      reader.forEach(records::add);
+    }
+    assertThat(records).hasSize(2);
+    assertThat(records.get(0).get("name").toString()).isEqualTo("Alice");
+    assertThat(records.get(0).get("age")).isEqualTo(30);
+    assertThat(records.get(1).get("name").toString()).isEqualTo("Bob");
+    assertThat(records.get(1).get("age")).isEqualTo(25);
+  }
+
+  @Test
+  void shouldWriteAvroWithDeflateWhenCompressEnabled() throws Exception {
+    Path outputFile = tempDir.resolve("output.avro");
+    FileDestinationConfig config = configBuilder.filePath(outputFile).compress(true).build();
+
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("name", "Alice");
+    record.put("age", 30);
+
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      destination.write(record);
+    }
+
+    // File readable by DataFileReader — codec handled internally
+    assertThat(outputFile).exists();
+    List<GenericRecord> records = new ArrayList<>();
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      reader.forEach(records::add);
+    }
+    assertThat(records).hasSize(1);
+    assertThat(records.get(0).get("name").toString()).isEqualTo("Alice");
   }
 
   @Test

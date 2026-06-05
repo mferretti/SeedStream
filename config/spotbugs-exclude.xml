@@ -27,6 +27,16 @@
       ICAST_INTEGER_MULTIPLY_CAST_TO_LONG          — test data arithmetic; no risk of production overflow
       DM_DEFAULT_ENCODING                          — test output / string helpers use platform encoding harmlessly
     -->
+    <!--
+      AvroSerializer uses double-checked locking (DCL) for lazy schema initialization.
+      schema and datumWriter are always set together in ensureInitialized() before any
+      dereference. Schema is effectively immutable after Avro creates it (EI_EXPOSE_REP).
+    -->
+    <Match>
+        <Class name="com.datagenerator.formats.avro.AvroSerializer"/>
+        <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR,EI_EXPOSE_REP"/>
+    </Match>
+
     <Match>
         <Class name="~.*(Test|IT|Benchmark).*"/>
         <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION,

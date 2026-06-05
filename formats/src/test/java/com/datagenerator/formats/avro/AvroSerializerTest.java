@@ -176,6 +176,20 @@ class AvroSerializerTest {
   }
 
   @Test
+  void shouldSanitizeInvalidFieldNames() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("first-name", "Alice");
+    record.put("123id", "XYZ");
+    record.put("valid_field", "ok");
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat(decoded.get("first_name").toString()).isEqualTo("Alice");
+    assertThat(decoded.get("_123id").toString()).isEqualTo("XYZ");
+    assertThat(decoded.get("valid_field").toString()).isEqualTo("ok");
+  }
+
+  @Test
   void shouldProduceDeterministicOutputForSameInput() {
     Map<String, Object> record = new LinkedHashMap<>();
     record.put("id", 1);

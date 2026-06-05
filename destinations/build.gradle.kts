@@ -6,6 +6,9 @@ dependencies {
     compileOnly(libs.kafka.clients)
     testImplementation(libs.kafka.clients)
 
+    // Avro (for DataFileWriter in FileDestination — formats uses implementation scope)
+    implementation(libs.avro)
+
     // Database
     implementation(libs.hikaricp)
     testImplementation(libs.h2)

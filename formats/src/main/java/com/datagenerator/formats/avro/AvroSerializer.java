@@ -75,6 +75,24 @@ public class AvroSerializer implements FormatSerializer {
 
   @Override
   public String serialize(Map<String, Object> record) {
+    ensureInitialized(record);
+    try {
+      GenericRecord avroRecord = buildGenericRecord(record);
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
+      datumWriter.write(avroRecord, encoder);
+      encoder.flush();
+      return Base64.getEncoder().encodeToString(out.toByteArray());
+    } catch (IOException e) {
+      throw new SerializationException("Avro serialization failed", e);
+    }
+  }
+
+  /**
+   * Initializes schema from the given record if not already initialized. Safe to call multiple
+   * times; subsequent calls are no-ops.
+   */
+  public void ensureInitialized(Map<String, Object> record) {
     if (schema == null) {
       synchronized (initLock) {
         if (schema == null) {
@@ -83,16 +101,6 @@ public class AvroSerializer implements FormatSerializer {
           log.debug("Avro schema initialized with {} fields", record.size());
         }
       }
-    }
-    try {
-      GenericRecord avroRecord = toGenericRecord(record);
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
-      datumWriter.write(avroRecord, encoder);
-      encoder.flush();
-      return Base64.getEncoder().encodeToString(out.toByteArray());
-    } catch (IOException e) {
-      throw new SerializationException("Avro serialization failed", e);
     }
   }
 
@@ -112,11 +120,18 @@ public class AvroSerializer implements FormatSerializer {
   private Schema buildSchema(Map<String, Object> record) {
     List<Schema.Field> fields = new ArrayList<>();
     for (Map.Entry<String, Object> entry : record.entrySet()) {
+      String fieldName = sanitizeFieldName(entry.getKey());
       Schema valueSchema = inferSchema(entry.getValue());
       Schema nullable = Schema.createUnion(Schema.create(Schema.Type.NULL), valueSchema);
-      fields.add(new Schema.Field(entry.getKey(), nullable, null, Schema.Field.NULL_DEFAULT_VALUE));
+      fields.add(new Schema.Field(fieldName, nullable, null, Schema.Field.NULL_DEFAULT_VALUE));
     }
     return Schema.createRecord("Record", null, "com.datagenerator", false, fields);
+  }
+
+  private static String sanitizeFieldName(String name) {
+    if (name == null || name.isEmpty()) return "_field";
+    String sanitized = name.replaceAll("[^A-Za-z0-9_]", "_");
+    return Character.isDigit(sanitized.charAt(0)) ? "_" + sanitized : sanitized;
   }
 
   private Schema inferSchema(Object value) {
@@ -139,11 +154,24 @@ public class AvroSerializer implements FormatSerializer {
     return Schema.create(Schema.Type.STRING);
   }
 
-  private GenericRecord toGenericRecord(Map<String, Object> record) {
+  /**
+   * Converts a record map to a {@link GenericRecord} using the cached schema. Schema must be
+   * initialized via {@link #ensureInitialized} or {@link #serialize} before calling.
+   *
+   * @throws IllegalStateException if called before schema initialization
+   */
+  public GenericRecord buildGenericRecord(Map<String, Object> record) {
+    if (schema == null) {
+      throw new IllegalStateException(
+          "Avro schema not initialized; call ensureInitialized() or serialize() first");
+    }
     GenericRecord avroRecord = new GenericData.Record(schema);
-    for (Schema.Field field : schema.getFields()) {
-      Object raw = record.get(field.name());
-      avroRecord.put(field.name(), convertValue(raw, field.schema()));
+    for (Map.Entry<String, Object> entry : record.entrySet()) {
+      String fieldName = sanitizeFieldName(entry.getKey());
+      Schema.Field field = schema.getField(fieldName);
+      if (field != null) {
+        avroRecord.put(fieldName, convertValue(entry.getValue(), field.schema()));
+      }
     }
     return avroRecord;
   }
