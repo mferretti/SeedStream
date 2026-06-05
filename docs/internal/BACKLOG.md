@@ -1,6 +1,19 @@
 # Project Backlog
 
-## ⚡ Current Status (June 5, 2026) — v0.5.0 Released
+## ⚡ Current Status (June 5, 2026) — v0.6.0 Released
+
+**Recently Accomplished (June 5, 2026 — v0.6.0):**
+- ✅ **Avro Serializer** (TASK-053):
+  - `AvroSerializer`: dynamic schema inference from first record, DCL thread-safe lazy init
+  - Avro Object Container Format (OCF) via `DataFileWriter` in `FileDestination` — readable by `avro-tools`, Spark, Python `avro`
+  - Field-name sanitization: `[A-Za-z_][A-Za-z0-9_]*` — hyphens/digit-leading names auto-fixed
+  - Deflate compression via `CodecFactory.deflateCodec(6)` when `compress: true`
+  - Kafka path: raw binary (wire format); File path: OCF container (round-trip verifiable)
+- ✅ **Fault Tolerance & Retry** (TASK-033):
+  - `RetryPolicy`: exponential backoff (×2), configurable `max_retries`/`retry_delay_ms`, interrupt-safe
+  - Kafka sync writes retried on transient send failures
+  - Database `open()` retried on transient connection failures
+  - Defaults: `max_retries=3`, `retry_delay_ms=1000` (doubles per attempt)
 
 **Recently Accomplished (June 4, 2026 — v0.5.0):**
 - ✅ **Reference Generator** (TASK-012):
@@ -18,14 +31,14 @@
 - ✅ **Database Stage 2** (TASK-043): Nested auto-decomposition, FK injection via `{parent}_id` convention
 - ✅ **Database JMH Benchmarks** (TASK-045, TASK-046): 16-config matrix; suite filter (`-PjmhSuite=database|kafka|generators`)
 
-**Current Status:** v0.5.0 production-ready. All core generation features complete: file/Kafka/PostgreSQL destinations; JSON/CSV/Protobuf/CBEFF formats; biometric structures; FK references (`ref[]`); plugin registry; extras classpath loader. 46/56 tracked tasks complete.
+**Current Status:** v0.6.0 production-ready. All core generation features complete: file/Kafka/PostgreSQL destinations; JSON/CSV/Protobuf/Avro/CBEFF formats; biometric structures; FK references (`ref[]`); plugin registry; extras classpath loader; retry/fault tolerance. 48/56 tracked tasks complete.
 
 **Remaining open work:**
-- TASK-033: Fault tolerance & error handling (P1, not started)
 - TASK-034: Secret management (P2, not started)
 - TASK-051: Biometric ISO field mapping docs (P3, deferred)
 - TASK-039: Jackson streaming API optimization (low priority, deferred)
 - TASK-052: Binary FMR-like serializer (optional, needs ISO PDF)
+- TASK-054: Avro + Confluent Schema Registry (deferred)
 
 ---
 
@@ -120,6 +133,13 @@
 
 ## Phase 3: Output Formats ✅ **COMPLETE**
 
+- [x] **Formats module - Avro serializer** ✅ **COMPLETE (v0.6.0, June 5, 2026)**
+  - `AvroSerializer`: dynamic Avro schema inferred from first record at runtime (no `.avsc` file needed)
+  - Thread-safe lazy init via double-checked locking; field-name sanitization per Avro spec
+  - File output uses `DataFileWriter` (Avro Object Container Format) — readable by standard Avro tooling
+  - Kafka output uses raw binary (correct wire format for Kafka/Schema Registry consumers)
+  - Deflate compression via `CodecFactory` when `compress: true`
+
 - [x] **Formats module - JSON serializer**
   - FormatSerializer interface for pluggable serialization
   - JsonSerializer with Jackson (newline-delimited JSON)
@@ -147,8 +167,9 @@
 - [x] **Destinations module - File adapter**
   - DestinationAdapter interface for pluggable destinations
   - FileDestination with Java NIO for fast I/O
-  - Support JSON, CSV, and Protobuf formats with automatic header for CSV
-  - Optional gzip compression
+  - Support JSON, CSV, Protobuf, and Avro formats with automatic header for CSV
+  - Avro: `DataFileWriter` path (OCF container format); gzip skipped for Avro (codec handled internally)
+  - Optional gzip compression (non-Avro formats)
   - Append mode support
   - Automatic parent directory creation
   - Configurable buffer size for performance
@@ -156,7 +177,7 @@
 
 - [x] **Destinations module - Kafka adapter**
   - KafkaDestination with KafkaProducer
-  - Async/sync send modes
+  - Async/sync send modes; sync writes retried with exponential backoff (`RetryPolicy`)
   - SASL/SSL authentication support
   - Configurable batching, compression (gzip, snappy, lz4, zstd)
   - Idempotent producer for exactly-once semantics (acks="all" default)
@@ -456,8 +477,8 @@
   - Web UI for job management (optional)
 
 - [ ] **Advanced Features**
-  - Support for Avro and Parquet formats
-  - Schema registry integration (Confluent, AWS Glue)
+  - Parquet format support
+  - Schema registry integration (Confluent, AWS Glue) — see TASK-054 (Avro + Schema Registry, deferred)
   - Data masking and anonymization patterns
   - Plugin marketplace for custom generators and destinations
   - Metrics and monitoring integration (Prometheus, Grafana)

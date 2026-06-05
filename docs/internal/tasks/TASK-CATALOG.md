@@ -7,16 +7,25 @@ This document provides a quick overview of all tasks. For detailed implementatio
 ## Task Summary Statistics
 
 - **Total Tasks**: 56
-- **Completed**: 46 ✅
+- **Completed**: 48 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
-- **Not Started**: 2 (TASK-033, TASK-034)
-- **Deferred**: 3 (TASK-039; TASK-051, TASK-052)
-- **Overall Progress**: 96% of active backlog (46/48 non-deferred tasks)
+- **Not Started**: 1 (TASK-034)
+- **Deferred**: 4 (TASK-039; TASK-051, TASK-052, TASK-054)
+- **Overall Progress**: 98% of active backlog (48/49 non-deferred tasks)
 
 ---
 
 ## Recent Completions (June 2026)
+
+**Completed June 5, 2026 (v0.6.0):**
+- ✅ TASK-053: Avro Serializer — `AvroSerializer` with dynamic schema, DCL lazy init, field-name sanitization
+  - `FileDestination` uses `DataFileWriter` (Avro Object Container Format, OCF); Kafka path uses raw binary
+  - Deflate compression via `CodecFactory`; round-trip verified in unit tests with `DataFileReader`
+- ✅ TASK-033: Fault Tolerance & Retry — `RetryPolicy` with exponential backoff (×2), interrupt-safe
+  - Kafka sync writes and Database `open()` both wired to retry; configurable `max_retries`/`retry_delay_ms`
+  - Circuit breakers explicitly out of scope (fail after N attempts is sufficient for a data generator)
+  - Tests: `RetryPolicyTest` (8 tests), `KafkaDestinationTest` +2, `DatabaseDestinationTest` +2
 
 **Completed June 4, 2026 (v0.5.0):**
 - ✅ TASK-012: Reference Generator — `ref[structure.field, min..max]` and `ref[structure.field, min..count]`
@@ -211,7 +220,7 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 6: Testing & Quality (✅ 71% Complete)
+## Phase 6: Testing & Quality (✅ Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
@@ -378,8 +387,8 @@ For an AI agent or developer working sequentially:
 | Phase 8 (Database Stage 2) | 3 | 24-30h | ✅ 3/3 (TASK-043, TASK-045, TASK-046) |
 | Phase 9 (Distribution) | 4 | 22-30h | ✅ 4/4 |
 | Phase 10 (Biometric) | 6 | 22-30h | ✅ 4/6 (TASK-051, TASK-052 deferred) |
-| Security/Quality (TASK-033–036) | 4 | 10-15h | ✅ 2/4 (TASK-033, TASK-034 not started) |
-| **TOTAL** | **56** | **230-310h** | **46/56 (82% total; 96% of active)** |
+| Security/Quality (TASK-033–036) | 4 | 10-15h | ✅ 3/4 (TASK-034 not started) |
+| **TOTAL** | **56** | **230-310h** | **48/56 (86% total; 98% of active)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -565,7 +574,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 | Task | Title | Effort | Complexity | Status |
 |------|-------|--------|------------|--------|
-| TASK-033 | Fault Tolerance & Error Handling | 3-5h | Medium | ⏸️ Not Started |
+| TASK-033 | Fault Tolerance & Error Handling | 3-5h | Medium | ✅ Complete (June 5, 2026) |
 | TASK-034 | Secret Management | 3-4h | Medium | ⏸️ Not Started |
 | TASK-035 | Dependency Vulnerability Scanning | 2-3h | Low | ✅ Complete (March 2026) |
 | TASK-036 | File Permission Checks | 2-3h | Low | ✅ Complete (v0.4.0) |
@@ -578,7 +587,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
-| TASK-053 | Avro Serializer (dynamic schema, no Schema Registry) | 4–6h | Medium | TASK-013 | 🔄 In Progress |
+| TASK-053 | Avro Serializer (dynamic schema, no Schema Registry) | 4–6h | Medium | TASK-013 | ✅ Complete (June 5, 2026) |
 | TASK-054 | Avro + Confluent Schema Registry | 8–12h | High | TASK-053 | ⏸️ Deferred |
 
 ---
@@ -589,7 +598,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 ## Completion Progress
 
-**Overall**: 46/56 tasks tracked (82%); 46/48 active (96% excl. deferred)
-**Current Sprint**: v0.5.0 shipped — ref[] generator complete
-**Next Priority**: TASK-033 (error handling, P1); TASK-034 (secret management, P2); TASK-051 (biometric docs)
-**Estimated Remaining Effort**: TASK-033 (3-5h); TASK-034 (3-4h); TASK-051 (2-3h); TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional)
+**Overall**: 48/56 tasks tracked (86%); 48/49 active (98% excl. deferred)
+**Current Sprint**: v0.6.0 shipped — Avro serializer + retry/fault tolerance complete
+**Next Priority**: TASK-034 (secret management, P2); TASK-051 (biometric docs, P3)
+**Estimated Remaining Effort**: TASK-034 (3-4h); TASK-051 (2-3h); TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional); TASK-054 (8-12h, deferred)
