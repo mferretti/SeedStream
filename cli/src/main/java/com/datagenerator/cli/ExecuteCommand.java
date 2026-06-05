@@ -34,6 +34,7 @@ import com.datagenerator.destinations.file.FileDestinationConfig;
 import com.datagenerator.destinations.kafka.KafkaDestination;
 import com.datagenerator.destinations.kafka.KafkaDestinationConfig;
 import com.datagenerator.formats.FormatSerializer;
+import com.datagenerator.formats.avro.AvroSerializer;
 import com.datagenerator.formats.cbeff.CbeffSerializer;
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
@@ -156,21 +157,23 @@ public class ExecuteCommand implements Callable<Integer> {
    *   <li><b>json</b> - Newline-delimited JSON (default)
    *   <li><b>csv</b> - Comma-separated values with header row
    *   <li><b>protobuf</b> - Protocol Buffers binary format (base64-encoded)
+   *   <li><b>avro</b> - Apache Avro binary format (base64-encoded, dynamic schema)
    * </ul>
    *
    * <p><b>Format Selection:</b> JSON preserves nested structures and arrays. CSV flattens nested
-   * objects and represents arrays as pipe-delimited strings. Protobuf provides compact binary
-   * encoding (typically 50-70% smaller than JSON).
+   * objects and represents arrays as pipe-delimited strings. Protobuf and Avro provide compact
+   * binary encoding (typically 50-70% smaller than JSON).
    *
    * <p>Default: {@code json}
    *
    * @see com.datagenerator.formats.json.JsonSerializer
    * @see com.datagenerator.formats.csv.CsvSerializer
    * @see com.datagenerator.formats.protobuf.ProtobufSerializer
+   * @see com.datagenerator.formats.avro.AvroSerializer
    */
   @Option(
       names = {"-f", "--format"},
-      description = "Output format: json, csv, protobuf (default: json)",
+      description = "Output format: json, csv, protobuf, avro (default: json)",
       defaultValue = "json")
   private String format;
 
@@ -528,6 +531,7 @@ public class ExecuteCommand implements Callable<Integer> {
       case "json" -> new JsonSerializer();
       case "csv" -> new CsvSerializer();
       case "protobuf" -> new ProtobufSerializer();
+      case "avro" -> new AvroSerializer();
       case "cbeff" -> {
         JsonNode conf = jobConfig.getConf();
         String owner =

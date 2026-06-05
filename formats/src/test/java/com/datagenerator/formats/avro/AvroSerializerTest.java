@@ -1,0 +1,263 @@
+/*
+ * Copyright 2026 Marco Ferretti
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.datagenerator.formats.avro;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.ByteArrayInputStream;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.DecoderFactory;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class AvroSerializerTest {
+
+  private AvroSerializer serializer;
+
+  @BeforeEach
+  void setUp() {
+    serializer = new AvroSerializer();
+  }
+
+  @Test
+  void shouldReturnCorrectFormatName() {
+    assertThat(serializer.getFormatName()).isEqualTo("avro");
+  }
+
+  @Test
+  void shouldSerializeSimpleStringRecord() {
+    Map<String, Object> record = Map.of("name", "Alice", "city", "Rome");
+
+    String result = serializer.serialize(record);
+
+    assertThat(result).isNotBlank();
+    assertThat(result).matches("^[A-Za-z0-9+/]+=*$");
+    byte[] binary = Base64.getDecoder().decode(result);
+    assertThat(binary).isNotEmpty();
+  }
+
+  @Test
+  void shouldRoundTripStringField() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("name", "Alice");
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat(decoded.get("name").toString()).isEqualTo("Alice");
+  }
+
+  @Test
+  void shouldRoundTripIntegerField() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("count", 42);
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat(decoded.get("count")).isEqualTo(42);
+  }
+
+  @Test
+  void shouldRoundTripLongField() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("id", 9_999_999_999L);
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat(decoded.get("id")).isEqualTo(9_999_999_999L);
+  }
+
+  @Test
+  void shouldRoundTripBooleanField() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("active", true);
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat(decoded.get("active")).isEqualTo(true);
+  }
+
+  @Test
+  void shouldRoundTripBigDecimalAsDouble() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("price", new BigDecimal("99.95"));
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat((double) decoded.get("price"))
+        .isCloseTo(99.95, org.assertj.core.data.Offset.offset(0.001));
+  }
+
+  @Test
+  void shouldRoundTripLocalDateAsDateLogicalType() throws Exception {
+    LocalDate date = LocalDate.of(2024, 3, 15);
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("dob", date);
+
+    GenericRecord decoded = roundTrip(record);
+
+    // date logical type stored as int (days since epoch)
+    int daysSinceEpoch = (int) decoded.get("dob");
+    assertThat(daysSinceEpoch).isEqualTo((int) date.toEpochDay());
+  }
+
+  @Test
+  void shouldRoundTripInstantAsTimestampMillis() throws Exception {
+    Instant ts = Instant.ofEpochMilli(1_700_000_000_000L);
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("created_at", ts);
+
+    GenericRecord decoded = roundTrip(record);
+
+    long millis = (long) decoded.get("created_at");
+    assertThat(millis).isEqualTo(ts.toEpochMilli());
+  }
+
+  @Test
+  void shouldSerializeListAsAvroArray() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("tags", List.of("a", "b", "c"));
+
+    GenericRecord decoded = roundTrip(record);
+
+    Object tagsObj = decoded.get("tags");
+    assertThat(tagsObj).isNotNull();
+    assertThat(tagsObj.toString()).contains("a").contains("b").contains("c");
+  }
+
+  @Test
+  void shouldSerializeNestedMapAsJsonString() throws Exception {
+    Map<String, Object> nested = Map.of("street", "Via Roma", "number", 1);
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("address", nested);
+
+    GenericRecord decoded = roundTrip(record);
+
+    String addressStr = decoded.get("address").toString();
+    assertThat(addressStr).contains("Via Roma");
+  }
+
+  @Test
+  void shouldHandleNullValues() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("name", "Bob");
+    record.put("middle_name", null);
+
+    GenericRecord decoded = roundTrip(record);
+
+    assertThat(decoded.get("name").toString()).isEqualTo("Bob");
+    assertThat(decoded.get("middle_name")).isNull();
+  }
+
+  @Test
+  void shouldProduceDeterministicOutputForSameInput() {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("id", 1);
+    record.put("name", "Alice");
+
+    String first = serializer.serialize(record);
+    String second = serializer.serialize(record);
+
+    assertThat(first).isEqualTo(second);
+  }
+
+  @Test
+  void shouldSerializeMultipleRecordsWithSameSchema() {
+    Map<String, Object> r1 = new LinkedHashMap<>();
+    r1.put("name", "Alice");
+    r1.put("age", 30);
+
+    Map<String, Object> r2 = new LinkedHashMap<>();
+    r2.put("name", "Bob");
+    r2.put("age", 25);
+
+    String s1 = serializer.serialize(r1);
+    String s2 = serializer.serialize(r2);
+
+    assertThat(s1).isNotEqualTo(s2);
+    assertThat(serializer.getSchema()).isNotNull();
+  }
+
+  @Test
+  void shouldBeThreadSafe() throws InterruptedException {
+    int threads = 8;
+    int recordsPerThread = 100;
+    CountDownLatch start = new CountDownLatch(1);
+    AtomicInteger errors = new AtomicInteger();
+
+    ExecutorService pool = Executors.newFixedThreadPool(threads);
+    for (int t = 0; t < threads; t++) {
+      final int threadId = t;
+      pool.submit(
+          () -> {
+            try {
+              start.await();
+              for (int i = 0; i < recordsPerThread; i++) {
+                Map<String, Object> record = new LinkedHashMap<>();
+                record.put("thread", threadId);
+                record.put("seq", i);
+                record.put("name", "worker-" + threadId);
+                String result = serializer.serialize(record);
+                if (result == null || result.isBlank()) {
+                  errors.incrementAndGet();
+                }
+              }
+            } catch (Exception e) {
+              errors.incrementAndGet();
+            }
+          });
+    }
+
+    start.countDown();
+    pool.shutdown();
+    pool.awaitTermination(10, TimeUnit.SECONDS);
+
+    assertThat(errors.get()).isZero();
+  }
+
+  // --- helpers ---
+
+  private GenericRecord roundTrip(Map<String, Object> record) throws Exception {
+    String base64 = serializer.serialize(record);
+    byte[] binary = Base64.getDecoder().decode(base64);
+
+    GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(serializer.getSchema());
+    return reader.read(
+        null, DecoderFactory.get().binaryDecoder(new ByteArrayInputStream(binary), null));
+  }
+
+  private List<GenericRecord> roundTripAll(List<Map<String, Object>> records) throws Exception {
+    List<GenericRecord> result = new ArrayList<>();
+    for (Map<String, Object> record : records) {
+      result.add(roundTrip(record));
+    }
+    return result;
+  }
+}

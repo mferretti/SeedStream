@@ -20,6 +20,7 @@ jakarta-el = "4.0.2"
 # I/O & Serialization
 opencsv = "5.12.0"
 protobuf = "4.35.0"  # Updated from 3.25.5 (major version upgrade)
+avro = "1.12.0"
 
 # Messaging
 kafka = "4.3.0"
@@ -74,6 +75,7 @@ picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "pico
 # I/O & Serialization
 opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+avro = { module = "org.apache.avro:avro", version.ref = "avro" }
 
 # Messaging
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }

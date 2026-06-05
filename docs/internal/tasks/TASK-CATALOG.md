@@ -572,6 +572,17 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 
 ---
 
+---
+
+## Phase 11: Avro Support
+
+| Task | Title | Effort | Complexity | Dependencies | Status |
+|------|-------|--------|------------|--------------|--------|
+| TASK-053 | Avro Serializer (dynamic schema, no Schema Registry) | 4–6h | Medium | TASK-013 | 🔄 In Progress |
+| TASK-054 | Avro + Confluent Schema Registry | 8–12h | High | TASK-053 | ⏸️ Deferred |
+
+---
+
 **Last Updated**: June 5, 2026
 
 ---

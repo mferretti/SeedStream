@@ -9,4 +9,7 @@ dependencies {
     
     // Protobuf
     implementation(libs.protobuf.java)
+
+    // Avro
+    implementation(libs.avro)
 }
