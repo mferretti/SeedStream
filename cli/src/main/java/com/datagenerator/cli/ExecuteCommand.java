@@ -35,6 +35,7 @@ import com.datagenerator.destinations.kafka.KafkaDestination;
 import com.datagenerator.destinations.kafka.KafkaDestinationConfig;
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.avro.AvroSerializer;
+import com.datagenerator.formats.avro.SchemaRegistryAvroSerializer;
 import com.datagenerator.formats.cbeff.CbeffSerializer;
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
@@ -161,6 +162,7 @@ public class ExecuteCommand implements Callable<Integer> {
    *   <li><b>csv</b> - Comma-separated values with header row
    *   <li><b>protobuf</b> - Protocol Buffers binary format (base64-encoded)
    *   <li><b>avro</b> - Apache Avro binary format (base64-encoded, dynamic schema)
+   *   <li><b>avro-registry</b> - Confluent wire format (magic byte + schema ID + Avro binary)
    * </ul>
    *
    * <p><b>Format Selection:</b> JSON preserves nested structures and arrays. CSV flattens nested
@@ -176,7 +178,7 @@ public class ExecuteCommand implements Callable<Integer> {
    */
   @Option(
       names = {"-f", "--format"},
-      description = "Output format: json, csv, protobuf, avro (default: json)",
+      description = "Output format: json, csv, protobuf, avro, avro-registry (default: json)",
       defaultValue = "json")
   private String format;
 
@@ -535,6 +537,27 @@ public class ExecuteCommand implements Callable<Integer> {
       case "csv" -> new CsvSerializer();
       case "protobuf" -> new ProtobufSerializer();
       case "avro" -> new AvroSerializer();
+      case "avro-registry" -> {
+        JsonNode conf = jobConfig.getConf();
+        String registryUrl =
+            conf != null && conf.has("schema_registry_url")
+                ? conf.get("schema_registry_url").asText()
+                : null;
+        String topic = conf != null && conf.has("topic") ? conf.get("topic").asText() : "record";
+        String subject =
+            conf != null && conf.has("schema_registry_subject")
+                ? conf.get("schema_registry_subject").asText()
+                : topic + "-value";
+        String authType =
+            conf != null && conf.has("schema_registry_auth")
+                ? conf.get("schema_registry_auth").asText()
+                : null;
+        String token =
+            conf != null && conf.has("schema_registry_token")
+                ? conf.get("schema_registry_token").asText()
+                : null;
+        yield new SchemaRegistryAvroSerializer(registryUrl, subject, authType, token);
+      }
       case "cbeff" -> {
         JsonNode conf = jobConfig.getConf();
         String owner =

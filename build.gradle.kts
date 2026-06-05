@@ -118,29 +118,53 @@ subprojects {
         finalizedBy("jacocoTestReport")
     }
 
-    // Separate integration test task
+    // Separate integration test task (excludes slow tests — use slowTest for those)
     tasks.register<Test>("integrationTest") {
-        description = "Runs integration tests with Testcontainers"
+        description = "Runs integration tests with Testcontainers (excludes @Tag(\"slow\"))"
         group = "verification"
-        
+
         // Use the same test sources and classes as the test task
         testClassesDirs = sourceSets["test"].output.classesDirs
         classpath = sourceSets["test"].runtimeClasspath
-        
+
         useJUnitPlatform {
             includeTags("integration")
+            excludeTags("slow")
         }
-        
+
         shouldRunAfter(tasks.test)
-        
+
         // Integration tests may take longer
         testLogging {
             events("passed", "skipped", "failed")
             showStandardStreams = false
             exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         }
-        
+
         // Set Docker API version for Testcontainers compatibility with newer Docker versions
+        environment("DOCKER_API_VERSION", "1.41")
+    }
+
+    // Slow integration tests (e.g. Schema Registry with ~500MB Docker image)
+    tasks.register<Test>("slowTest") {
+        description = "Runs slow integration tests tagged with @Tag(\"slow\")"
+        group = "verification"
+
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
+
+        useJUnitPlatform {
+            includeTags("slow")
+        }
+
+        shouldRunAfter(tasks.named("integrationTest"))
+
+        testLogging {
+            events("passed", "skipped", "failed")
+            showStandardStreams = false
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
+
         environment("DOCKER_API_VERSION", "1.41")
     }
 

@@ -82,11 +82,7 @@ class ValidateCommandTest {
     Path file = tempDir.resolve("mixed.ndjson");
     Files.writeString(
         file,
-        validFingerprintRecord()
-            + "\n"
-            + "{\"record_format\":\"FMR\"}"
-            + "\n"
-            + validFaceRecord());
+        validFingerprintRecord() + "\n" + "{\"record_format\":\"FMR\"}" + "\n" + validFaceRecord());
 
     assertThat(execute(file)).isEqualTo(1);
   }
@@ -189,8 +185,10 @@ class ValidateCommandTest {
       int y = (i * 5) % (imageHeight - 1);
       double angle = (i * 7.5) % 359.9;
       String type = i % 2 == 0 ? "ending" : "bifurcation";
-      sb.append(String.format("{\"x\":%d,\"y\":%d,\"angle_deg\":%.1f,\"type\":\"%s\",\"quality\":80}",
-          x, y, angle, type));
+      sb.append(
+          String.format(
+              "{\"x\":%d,\"y\":%d,\"angle_deg\":%.1f,\"type\":\"%s\",\"quality\":80}",
+              x, y, angle, type));
     }
     sb.append("]");
     return sb.toString();

@@ -22,7 +22,6 @@ import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.retry.RetryPolicy;
 import com.datagenerator.formats.FormatSerializer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
@@ -189,9 +188,7 @@ public class KafkaDestination implements DestinationAdapter {
     }
 
     try {
-      // Serialize record to bytes
-      String serializedRecord = serializer.serialize(record);
-      byte[] recordBytes = serializedRecord.getBytes(StandardCharsets.UTF_8);
+      byte[] recordBytes = serializer.serializeToBytes(record);
 
       // Create producer record (null key, uses default partitioning)
       ProducerRecord<String, byte[]> producerRecord =

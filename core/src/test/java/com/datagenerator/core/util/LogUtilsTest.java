@@ -39,8 +39,7 @@ class LogUtilsTest {
 
   @Test
   void shouldExposeTraceSampleRatePropertyConstant() {
-    assertThat(LogUtils.TRACE_SAMPLE_RATE_PROPERTY)
-        .isEqualTo("com.datagenerator.traceSampleRate");
+    assertThat(LogUtils.TRACE_SAMPLE_RATE_PROPERTY).isEqualTo("com.datagenerator.traceSampleRate");
   }
 
   @Test

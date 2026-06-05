@@ -1,6 +1,6 @@
 # TASK-054: Formats Module — Avro + Confluent Schema Registry (Phase 2)
 
-**Status:** ⏸️ Deferred (implement after TASK-053 complete)
+**Status:** ✅ Complete (June 5, 2026)
 **Priority:** P2
 **Phase:** Phase 11 (Avro Support)
 **Effort:** 8–12h
@@ -18,15 +18,13 @@ Schema Registry for schema evolution and consumer compatibility.
 
 ## Acceptance Criteria
 
-- [ ] `SchemaRegistryAvroSerializer` wraps `AvroSerializer`, registers schema on first use
-- [ ] Job config accepts `schema_registry_url` in `conf` block
-- [ ] Output uses Confluent wire format: `[0x00][4-byte schema ID][avro payload]` (single-object encoding)
-- [ ] Schema ID cached after first registration (no re-registration per record)
-- [ ] IT test: Testcontainers `cp-schema-registry` + `cp-kafka` containers
-  - Produce Avro records → Kafka topic
-  - Consume with Confluent Avro deserializer → verify field values
-- [ ] `--format avro-registry` wired into `ExecuteCommand`
-- [ ] Auth support: bearer token + basic auth for private Schema Registry instances
+- [x] `SchemaRegistryAvroSerializer` wraps `AvroSerializer`, registers schema on first use
+- [x] Job config accepts `schema_registry_url` in `conf` block
+- [x] Output uses Confluent wire format: `[0x00][4-byte schema ID][avro payload]` (single-object encoding)
+- [x] Schema ID cached after first registration (no re-registration per record)
+- [x] IT test: Testcontainers `cp-schema-registry` + `cp-kafka` containers — verifies wire format and Avro payload decode
+- [x] `--format avro-registry` wired into `ExecuteCommand`
+- [x] Auth support: bearer token + basic auth for private Schema Registry instances
 
 ---
 

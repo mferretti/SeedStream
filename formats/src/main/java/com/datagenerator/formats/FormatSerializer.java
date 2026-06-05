@@ -16,6 +16,7 @@
 
 package com.datagenerator.formats;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -37,6 +38,19 @@ public interface FormatSerializer {
    * @throws SerializationException if serialization fails
    */
   String serialize(Map<String, Object> record);
+
+  /**
+   * Serialize a single record to raw bytes. Default implementation encodes {@link #serialize}
+   * output as UTF-8. Binary serializers (e.g. Confluent Avro wire format) should override this to
+   * return the true binary payload.
+   *
+   * @param record the generated record with field names as keys
+   * @return serialized bytes
+   * @throws SerializationException if serialization fails
+   */
+  default byte[] serializeToBytes(Map<String, Object> record) {
+    return serialize(record).getBytes(StandardCharsets.UTF_8);
+  }
 
   /**
    * Get the format name (e.g., "json", "csv", "protobuf").
