@@ -7,11 +7,11 @@ This document provides a quick overview of all tasks. For detailed implementatio
 ## Task Summary Statistics
 
 - **Total Tasks**: 59
-- **Completed**: 50 ✅
+- **Completed**: 51 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
 - **Not Started**: 0
-- **Deferred**: 6 (TASK-039; TASK-052, TASK-054, TASK-055, TASK-056, TASK-057)
+- **Deferred**: 5 (TASK-039; TASK-052, TASK-054, TASK-056, TASK-057)
 - **Overall Progress**: 100% of active backlog (50/50 non-deferred tasks)
 
 ---
@@ -19,6 +19,11 @@ This document provides a quick overview of all tasks. For detailed implementatio
 ## Recent Completions (June 2026)
 
 **Completed June 5, 2026 (v0.6.0):**
+- ✅ TASK-055: AWS Secrets Manager Backend — `AwsSecretsManagerResolver`
+  - Default AWS credential chain; `aws_region` config + `AWS_DEFAULT_REGION` fallback
+  - JSON secrets with `#field` suffix; plain-string secrets; ARN paths supported
+  - `SecretsConfig.awsRegion` + `SecretResolverFactory` wired; `libs.versions.toml` updated
+  - Tests: `AwsSecretsManagerResolverTest` (9 tests, mock `SecretsManagerClient`)
 - ✅ TASK-051: Biometric ISO Field Mapping Documentation — `docs/BIOMETRIC-FIELD-MAPPING.md`
   - Full field tables for ISO/IEC 19794-2 (minutiae), 19794-4 (fingerprint image), 19794-5 (face)
   - Binary encoding notes, finger/impression code tables, CBEFF envelope mapping
@@ -586,7 +591,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 | TASK-034 | Secret Management — Interface + Vault | 4-6h | Medium | ✅ Complete (June 5, 2026) |
 | TASK-035 | Dependency Vulnerability Scanning | 2-3h | Low | ✅ Complete (March 2026) |
 | TASK-036 | File Permission Checks | 2-3h | Low | ✅ Complete (v0.4.0) |
-| TASK-055 | AWS Secrets Manager Backend | 3-4h | Low | ⏸️ Deferred (needs TASK-034) |
+| TASK-055 | AWS Secrets Manager Backend | 3-4h | Low | ✅ Complete (June 5, 2026) |
 | TASK-056 | Azure Key Vault Backend | 3-4h | Low | ⏸️ Deferred (needs TASK-034) |
 | TASK-057 | Encrypted Config File Backend | 4-5h | Medium | ⏸️ Deferred (needs TASK-034) |
 

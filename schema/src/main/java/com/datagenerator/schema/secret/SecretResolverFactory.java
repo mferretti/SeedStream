@@ -28,6 +28,7 @@ import java.util.Locale;
  * <ul>
  *   <li>{@code env} — environment variable resolution (default when no {@code secrets:} block)
  *   <li>{@code vault} — HashiCorp Vault KV v2; requires {@code vault_addr} in config
+ *   <li>{@code aws} — AWS Secrets Manager; optional {@code aws_region} in config
  * </ul>
  */
 public final class SecretResolverFactory {
@@ -55,11 +56,12 @@ public final class SecretResolverFactory {
         }
         yield new VaultSecretResolver(config.getVaultAddr(), config.getVaultNamespace());
       }
+      case "aws" -> new AwsSecretsManagerResolver(config.getAwsRegion());
       default ->
           throw new SecretResolutionException(
               "Unknown secret resolver: '"
                   + config.getResolver()
-                  + "'; supported values: env, vault");
+                  + "'; supported values: env, vault, aws");
     };
   }
 }

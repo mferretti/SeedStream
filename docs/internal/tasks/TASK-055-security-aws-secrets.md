@@ -1,6 +1,6 @@
 # TASK-055: Security - AWS Secrets Manager Backend
 
-**Status**: ⏸️ Deferred  
+**Status**: ✅ Complete (June 5, 2026, v0.6.0)  
 **Priority**: P3 (Low)  
 **Phase**: 9 - Security & Compliance  
 **Dependencies**: TASK-034 (SecretResolver interface)  
@@ -51,15 +51,15 @@ destination:
 
 ## Acceptance Criteria
 
-- [ ] `AwsSecretsManagerResolver` implements `SecretResolver`
-- [ ] Default AWS credential chain used (no explicit key/secret in YAML)
-- [ ] `aws_region` config key respected
-- [ ] JSON secret with `#field` suffix extracts single value
-- [ ] Plain-string secrets returned as-is
-- [ ] `ConfigurationException` on secret not found or permission denied
-- [ ] Secrets never logged
-- [ ] Unit tests with mocked `SecretsManagerClient`
+- [x] `AwsSecretsManagerResolver` implements `SecretResolver`
+- [x] Default AWS credential chain used (no explicit key/secret in YAML)
+- [x] `aws_region` config key respected; fallback to `AWS_DEFAULT_REGION` env var
+- [x] JSON secret with `#field` suffix extracts single value
+- [x] Plain-string secrets returned as-is
+- [x] `SecretResolutionException` on secret not found or SDK error
+- [x] Secrets never logged
+- [x] Unit tests with mocked `SecretsManagerClient` (9 tests)
 
 ---
 
-**Completion Date**: [Mark when complete]
+**Completion Date**: June 5, 2026

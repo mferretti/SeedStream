@@ -56,13 +56,21 @@ public class SecretsConfig {
   /** Optional Vault namespace header ({@code X-Vault-Namespace}). */
   String vaultNamespace;
 
+  /**
+   * AWS region for the Secrets Manager endpoint (e.g. {@code us-east-1}). Optional; falls back to
+   * {@code AWS_DEFAULT_REGION} environment variable when absent.
+   */
+  String awsRegion;
+
   @JsonCreator
   public SecretsConfig(
       @JsonProperty("resolver") String resolver,
       @JsonProperty("vault_addr") String vaultAddr,
-      @JsonProperty("vault_namespace") String vaultNamespace) {
+      @JsonProperty("vault_namespace") String vaultNamespace,
+      @JsonProperty("aws_region") String awsRegion) {
     this.resolver = resolver;
     this.vaultAddr = vaultAddr;
     this.vaultNamespace = vaultNamespace;
+    this.awsRegion = awsRegion;
   }
 }

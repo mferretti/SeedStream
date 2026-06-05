@@ -243,6 +243,31 @@ class JobConfigParserTest {
   }
 
   @Test
+  void shouldParseJobWithAwsSecretsConfig() throws Exception {
+    String yaml =
+        """
+            source: data.yaml
+            type: database
+            secrets:
+              resolver: aws
+              aws_region: us-east-1
+            conf:
+              jdbc_url: jdbc:postgresql://localhost/mydb
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    SecretsConfig secrets = config.getSecrets();
+    assertThat(secrets).isNotNull();
+    assertThat(secrets.getResolver()).isEqualTo("aws");
+    assertThat(secrets.getAwsRegion()).isEqualTo("us-east-1");
+    assertThat(secrets.getVaultAddr()).isNull();
+  }
+
+  @Test
   void shouldReturnNullSecretsWhenBlockAbsent() throws Exception {
     String yaml =
         """
