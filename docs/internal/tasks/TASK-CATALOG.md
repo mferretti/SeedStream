@@ -6,13 +6,24 @@ This document provides a quick overview of all tasks. For detailed implementatio
 
 ## Task Summary Statistics
 
-- **Total Tasks**: 52
-- **Completed**: 36 ✅
+- **Total Tasks**: 56
+- **Completed**: 46 ✅
 - **Partially Complete**: 0
 - **In Progress**: 0
-- **Not Started**: 1 (TASK-044)
-- **Deferred**: 8 (TASK-012, TASK-039; TASK-047–TASK-052 as future enhancements)
-- **Overall Progress**: 92% of active backlog (36/39 non-deferred tasks)
+- **Not Started**: 2 (TASK-033, TASK-034)
+- **Deferred**: 3 (TASK-039; TASK-051, TASK-052)
+- **Overall Progress**: 96% of active backlog (46/48 non-deferred tasks)
+
+---
+
+## Recent Completions (June 2026)
+
+**Completed June 4, 2026 (v0.5.0):**
+- ✅ TASK-012: Reference Generator — `ref[structure.field, min..max]` and `ref[structure.field, min..count]`
+  - `ReferenceGenerator` (stateless, wired into `DataGeneratorFactory`)
+  - `GeneratorContext.jobCount` ThreadLocal carries job count into workers
+  - `JdbcTypeMapper` binds `ReferenceType` as BIGINT
+  - `DatabaseReferenceIT`: 3-table FK chain (customer → order → order_item), 5 Testcontainers tests
 
 ---
 
@@ -142,15 +153,15 @@ These tasks block other work and should be completed first:
 
 ---
 
-## Phase 2: Data Generation (🔄 Priority)
+## Phase 2: Data Generation (✅ Complete)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-010 | Datafaker Integration | 6-8h | Medium | TASK-007 | ✅ Complete |
 | TASK-011 | Locale-Specific Data | 4-5h | Low | TASK-010 | ✅ Complete |
-| TASK-012 | Reference Generator (Deferred) | 8-10h | High | TASK-018 | ⏸️ Deferred |
+| TASK-012 | Reference Generator | 8-10h | High | TASK-018 | ✅ Complete (v0.5.0) |
 
-**Status**: Phase 2 complete (realistic data generation with 62+ locales)
+**Status**: Phase 2 complete — realistic data generation with 62+ locales and FK references
 
 ---
 
@@ -274,7 +285,7 @@ These tasks block other work and should be completed first:
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
-| TASK-044 | Extras Directory — External JARs & Custom Datafaker Providers | 3-5h | Low | TASK-018, TASK-010 | ⏸️ Not Started |
+| TASK-044 | Extras Directory — External JARs & Custom Datafaker Providers | 3-5h | Low | TASK-018, TASK-010 | ✅ Complete (v0.4.0) |
 | TASK-045 | Database JMH Benchmarks — Insert Throughput & Batch Size Sensitivity | 3-4h | Low | TASK-043, TASK-026 | ✅ Complete |
 | TASK-046 | Benchmark Suite Filter (`jmhSuite` Gradle property) | 1h | Low | TASK-045, TASK-026 | ✅ Complete |
 | TASK-041 | Datafaker Plugin Architecture | 16-20h | High | TASK-010 | ✅ Complete |
@@ -309,47 +320,46 @@ For an AI agent or developer working sequentially:
 
 ### Sprint 1: Make It Work (MVP) - ✅ COMPLETE
 1. ✅ TASK-001 through TASK-009 (Phase 1 complete)
-2. ❌ **TASK-010**: Datafaker Integration (6-8h) - NEXT PRIORITY
-3. ✅ **TASK-013**: JSON Serializer (3-4h)
-4. ✅ **TASK-016**: File Destination (4-5h)
-5. ✅ **TASK-019**: CLI Command Interface (4-5h)
+2. ✅ **TASK-010**: Datafaker Integration
+3. ✅ **TASK-013**: JSON Serializer
+4. ✅ **TASK-016**: File Destination
+5. ✅ **TASK-019**: CLI Command Interface
 
-**Outcome**: ✅ Working CLI that generates data to JSON files  
-**Remaining**: Datafaker integration for realistic data
+**Outcome**: ✅ Working CLI that generates data to JSON files
 
-### Sprint 2: Add Formats & Parallelism - 🔄 IN PROGRESS
-6. ✅ **TASK-014**: CSV Serializer (4-5h)
-7. ❌ **TASK-020**: Multi-Threading Engine (8-10h) - PRIORITY
-8. ❌ **TASK-021**: Progress Reporting (2-3h)
-9. ❌ **TASK-011**: Locale-Specific Data (4-5h)
-10. ❌ **TASK-010**: Datafaker Integration (6-8h) - PREREQUISITE
+### Sprint 2: Add Formats & Parallelism - ✅ COMPLETE
+6. ✅ **TASK-014**: CSV Serializer
+7. ✅ **TASK-020**: Multi-Threading Engine
+8. ✅ **TASK-021**: Progress Reporting
+9. ✅ **TASK-011**: Locale-Specific Data
+10. ✅ **TASK-010**: Datafaker Integration
 
-**Outcome**: Fast parallel generation with CSV support
+**Outcome**: ✅ Fast parallel generation with CSV support
 
-### Sprint 3: Add Destinations
-10. **TASK-017**: Kafka Destination (6-8h)
-11. **TASK-018**: Database Destination (6-8h)
-12. **TASK-015**: Protobuf Serializer (6-8h)
+### Sprint 3: Add Destinations - ✅ COMPLETE
+10. ✅ **TASK-017**: Kafka Destination
+11. ✅ **TASK-018**: Database Destination (Stage 1 + Stage 2)
+12. ✅ **TASK-015**: Protobuf Serializer
 
-**Outcome**: Full destination support
+**Outcome**: ✅ Full destination support
 
-### Sprint 4: Quality & Performance
-13. **TASK-022**: Integration Tests Setup (3-4h)
-14. **TASK-023**: Kafka Integration Tests (4-5h)
-15. **TASK-024**: Database Integration Tests (4-5h)
-16. **TASK-025**: File Integration Tests (2-3h)
-17. **TASK-026**: JMH Benchmarks (4-6h)
-18. **TASK-027**: Memory Profiling (3-4h)
+### Sprint 4: Quality & Performance - ✅ COMPLETE
+13. ✅ **TASK-022**: Integration Tests Setup
+14. ✅ **TASK-023**: Kafka Integration Tests
+15. ✅ **TASK-024**: Database Integration Tests
+16. ✅ **TASK-025**: File Integration Tests
+17. ✅ **TASK-026**: JMH Benchmarks
+18. ✅ **TASK-027**: Memory Profiling
 
 **Outcome**: Production-ready with comprehensive testing
 
-### Sprint 5: Documentation & Polish
-19. **TASK-028**: README Completion (2-3h)
-20. **TASK-029**: Example Configurations (2-3h)
-21. **TASK-030**: JavaDoc Completion (4-6h)
-22. **TASK-031**: Licensing (2-3h, requires human decision)
+### Sprint 5: Documentation & Polish - ✅ COMPLETE
+19. ✅ **TASK-028**: README Completion
+20. ✅ **TASK-029**: Example Configurations
+21. ✅ **TASK-030**: JavaDoc Completion
+22. ✅ **TASK-031**: Licensing
 
-**Outcome**: Fully documented and ready for open source release
+**Outcome**: ✅ Fully documented and released as open source (v0.4.0 / v0.5.0)
 
 ---
 
@@ -358,7 +368,7 @@ For an AI agent or developer working sequentially:
 | Phase | Tasks | Estimated Hours | Completed |
 |-------|-------|-----------------|----------|
 | Phase 1 (Foundation) | 9 | 40-50h | ✅ 9/9 |
-| Phase 2 (Data Generation) | 3 | 18-23h | ✅ 2/3 (TASK-012 deferred) |
+| Phase 2 (Data Generation) | 3 | 18-23h | ✅ 3/3 |
 | Phase 3 (Output Formats) | 3 | 13-17h | ✅ 3/3 |
 | Phase 4 (Destinations Stage 1) | 4 | 20-27h | ✅ 4/4 |
 | Phase 5 (CLI & Threading) | 4 | 16-21h | ✅ 4/4 |
@@ -366,8 +376,10 @@ For an AI agent or developer working sequentially:
 | Phase 7 (Documentation) | 3 | 8-12h | ✅ 3/3 |
 | Phase 8 (Licensing) | 1 | 2-3h | ✅ 1/1 |
 | Phase 8 (Database Stage 2) | 3 | 24-30h | ✅ 3/3 (TASK-043, TASK-045, TASK-046) |
-| Phase 9 (Distribution) | 2 | 19-25h | ✅ 1/2 (TASK-044 not started) |
-| **TOTAL** | **39** | **184-241h** | **36/39 (92%)** |
+| Phase 9 (Distribution) | 4 | 22-30h | ✅ 4/4 |
+| Phase 10 (Biometric) | 6 | 22-30h | ✅ 4/6 (TASK-051, TASK-052 deferred) |
+| Security/Quality (TASK-033–036) | 4 | 10-15h | ✅ 2/4 (TASK-033, TASK-034 not started) |
+| **TOTAL** | **56** | **230-310h** | **46/56 (82% total; 96% of active)** |
 
 **Note**: Estimates are for experienced developer. Multiply by 1.5-2x for learning time.
 
@@ -415,7 +427,7 @@ TASK-001 (Project Setup)
 │   │   └── TASK-018 (Database Destination)
 │   │       ↓
 │   │       ├── TASK-024 (Database Integration Tests)
-│   │       └── TASK-012 (Reference Generator - deferred)
+│   │       └── TASK-012 (Reference Generator ✅)
 │   │
 │   ├── TASK-014 (CSV Serializer)
 │   │
@@ -460,10 +472,10 @@ TASK-001 (Project Setup)
 - ✅ Primitive and composite generators
 - ✅ 102 passing tests
 
-### Phase 2 (Priority)
-- Realistic data generation (names, addresses, emails)
-- 62 locale support
-- Foreign key references (deferred)
+### Phase 2 (✅ Complete)
+- ✅ Realistic data generation (names, addresses, emails)
+- ✅ 62 locale support
+- ✅ Foreign key references (`ref[structure.field, min..max]` and `ref[s.f, min..count]`)
 
 ### Phase 3 (Priority)
 - JSON serialization (NDJSON)
@@ -532,33 +544,41 @@ TASK-001 (Project Setup)
 
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
-| TASK-047 | Biometric YAML Structure Definitions | 2–3h | Low | None | ⏸️ Deferred (Future) |
-| TASK-048 | CBEFF JSON Wrapper Serializer | 3–4h | Low | TASK-047 | ⏸️ Deferred (Future) |
-| TASK-049 | BiometricValidator + `validate` CLI Command | 5–7h | Medium | TASK-047 | ⏸️ Deferred (Future) |
-| TASK-050 | Example Biometric Datasets | 2–3h | Low | TASK-047, TASK-048 | ⏸️ Deferred (Future) |
-| TASK-051 | Biometric ISO Field Mapping Documentation | 2–3h | Low | TASK-047 | ⏸️ Deferred (Future) |
-| TASK-052 | Binary FMR-like Serializer (Phase 2/optional) | 8–12h | High | TASK-047, TASK-048 | ⏸️ Deferred (Future) |
+| TASK-047 | Biometric YAML Structure Definitions | 2–3h | Low | None | ✅ Complete (v0.4.0) |
+| TASK-048 | CBEFF JSON Wrapper Serializer | 3–4h | Low | TASK-047 | ✅ Complete (v0.4.0) |
+| TASK-049 | BiometricValidator + `validate` CLI Command | 5–7h | Medium | TASK-047 | ✅ Complete (v0.4.0) |
+| TASK-050 | Example Biometric Datasets | 2–3h | Low | TASK-047, TASK-048 | ✅ Complete (v0.4.0) |
+| TASK-051 | Biometric ISO Field Mapping Documentation | 2–3h | Low | TASK-047 | ⏸️ Deferred |
+| TASK-052 | Binary FMR-like Serializer (Phase 2/optional) | 8–12h | High | TASK-047, TASK-048 | ⏸️ Deferred |
 
-**Recommended execution order within Phase 10:**
-1. TASK-047 (structures — no code, pure YAML)
-2. TASK-051 (documentation — while structures are being reviewed)
-3. TASK-048 (CBEFF serializer — low effort, enables sample generation)
-4. TASK-050 (sample datasets — depends on structures + optionally CBEFF)
-5. TASK-049 (validator — meaningful once sample data exists)
-6. TASK-052 (binary — optional, needs ISO PDF purchase first)
+**Completed (v0.4.0):** YAML structures (face/fingerprint), CBEFF serializer, BiometricValidator + `validate` CLI, example datasets in `cli/output/`.  
+**Remaining:** TASK-051 (ISO field mapping docs); TASK-052 (binary serializer, needs ISO PDF).
 
 **Scope boundary:** Pixel-level image generation, biometric matching (FAR/FRR), and intra-subject
 cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETRIC-DISCUSSION.md`.
 
 ---
 
-**Last Updated**: March 13, 2026
+---
+
+## Security & Quality Tasks
+
+| Task | Title | Effort | Complexity | Status |
+|------|-------|--------|------------|--------|
+| TASK-033 | Fault Tolerance & Error Handling | 3-5h | Medium | ⏸️ Not Started |
+| TASK-034 | Secret Management | 3-4h | Medium | ⏸️ Not Started |
+| TASK-035 | Dependency Vulnerability Scanning | 2-3h | Low | ✅ Complete (March 2026) |
+| TASK-036 | File Permission Checks | 2-3h | Low | ✅ Complete (v0.4.0) |
+
+---
+
+**Last Updated**: June 5, 2026
 
 ---
 
 ## Completion Progress
 
-**Overall**: 35/38 active tasks complete (92%)
-**Current Sprint**: Sprint 6 (Database Stage 2) — COMPLETE
-**Next Priority**: TASK-044 (Extras directory — decouple JDBC drivers from distribution)
-**Estimated Remaining Effort**: TASK-044 (3-5h); TASK-012 (8-10h, deferred); TASK-039 (4-6h, low priority)
+**Overall**: 46/56 tasks tracked (82%); 46/48 active (96% excl. deferred)
+**Current Sprint**: v0.5.0 shipped — ref[] generator complete
+**Next Priority**: TASK-033 (error handling, P1); TASK-034 (secret management, P2); TASK-051 (biometric docs)
+**Estimated Remaining Effort**: TASK-033 (3-5h); TASK-034 (3-4h); TASK-051 (2-3h); TASK-039 (4-6h, low priority); TASK-052 (8-12h, optional)

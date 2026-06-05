@@ -1,66 +1,31 @@
 # Project Backlog
 
-## ⚡ Current Priority Recommendation (March 10, 2026)
+## ⚡ Current Status (June 5, 2026) — v0.5.0 Released
 
-**Phase 8 (Database Destinations) — Stage 2 COMPLETE ✅**
+**Recently Accomplished (June 4, 2026 — v0.5.0):**
+- ✅ **Reference Generator** (TASK-012):
+  - `ref[structure.field, min..max]` — static FK pool
+  - `ref[structure.field, min..count]` — dynamic variant, pool scales with `--count` at runtime
+  - `ReferenceGenerator` stateless, wired into `DataGeneratorFactory`
+  - `GeneratorContext.jobCount` ThreadLocal carries job count into worker threads
+  - `JdbcTypeMapper` binds `ReferenceType` as BIGINT
+  - `DatabaseReferenceIT`: 3-table FK chain (customer → order → order_item) with Testcontainers
 
-**Recently Accomplished (March 10, 2026):**
-- ✅ **Benchmark Suite Filter** (TASK-046):
-  - `jmhSuite` Gradle property: `database` / `kafka` / `generators` — runs only the requested suite
-  - Removed unconditional `includes.set(listOf(".*"))` from `benchmarks/build.gradle.kts`; replaced with
-    conditional block so `-Pjmh.includes` still works for fine-grained filtering
-  - Root cause: `me.champeau.jmh` 0.7.x configuration-phase assignment overrides runtime Gradle properties
-- ✅ **Database JMH Benchmarks** (TASK-045):
-  - `DatabaseBenchmark`: 16-configuration matrix (4 batch sizes × 2 transaction strategies × 2 methods)
-  - Flat: BIGSERIAL PK, same pre-built record reused → 57K–85K ops/s (micro-benchmark conditions)
-  - Nested: 3 INSERTs/record via `NestedRecordDecomposer` → 2.5K–3.3K ops/s (`per_batch`)
-  - `PERFORMANCE.md` and `DATABASE-BENCHMARK-GUIDE.md` updated with actual measured results
-- ✅ **Database Stage 2 — Nested Auto-Decomposition** (TASK-043):
-  - `NestedRecordDecomposer`: recursive depth-first decomposition, FK injection from immediate parent only
-  - `ParentContext`: record carrying `(tableName, parentId)` for `{tableName}_id` FK convention
-  - `DatabaseDestination`: auto-detects nested mode on first `write()`; per-table `PreparedStatement` cache
-  - 11 `NestedRecordDecomposerTest` unit tests; 10 `DatabaseDestinationNestedIT` IT tests
-  - E2E benchmark updated: invoice (invoices → issuer, recipient, line_items) replaces flat passport
-  - Branch `feature/database-stage2-nested-decomposition` ready to merge
+**Recently Accomplished (March 15–20, 2026 — v0.4.0):**
+- ✅ **Biometric Support** (TASK-047–050): Face + fingerprint YAML structures, CBEFF serializer, BiometricValidator + `validate` CLI subcommand, example datasets in `cli/output/`
+- ✅ **Security** (TASK-036): File permission validation at startup (world-writable config → fail fast)
+- ✅ **Extras directory** (TASK-044): JDBC drivers and custom Datafaker providers loaded from `extras/` at startup
+- ✅ **Database Stage 2** (TASK-043): Nested auto-decomposition, FK injection via `{parent}_id` convention
+- ✅ **Database JMH Benchmarks** (TASK-045, TASK-046): 16-config matrix; suite filter (`-PjmhSuite=database|kafka|generators`)
 
-**Recently Accomplished (March 9, 2026):**
-- ✅ **Thread-local Faker cache** (TASK-040):
-  - `FakerCache.java` with `ThreadLocal<Map<Locale, Faker>>`
-  - `DatafakerGenerator` updated to use cache (eliminates 800K Faker instantiations per 100K records)
-  - `workerCleanup: Runnable` callback in `GenerationEngine` for thread-local teardown
-  - Expected: 2× throughput improvement (20K → 40K rec/s)
-- ✅ **Database adapter Stage 1** (TASK-018 + TASK-024):
-  - PostgreSQL destination via JDBC/HikariCP, batch inserts, 3 transaction strategies
-  - 10 unit tests (H2) + 9 integration tests (Testcontainers PostgreSQL)
-  - Env var substitution, table name override, flat-only guard
-- ✅ **JDBC Option B type binding** (TASK-042):
-  - `DatabaseDestination` accepts `Map<String, String>` raw YAML type strings
-  - TypeParser invoked inside `open()` after connection established (fail-fast ordering)
-  - Schema-aware JDBC binding with `JdbcTypeMapper`; fallback to `instanceof` when no schema
-  - IT tests for schema-aware path (coerce String→Date, enum binding)
+**Current Status:** v0.5.0 production-ready. All core generation features complete: file/Kafka/PostgreSQL destinations; JSON/CSV/Protobuf/CBEFF formats; biometric structures; FK references (`ref[]`); plugin registry; extras classpath loader. 46/56 tracked tasks complete.
 
-**Phase 6 (Core Performance Validation) - COMPLETE ✅:**
-- ✅ Component benchmarks (primitives, Datafaker, JSON serialization, file I/O)
-- ✅ Kafka producer benchmarks (24 configurations with compression analysis)
-- ✅ End-to-end benchmarks (54 tests with memory/threading analysis)
-- ✅ File I/O optimization (600-800 MB/s, exceeds 500 MB/s target)
-- ✅ Memory profiling (no leaks, <2% GC overhead, linear scaling)
-- ✅ Integration tests (43 tests with Testcontainers)
-- ✅ Production guidance (Kubernetes resource recommendations)
-
-**Recommended Priority:**
-1. ✅ Phase 3 (Output Formats) - **COMPLETE** (JSON, CSV, Protobuf)
-2. ✅ Phase 5 (CLI & Multi-threading) - **COMPLETE**
-3. ✅ Phase 6 (Performance Validation) - **COMPLETE**
-4. ✅ Phase 6 Extended (Analysis & Optimization) - **COMPLETE** (profiling ✅, thread-local cache ✅)
-5. ✅ Phase 7 (Documentation) - **COMPLETE** (README, examples, performance docs)
-6. ✅ Phase 8: Database Destinations Stage 1 - **COMPLETE** (PostgreSQL flat tables, Option B type binding)
-7. ✅ **Phase 8: Database Destinations Stage 2 (TASK-043) — COMPLETE** (nested auto-decomposition, FK injection)
-8. ✅ **Phase 8: Database JMH Benchmarks (TASK-045, TASK-046) — COMPLETE** (insert throughput, batch size sensitivity, suite filter)
-9. ✅ **TASK-044 — Extras directory** (JDBC drivers decoupled; extras/* on classpath at startup)
-10. 💤 Future Enhancements - REST/gRPC API, advanced formats, monitoring
-
-**Current Status:** Production-ready for file/Kafka/PostgreSQL with JSON/CSV/Protobuf. Database Stage 1 (flat tables) and Stage 2 (nested objects / FK auto-decomposition) both complete. Database JMH benchmarks complete (16-config matrix, measured results in `docs/PERFORMANCE.md`). Benchmark suite filter (`-PjmhSuite=database|kafka|generators`) in place. JDBC drivers decoupled into `extras/` directory (TASK-044 complete). Datafaker plugin registry live (TASK-041 complete).
+**Remaining open work:**
+- TASK-033: Fault tolerance & error handling (P1, not started)
+- TASK-034: Secret management (P2, not started)
+- TASK-051: Biometric ISO field mapping docs (P3, deferred)
+- TASK-039: Jackson streaming API optimization (low priority, deferred)
+- TASK-052: Binary FMR-like serializer (optional, needs ISO PDF)
 
 ---
 
@@ -141,16 +106,12 @@
   - **Supported types**: NAME, FIRST_NAME, LAST_NAME, EMAIL, PHONE_NUMBER, ADDRESS, CITY, COMPANY, URL, UUID, IBAN, and more
   - **Completion**: March 2026 (TASK-010, TASK-011)
 
-- [ ] **Generators module - ReferenceGenerator (deferred)**
-  - **Rationale**: Deferred until database destinations are implemented (no immediate use case)
-  - Foreign key reference support: `ref[other_structure.field]`
-  - **Requirements**:
-    - Cross-record reference registry to maintain previously generated records
-    - Lookup mechanism to find specific field values from referenced structures
-    - Order dependency resolution (referenced structures must be generated first)
-    - Performance optimization needed for large datasets (potential memory concerns)
-  - **Complexity**: High - requires significant infrastructure beyond simple value generation
-  - **When to implement**: Before Phase 4 database adapter implementation
+- [x] **Generators module - ReferenceGenerator** ✅ **COMPLETE (v0.5.0, June 2026)**
+  - Foreign key reference support: `ref[structure.field, min..max]` (static pool) and `ref[structure.field, min..count]` (scales with `--count`)
+  - `ReferenceGenerator`: stateless generator, picks a uniform random `long` from pool
+  - `GeneratorContext.jobCount` ThreadLocal carries job count into worker threads for `min..count` resolution
+  - `JdbcTypeMapper` binds `ReferenceType` as BIGINT (schema-aware path)
+  - E2E verified: 3-table FK chain (customer → order → order_item) with Testcontainers (`DatabaseReferenceIT`)
 
 - [ ] **Generators module - Distribution support (future)**
   - Implement statistical distributions (normal, uniform, Zipfian)
@@ -498,7 +459,6 @@
   - Support for Avro and Parquet formats
   - Schema registry integration (Confluent, AWS Glue)
   - Data masking and anonymization patterns
-  - Foreign key relationship handling between structures
   - Plugin marketplace for custom generators and destinations
   - Metrics and monitoring integration (Prometheus, Grafana)
 
@@ -520,7 +480,7 @@
   - Context stack for FK injection (convention: `{parent_structure_name}_id`)
   - Recursive decomposition (works at any nesting depth)
   - Transaction management: parent + all children committed/rolled-back together
-  - No composite PK (deferred); no `ref[]` cross-record references (requires TASK-012)
+  - No composite PK (deferred); `ref[]` cross-record references now available (TASK-012 complete)
   - 11 unit tests + 10 PostgreSQL integration tests (Testcontainers)
   - Task: TASK-043-database-stage2-nested-decomposition.md
   - User Story: US-043-database-nested-auto-decomposition.md
@@ -531,6 +491,20 @@
   - `benchmarkNestedInsert`: 3 INSERTs/call (1 parent + 2 children) via `NestedRecordDecomposer`
   - Schema auto-created/dropped; tables truncated between iterations
   - Task: TASK-045-database-jmh-benchmarks.md
+
+## Phase 9: Distribution, Security & Biometric (v0.4.0)
+
+- [x] **Extras directory** ✅ **COMPLETE (v0.4.0)** — JDBC drivers + custom Datafaker providers loaded from `extras/` at startup; contents auto-added to classpath
+- [x] **File permission validation** ✅ **COMPLETE (v0.4.0)** — Startup check: world-writable config files → fail fast (`FilePermissionValidator`)
+- [x] **Dependency vulnerability scanning** ✅ **COMPLETE (March 2026)** — OWASP Dependency-Check in CI security workflow; SpotBugs consolidated there too
+- [x] **Biometric YAML structures** ✅ **COMPLETE (v0.4.0)** — Face and fingerprint schemas (`face_image.yaml`, `fingerprint_minutiae.yaml`, etc.) in `config/structures/`
+- [x] **CBEFF serializer** ✅ **COMPLETE (v0.4.0)** — `CbeffSerializer`: CBEFF-like JSON envelope format for biometric payloads
+- [x] **BiometricValidator + `validate` CLI** ✅ **COMPLETE (v0.4.0)** — Validates biometric field constraints (dimensions, quality scores, ISO/IEC 19794 ranges); `validate` subcommand validates YAML configs without executing
+- [x] **Biometric example datasets** ✅ **COMPLETE (v0.4.0)** — `cli/output/face_image.json`, `fingerprint_image.json`, `fingerprint_minutiae.json`
+
+## Phase 10: Reference Generator (v0.5.0)
+
+- [x] **Reference Generator** ✅ **COMPLETE (v0.5.0, June 4, 2026)** — see Phase 2 for details
 
 ## Before Going Public 🚀
 
