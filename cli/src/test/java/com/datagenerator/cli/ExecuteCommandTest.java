@@ -22,6 +22,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -72,6 +73,8 @@ class ExecuteCommandTest {
     return writeJobFile("file", "");
   }
 
+  @SuppressFBWarnings(
+      "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional YAML line endings
   private Path writeJobFile(String destType, String extraConf) throws Exception {
     Path jobFile = tempDir.resolve("job.yaml");
     Files.writeString(
@@ -234,7 +237,8 @@ class ExecuteCommandTest {
   void traceSampleOutOfRangeIsClampedAndSucceeds() throws Exception {
     Path jobFile = writeJobFile();
     // 0 should be clamped to 1; 200 should be clamped to 100 — both should succeed
-    int code = execute("--job", jobFile.toString(), "--count", "2", "--debug", "--trace-sample", "0");
+    int code =
+        execute("--job", jobFile.toString(), "--count", "2", "--debug", "--trace-sample", "0");
 
     assertThat(code).isZero();
   }
@@ -272,6 +276,8 @@ class ExecuteCommandTest {
   }
 
   @Test
+  @SuppressFBWarnings(
+      "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional YAML line endings
   void unsupportedDestinationTypeReturnsError() throws Exception {
     Path jobFile = tempDir.resolve("bad_dest.yaml");
     Files.writeString(
@@ -293,6 +299,8 @@ class ExecuteCommandTest {
   }
 
   @Test
+  @SuppressFBWarnings(
+      "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional YAML line endings
   void nonexistentStructureFileReturnsError() throws Exception {
     Path jobFile = tempDir.resolve("bad_struct.yaml");
     Files.writeString(
@@ -316,6 +324,8 @@ class ExecuteCommandTest {
   // ── Structures path resolution ───────────────────────────────────────────────
 
   @Test
+  @SuppressFBWarnings(
+      "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional YAML line endings
   void structuresPathInferredFromJobsDirectory() throws Exception {
     // Organise as config/jobs/job.yaml and config/structures/simple.yaml — mirrors real layout
     Path configDir = tempDir.resolve("config");
