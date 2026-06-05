@@ -44,7 +44,10 @@ import lombok.Value;
 @Value
 public class SecretsConfig {
 
-  /** Resolver backend. Supported values: {@code env} (default), {@code vault}. */
+  /**
+   * Resolver backend. Supported values: {@code env} (default), {@code vault}, {@code aws}, {@code
+   * azure_keyvault}.
+   */
   String resolver;
 
   /**
@@ -62,15 +65,23 @@ public class SecretsConfig {
    */
   String awsRegion;
 
+  /**
+   * Azure Key Vault URI (e.g. {@code https://myvault.vault.azure.net}). Required for {@code
+   * azure_keyvault} resolver.
+   */
+  String vaultUri;
+
   @JsonCreator
   public SecretsConfig(
       @JsonProperty("resolver") String resolver,
       @JsonProperty("vault_addr") String vaultAddr,
       @JsonProperty("vault_namespace") String vaultNamespace,
-      @JsonProperty("aws_region") String awsRegion) {
+      @JsonProperty("aws_region") String awsRegion,
+      @JsonProperty("vault_uri") String vaultUri) {
     this.resolver = resolver;
     this.vaultAddr = vaultAddr;
     this.vaultNamespace = vaultNamespace;
     this.awsRegion = awsRegion;
+    this.vaultUri = vaultUri;
   }
 }

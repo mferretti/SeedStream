@@ -268,6 +268,33 @@ class JobConfigParserTest {
   }
 
   @Test
+  void shouldParseJobWithAzureKeyVaultSecretsConfig() throws Exception {
+    String yaml =
+        """
+            source: data.yaml
+            type: kafka
+            secrets:
+              resolver: azure_keyvault
+              vault_uri: https://myvault.vault.azure.net
+            conf:
+              bootstrap: localhost:9092
+              topic: events
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    SecretsConfig secrets = config.getSecrets();
+    assertThat(secrets).isNotNull();
+    assertThat(secrets.getResolver()).isEqualTo("azure_keyvault");
+    assertThat(secrets.getVaultUri()).isEqualTo("https://myvault.vault.azure.net");
+    assertThat(secrets.getVaultAddr()).isNull();
+    assertThat(secrets.getAwsRegion()).isNull();
+  }
+
+  @Test
   void shouldReturnNullSecretsWhenBlockAbsent() throws Exception {
     String yaml =
         """

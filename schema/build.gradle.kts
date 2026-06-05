@@ -11,4 +11,8 @@ dependencies {
 
     // AWS Secrets Manager resolver
     implementation(libs.aws.secretsmanager)
+
+    // Azure Key Vault resolver
+    implementation(libs.azure.keyvault.secrets)
+    implementation(libs.azure.identity)
 }

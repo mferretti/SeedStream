@@ -39,6 +39,8 @@ awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
 aws-sdk = "2.28.0"
+azure-keyvault-secrets = "4.11.0"
+azure-identity = "1.18.3"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.0"
@@ -119,6 +121,10 @@ log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4
 
 # AWS
 aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version.ref = "aws-sdk" }
+
+# Azure
+azure-keyvault-secrets = { module = "com.azure:azure-security-keyvault-secrets", version.ref = "azure-keyvault-secrets" }
+azure-identity = { module = "com.azure:azure-identity", version.ref = "azure-identity" }
 
 [bundles]
 # Common testing bundle (for most modules)

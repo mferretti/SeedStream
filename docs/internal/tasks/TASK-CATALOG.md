@@ -592,7 +592,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 | TASK-035 | Dependency Vulnerability Scanning | 2-3h | Low | ✅ Complete (March 2026) |
 | TASK-036 | File Permission Checks | 2-3h | Low | ✅ Complete (v0.4.0) |
 | TASK-055 | AWS Secrets Manager Backend | 3-4h | Low | ✅ Complete (June 5, 2026) |
-| TASK-056 | Azure Key Vault Backend | 3-4h | Low | ⏸️ Deferred (needs TASK-034) |
+| TASK-056 | Azure Key Vault Backend | 3-4h | Low | ✅ Complete (June 5, 2026) |
 | TASK-057 | Encrypted Config File Backend | 4-5h | Medium | ⏸️ Deferred (needs TASK-034) |
 
 ---
@@ -604,7 +604,7 @@ cross-record correlation are explicitly out of scope. See `docs/internal/BIOMETR
 | Task | Title | Effort | Complexity | Dependencies | Status |
 |------|-------|--------|------------|--------------|--------|
 | TASK-053 | Avro Serializer (dynamic schema, no Schema Registry) | 4–6h | Medium | TASK-013 | ✅ Complete (June 5, 2026) |
-| TASK-054 | Avro + Confluent Schema Registry | 8–12h | High | TASK-053 | ⏸️ Deferred |
+| TASK-054 | Avro + Confluent Schema Registry | 8–12h | High | TASK-053 | ✅ Complete (June 5, 2026) |
 
 ---
 

@@ -1,6 +1,6 @@
 # TASK-056: Security - Azure Key Vault Backend
 
-**Status**: ⏸️ Deferred  
+**Status**: ✅ Done  
 **Priority**: P3 (Low)  
 **Phase**: 9 - Security & Compliance  
 **Dependencies**: TASK-034 (SecretResolver interface)  
@@ -51,14 +51,14 @@ destination:
 
 ## Acceptance Criteria
 
-- [ ] `AzureKeyVaultResolver` implements `SecretResolver`
-- [ ] DefaultAzureCredential chain used (no explicit client secret in YAML)
-- [ ] `vault_uri` config key required; `ConfigurationException` if absent
-- [ ] Optional version suffix in secret path
-- [ ] `ConfigurationException` on secret not found or permission denied
-- [ ] Secrets never logged
-- [ ] Unit tests with mocked `SecretClient`
+- [x] `AzureKeyVaultResolver` implements `SecretResolver`
+- [x] DefaultAzureCredential chain used (no explicit client secret in YAML)
+- [x] `vault_uri` config key required; `ConfigurationException` if absent
+- [x] Optional version suffix in secret path
+- [x] `ConfigurationException` on secret not found or permission denied
+- [x] Secrets never logged
+- [x] Unit tests with mocked `SecretClient`
 
 ---
 
-**Completion Date**: [Mark when complete]
+**Completion Date**: 2026-06-05

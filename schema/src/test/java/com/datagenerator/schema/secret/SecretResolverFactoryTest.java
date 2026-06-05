@@ -31,38 +31,39 @@ class SecretResolverFactoryTest {
 
   @Test
   void shouldReturnEnvResolverWhenResolverTypeIsNull() {
-    SecretsConfig config = new SecretsConfig(null, null, null, null);
+    SecretsConfig config = new SecretsConfig(null, null, null, null, null);
     assertThat(SecretResolverFactory.create(config)).isSameAs(EnvSecretResolver.INSTANCE);
   }
 
   @Test
   void shouldReturnEnvResolverForEnvType() {
-    SecretsConfig config = new SecretsConfig("env", null, null, null);
+    SecretsConfig config = new SecretsConfig("env", null, null, null, null);
     assertThat(SecretResolverFactory.create(config)).isSameAs(EnvSecretResolver.INSTANCE);
   }
 
   @Test
   void shouldReturnEnvResolverForEnvTypeUpperCase() {
-    SecretsConfig config = new SecretsConfig("ENV", null, null, null);
+    SecretsConfig config = new SecretsConfig("ENV", null, null, null, null);
     assertThat(SecretResolverFactory.create(config)).isSameAs(EnvSecretResolver.INSTANCE);
   }
 
   @Test
   void shouldReturnVaultResolverWhenVaultTypeWithAddr() {
-    SecretsConfig config = new SecretsConfig("vault", "https://vault.example.com:8200", null, null);
+    SecretsConfig config =
+        new SecretsConfig("vault", "https://vault.example.com:8200", null, null, null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(VaultSecretResolver.class);
   }
 
   @Test
   void shouldReturnVaultResolverWithNamespace() {
     SecretsConfig config =
-        new SecretsConfig("vault", "https://vault.example.com:8200", "myteam", null);
+        new SecretsConfig("vault", "https://vault.example.com:8200", "myteam", null, null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(VaultSecretResolver.class);
   }
 
   @Test
   void shouldThrowWhenVaultAddrMissingForVaultType() {
-    SecretsConfig config = new SecretsConfig("vault", null, null, null);
+    SecretsConfig config = new SecretsConfig("vault", null, null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("vault_addr");
@@ -70,7 +71,7 @@ class SecretResolverFactoryTest {
 
   @Test
   void shouldThrowWhenVaultAddrBlankForVaultType() {
-    SecretsConfig config = new SecretsConfig("vault", "   ", null, null);
+    SecretsConfig config = new SecretsConfig("vault", "   ", null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("vault_addr");
@@ -79,16 +80,39 @@ class SecretResolverFactoryTest {
   @Test
   void shouldReturnAwsResolverForAwsType() {
     // aws_region provided so the SDK can construct the client without querying AWS metadata
-    SecretsConfig config = new SecretsConfig("aws", null, null, "us-east-1");
+    SecretsConfig config = new SecretsConfig("aws", null, null, "us-east-1", null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(AwsSecretsManagerResolver.class);
   }
 
   @Test
+  void shouldReturnAzureKeyVaultResolverForAzureType() {
+    SecretsConfig config =
+        new SecretsConfig("azure_keyvault", null, null, null, "https://myvault.vault.azure.net");
+    assertThat(SecretResolverFactory.create(config)).isInstanceOf(AzureKeyVaultResolver.class);
+  }
+
+  @Test
+  void shouldThrowWhenVaultUriMissingForAzureType() {
+    SecretsConfig config = new SecretsConfig("azure_keyvault", null, null, null, null);
+    assertThatThrownBy(() -> SecretResolverFactory.create(config))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("vault_uri");
+  }
+
+  @Test
+  void shouldThrowWhenVaultUriBlankForAzureType() {
+    SecretsConfig config = new SecretsConfig("azure_keyvault", null, null, null, "   ");
+    assertThatThrownBy(() -> SecretResolverFactory.create(config))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("vault_uri");
+  }
+
+  @Test
   void shouldThrowForUnknownResolverType() {
-    SecretsConfig config = new SecretsConfig("gcp", null, null, null);
+    SecretsConfig config = new SecretsConfig("gcp", null, null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("gcp")
-        .hasMessageContaining("env, vault, aws");
+        .hasMessageContaining("env, vault, aws, azure_keyvault");
   }
 }
