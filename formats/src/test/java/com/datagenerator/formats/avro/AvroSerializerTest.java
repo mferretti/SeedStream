@@ -22,7 +22,6 @@ import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -251,13 +250,5 @@ class AvroSerializerTest {
     GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(serializer.getSchema());
     return reader.read(
         null, DecoderFactory.get().binaryDecoder(new ByteArrayInputStream(binary), null));
-  }
-
-  private List<GenericRecord> roundTripAll(List<Map<String, Object>> records) throws Exception {
-    List<GenericRecord> result = new ArrayList<>();
-    for (Map<String, Object> record : records) {
-      result.add(roundTrip(record));
-    }
-    return result;
   }
 }
