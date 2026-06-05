@@ -18,11 +18,15 @@ package com.datagenerator.formats.json;
 
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.SerializationException;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,8 +45,8 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Field aliases preserved from generators
  * </ul>
  *
- * <p><b>Thread Safety:</b> ObjectMapper is thread-safe after configuration - can be shared across
- * workers.
+ * <p><b>Thread Safety:</b> ObjectMapper and JsonFactory are thread-safe after configuration and can
+ * be shared across workers. {@link StreamWriter} instances are NOT thread-safe.
  *
  * <p><b>Example Output:</b>
  *
@@ -54,10 +58,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JsonSerializer implements FormatSerializer {
   private final ObjectMapper mapper;
+  private final JsonFactory jsonFactory;
 
   /** Create JSON serializer with default configuration. */
   public JsonSerializer() {
     this.mapper = createObjectMapper();
+    this.jsonFactory = mapper.getFactory();
   }
 
   /**
@@ -71,6 +77,7 @@ public class JsonSerializer implements FormatSerializer {
           "ObjectMapper is a thread-safe, shared serialization service; storing reference is intentional")
   public JsonSerializer(ObjectMapper mapper) {
     this.mapper = mapper;
+    this.jsonFactory = mapper.getFactory();
   }
 
   private static ObjectMapper createObjectMapper() {
@@ -96,6 +103,54 @@ public class JsonSerializer implements FormatSerializer {
       log.error("Failed to serialize record to JSON: {}", record, e);
       throw new SerializationException("JSON serialization failed", e);
     }
+  }
+
+  /**
+   * Open a streaming writer that holds one {@link JsonGenerator} open for all records, eliminating
+   * per-record String allocation. The generator is closed (but the stream is not) when the writer
+   * is closed.
+   *
+   * <p>The generator is wired to a flush-suppressing proxy so that per-record {@code gen.flush()}
+   * only drains the generator's internal byte buffer into {@code out}'s buffer — it does NOT
+   * propagate a system-level flush on every record, preserving the {@link
+   * java.io.BufferedOutputStream} batching behaviour.
+   */
+  @Override
+  public StreamWriter createStreamWriter(OutputStream out) throws IOException {
+    // Proxy that forwards writes but swallows flush() — prevents gen.flush() from
+    // triggering a BufferedOutputStream drain on every single record.
+    OutputStream genOut =
+        new OutputStream() {
+          @Override
+          public void write(int b) throws IOException {
+            out.write(b);
+          }
+
+          @Override
+          public void write(byte[] b, int off, int len) throws IOException {
+            out.write(b, off, len);
+          }
+
+          @Override
+          public void flush() {} // suppress: real flush only on FileDestination.flush()
+        };
+
+    JsonGenerator gen = jsonFactory.createGenerator(genOut);
+    gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
+    gen.setCodec(mapper);
+    return new StreamWriter() {
+      @Override
+      public void writeRecord(Map<String, Object> record) throws IOException {
+        gen.writeObject(record);
+        gen.flush(); // drains generator's internal buffer → out's buffer; no OS call
+        out.write('\n');
+      }
+
+      @Override
+      public void close() throws IOException {
+        gen.close();
+      }
+    };
   }
 
   @Override

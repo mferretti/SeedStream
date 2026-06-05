@@ -19,10 +19,15 @@ package com.datagenerator.formats.json;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.datagenerator.formats.FormatSerializer.StreamWriter;
 import com.datagenerator.formats.SerializationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -202,6 +207,146 @@ class JsonSerializerTest {
 
     JsonNode node = mapper.readTree(json);
     assertThat(node.get("middleName").isNull()).isTrue();
+  }
+
+  // ── StreamWriter ──────────────────────────────────────────────────────────
+
+  @Test
+  void streamWriterWritesJsonFollowedByNewline() throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (StreamWriter writer = serializer.createStreamWriter(out)) {
+      writer.writeRecord(Map.of("name", "Alice", "age", 30));
+    }
+
+    String output = out.toString(StandardCharsets.UTF_8);
+    assertThat(output).endsWith("\n");
+    JsonNode node = mapper.readTree(output.trim());
+    assertThat(node.get("name").asText()).isEqualTo("Alice");
+    assertThat(node.get("age").asInt()).isEqualTo(30);
+  }
+
+  @Test
+  void streamWriterWritesMultipleRecords() throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (StreamWriter writer = serializer.createStreamWriter(out)) {
+      writer.writeRecord(Map.of("id", 1));
+      writer.writeRecord(Map.of("id", 2));
+      writer.writeRecord(Map.of("id", 3));
+    }
+
+    String[] lines = out.toString(StandardCharsets.UTF_8).split("\n");
+    assertThat(lines).hasSize(3);
+    assertThat(mapper.readTree(lines[0]).get("id").asInt()).isEqualTo(1);
+    assertThat(mapper.readTree(lines[1]).get("id").asInt()).isEqualTo(2);
+    assertThat(mapper.readTree(lines[2]).get("id").asInt()).isEqualTo(3);
+  }
+
+  @Test
+  void streamWriterOutputMatchesSerialize() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("name", "Bob");
+    record.put("score", new BigDecimal("9.5"));
+    record.put("date", LocalDate.of(2025, 1, 1));
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (StreamWriter writer = serializer.createStreamWriter(out)) {
+      writer.writeRecord(record);
+    }
+
+    String streamed = out.toString(StandardCharsets.UTF_8).trim();
+    String direct = serializer.serialize(record);
+    assertThat(mapper.readTree(streamed)).isEqualTo(mapper.readTree(direct));
+  }
+
+  @Test
+  void streamWriterDoesNotCloseUnderlyingStream() throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    StreamWriter writer = serializer.createStreamWriter(out);
+    writer.writeRecord(Map.of("key", "val"));
+    writer.close();
+
+    // Stream still usable after writer closed
+    out.write("extra".getBytes(StandardCharsets.UTF_8));
+    assertThat(out.toString(StandardCharsets.UTF_8)).contains("key").contains("extra");
+  }
+
+  @Test
+  void streamWriterDoesNotPropagateFlushToUnderlyingStream() throws Exception {
+    int[] flushCount = {0};
+    ByteArrayOutputStream buf = new ByteArrayOutputStream();
+    OutputStream trackingOut =
+        new OutputStream() {
+          @Override
+          public void write(int b) throws IOException {
+            buf.write(b);
+          }
+
+          @Override
+          public void write(byte[] b, int off, int len) throws IOException {
+            buf.write(b, off, len);
+          }
+
+          @Override
+          public void flush() {
+            flushCount[0]++;
+          }
+        };
+
+    try (StreamWriter writer = serializer.createStreamWriter(trackingOut)) {
+      for (int i = 0; i < 100; i++) {
+        writer.writeRecord(Map.of("id", i));
+      }
+    }
+
+    assertThat(flushCount[0]).isZero();
+    assertThat(buf.size()).isGreaterThan(0);
+  }
+
+  @Test
+  void streamWriterBytesReachOuterStreamWithoutExplicitFlush() throws Exception {
+    int[] flushCount = {0};
+    ByteArrayOutputStream buf = new ByteArrayOutputStream();
+    OutputStream trackingOut =
+        new OutputStream() {
+          @Override
+          public void write(int b) throws IOException {
+            buf.write(b);
+          }
+
+          @Override
+          public void write(byte[] b, int off, int len) throws IOException {
+            buf.write(b, off, len);
+          }
+
+          @Override
+          public void flush() {
+            flushCount[0]++;
+          }
+        };
+
+    try (StreamWriter writer = serializer.createStreamWriter(trackingOut)) {
+      writer.writeRecord(Map.of("key", "value"));
+    }
+
+    String output = buf.toString(StandardCharsets.UTF_8);
+    assertThat(output).contains("\"key\"").contains("\"value\"");
+    assertThat(flushCount[0]).isZero();
+  }
+
+  @Test
+  void streamWriterHandlesComplexTypes() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("items", List.of("a", "b"));
+    record.put("ts", Instant.parse("2025-06-01T00:00:00Z"));
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (StreamWriter writer = serializer.createStreamWriter(out)) {
+      writer.writeRecord(record);
+    }
+
+    JsonNode node = mapper.readTree(out.toString(StandardCharsets.UTF_8).trim());
+    assertThat(node.get("items").isArray()).isTrue();
+    assertThat(node.get("ts").asText()).isEqualTo("2025-06-01T00:00:00Z");
   }
 
   @Test

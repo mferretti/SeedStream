@@ -19,17 +19,15 @@ package com.datagenerator.destinations.file;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.formats.FormatSerializer;
+import com.datagenerator.formats.FormatSerializer.StreamWriter;
 import com.datagenerator.formats.avro.AvroSerializer;
-import java.io.BufferedWriter;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
@@ -45,12 +43,14 @@ import org.apache.avro.generic.GenericRecord;
  *
  * <ul>
  *   <li>Java NIO for fast I/O
- *   <li>Buffered writes (configurable buffer size)
- *   <li>Batch writes (configurable batch size for 2-3x performance improvement)
+ *   <li>Buffered writes (configurable buffer size via {@link
+ *       FileDestinationConfig#getBufferSize()})
  *   <li>Optional gzip compression
  *   <li>Append mode support
  *   <li>CSV header row (for CSV format)
  *   <li>Automatic parent directory creation
+ *   <li>Zero-copy JSON streaming via {@link FormatSerializer#createStreamWriter} — no intermediate
+ *       String allocation per record
  * </ul>
  *
  * <p><b>Format Support:</b> JSON (newline-delimited), CSV (with headers), or any custom {@link
@@ -79,19 +79,17 @@ public class FileDestination implements DestinationAdapter {
   private final FileDestinationConfig config;
   private final FormatSerializer serializer;
 
-  private BufferedWriter writer;
   private boolean isOpen = false;
   private boolean headerWritten = false;
+
+  // Text-format state
+  private OutputStream outputStream;
+  private StreamWriter streamWriter;
 
   // Avro container-format state (used only when serializer is AvroSerializer)
   private final boolean isAvro;
   private OutputStream avroRawOut;
   private DataFileWriter<GenericRecord> avroFileWriter;
-
-  // Batch writing optimization (text formats only)
-  private final List<String> batchBuffer;
-  private final StringBuilder batchBuilder;
-  private static final int ESTIMATED_RECORD_SIZE = 300; // Average JSON record size in bytes
 
   /**
    * Create file destination with configuration and serializer.
@@ -103,8 +101,6 @@ public class FileDestination implements DestinationAdapter {
     this.config = config;
     this.serializer = serializer;
     this.isAvro = serializer instanceof AvroSerializer;
-    this.batchBuffer = new ArrayList<>(config.getBatchSize());
-    this.batchBuilder = new StringBuilder(config.getBatchSize() * ESTIMATED_RECORD_SIZE);
   }
 
   @Override
@@ -140,34 +136,24 @@ public class FileDestination implements DestinationAdapter {
         // The DataFileWriter is initialized lazily on first write when the schema is known.
         avroRawOut = Files.newOutputStream(filePath, openOptions);
       } else {
-        // Add .gz extension for text formats if compression enabled
         if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
           filePath = Path.of(filePath.toString() + ".gz");
         }
+        OutputStream base = Files.newOutputStream(filePath, openOptions);
         if (config.isCompress()) {
-          writer =
-              new BufferedWriter(
-                  new OutputStreamWriter(
-                      new GZIPOutputStream(Files.newOutputStream(filePath, openOptions)),
-                      StandardCharsets.UTF_8),
-                  config.getBufferSize());
-        } else {
-          writer =
-              new BufferedWriter(
-                  new OutputStreamWriter(
-                      Files.newOutputStream(filePath, openOptions), StandardCharsets.UTF_8),
-                  config.getBufferSize());
+          base = new GZIPOutputStream(base);
         }
+        outputStream = new BufferedOutputStream(base, config.getBufferSize());
+        streamWriter = serializer.createStreamWriter(outputStream);
       }
 
       isOpen = true;
       log.info(
-          "Opened file destination: {} (format: {}, compress: {}, append: {}, batchSize: {})",
+          "Opened file destination: {} (format: {}, compress: {}, append: {})",
           filePath,
           serializer.getFormatName(),
           config.isCompress(),
-          config.isAppend(),
-          config.getBatchSize());
+          config.isAppend());
 
     } catch (IOException e) {
       throw new DestinationException("Failed to open file: " + config.getFilePath(), e);
@@ -186,26 +172,18 @@ public class FileDestination implements DestinationAdapter {
     }
 
     try {
-      // Write CSV header on first record (only for CSV format)
       if (!headerWritten && "csv".equals(serializer.getFormatName())) {
         String header =
             ((com.datagenerator.formats.csv.CsvSerializer) serializer).serializeHeader(record);
         if (!header.isEmpty()) {
-          writer.write(header);
-          writer.write('\n');
+          outputStream.write(header.getBytes(StandardCharsets.UTF_8));
+          outputStream.write('\n');
           log.debug("Wrote CSV header: {}", header);
         }
         headerWritten = true;
       }
 
-      // Serialize record and add to batch
-      String line = serializer.serialize(record);
-      batchBuffer.add(line);
-
-      // Flush batch when full
-      if (batchBuffer.size() >= config.getBatchSize()) {
-        flushBatch();
-      }
+      streamWriter.writeRecord(record);
 
     } catch (IOException e) {
       throw new DestinationException("Failed to write record to file", e);
@@ -230,30 +208,6 @@ public class FileDestination implements DestinationAdapter {
     }
   }
 
-  /**
-   * Flush accumulated batch of records to disk. Called automatically when batch is full, or
-   * manually via flush() or close().
-   */
-  private void flushBatch() throws IOException {
-    if (batchBuffer.isEmpty()) {
-      return;
-    }
-
-    // Build batch string (reuse StringBuilder to reduce allocations)
-    batchBuilder.setLength(0); // Clear previous content
-    for (String line : batchBuffer) {
-      batchBuilder.append(line).append('\n');
-    }
-
-    // Write entire batch in one call
-    writer.write(batchBuilder.toString());
-
-    // Clear batch for next accumulation
-    batchBuffer.clear();
-
-    log.debug("Flushed batch of {} records", batchBuffer.size());
-  }
-
   @Override
   public void flush() {
     if (!isOpen) {
@@ -267,8 +221,7 @@ public class FileDestination implements DestinationAdapter {
           avroFileWriter.flush();
         }
       } else {
-        flushBatch();
-        writer.flush();
+        outputStream.flush();
       }
       log.debug("Flushed file destination: {}", config.getFilePath());
     } catch (IOException e) {
@@ -292,7 +245,8 @@ public class FileDestination implements DestinationAdapter {
         }
       } else {
         flush();
-        writer.close();
+        streamWriter.close();
+        outputStream.close();
       }
       isOpen = false;
       log.info("Closed file destination: {}", config.getFilePath());
