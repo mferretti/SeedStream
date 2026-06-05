@@ -136,6 +136,27 @@ See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading 
 
 ---
 
+## Security
+
+SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
+
+**Known open issues (as of June 2026):**
+
+| Dependency | CVE | Status |
+|---|---|---|
+| `kafka-clients 4.3.0` | CVE-2026-41115 | No fix available yet; producer-only usage |
+| `azure-identity 1.18.3` | CVE-2026-33117 | No fix available yet; startup secret resolution only |
+| `azure-core / azure-json` | CVE-2026-33117 | Transitive from azure-identity; no fix yet |
+| `netty 4.1.131–132` | CVE-2026-42xxx, CVE-2026-44248 | Transitive from Azure SDK; no fix yet |
+| `azure-identity 1.18.3` | CVE-2023-36415, CVE-2024-35255 | Likely false positive — version post-dates fix |
+| `msal4j 1.23.1` | CVE-2024-35255 | Likely false positive — version post-dates fix |
+
+All suppressions expire **2026-07-05**. CI will re-fail on that date, forcing a review. No permanent suppressions exist in this project. When a patched version ships the dependency is upgraded and the suppression removed.
+
+To report a vulnerability, open a [GitHub issue](https://github.com/mferretti/SeedStream/issues) marked **security**.
+
+---
+
 ## Contributing
 
 Contributions welcome — bug reports, new generators, destinations, or formats.
