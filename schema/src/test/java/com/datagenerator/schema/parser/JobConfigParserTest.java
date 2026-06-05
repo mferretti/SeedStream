@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.*;
 import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.JobConfig;
+import com.datagenerator.schema.model.SecretsConfig;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
@@ -186,6 +187,77 @@ class JobConfigParserTest {
     assertThatThrownBy(() -> parser.parse(file))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("Validation failed");
+  }
+
+  @Test
+  void shouldParseJobWithVaultSecretsConfig() throws Exception {
+    String yaml =
+        """
+            source: data.yaml
+            type: kafka
+            seed:
+              type: embedded
+              value: 42
+            secrets:
+              resolver: vault
+              vault_addr: https://vault.example.com:8200
+              vault_namespace: myteam
+            conf:
+              bootstrap: localhost:9092
+              topic: events
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    SecretsConfig secrets = config.getSecrets();
+    assertThat(secrets).isNotNull();
+    assertThat(secrets.getResolver()).isEqualTo("vault");
+    assertThat(secrets.getVaultAddr()).isEqualTo("https://vault.example.com:8200");
+    assertThat(secrets.getVaultNamespace()).isEqualTo("myteam");
+  }
+
+  @Test
+  void shouldParseJobWithEnvSecretsConfig() throws Exception {
+    String yaml =
+        """
+            source: data.yaml
+            type: file
+            secrets:
+              resolver: env
+            conf:
+              path: output/data
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    assertThat(config.getSecrets()).isNotNull();
+    assertThat(config.getSecrets().getResolver()).isEqualTo("env");
+    assertThat(config.getSecrets().getVaultAddr()).isNull();
+    assertThat(config.getSecrets().getVaultNamespace()).isNull();
+  }
+
+  @Test
+  void shouldReturnNullSecretsWhenBlockAbsent() throws Exception {
+    String yaml =
+        """
+            source: simple.yaml
+            type: file
+            conf:
+              path: output/data
+            """;
+
+    Path file = tempDir.resolve("job.yaml");
+    Files.writeString(file, yaml);
+
+    JobConfig config = parser.parse(file);
+
+    assertThat(config.getSecrets()).isNull();
   }
 
   @Test

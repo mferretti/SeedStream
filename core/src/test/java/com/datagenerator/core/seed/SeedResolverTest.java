@@ -94,13 +94,13 @@ class SeedResolverTest {
 
   @Test
   void shouldResolveEnvSeed() {
-    // This test depends on environment, so we'll test the error case
-    SeedConfig.EnvSeed config = new SeedConfig.EnvSeed("env", "PATH"); // PATH always exists
-
-    // We can't guarantee PATH is a valid long, so test the resolution attempt
-    // In real usage, users would set specific env vars like DATA_SEED=12345
-    assertThatCode(() -> resolver.resolve(config))
-        .isInstanceOfAny(SeedResolutionException.class, NumberFormatException.class);
+    System.setProperty("SEEDSTREAM_TEST_ENV_SEED_42", "99887766");
+    try {
+      SeedConfig.EnvSeed config = new SeedConfig.EnvSeed("env", "SEEDSTREAM_TEST_ENV_SEED_42");
+      assertThat(resolver.resolve(config)).isEqualTo(99887766L);
+    } finally {
+      System.clearProperty("SEEDSTREAM_TEST_ENV_SEED_42");
+    }
   }
 
   @Test
