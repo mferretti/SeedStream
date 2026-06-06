@@ -191,6 +191,7 @@ public class ProtobufSerializer implements FormatSerializer {
    * @param descriptor message descriptor
    * @return dynamic protobuf message
    */
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private DynamicMessage buildDynamicMessage(Map<String, Object> record, Descriptor descriptor) {
     DynamicMessage.Builder builder = DynamicMessage.newBuilder(descriptor);
 

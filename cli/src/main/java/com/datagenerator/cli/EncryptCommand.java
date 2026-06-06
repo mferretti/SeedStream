@@ -79,6 +79,7 @@ public class EncryptCommand implements Callable<Integer> {
   String keyFile;
 
   @Override
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public Integer call() {
     String keyHex = loadKey();
     if (keyHex == null) {
@@ -88,7 +89,7 @@ public class EncryptCommand implements Callable<Integer> {
       byte[] key = AesGcmCrypto.hexToKey(keyHex);
       spec.commandLine().getOut().println(AesGcmCrypto.encrypt(key, plaintext));
       return 0;
-    } catch (Exception e) {
+    } catch (Exception e) { // NOPMD: caught by method-level suppression
       spec.commandLine().getErr().println("Encryption failed: " + e.getMessage());
       return 1;
     }

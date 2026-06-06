@@ -43,9 +43,9 @@ public final class RetryPolicy {
   private final int maxAttempts;
   private final long initialDelayMs;
 
-  private RetryPolicy(int maxAttempts, long initialDelayMs) {
-    this.maxAttempts = maxAttempts;
-    this.initialDelayMs = initialDelayMs;
+  private RetryPolicy(int attempts, long delayMs) {
+    this.maxAttempts = attempts;
+    this.initialDelayMs = delayMs;
   }
 
   /**
@@ -78,6 +78,7 @@ public final class RetryPolicy {
    * @param operation the operation to execute
    * @throws DestinationException if all attempts fail; cause is the last thrown exception
    */
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public void execute(String operationName, CheckedRunnable operation) {
     long delay = initialDelayMs;
     Exception lastException = null;

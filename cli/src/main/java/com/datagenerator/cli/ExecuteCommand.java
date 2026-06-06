@@ -503,6 +503,7 @@ public class ExecuteCommand implements Callable<Integer> {
    * @param jobConfig the job configuration containing seed config
    * @return resolved seed value (never null)
    */
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private long resolveSeed(JobConfig jobConfig) {
     if (seedOverride != null) {
       log.info("Using seed override from command line: {}", seedOverride);
@@ -534,8 +535,9 @@ public class ExecuteCommand implements Callable<Integer> {
    * @return serializer instance for the specified format
    * @throws IllegalArgumentException if format is unsupported
    */
-  private FormatSerializer createSerializer(String format, JobConfig jobConfig) {
-    return switch (format.toLowerCase(Locale.ROOT)) {
+  private FormatSerializer createSerializer(String fmt, JobConfig jobConfig) {
+    String normalizedFmt = fmt != null ? fmt.toLowerCase(Locale.ROOT) : "json";
+    return switch (normalizedFmt) {
       case "json" -> new JsonSerializer();
       case "csv" -> new CsvSerializer();
       case "protobuf" -> new ProtobufSerializer();
@@ -580,14 +582,16 @@ public class ExecuteCommand implements Callable<Integer> {
   private DestinationAdapter createDestination(
       JobConfig jobConfig, FormatSerializer serializer, DataStructure dataStructure) {
     SecretResolver secretResolver = SecretResolverFactory.create(jobConfig.getSecrets());
-    String type = jobConfig.getType();
+    String normalizedType =
+        jobConfig.getType() != null ? jobConfig.getType().toLowerCase(Locale.ROOT) : "";
     JsonNode conf = jobConfig.getConf();
 
-    return switch (type.toLowerCase(Locale.ROOT)) {
+    return switch (normalizedType) {
       case "file" -> createFileDestination(conf, serializer);
       case "kafka" -> createKafkaDestination(conf, serializer, secretResolver);
       case "database" -> createDatabaseDestination(jobConfig, dataStructure, secretResolver);
-      default -> throw new IllegalArgumentException("Unsupported destination type: " + type);
+      default ->
+          throw new IllegalArgumentException("Unsupported destination type: " + normalizedType);
     };
   }
 
@@ -722,6 +726,7 @@ public class ExecuteCommand implements Callable<Integer> {
     return new DatabaseDestination(dbConfig, rawFieldTypes);
   }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private StructureRegistry createStructureRegistry(Path structuresPath) {
     StructureLoader loader =
         (structureName, basePath, registry) -> {

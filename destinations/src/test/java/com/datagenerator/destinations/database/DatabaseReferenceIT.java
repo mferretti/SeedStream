@@ -31,6 +31,7 @@ import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.semantic.FakerCache;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.parser.DataStructureParser;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -328,7 +329,8 @@ class DatabaseReferenceIT extends IntegrationTest {
     }
   }
 
-  private StructureRegistry buildRegistry(Path structuresPath) {
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
+  private StructureRegistry buildRegistry(Path path) {
     StructureLoader loader =
         (structureName, basePath, registry) -> {
           try {
@@ -349,6 +351,7 @@ class DatabaseReferenceIT extends IntegrationTest {
 
   // table and column are hardcoded test constants, never user input — not a real SQL injection risk
   @SuppressWarnings("SqlSourceToSinkFlow")
+  @SuppressFBWarnings("SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE")
   private int countRows(String table) throws SQLException {
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
@@ -358,6 +361,7 @@ class DatabaseReferenceIT extends IntegrationTest {
   }
 
   @SuppressWarnings("SqlSourceToSinkFlow")
+  @SuppressFBWarnings("SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE")
   private long sumColumn(String table, String column) throws SQLException {
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT SUM(" + column + ") FROM " + table)) {

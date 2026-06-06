@@ -61,8 +61,8 @@ public final class AzureKeyVaultResolver implements SecretResolver {
   }
 
   /** Package-private constructor for injecting a mock client in unit tests. */
-  AzureKeyVaultResolver(SecretClient client) {
-    this.client = client;
+  AzureKeyVaultResolver(SecretClient kvClient) {
+    this.client = kvClient;
   }
 
   @Override

@@ -77,8 +77,8 @@ public class CsvSerializer implements FormatSerializer {
       value = "EI_EXPOSE_REP2",
       justification =
           "ObjectMapper is a thread-safe, shared serialization service; storing reference is intentional")
-  public CsvSerializer(ObjectMapper jsonMapper) {
-    this.jsonMapper = jsonMapper;
+  public CsvSerializer(ObjectMapper objectMapper) {
+    this.jsonMapper = objectMapper;
   }
 
   private static ObjectMapper createJsonMapper() {

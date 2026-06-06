@@ -166,6 +166,7 @@ public class GenerationEngine {
       justification =
           "Worker Future is intentionally not stored; exceptions are logged in the lambda "
               + "and the writer thread propagates failures via the queue poison-pill shutdown")
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private void generateMultiThreaded(long count) throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 

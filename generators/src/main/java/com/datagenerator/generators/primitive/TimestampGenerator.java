@@ -108,7 +108,7 @@ public class TimestampGenerator implements DataGenerator {
     }
 
     // Try relative format first: "now", "now-30d", "now+7d"
-    if (value.equals("now")) {
+    if ("now".equals(value)) {
       return Instant.now();
     }
 
@@ -128,7 +128,7 @@ public class TimestampGenerator implements DataGenerator {
             default -> throw new GeneratorException("Invalid time unit: " + unit);
           };
 
-      return sign.equals("+") ? now.plus(amount, chronoUnit) : now.minus(amount, chronoUnit);
+      return "+".equals(sign) ? now.plus(amount, chronoUnit) : now.minus(amount, chronoUnit);
     }
 
     // Try ISO-8601 format

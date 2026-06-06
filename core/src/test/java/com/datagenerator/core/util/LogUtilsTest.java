@@ -83,6 +83,7 @@ class LogUtilsTest {
   }
 
   @Test
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   void shouldBeThreadSafeUnderConcurrentCalls() throws InterruptedException {
     int threads = 8;
     int callsPerThread = 1000;

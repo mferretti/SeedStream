@@ -89,17 +89,17 @@ public class KafkaDestination implements DestinationAdapter {
       justification =
           "Fail-fast config validation in constructor is intentional; "
               + "KafkaDestination is not Serializable and not subject to finalizer attacks")
-  public KafkaDestination(KafkaDestinationConfig config, FormatSerializer serializer) {
-    if (config.getBootstrap() == null || config.getBootstrap().isBlank()) {
+  public KafkaDestination(KafkaDestinationConfig cfg, FormatSerializer ser) {
+    if (cfg.getBootstrap() == null || cfg.getBootstrap().isBlank()) {
       throw new DestinationException("Kafka bootstrap servers required");
     }
-    if (config.getTopic() == null || config.getTopic().isBlank()) {
+    if (cfg.getTopic() == null || cfg.getTopic().isBlank()) {
       throw new DestinationException("Kafka topic required");
     }
 
-    this.config = config;
-    this.serializer = serializer;
-    this.retryPolicy = RetryPolicy.of(config.getMaxRetries(), config.getRetryDelayMs());
+    this.config = cfg;
+    this.serializer = ser;
+    this.retryPolicy = RetryPolicy.of(cfg.getMaxRetries(), cfg.getRetryDelayMs());
   }
 
   /** Package-private: injects a pre-built producer for unit testing. */
@@ -109,11 +109,9 @@ public class KafkaDestination implements DestinationAdapter {
           "Fail-fast config validation is intentional; "
               + "KafkaDestination is not Serializable and not subject to finalizer attacks")
   KafkaDestination(
-      KafkaDestinationConfig config,
-      FormatSerializer serializer,
-      Producer<String, byte[]> producer) {
-    this(config, serializer);
-    this.producer = producer;
+      KafkaDestinationConfig cfg, FormatSerializer ser, Producer<String, byte[]> prod) {
+    this(cfg, ser);
+    this.producer = prod;
     this.isOpen = true;
   }
 
@@ -182,6 +180,7 @@ public class KafkaDestination implements DestinationAdapter {
   }
 
   @Override
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public void write(Map<String, Object> record) {
     if (!isOpen) {
       throw new DestinationException("Kafka destination not open. Call open() first.");
@@ -242,6 +241,7 @@ public class KafkaDestination implements DestinationAdapter {
   }
 
   @Override
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public void close() {
     if (!isOpen) {
       log.warn("Kafka destination already closed");

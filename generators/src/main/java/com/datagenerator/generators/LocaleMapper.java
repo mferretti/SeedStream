@@ -123,6 +123,7 @@ public class LocaleMapper {
           case "ar", "ar-sa", "saudi arabia", "arabic" -> Locale.of("ar", "SA");
           case "ar-eg", "egypt" -> Locale.of("ar", "EG");
 
+          case null -> Locale.US;
           default -> {
             log.warn("Unknown geolocation '{}', defaulting to US English", geolocation);
             yield Locale.US;

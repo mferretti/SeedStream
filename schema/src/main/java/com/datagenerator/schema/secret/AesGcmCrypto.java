@@ -60,6 +60,7 @@ public final class AesGcmCrypto {
    * @param plaintext value to encrypt
    * @return {@code AES256GCM:<base64(iv + ciphertext)>}
    */
+  @SuppressWarnings("java:S3329") // IV is a fresh SecureRandom 12-byte nonce — never reused
   public static String encrypt(byte[] key, String plaintext) {
     validateKey(key);
     try {

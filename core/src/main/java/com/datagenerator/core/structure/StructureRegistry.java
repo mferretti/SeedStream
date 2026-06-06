@@ -36,8 +36,8 @@ public class StructureRegistry {
   private final StructureLoader loader;
   private final ThreadLocal<Deque<String>> loadingStack = ThreadLocal.withInitial(ArrayDeque::new);
 
-  public StructureRegistry(StructureLoader loader) {
-    this.loader = loader;
+  public StructureRegistry(StructureLoader structureLoader) {
+    this.loader = structureLoader;
   }
 
   /**

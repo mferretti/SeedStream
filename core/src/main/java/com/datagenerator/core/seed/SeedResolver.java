@@ -41,8 +41,8 @@ public class SeedResolver {
   }
 
   // Constructor for testing with mock HttpClient
-  SeedResolver(HttpClient httpClient) {
-    this.httpClient = httpClient;
+  SeedResolver(HttpClient client) {
+    this.httpClient = client;
   }
 
   /**
@@ -182,6 +182,8 @@ public class SeedResolver {
           }
           requestBuilder.header(auth.getKey(), auth.getValue());
           break;
+        case null:
+          throw new SeedResolutionException("Auth type cannot be null");
         default:
           throw new SeedResolutionException("Unsupported auth type: " + auth.getType());
       }

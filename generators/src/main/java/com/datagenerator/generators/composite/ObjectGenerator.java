@@ -73,9 +73,9 @@ public class ObjectGenerator implements DataGenerator {
       justification =
           "StructureRegistry is a shared, thread-safe service object injected by the engine; "
               + "storing the reference is intentional")
-  public ObjectGenerator(StructureRegistry structureRegistry, Path structuresPath) {
-    this.structureRegistry = structureRegistry;
-    this.structuresPath = structuresPath;
+  public ObjectGenerator(StructureRegistry registry, Path path) {
+    this.structureRegistry = registry;
+    this.structuresPath = path;
   }
 
   @Override

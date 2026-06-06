@@ -133,6 +133,7 @@ public class JdbcTypeMapper {
         case CHAR -> ps.setString(index, value.toString());
         case DATE -> ps.setDate(index, toDate(value));
         case TIMESTAMP -> ps.setTimestamp(index, toTimestamp(value));
+        default -> throw new IllegalStateException("Unexpected PrimitiveType.Kind: " + p.getKind());
       }
       return;
     }

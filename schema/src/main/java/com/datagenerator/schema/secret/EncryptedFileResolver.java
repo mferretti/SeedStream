@@ -53,13 +53,13 @@ public final class EncryptedFileResolver implements SecretResolver {
   /**
    * @param key 32-byte AES-256 key
    */
-  public EncryptedFileResolver(byte[] key) {
-    if (key == null || key.length != AesGcmCrypto.KEY_BYTES) {
+  public EncryptedFileResolver(byte[] keyBytes) {
+    if (keyBytes == null || keyBytes.length != AesGcmCrypto.KEY_BYTES) {
       throw new SecretResolutionException(
           "EncryptedFileResolver requires a 32-byte key; got "
-              + (key == null ? "null" : key.length + " bytes"));
+              + (keyBytes == null ? "null" : keyBytes.length + " bytes"));
     }
-    this.key = key.clone();
+    this.key = keyBytes.clone();
   }
 
   @Override

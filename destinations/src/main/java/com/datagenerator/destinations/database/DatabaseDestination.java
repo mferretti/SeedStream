@@ -158,8 +158,8 @@ public class DatabaseDestination implements DestinationAdapter {
    *
    * @param config connection and batch settings
    */
-  public DatabaseDestination(DatabaseDestinationConfig config) {
-    this(config, (Map<String, String>) null);
+  public DatabaseDestination(DatabaseDestinationConfig cfg) {
+    this(cfg, (Map<String, String>) null);
   }
 
   /**
@@ -176,22 +176,22 @@ public class DatabaseDestination implements DestinationAdapter {
    * @param config connection and batch settings
    * @param rawFieldTypes YAML type strings keyed by field name; null to use Option A
    */
-  public DatabaseDestination(DatabaseDestinationConfig config, Map<String, String> rawFieldTypes) {
-    this.config = config;
+  public DatabaseDestination(DatabaseDestinationConfig cfg, Map<String, String> rawFieldTypes) {
+    this.config = cfg;
     this.rawFieldTypes =
         rawFieldTypes != null ? Collections.unmodifiableMap(new HashMap<>(rawFieldTypes)) : null;
     this.injectedDataSource = null;
-    this.retryPolicy = RetryPolicy.of(config.getMaxRetries(), config.getRetryDelayMs());
-    this.batch = new ArrayList<>(config.getBatchSize());
+    this.retryPolicy = RetryPolicy.of(cfg.getMaxRetries(), cfg.getRetryDelayMs());
+    this.batch = new ArrayList<>(cfg.getBatchSize());
   }
 
   /** Package-private: injects a DataSource for unit testing (bypasses HikariCP). */
-  DatabaseDestination(DatabaseDestinationConfig config, DataSource injectedDataSource) {
-    this.config = config;
+  DatabaseDestination(DatabaseDestinationConfig cfg, DataSource injectedDataSource) {
+    this.config = cfg;
     this.rawFieldTypes = null;
     this.injectedDataSource = injectedDataSource;
-    this.retryPolicy = RetryPolicy.of(config.getMaxRetries(), config.getRetryDelayMs());
-    this.batch = new ArrayList<>(config.getBatchSize());
+    this.retryPolicy = RetryPolicy.of(cfg.getMaxRetries(), cfg.getRetryDelayMs());
+    this.batch = new ArrayList<>(cfg.getBatchSize());
   }
 
   @Override
@@ -205,6 +205,7 @@ public class DatabaseDestination implements DestinationAdapter {
     retryPolicy.execute("open database connection to " + config.getJdbcUrl(), this::openConnection);
   }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private void openConnection() throws SQLException {
     if (injectedDataSource != null) {
       connection = injectedDataSource.getConnection();
@@ -470,7 +471,8 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
-  @SuppressWarnings("SqlSourceToSinkFlow") // table name from job config YAML, not user runtime input
+  @SuppressWarnings(
+      "SqlSourceToSinkFlow") // table name from job config YAML, not user runtime input
   @SuppressFBWarnings(
       value = {
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
@@ -542,6 +544,7 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private void closeQuietly() {
     isOpen = false;
 

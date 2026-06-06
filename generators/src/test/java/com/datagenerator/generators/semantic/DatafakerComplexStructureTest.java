@@ -60,7 +60,7 @@ class DatafakerComplexStructureTest {
    * loaded from YAML files.
    */
   private Map<String, DataType> loadMockStructure(
-      String name, Path basePath, StructureRegistry registry) {
+      String name, Path basePath, StructureRegistry reg) {
     Map<String, DataType> fields = new HashMap<>();
 
     switch (name) {
@@ -141,6 +141,7 @@ class DatafakerComplexStructureTest {
         fields.put("operator", new CustomDatafakerType("full_name"));
         fields.put("notes", new PrimitiveType(PrimitiveType.Kind.CHAR, "0", "100"));
       }
+      case null -> throw new RuntimeException("Structure name cannot be null");
       default -> throw new RuntimeException("Unknown structure: " + name);
     }
 

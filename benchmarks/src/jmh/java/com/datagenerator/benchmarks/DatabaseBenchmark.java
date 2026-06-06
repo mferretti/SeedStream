@@ -318,6 +318,7 @@ public class DatabaseBenchmark {
     }
   }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private void dropSchema() {
     try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
         Statement stmt = conn.createStatement()) {
@@ -362,6 +363,7 @@ public class DatabaseBenchmark {
     return record;
   }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private static void closeQuietly(DatabaseDestination destination, String label) {
     if (destination == null) {
       return;

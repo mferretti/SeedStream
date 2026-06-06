@@ -78,6 +78,7 @@ public class BiometricValidator {
         switch (format) {
           case "FMR" -> FingerprintMinutiaeRules.rules();
           case "FAC" -> FaceImageRules.rules();
+          case null -> List.of();
           default -> {
             String msg = "Unknown record_format: " + format;
             yield List.of(r -> Optional.of(msg));

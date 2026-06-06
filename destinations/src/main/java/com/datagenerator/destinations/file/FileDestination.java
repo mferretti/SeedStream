@@ -97,9 +97,9 @@ public class FileDestination implements DestinationAdapter {
    * @param config file output configuration
    * @param serializer format serializer (JSON, CSV, etc.)
    */
-  public FileDestination(FileDestinationConfig config, FormatSerializer serializer) {
-    this.config = config;
-    this.serializer = serializer;
+  public FileDestination(FileDestinationConfig cfg, FormatSerializer ser) {
+    this.config = cfg;
+    this.serializer = ser;
     this.isAvro = serializer instanceof AvroSerializer;
   }
 

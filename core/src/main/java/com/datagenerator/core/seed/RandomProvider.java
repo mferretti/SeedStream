@@ -76,14 +76,14 @@ public class RandomProvider {
   private final AtomicInteger workerIdCounter = new AtomicInteger(0);
   private final ThreadLocal<Random> threadLocalRandom;
 
-  public RandomProvider(long masterSeed) {
-    this.masterSeed = masterSeed;
+  public RandomProvider(long seed) {
+    this.masterSeed = seed;
     this.threadLocalRandom =
         ThreadLocal.withInitial(
             () -> {
               // Assign logical worker ID (0, 1, 2, ...) not JVM thread ID
               int workerId = workerIdCounter.getAndIncrement();
-              long threadSeed = deriveSeed(masterSeed, workerId);
+              long threadSeed = deriveSeed(seed, workerId);
               log.debug(
                   "Creating Random for worker {} (thread {}) with seed {}",
                   workerId,
@@ -133,8 +133,8 @@ public class RandomProvider {
    * @param workerId logical worker ID (0, 1, 2, ...)
    * @return derived seed for the worker
    */
-  private long deriveSeed(long masterSeed, int workerId) {
-    long seed = masterSeed;
+  private long deriveSeed(long base, int workerId) {
+    long seed = base;
     seed ^= workerId; // Mix in worker ID
     seed ^= (seed << 21); // Bit avalanche
     seed ^= (seed >>> 35); // Spread bits

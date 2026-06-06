@@ -32,6 +32,7 @@ public class FieldDefinition {
   String alias;
 
   @JsonCreator
+  @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator requires params named after fields
   public FieldDefinition(
       @JsonProperty("datatype") String datatype, @JsonProperty("alias") String alias) {
     this.datatype = datatype;

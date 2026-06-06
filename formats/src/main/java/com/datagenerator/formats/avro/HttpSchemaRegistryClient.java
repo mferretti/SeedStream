@@ -56,25 +56,25 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
   private final HttpClient httpClient;
   private final ConcurrentHashMap<String, Integer> cache = new ConcurrentHashMap<>();
 
-  public HttpSchemaRegistryClient(String baseUrl, String authType, String token) {
-    if (baseUrl == null || baseUrl.isBlank()) {
+  public HttpSchemaRegistryClient(String url, String authType, String token) {
+    if (url == null || url.isBlank()) {
       throw new SchemaRegistryException("schema_registry_url is required for avro-registry format");
     }
-    this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     this.authHeader = buildAuthHeader(authType, token);
     this.httpClient = HttpClient.newHttpClient();
   }
 
   /** Package-private constructor for tests (no auth). */
-  HttpSchemaRegistryClient(String baseUrl, HttpClient httpClient) {
-    this(baseUrl, httpClient, null);
+  HttpSchemaRegistryClient(String url, HttpClient client) {
+    this(url, client, null);
   }
 
   /** Package-private constructor for tests (with explicit auth header value). */
-  HttpSchemaRegistryClient(String baseUrl, HttpClient httpClient, String authHeader) {
-    this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-    this.authHeader = authHeader;
-    this.httpClient = httpClient;
+  HttpSchemaRegistryClient(String url, HttpClient client, String header) {
+    this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    this.authHeader = header;
+    this.httpClient = client;
   }
 
   @Override
@@ -155,6 +155,7 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
               ? "Basic "
                   + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8))
               : null;
+      case null -> null;
       default -> null;
     };
   }

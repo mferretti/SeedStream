@@ -95,6 +95,7 @@ public class SecretsConfig {
   String keyFile;
 
   @JsonCreator
+  @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator requires params named after fields
   public SecretsConfig(
       @JsonProperty("resolver") String resolver,
       @JsonProperty("vault_addr") String vaultAddr,

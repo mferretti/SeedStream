@@ -86,6 +86,7 @@ public class DatafakerGeneratorsBenchmark {
   }
 
   @TearDown
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public void tearDown() {
     if (GeneratorContext.isActive()) {
       try (var ctx = GeneratorContext.enter(factory, "en")) {

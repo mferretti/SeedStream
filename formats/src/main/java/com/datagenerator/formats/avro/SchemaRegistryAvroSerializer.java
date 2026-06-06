@@ -70,10 +70,10 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
    * @param subject Schema Registry subject name (e.g. {@code my-topic-value})
    */
   public SchemaRegistryAvroSerializer(
-      AvroSerializer avroSerializer, SchemaRegistryClient registryClient, String subject) {
-    this.avroSerializer = avroSerializer;
-    this.registryClient = registryClient;
-    this.subject = subject;
+      AvroSerializer avroSer, SchemaRegistryClient regClient, String subjectName) {
+    this.avroSerializer = avroSer;
+    this.registryClient = regClient;
+    this.subject = subjectName;
   }
 
   /**
@@ -86,8 +86,11 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
    * @param token auth credential (bearer token or {@code user:password} for basic)
    */
   public SchemaRegistryAvroSerializer(
-      String registryUrl, String subject, String authType, String token) {
-    this(new AvroSerializer(), new HttpSchemaRegistryClient(registryUrl, authType, token), subject);
+      String registryUrl, String subjectName, String authType, String token) {
+    this(
+        new AvroSerializer(),
+        new HttpSchemaRegistryClient(registryUrl, authType, token),
+        subjectName);
   }
 
   @Override

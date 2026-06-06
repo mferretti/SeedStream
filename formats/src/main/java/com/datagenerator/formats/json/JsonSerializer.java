@@ -75,9 +75,9 @@ public class JsonSerializer implements FormatSerializer {
       value = "EI_EXPOSE_REP2",
       justification =
           "ObjectMapper is a thread-safe, shared serialization service; storing reference is intentional")
-  public JsonSerializer(ObjectMapper mapper) {
-    this.mapper = mapper;
-    this.jsonFactory = mapper.getFactory();
+  public JsonSerializer(ObjectMapper objectMapper) {
+    this.mapper = objectMapper;
+    this.jsonFactory = objectMapper.getFactory();
   }
 
   private static ObjectMapper createObjectMapper() {

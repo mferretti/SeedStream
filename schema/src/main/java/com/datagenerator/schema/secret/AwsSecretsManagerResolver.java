@@ -71,8 +71,8 @@ public final class AwsSecretsManagerResolver implements SecretResolver {
   }
 
   /** Package-private constructor for injecting a mock client in unit tests. */
-  AwsSecretsManagerResolver(SecretsManagerClient client) {
-    this.client = client;
+  AwsSecretsManagerResolver(SecretsManagerClient smClient) {
+    this.client = smClient;
   }
 
   @Override

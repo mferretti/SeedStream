@@ -89,6 +89,7 @@ public final class SecretResolverFactory {
         String keyHex = loadEncryptionKey(config);
         yield new EncryptedFileResolver(AesGcmCrypto.hexToKey(keyHex));
       }
+      case null -> EnvSecretResolver.INSTANCE;
       default ->
           throw new SecretResolutionException(
               "Unknown secret resolver: '"

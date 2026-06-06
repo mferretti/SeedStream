@@ -39,6 +39,7 @@ public abstract sealed class SeedConfig
         SeedConfig.RemoteSeed {
   @NotNull private final String type;
 
+  @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator / sealed-class pattern
   protected SeedConfig(String type) {
     this.type = type;
   }
@@ -53,6 +54,7 @@ public abstract sealed class SeedConfig
     long value;
 
     @JsonCreator
+    @SuppressWarnings("checkstyle:HiddenField")
     public EmbeddedSeed(@JsonProperty("type") String type, @JsonProperty("value") long value) {
       super(type);
       this.value = value;
@@ -65,6 +67,7 @@ public abstract sealed class SeedConfig
     @NotNull String path;
 
     @JsonCreator
+    @SuppressWarnings("checkstyle:HiddenField")
     public FileSeed(@JsonProperty("type") String type, @JsonProperty("path") String path) {
       super(type);
       this.path = path;
@@ -77,6 +80,7 @@ public abstract sealed class SeedConfig
     @NotNull String name;
 
     @JsonCreator
+    @SuppressWarnings("checkstyle:HiddenField")
     public EnvSeed(@JsonProperty("type") String type, @JsonProperty("name") String name) {
       super(type);
       this.name = name;
@@ -91,6 +95,7 @@ public abstract sealed class SeedConfig
     AuthConfig auth;
 
     @JsonCreator
+    @SuppressWarnings("checkstyle:HiddenField")
     public RemoteSeed(
         @JsonProperty("type") String type,
         @JsonProperty("url") String url,
@@ -111,6 +116,7 @@ public abstract sealed class SeedConfig
       String value; // for api_key - header value
 
       @JsonCreator
+      @SuppressWarnings("checkstyle:HiddenField")
       public AuthConfig(
           @JsonProperty("type") String type,
           @JsonProperty("token") String token,

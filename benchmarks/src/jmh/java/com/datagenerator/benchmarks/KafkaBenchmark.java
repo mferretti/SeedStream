@@ -224,6 +224,7 @@ public class KafkaBenchmark {
   }
 
   @TearDown(Level.Trial)
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public void tearDown() {
     if (kafkaDestination != null) {
       try {

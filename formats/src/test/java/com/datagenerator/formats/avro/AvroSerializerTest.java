@@ -227,6 +227,7 @@ class AvroSerializerTest {
   }
 
   @Test
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   void shouldBeThreadSafe() throws InterruptedException {
     int threads = 8;
     int recordsPerThread = 100;

@@ -45,6 +45,7 @@ public class JobConfig {
   @NotNull JsonNode conf; // Destination-specific config (parsed based on type)
 
   @JsonCreator
+  @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator requires params named after fields
   public JobConfig(
       @JsonProperty("source") String source,
       @JsonProperty("type") String type,

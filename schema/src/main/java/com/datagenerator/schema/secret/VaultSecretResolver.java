@@ -52,19 +52,15 @@ public final class VaultSecretResolver implements SecretResolver {
   private final HttpClient httpClient;
   private final ObjectMapper mapper = new ObjectMapper();
 
-  public VaultSecretResolver(String vaultAddr, String namespace) {
-    this(
-        vaultAddr,
-        namespace,
-        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
+  public VaultSecretResolver(String addr, String namespace) {
+    this(addr, namespace, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
   }
 
   /** Package-private constructor for injecting a mock HttpClient in unit tests. */
-  VaultSecretResolver(String vaultAddr, String namespace, HttpClient httpClient) {
-    this.vaultAddr =
-        vaultAddr.endsWith("/") ? vaultAddr.substring(0, vaultAddr.length() - 1) : vaultAddr;
+  VaultSecretResolver(String addr, String namespace, HttpClient client) {
+    this.vaultAddr = addr.endsWith("/") ? addr.substring(0, addr.length() - 1) : addr;
     this.namespace = namespace;
-    this.httpClient = httpClient;
+    this.httpClient = client;
   }
 
   @Override
@@ -122,6 +118,7 @@ public final class VaultSecretResolver implements SecretResolver {
     return extractValue(response.body(), field, secretPath);
   }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private String extractValue(String body, String field, String path) {
     try {
       JsonNode root = mapper.readTree(body);

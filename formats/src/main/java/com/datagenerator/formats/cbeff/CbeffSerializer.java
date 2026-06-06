@@ -73,9 +73,9 @@ public class CbeffSerializer implements FormatSerializer {
    * @param formatOwner CBEFF format owner identifier (e.g. "ISO/IEC-JTC1-SC37")
    * @param formatType CBEFF format type identifier (e.g. "19794-2-json")
    */
-  public CbeffSerializer(String formatOwner, String formatType) {
-    this.formatOwner = formatOwner;
-    this.formatType = formatType;
+  public CbeffSerializer(String owner, String fmtType) {
+    this.formatOwner = owner;
+    this.formatType = fmtType;
     this.mapper = createObjectMapper();
   }
 
