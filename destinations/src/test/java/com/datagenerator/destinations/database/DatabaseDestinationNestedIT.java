@@ -162,22 +162,23 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
 
   // table and whereClause are hardcoded test constants, never user input — not a real SQL injection
   // risk
-  @SuppressWarnings("SqlSourceToSinkFlow")
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings("SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE")
   private int countRows(String table) throws SQLException {
     try (Statement st = verify.createStatement();
-        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM \"" + table + "\"")) {
+        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM \"" + table + "\"")) { // nosemgrep
       rs.next();
       return rs.getInt(1);
     }
   }
 
-  @SuppressWarnings("SqlSourceToSinkFlow")
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings("SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE")
   private int countRowsWhere(String table, String whereClause) throws SQLException {
     try (Statement st = verify.createStatement();
         ResultSet rs =
-            st.executeQuery("SELECT COUNT(*) FROM \"" + table + "\" WHERE " + whereClause)) {
+            st.executeQuery( // nosemgrep
+                "SELECT COUNT(*) FROM \"" + table + "\" WHERE " + whereClause)) {
       rs.next();
       return rs.getInt(1);
     }

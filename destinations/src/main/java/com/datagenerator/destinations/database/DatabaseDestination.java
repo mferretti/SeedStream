@@ -362,6 +362,7 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings(
       value = "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
       justification =
@@ -376,7 +377,7 @@ public class DatabaseDestination implements DestinationAdapter {
         "INSERT INTO " + config.getTableName() + " (" + columns + ") VALUES (" + placeholders + ")";
 
     try {
-      insertStatement = connection.prepareStatement(sql);
+      insertStatement = connection.prepareStatement(sql); // nosemgrep
       log.debug("Prepared INSERT statement: {}", sql);
     } catch (SQLException e) {
       throw new DestinationException("Failed to prepare INSERT statement: " + sql, e);
@@ -471,8 +472,10 @@ public class DatabaseDestination implements DestinationAdapter {
     }
   }
 
-  @SuppressWarnings(
-      "SqlSourceToSinkFlow") // table name from job config YAML, not user runtime input
+  @SuppressWarnings({
+    "SqlSourceToSinkFlow",
+    "java:S2077"
+  }) // table/column names from job config YAML, not user runtime input
   @SuppressFBWarnings(
       value = {
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
@@ -493,7 +496,7 @@ public class DatabaseDestination implements DestinationAdapter {
     String sql = "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + placeholders + ")";
 
     try {
-      PreparedStatement ps = connection.prepareStatement(sql);
+      PreparedStatement ps = connection.prepareStatement(sql); // nosemgrep
       nestedStatements.put(tableName, ps);
       log.debug("Prepared nested INSERT for table '{}': {}", tableName, sql);
     } catch (SQLException e) {

@@ -42,22 +42,20 @@ import org.junit.jupiter.api.Test;
  * <p>H2 is used instead of Testcontainers for fast, dependency-free unit testing. Integration tests
  * against real PostgreSQL/MySQL use Testcontainers (see DatabaseDestinationIT).
  */
+@SuppressWarnings("java:S2068") // H2 in-memory test DB — empty password is standard H2 default
 class DatabaseDestinationTest {
 
-  // H2 in-memory test database — empty password is the standard H2 default, not a real credential
-  @SuppressWarnings({"SpellCheckingInspection", "java:S2068"})
+  @SuppressWarnings("SpellCheckingInspection")
   private static final String JDBC_URL = "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1";
 
   private static final String USERNAME = "sa";
-
-  @SuppressWarnings("java:S2068")
   private static final String PASSWORD = ""; // H2 default: no password required
 
   private Connection h2Connection;
 
   @BeforeEach
   void setUp() throws SQLException {
-    h2Connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
+    h2Connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD); // nosemgrep
     try (Statement st = h2Connection.createStatement()) {
       st.execute(
           "CREATE TABLE IF NOT EXISTS users ("

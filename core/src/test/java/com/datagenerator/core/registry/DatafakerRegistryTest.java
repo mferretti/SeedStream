@@ -209,12 +209,13 @@ class DatafakerRegistryTest {
   // ── Instantiation guard ───────────────────────────────────────────────────
 
   @Test
-  @SuppressWarnings(
-      "java:S3011") // setAccessible is the standard pattern for testing utility-class instantiation
-  // guards
+  @SuppressWarnings({
+    "java:S3011",
+    "PMD.AvoidAccessibilityAlteration"
+  }) // setAccessible is the standard pattern for testing utility-class instantiation guards
   void shouldThrowWhenInstantiatedViaReflection() throws Exception {
     var constructor = DatafakerRegistry.class.getDeclaredConstructor();
-    constructor.setAccessible(true);
+    constructor.setAccessible(true); // nosemgrep
     assertThatThrownBy(constructor::newInstance)
         .cause()
         .isInstanceOf(UnsupportedOperationException.class);

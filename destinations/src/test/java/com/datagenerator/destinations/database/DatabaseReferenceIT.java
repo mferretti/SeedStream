@@ -350,21 +350,21 @@ class DatabaseReferenceIT extends IntegrationTest {
   }
 
   // table and column are hardcoded test constants, never user input — not a real SQL injection risk
-  @SuppressWarnings("SqlSourceToSinkFlow")
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings("SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE")
   private int countRows(String table) throws SQLException {
     try (Statement st = verify.createStatement();
-        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
+        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) { // nosemgrep
       rs.next();
       return rs.getInt(1);
     }
   }
 
-  @SuppressWarnings("SqlSourceToSinkFlow")
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings("SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE")
   private long sumColumn(String table, String column) throws SQLException {
     try (Statement st = verify.createStatement();
-        ResultSet rs = st.executeQuery("SELECT SUM(" + column + ") FROM " + table)) {
+        ResultSet rs = st.executeQuery("SELECT SUM(" + column + ") FROM " + table)) { // nosemgrep
       rs.next();
       return rs.getLong(1);
     }

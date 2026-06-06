@@ -68,8 +68,8 @@ public final class AesGcmCrypto {
       byte[] iv = new byte[IV_BYTES];
       SECURE_RANDOM.nextBytes(iv);
 
-      Cipher cipher = Cipher.getInstance(ALGORITHM);
-      cipher.init(
+      Cipher cipher = Cipher.getInstance(ALGORITHM); // nosemgrep
+      cipher.init( // nosemgrep
           Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, iv));
 
       byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
