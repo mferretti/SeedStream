@@ -15,4 +15,8 @@ dependencies {
     // Azure Key Vault resolver
     implementation(libs.azure.keyvault.secrets)
     implementation(libs.azure.identity)
+
+    // Integration test containers
+    testImplementation(libs.testcontainers.vault)
+    testImplementation(libs.testcontainers.localstack)
 }
