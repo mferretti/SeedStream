@@ -414,9 +414,7 @@ class ExecuteCommandTest {
           path: %s/output
         """
             .formatted(
-                structDir.toAbsolutePath(),
-                seedFile.toAbsolutePath(),
-                outDir.toAbsolutePath()));
+                structDir.toAbsolutePath(), seedFile.toAbsolutePath(), outDir.toAbsolutePath()));
 
     int code = execute("--job", jobFile.toString(), "--count", "3");
     // Seed file permission check runs; result depends on OS file permissions

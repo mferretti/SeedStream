@@ -22,6 +22,7 @@ import static org.mockito.Mockito.*;
 import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.ReferenceType;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -326,6 +327,48 @@ class JdbcTypeMapperTest {
 
       assertThatThrownBy(() -> JdbcTypeMapper.bind(ps, 1, 42, intType))
           .isInstanceOf(SQLException.class);
+    }
+
+    @Test
+    void shouldBindCharValueAsString() throws SQLException {
+      PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "50");
+      JdbcTypeMapper.bind(ps, 1, "hello", charType);
+
+      verify(ps).setString(1, "hello");
+    }
+
+    // --- ReferenceType binding ---
+
+    @Test
+    void shouldBindNullReferenceTypeAsBigint() throws SQLException {
+      ReferenceType refType = new ReferenceType("user", "id", 1L, 1000L, false);
+      JdbcTypeMapper.bind(ps, 1, null, refType);
+
+      verify(ps).setNull(1, java.sql.Types.BIGINT);
+    }
+
+    @Test
+    void shouldBindLongValueForReferenceType() throws SQLException {
+      ReferenceType refType = new ReferenceType("user", "id", 1L, 1000L, false);
+      JdbcTypeMapper.bind(ps, 1, 42L, refType);
+
+      verify(ps).setLong(1, 42L);
+    }
+
+    @Test
+    void shouldBindIntegerValueForReferenceType() throws SQLException {
+      ReferenceType refType = new ReferenceType("user", "id", 1L, 1000L, false);
+      JdbcTypeMapper.bind(ps, 1, 42, refType);
+
+      verify(ps).setLong(1, 42L);
+    }
+
+    @Test
+    void shouldBindStringValueForReferenceType() throws SQLException {
+      ReferenceType refType = new ReferenceType("user", "id", 1L, 1000L, false);
+      JdbcTypeMapper.bind(ps, 1, "99", refType);
+
+      verify(ps).setLong(1, 99L);
     }
   }
 }

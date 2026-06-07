@@ -17,8 +17,12 @@
 package com.datagenerator.formats.csv;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
+import com.datagenerator.formats.FormatSerializer;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -247,6 +251,41 @@ class CsvSerializerTest {
   @Test
   void shouldReturnCorrectFormatName() {
     assertThat(serializer.getFormatName()).isEqualTo("csv");
+  }
+
+  // ── FormatSerializer default methods (exercised via CsvSerializer) ──────────
+
+  @Test
+  void serializeToBytesDefaultReturnsUtf8Encoding() {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("name", "Marco");
+
+    byte[] bytes = serializer.serializeToBytes(record);
+    String expected = serializer.serialize(record);
+
+    assertThat(bytes).isEqualTo(expected.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void createStreamWriterDefaultWritesRecordWithNewline() throws Exception {
+    Map<String, Object> record = new LinkedHashMap<>();
+    record.put("city", "Rome");
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (FormatSerializer.StreamWriter writer = serializer.createStreamWriter(out)) {
+      writer.writeRecord(record);
+    }
+
+    String output = out.toString(StandardCharsets.UTF_8);
+    assertThat(output).startsWith(serializer.serialize(record)).endsWith("\n");
+  }
+
+  @Test
+  void streamWriterDefaultCloseDoesNotThrow() throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    FormatSerializer.StreamWriter writer = serializer.createStreamWriter(out);
+
+    assertThatCode(writer::close).doesNotThrowAnyException();
   }
 
   @Test

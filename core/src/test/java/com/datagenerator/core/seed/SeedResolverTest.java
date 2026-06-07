@@ -284,4 +284,39 @@ class SeedResolverTest {
         .isInstanceOf(SeedResolutionException.class)
         .hasMessageContaining("API key name and value are required");
   }
+
+  @Test
+  void shouldFailWhenAuthTypeIsNull() {
+    SeedConfig.RemoteSeed.AuthConfig auth =
+        new SeedConfig.RemoteSeed.AuthConfig(null, null, null, null, null, null);
+    SeedConfig.RemoteSeed config =
+        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+
+    assertThatThrownBy(() -> resolver.resolve(config))
+        .isInstanceOf(SeedResolutionException.class)
+        .hasMessageContaining("Auth type cannot be null");
+  }
+
+  @Test
+  void shouldFailWhenAuthTypeIsUnsupported() {
+    SeedConfig.RemoteSeed.AuthConfig auth =
+        new SeedConfig.RemoteSeed.AuthConfig("oauth", null, null, null, null, null);
+    SeedConfig.RemoteSeed config =
+        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+
+    assertThatThrownBy(() -> resolver.resolve(config))
+        .isInstanceOf(SeedResolutionException.class)
+        .hasMessageContaining("Unsupported auth type: oauth");
+  }
+
+  @Test
+  void shouldFailWhenSeedFileIsEmpty() throws Exception {
+    Path seedFile = tempDir.resolve("empty.txt");
+    Files.writeString(seedFile, "");
+    SeedConfig.FileSeed config = new SeedConfig.FileSeed("file", seedFile.toString());
+
+    assertThatThrownBy(() -> resolver.resolve(config))
+        .isInstanceOf(SeedResolutionException.class)
+        .hasMessageContaining("empty");
+  }
 }

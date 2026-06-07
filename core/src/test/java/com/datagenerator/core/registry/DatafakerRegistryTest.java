@@ -206,6 +206,84 @@ class DatafakerRegistryTest {
         .hasMessageContaining("Canonical name cannot be null");
   }
 
+  // ── Generate all built-in types ───────────────────────────────────────────
+
+  @Test
+  void shouldGenerateAllPersonTypes() {
+    assertThat(DatafakerRegistry.generate("first_name", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("last_name", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("full_name", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("username", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("title", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("occupation", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("prefix", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("suffix", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("password", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("ssn", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateAllAddressTypes() {
+    assertThat(DatafakerRegistry.generate("address", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("street_name", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("street_number", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("city", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("state", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("postal_code", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("country", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("longitude", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("country_code", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("time_zone", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateAllContactTypes() {
+    assertThat(DatafakerRegistry.generate("phone_number", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateAllFinanceTypes() {
+    assertThat(DatafakerRegistry.generate("company", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("credit_card", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("iban", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("currency", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("price", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("bic", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("cvv", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("credit_card_type", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("stock_market", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateAllInternetTypes() {
+    assertThat(DatafakerRegistry.generate("domain", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("url", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("ipv4", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("ipv6", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("mac_address", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateAllCommerceTypes() {
+    assertThat(DatafakerRegistry.generate("product_name", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("department", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("color", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("material", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("promotion_code", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateAllLoremTypes() {
+    assertThat(DatafakerRegistry.generate("lorem_word", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("lorem_sentence", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("lorem_paragraph", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateIsbnType() {
+    assertThat(DatafakerRegistry.generate("isbn", FAKER, RANDOM)).isNotBlank();
+  }
+
   // ── Instantiation guard ───────────────────────────────────────────────────
 
   @Test

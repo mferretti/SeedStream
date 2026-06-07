@@ -158,4 +158,61 @@ class LocaleMapperTest {
     assertThat(LocaleMapper.map("brazil")).isEqualTo(Locale.of("pt", "BR"));
     assertThat(LocaleMapper.map("pt-br")).isEqualTo(Locale.of("pt", "BR"));
   }
+
+  @Test
+  void shouldMapNorthernEuropeanLocales() {
+    assertThat(LocaleMapper.map("netherlands")).isEqualTo(Locale.of("nl", "NL"));
+    assertThat(LocaleMapper.map("dutch")).isEqualTo(Locale.of("nl", "NL"));
+    assertThat(LocaleMapper.map("nl")).isEqualTo(Locale.of("nl", "NL"));
+    assertThat(LocaleMapper.map("belgium")).isEqualTo(Locale.of("nl", "BE"));
+    assertThat(LocaleMapper.map("sweden")).isEqualTo(Locale.of("sv", "SE"));
+    assertThat(LocaleMapper.map("swedish")).isEqualTo(Locale.of("sv", "SE"));
+    assertThat(LocaleMapper.map("norway")).isEqualTo(Locale.of("no", "NO"));
+    assertThat(LocaleMapper.map("norwegian")).isEqualTo(Locale.of("no", "NO"));
+    assertThat(LocaleMapper.map("denmark")).isEqualTo(Locale.of("da", "DK"));
+    assertThat(LocaleMapper.map("danish")).isEqualTo(Locale.of("da", "DK"));
+    assertThat(LocaleMapper.map("finland")).isEqualTo(Locale.of("fi", "FI"));
+    assertThat(LocaleMapper.map("finnish")).isEqualTo(Locale.of("fi", "FI"));
+  }
+
+  @Test
+  void shouldMapEasternEuropeanLocales() {
+    assertThat(LocaleMapper.map("poland")).isEqualTo(Locale.of("pl", "PL"));
+    assertThat(LocaleMapper.map("polish")).isEqualTo(Locale.of("pl", "PL"));
+    assertThat(LocaleMapper.map("czech")).isEqualTo(Locale.of("cs", "CZ"));
+    assertThat(LocaleMapper.map("czechia")).isEqualTo(Locale.of("cs", "CZ"));
+    assertThat(LocaleMapper.map("hungary")).isEqualTo(Locale.of("hu", "HU"));
+    assertThat(LocaleMapper.map("hungarian")).isEqualTo(Locale.of("hu", "HU"));
+    assertThat(LocaleMapper.map("romania")).isEqualTo(Locale.of("ro", "RO"));
+    assertThat(LocaleMapper.map("romanian")).isEqualTo(Locale.of("ro", "RO"));
+    assertThat(LocaleMapper.map("greece")).isEqualTo(Locale.of("el", "GR"));
+    assertThat(LocaleMapper.map("greek")).isEqualTo(Locale.of("el", "GR"));
+    assertThat(LocaleMapper.map("turkey")).isEqualTo(Locale.of("tr", "TR"));
+    assertThat(LocaleMapper.map("turkish")).isEqualTo(Locale.of("tr", "TR"));
+  }
+
+  @Test
+  void shouldMapSoutheastAsianLocales() {
+    assertThat(LocaleMapper.map("taiwan")).isEqualTo(Locale.TAIWAN);
+    assertThat(LocaleMapper.map("zh-tw")).isEqualTo(Locale.TAIWAN);
+    assertThat(LocaleMapper.map("indonesia")).isEqualTo(Locale.of("id", "ID"));
+    assertThat(LocaleMapper.map("indonesian")).isEqualTo(Locale.of("id", "ID"));
+    assertThat(LocaleMapper.map("vietnam")).isEqualTo(Locale.of("vi", "VN"));
+    assertThat(LocaleMapper.map("vietnamese")).isEqualTo(Locale.of("vi", "VN"));
+    assertThat(LocaleMapper.map("thai")).isEqualTo(Locale.of("th", "TH"));
+    assertThat(LocaleMapper.map("malaysia")).isEqualTo(Locale.of("ms", "MY"));
+    assertThat(LocaleMapper.map("singapore")).isEqualTo(Locale.of("en", "SG"));
+    assertThat(LocaleMapper.map("philippines")).isEqualTo(Locale.of("en", "PH"));
+  }
+
+  @Test
+  void shouldMapAdditionalAmericasLocales() {
+    assertThat(LocaleMapper.map("peru")).isEqualTo(Locale.of("es", "PE"));
+  }
+
+  @Test
+  void shouldMapArabicVariants() {
+    assertThat(LocaleMapper.map("arabic")).isEqualTo(Locale.of("ar", "SA"));
+    assertThat(LocaleMapper.map("hebrew")).isEqualTo(Locale.of("he", "IL"));
+  }
 }
