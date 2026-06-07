@@ -18,12 +18,11 @@ package com.datagenerator.formats.json;
 
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.SerializationException;
+import com.datagenerator.formats.SerializerMapper;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -62,7 +61,7 @@ public class JsonSerializer implements FormatSerializer {
 
   /** Create JSON serializer with default configuration. */
   public JsonSerializer() {
-    this.mapper = createObjectMapper();
+    this.mapper = SerializerMapper.INSTANCE;
     this.jsonFactory = mapper.getFactory();
   }
 
@@ -78,21 +77,6 @@ public class JsonSerializer implements FormatSerializer {
   public JsonSerializer(ObjectMapper objectMapper) {
     this.mapper = objectMapper;
     this.jsonFactory = objectMapper.getFactory();
-  }
-
-  private static ObjectMapper createObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-
-    // Register JSR-310 module for Java 8 date/time types (LocalDate, Instant, etc.)
-    mapper.registerModule(new JavaTimeModule());
-
-    // Disable pretty-printing for compact output (performance + smaller file size)
-    mapper.disable(SerializationFeature.INDENT_OUTPUT);
-
-    // Write dates as ISO-8601 strings, not timestamps
-    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
-    return mapper;
   }
 
   @Override

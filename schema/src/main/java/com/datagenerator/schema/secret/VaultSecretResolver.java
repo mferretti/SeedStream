@@ -47,10 +47,11 @@ public final class VaultSecretResolver implements SecretResolver {
 
   private static final String TOKEN_ENV = "VAULT_TOKEN";
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   private final String vaultAddr;
   private final String namespace;
   private final HttpClient httpClient;
-  private final ObjectMapper mapper = new ObjectMapper();
 
   public VaultSecretResolver(String addr, String namespace) {
     this(addr, namespace, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
@@ -65,13 +66,9 @@ public final class VaultSecretResolver implements SecretResolver {
 
   @Override
   public String resolve(String path) {
-    String secretPath = path;
-    String field = null;
-    int hash = path.indexOf('#');
-    if (hash >= 0) {
-      secretPath = path.substring(0, hash);
-      field = path.substring(hash + 1);
-    }
+    SecretPath sp = SecretPath.parse(path);
+    String secretPath = sp.id();
+    String field = sp.field();
 
     String token = System.getenv(TOKEN_ENV);
     if (token == null) {
@@ -121,7 +118,7 @@ public final class VaultSecretResolver implements SecretResolver {
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private String extractValue(String body, String field, String path) {
     try {
-      JsonNode root = mapper.readTree(body);
+      JsonNode root = MAPPER.readTree(body);
 
       // Detect KV v2 (data.data) vs KV v1 (data)
       JsonNode data = root.path("data");
@@ -129,12 +126,7 @@ public final class VaultSecretResolver implements SecretResolver {
       JsonNode values = inner.isMissingNode() ? data : inner;
 
       if (field != null) {
-        JsonNode fieldNode = values.get(field);
-        if (fieldNode == null || fieldNode.isNull()) {
-          throw new SecretResolutionException(
-              "Field '" + field + "' not found in Vault secret at: " + path);
-        }
-        return fieldNode.asText();
+        return SecretPath.extractNodeField(values, field, "Vault secret at: " + path);
       }
 
       // No field suffix — return as string if exactly one scalar value

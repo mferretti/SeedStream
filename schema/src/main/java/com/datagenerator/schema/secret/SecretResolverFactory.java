@@ -33,6 +33,7 @@ import java.util.Locale;
  *   <li>{@code vault} — HashiCorp Vault KV v2; requires {@code vault_addr} in config
  *   <li>{@code aws} — AWS Secrets Manager; optional {@code aws_region} in config
  *   <li>{@code azure_keyvault} — Azure Key Vault; requires {@code vault_uri} in config
+ *   <li>{@code gcp_secretmanager} — Google Cloud Secret Manager; requires {@code gcp_project_id}
  *   <li>{@code encrypted_file} — AES-256-GCM inline ciphertext; key from {@code key_env} or {@code
  *       key_file}
  * </ul>
@@ -85,6 +86,13 @@ public final class SecretResolverFactory {
       }
       case "aws" -> new AwsSecretsManagerResolver(config.getAwsRegion());
       case "azure_keyvault" -> new AzureKeyVaultResolver(config.getVaultUri());
+      case "gcp_secretmanager" -> {
+        if (config.getGcpProjectId() == null || config.getGcpProjectId().isBlank()) {
+          throw new SecretResolutionException(
+              "gcp_project_id is required when secrets.resolver: gcp_secretmanager");
+        }
+        yield new GoogleSecretManagerResolver(config.getGcpProjectId());
+      }
       case "encrypted_file" -> {
         String keyHex = loadEncryptionKey(config);
         yield new EncryptedFileResolver(AesGcmCrypto.hexToKey(keyHex));
@@ -94,7 +102,8 @@ public final class SecretResolverFactory {
           throw new SecretResolutionException(
               "Unknown secret resolver: '"
                   + config.getResolver()
-                  + "'; supported values: env, vault, aws, azure_keyvault, encrypted_file");
+                  + "'; supported values: env, vault, aws, azure_keyvault, gcp_secretmanager,"
+                  + " encrypted_file");
     };
   }
 }

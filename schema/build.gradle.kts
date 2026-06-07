@@ -16,6 +16,9 @@ dependencies {
     implementation(libs.azure.keyvault.secrets)
     implementation(libs.azure.identity)
 
+    // Google Cloud Secret Manager resolver
+    implementation(libs.gcp.secretmanager)
+
     // Integration test containers
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.localstack)

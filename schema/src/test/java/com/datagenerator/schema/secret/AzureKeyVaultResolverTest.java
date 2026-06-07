@@ -19,6 +19,7 @@ package com.datagenerator.schema.secret;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.security.keyvault.secrets.SecretClient;
@@ -131,6 +132,35 @@ class AzureKeyVaultResolverTest {
 
     verify(client).getSecret("db-pass", "v2");
     verify(client, never()).getSecret("db-pass");
+  }
+
+  // ── Constructor validation ──────────────────────────────────────────────────
+
+  @Test
+  void shouldThrowWhenVaultUriIsNull() {
+    assertThatThrownBy(() -> new AzureKeyVaultResolver((String) null))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("vault_uri");
+  }
+
+  @Test
+  void shouldThrowWhenVaultUriIsBlank() {
+    assertThatThrownBy(() -> new AzureKeyVaultResolver("   "))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("vault_uri");
+  }
+
+  // ── Auth error ─────────────────────────────────────────────────────────────
+
+  @Test
+  void shouldThrowSecretResolutionExceptionOnAuthenticationError() {
+    AzureException authError = new AzureException("Authentication failed: invalid client secret");
+    when(client.getSecret("my-secret")).thenThrow(authError);
+
+    assertThatThrownBy(() -> resolver.resolve("my-secret"))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("my-secret")
+        .hasCause(authError);
   }
 
   @Test

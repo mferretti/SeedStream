@@ -51,8 +51,9 @@ import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundExce
 @Slf4j
 public final class AwsSecretsManagerResolver implements SecretResolver {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   private final SecretsManagerClient client;
-  private final ObjectMapper mapper = new ObjectMapper();
 
   public AwsSecretsManagerResolver(String awsRegion) {
     String region = awsRegion;
@@ -77,13 +78,9 @@ public final class AwsSecretsManagerResolver implements SecretResolver {
 
   @Override
   public String resolve(String path) {
-    String secretId = path;
-    String field = null;
-    int hash = path.indexOf('#');
-    if (hash >= 0) {
-      secretId = path.substring(0, hash);
-      field = path.substring(hash + 1);
-    }
+    SecretPath sp = SecretPath.parse(path);
+    String secretId = sp.id();
+    String field = sp.field();
 
     log.debug("Resolving AWS Secrets Manager secret: id={}", secretId);
 
@@ -108,15 +105,10 @@ public final class AwsSecretsManagerResolver implements SecretResolver {
 
   private String extractValue(String secretString, String field, String secretId) {
     try {
-      JsonNode root = mapper.readTree(secretString);
+      JsonNode root = MAPPER.readTree(secretString);
       if (root.isObject()) {
         if (field != null) {
-          JsonNode fieldNode = root.get(field);
-          if (fieldNode == null || fieldNode.isNull()) {
-            throw new SecretResolutionException(
-                "Field '" + field + "' not found in AWS secret: " + secretId);
-          }
-          return fieldNode.asText();
+          return SecretPath.extractNodeField(root, field, "AWS secret: " + secretId);
         }
         if (root.size() == 1) {
           return root.elements().next().asText();

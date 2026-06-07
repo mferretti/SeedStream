@@ -17,7 +17,7 @@
 package com.datagenerator.destinations.kafka;
 
 import com.datagenerator.core.util.LogUtils;
-import com.datagenerator.destinations.DestinationAdapter;
+import com.datagenerator.destinations.AbstractDestination;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.retry.RetryPolicy;
 import com.datagenerator.formats.FormatSerializer;
@@ -69,13 +69,12 @@ import org.apache.kafka.common.serialization.StringSerializer;
  * concurrently by multiple generator workers.
  */
 @Slf4j
-public class KafkaDestination implements DestinationAdapter {
+public class KafkaDestination extends AbstractDestination {
   private final KafkaDestinationConfig config;
   private final FormatSerializer serializer;
   private final RetryPolicy retryPolicy;
 
   private Producer<String, byte[]> producer;
-  private boolean isOpen = false;
   private long recordCount = 0;
 
   /**
@@ -182,9 +181,7 @@ public class KafkaDestination implements DestinationAdapter {
   @Override
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public void write(Map<String, Object> record) {
-    if (!isOpen) {
-      throw new DestinationException("Kafka destination not open. Call open() first.");
-    }
+    requireOpen("Kafka");
 
     try {
       byte[] recordBytes = serializer.serializeToBytes(record);

@@ -19,7 +19,7 @@ package com.datagenerator.generators.primitive;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
-import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.util.Random;
 
 /**
@@ -33,15 +33,8 @@ public class BooleanGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    if (!(dataType instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException(
-          "BooleanGenerator requires PrimitiveType, got: " + dataType.getClass().getSimpleName());
-    }
-    if (primitiveType.getKind() != PrimitiveType.Kind.BOOLEAN) {
-      throw new GeneratorException(
-          "BooleanGenerator requires BOOLEAN type, got: " + primitiveType.getKind());
-    }
-
+    GeneratorValidation.requirePrimitiveKind(
+        dataType, PrimitiveType.Kind.BOOLEAN, "BooleanGenerator");
     return random.nextBoolean();
   }
 

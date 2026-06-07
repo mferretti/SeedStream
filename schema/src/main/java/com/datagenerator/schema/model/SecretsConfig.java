@@ -57,7 +57,7 @@ public class SecretsConfig {
 
   /**
    * Resolver backend. Supported values: {@code env} (default), {@code vault}, {@code aws}, {@code
-   * azure_keyvault}, {@code encrypted_file}.
+   * azure_keyvault}, {@code gcp_secretmanager}, {@code encrypted_file}.
    */
   String resolver;
 
@@ -94,6 +94,12 @@ public class SecretsConfig {
    */
   String keyFile;
 
+  /**
+   * GCP project ID for Google Cloud Secret Manager (e.g. {@code my-gcp-project}). Required for
+   * {@code gcp_secretmanager} resolver.
+   */
+  String gcpProjectId;
+
   @JsonCreator
   @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator requires params named after fields
   public SecretsConfig(
@@ -103,7 +109,8 @@ public class SecretsConfig {
       @JsonProperty("aws_region") String awsRegion,
       @JsonProperty("vault_uri") String vaultUri,
       @JsonProperty("key_env") String keyEnv,
-      @JsonProperty("key_file") String keyFile) {
+      @JsonProperty("key_file") String keyFile,
+      @JsonProperty("gcp_project_id") String gcpProjectId) {
     this.resolver = resolver;
     this.vaultAddr = vaultAddr;
     this.vaultNamespace = vaultNamespace;
@@ -111,5 +118,6 @@ public class SecretsConfig {
     this.vaultUri = vaultUri;
     this.keyEnv = keyEnv;
     this.keyFile = keyFile;
+    this.gcpProjectId = gcpProjectId;
   }
 }

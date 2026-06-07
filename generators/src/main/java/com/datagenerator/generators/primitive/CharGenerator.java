@@ -20,6 +20,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.util.Random;
 
 /**
@@ -37,23 +38,15 @@ public class CharGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    if (!(dataType instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException(
-          "CharGenerator requires PrimitiveType, got: " + dataType.getClass().getSimpleName());
-    }
-    if (primitiveType.getKind() != PrimitiveType.Kind.CHAR) {
-      throw new GeneratorException(
-          "CharGenerator requires CHAR type, got: " + primitiveType.getKind());
-    }
+    PrimitiveType primitiveType =
+        GeneratorValidation.requirePrimitiveKind(
+            dataType, PrimitiveType.Kind.CHAR, "CharGenerator");
 
     // Parse min/max length
     int minLength = parseLength(primitiveType.getMinValue(), "minValue");
     int maxLength = parseLength(primitiveType.getMaxValue(), "maxValue");
 
-    if (minLength > maxLength) {
-      throw new GeneratorException(
-          "Invalid char range: minValue (%d) > maxValue (%d)".formatted(minLength, maxLength));
-    }
+    GeneratorValidation.requireValidRange(minLength, maxLength, "char");
 
     // Generate random length in range [minLength, maxLength]
     int length = minLength + random.nextInt(maxLength - minLength + 1);

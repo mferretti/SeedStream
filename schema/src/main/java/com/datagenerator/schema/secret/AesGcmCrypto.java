@@ -20,6 +20,7 @@ import com.datagenerator.schema.exception.SecretResolutionException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
@@ -68,9 +69,7 @@ public final class AesGcmCrypto {
       byte[] iv = new byte[IV_BYTES];
       SECURE_RANDOM.nextBytes(iv);
 
-      Cipher cipher = Cipher.getInstance(ALGORITHM); // nosemgrep
-      cipher.init( // nosemgrep
-          Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, iv));
+      Cipher cipher = initCipher(Cipher.ENCRYPT_MODE, key, iv);
 
       byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
@@ -104,14 +103,10 @@ public final class AesGcmCrypto {
         throw new SecretResolutionException("Ciphertext too short");
       }
 
-      byte[] iv = new byte[IV_BYTES];
-      System.arraycopy(payload, 0, iv, 0, IV_BYTES);
-      byte[] ciphertext = new byte[payload.length - IV_BYTES];
-      System.arraycopy(payload, IV_BYTES, ciphertext, 0, ciphertext.length);
+      byte[] iv = Arrays.copyOfRange(payload, 0, IV_BYTES);
+      byte[] ciphertext = Arrays.copyOfRange(payload, IV_BYTES, payload.length);
 
-      Cipher cipher = Cipher.getInstance(ALGORITHM);
-      cipher.init(
-          Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, iv));
+      Cipher cipher = initCipher(Cipher.DECRYPT_MODE, key, iv);
 
       return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
     } catch (SecretResolutionException e) {
@@ -146,6 +141,13 @@ public final class AesGcmCrypto {
     } catch (NumberFormatException e) {
       throw new SecretResolutionException("Encryption key contains non-hex characters", e);
     }
+  }
+
+  private static Cipher initCipher(int mode, byte[] key, byte[] iv)
+      throws GeneralSecurityException {
+    Cipher cipher = Cipher.getInstance(ALGORITHM); // nosemgrep
+    cipher.init(mode, new SecretKeySpec(key, "AES"), new GCMParameterSpec(TAG_BITS, iv));
+    return cipher;
   }
 
   private static void validateKey(byte[] key) {

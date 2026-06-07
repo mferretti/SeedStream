@@ -93,6 +93,16 @@ class ConfigSubstitutorTest {
   }
 
   @Test
+  void shouldNotSubstitutePatternEmbeddedInLargerString() {
+    // substitute() only matches when the ENTIRE value is a pattern (startsWith + endsWith).
+    // Patterns embedded mid-string are returned unchanged by design.
+    assertThat(ConfigSubstitutor.substitute("prefix/${VAR}/suffix", mockResolver))
+        .isEqualTo("prefix/${VAR}/suffix");
+    assertThat(ConfigSubstitutor.substitute("jdbc:${SECRET:db/url}/schema", mockResolver))
+        .isEqualTo("jdbc:${SECRET:db/url}/schema");
+  }
+
+  @Test
   void shouldUseEnvResolverNotSecretResolverForDollarBracePattern() {
     // ${VAR} always goes to env, regardless of the configured secretResolver
     System.setProperty("SEEDSTREAM_TEST_ENV_ONLY", "from-env");

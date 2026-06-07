@@ -21,6 +21,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -78,11 +79,7 @@ public class ArrayGenerator implements DataGenerator {
           "Array length must be non-negative: [%d, %d]".formatted(minLength, maxLength));
     }
 
-    if (minLength > maxLength) {
-      throw new GeneratorException(
-          "Invalid array length range: minLength (%d) > maxLength (%d)"
-              .formatted(minLength, maxLength));
-    }
+    GeneratorValidation.requireValidRange(minLength, maxLength, "array length");
 
     int length = minLength + random.nextInt(maxLength - minLength + 1);
 
