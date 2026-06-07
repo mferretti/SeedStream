@@ -17,6 +17,7 @@
 package com.datagenerator.generators.composite;
 
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.util.LogUtils;
@@ -95,21 +96,43 @@ public class ObjectGenerator implements DataGenerator {
     // Load structure definition (cached by registry)
     Map<String, DataType> fields = structureRegistry.loadStructure(structureName, structuresPath);
 
-    // Generate each field
+    // Two-pass generation: scalars first so that all primitive fields are present in the partial
+    // record before any nested (array/object) field is processed. This guarantees that
+    // ref[parent.*] generators in child structures can access scalar fields (e.g. id) regardless
+    // of the iteration order returned by the StructureLoader.
     Map<String, Object> result = new LinkedHashMap<>();
-    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
-      String fieldName = entry.getKey();
-      DataType fieldType = entry.getValue();
 
-      // Get generator for field type (recursive delegation via context)
+    // Pass 1: generate all non-nested fields
+    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
+      DataType fieldType = entry.getValue();
+      if (fieldType instanceof ArrayType || fieldType instanceof ObjectType) continue;
+
       DataGenerator fieldGenerator = GeneratorContext.getFactory().create(fieldType);
       Object fieldValue = fieldGenerator.generate(random, fieldType);
+      result.put(entry.getKey(), fieldValue);
 
-      result.put(fieldName, fieldValue);
-
-      // TRACE log field generation (sampled)
       if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
-        log.trace("Generated field {}: {} = {}", structureName, fieldName, fieldValue);
+        log.trace("Generated field {}: {} = {}", structureName, entry.getKey(), fieldValue);
+      }
+    }
+
+    // Pass 2: generate nested fields, exposing the current partial record to child generators
+    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
+      DataType fieldType = entry.getValue();
+      if (!(fieldType instanceof ArrayType || fieldType instanceof ObjectType)) continue;
+
+      GeneratorContext.pushParentRecord(result);
+      Object fieldValue;
+      try {
+        DataGenerator fieldGenerator = GeneratorContext.getFactory().create(fieldType);
+        fieldValue = fieldGenerator.generate(random, fieldType);
+      } finally {
+        GeneratorContext.popParentRecord();
+      }
+      result.put(entry.getKey(), fieldValue);
+
+      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+        log.trace("Generated field {}: {} = {}", structureName, entry.getKey(), fieldValue);
       }
     }
 

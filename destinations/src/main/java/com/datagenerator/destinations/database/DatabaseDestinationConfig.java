@@ -93,4 +93,12 @@ public class DatabaseDestinationConfig {
    * Default: 1000.
    */
   @Builder.Default long retryDelayMs = 1000;
+
+  /**
+   * When {@code true} (default), the nested-record decomposer automatically injects a {@code
+   * {parent_table}_id} FK column into each child record. Set to {@code false} when child structures
+   * use {@code ref[parent.field]} to populate FK fields explicitly, avoiding a redundant second
+   * column.
+   */
+  @Builder.Default boolean injectParentFk = true;
 }

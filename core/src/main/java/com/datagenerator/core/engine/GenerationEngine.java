@@ -152,6 +152,7 @@ public class GenerationEngine {
     }
 
     logProgress(count, count, startTime); // Final progress
+    workerCleanup.run();
     log.info("Single-threaded generation complete");
   }
 

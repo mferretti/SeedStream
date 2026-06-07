@@ -40,6 +40,9 @@ public class TypeParser {
   private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[([a-z_]+)\\]$");
   private static final Pattern ARRAY_PATTERN =
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+  private static final Pattern PARENT_REF_PATTERN =
+      Pattern.compile("^ref\\[parent\\.([a-z_]+)\\]$");
+
   private static final Pattern REF_PATTERN = Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+)\\]$");
 
   private static final Pattern REF_RANGE_PATTERN =
@@ -66,6 +69,8 @@ public class TypeParser {
     if ((m = PRIMITIVE_PATTERN.matcher(trimmed)).matches()) return parsePrimitive(m);
     if ((m = ENUM_PATTERN.matcher(trimmed)).matches()) return parseEnum(m, typeString);
     if ((m = OBJECT_PATTERN.matcher(trimmed)).matches()) return new ObjectType(m.group(1));
+    if ((m = PARENT_REF_PATTERN.matcher(trimmed)).matches())
+      return new ParentReferenceType(m.group(1));
     if ((m = REF_COUNT_PATTERN.matcher(trimmed)).matches()) return parseRefCount(m);
     if ((m = REF_RANGE_PATTERN.matcher(trimmed)).matches()) return parseRefRange(m, typeString);
     if ((m = REF_PATTERN.matcher(trimmed)).matches())

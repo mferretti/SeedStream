@@ -263,7 +263,7 @@ public class DatabaseDestination extends AbstractDestination {
     if (columnNames == null && !nestedMode) {
       if (hasNestedFields(effectiveRecord)) {
         nestedMode = true;
-        decomposer = new NestedRecordDecomposer();
+        decomposer = new NestedRecordDecomposer(config.isInjectParentFk());
         log.info(
             "Nested record detected — switching to multi-table decomposition mode (table={})",
             config.getTableName());

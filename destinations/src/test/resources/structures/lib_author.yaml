@@ -1,0 +1,16 @@
+name: lib_author
+data:
+  id:
+    datatype: int[1..20]
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  birthdate:
+    datatype: date[1900-01-01..2000-12-31]
+  nationality:
+    datatype: country
+  email:
+    datatype: email
+  books:
+    datatype: array[object[lib_book], 1..5]

@@ -22,10 +22,12 @@ import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.ParentReferenceType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
 import com.datagenerator.generators.composite.ArrayGenerator;
 import com.datagenerator.generators.composite.ObjectGenerator;
+import com.datagenerator.generators.composite.ParentReferenceGenerator;
 import com.datagenerator.generators.composite.ReferenceGenerator;
 import com.datagenerator.generators.primitive.BooleanGenerator;
 import com.datagenerator.generators.primitive.CharGenerator;
@@ -85,6 +87,7 @@ public class DataGeneratorFactory {
     STATELESS_TYPE_MAP.put(CustomDatafakerType.class, new DatafakerGenerator());
     STATELESS_TYPE_MAP.put(ArrayType.class, new ArrayGenerator());
     STATELESS_TYPE_MAP.put(ReferenceType.class, new ReferenceGenerator());
+    STATELESS_TYPE_MAP.put(ParentReferenceType.class, new ParentReferenceGenerator());
     // NOTE: ObjectGenerator is stateful and added per-instance in the constructor
   }
 

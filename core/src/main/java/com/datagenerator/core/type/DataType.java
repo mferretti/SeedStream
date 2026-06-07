@@ -21,7 +21,13 @@ package com.datagenerator.core.type;
  * describe itself.
  */
 public sealed interface DataType
-    permits PrimitiveType, EnumType, ObjectType, ArrayType, ReferenceType, CustomDatafakerType {
+    permits PrimitiveType,
+        EnumType,
+        ObjectType,
+        ArrayType,
+        ReferenceType,
+        ParentReferenceType,
+        CustomDatafakerType {
   /**
    * Returns a human-readable description of this type (e.g., "char[3..15]", "array[int, 5..10]").
    *

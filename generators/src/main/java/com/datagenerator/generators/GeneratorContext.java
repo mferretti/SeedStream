@@ -40,6 +40,8 @@ public class GeneratorContext implements AutoCloseable {
   private static final ThreadLocal<DataGeneratorFactory> FACTORY = new ThreadLocal<>();
   private static final ThreadLocal<String> GEOLOCATION = new ThreadLocal<>();
   private static final ThreadLocal<Long> JOB_COUNT = new ThreadLocal<>();
+  private static final ThreadLocal<java.util.Deque<java.util.Map<String, Object>>>
+      PARENT_RECORD_STACK = new ThreadLocal<>();
 
   private GeneratorContext() {}
 
@@ -59,6 +61,7 @@ public class GeneratorContext implements AutoCloseable {
     FACTORY.set(factory);
     GEOLOCATION.set(geolocation);
     JOB_COUNT.set(jobCount);
+    PARENT_RECORD_STACK.set(new java.util.ArrayDeque<>());
     return new GeneratorContext();
   }
 
@@ -110,6 +113,41 @@ public class GeneratorContext implements AutoCloseable {
     return count != null ? count : 0L;
   }
 
+  /**
+   * Push a partial record onto the parent-record stack. Called by {@link
+   * com.datagenerator.generators.composite.ObjectGenerator} before generating a nested field so
+   * that {@code ref[parent.*]} generators can access the enclosing record's already-generated
+   * scalar fields.
+   *
+   * @param record the partial record being built at this nesting level
+   */
+  public static void pushParentRecord(java.util.Map<String, Object> record) {
+    java.util.Deque<java.util.Map<String, Object>> stack = PARENT_RECORD_STACK.get();
+    if (stack == null) {
+      throw new IllegalStateException(
+          "No GeneratorContext active. Call GeneratorContext.enter() before generating.");
+    }
+    stack.push(record);
+  }
+
+  /** Pop the top entry from the parent-record stack after a nested field has been generated. */
+  public static void popParentRecord() {
+    java.util.Deque<java.util.Map<String, Object>> stack = PARENT_RECORD_STACK.get();
+    if (stack != null && !stack.isEmpty()) {
+      stack.pop();
+    }
+  }
+
+  /**
+   * Return the top of the parent-record stack without removing it.
+   *
+   * @return the enclosing parent's partial record, or {@code null} if the stack is empty
+   */
+  public static java.util.Map<String, Object> peekParentRecord() {
+    java.util.Deque<java.util.Map<String, Object>> stack = PARENT_RECORD_STACK.get();
+    return (stack != null && !stack.isEmpty()) ? stack.peek() : null;
+  }
+
   /** Check if a context is currently active. */
   public static boolean isActive() {
     return FACTORY.get() != null;
@@ -120,5 +158,6 @@ public class GeneratorContext implements AutoCloseable {
     FACTORY.remove();
     GEOLOCATION.remove();
     JOB_COUNT.remove();
+    PARENT_RECORD_STACK.remove();
   }
 }

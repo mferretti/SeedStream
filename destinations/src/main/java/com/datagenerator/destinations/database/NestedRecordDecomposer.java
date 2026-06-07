@@ -51,6 +51,22 @@ import java.util.Map;
 public class NestedRecordDecomposer {
 
   /**
+   * When {@code true}, a {@code {parent_table}_id} column is automatically injected into each child
+   * record. When {@code false}, no injection occurs — use this when child structures already carry
+   * the FK via {@code ref[parent.field]}.
+   */
+  private final boolean injectParentFk;
+
+  public NestedRecordDecomposer(boolean injectParentFk) {
+    this.injectParentFk = injectParentFk;
+  }
+
+  /** Creates a decomposer with parent FK injection enabled (default behaviour). */
+  public NestedRecordDecomposer() {
+    this(true);
+  }
+
+  /**
    * A flat record ready for a single table INSERT.
    *
    * @param tableName the target table name
@@ -105,7 +121,7 @@ public class NestedRecordDecomposer {
     }
 
     // Inject parent FK into the flat portion of this record
-    if (parentCtx != null) {
+    if (injectParentFk && parentCtx != null) {
       flat.put(parentCtx.fkColumnName(), parentCtx.parentId());
     }
 
@@ -114,7 +130,8 @@ public class NestedRecordDecomposer {
 
     // Build this level's parent context for its own children
     Object myId = flat.get("id");
-    ParentContext myCtx = (myId != null) ? new ParentContext(tableName, myId) : null;
+    ParentContext myCtx =
+        (injectParentFk && myId != null) ? new ParentContext(tableName, myId) : null;
 
     // Recurse depth-first: field key = child table name
     for (Map.Entry<String, List<Map<String, Object>>> childEntry : childrenByField.entrySet()) {

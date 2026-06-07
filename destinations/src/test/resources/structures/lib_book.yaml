@@ -1,0 +1,20 @@
+name: lib_book
+data:
+  id:
+    datatype: int[1..9999]
+  title:
+    datatype: lorem_sentence
+  isbn:
+    datatype: isbn
+  genre:
+    datatype: enum[FICTION,NON_FICTION,SCIENCE,HISTORY,BIOGRAPHY,FANTASY,MYSTERY,ROMANCE]
+  pages:
+    datatype: int[50..1200]
+  language:
+    datatype: enum[EN,IT,FR,DE,ES]
+  price:
+    datatype: decimal[5.00..99.99]
+  published_date:
+    datatype: date[1900-01-01..2025-12-31]
+  author_id:
+    datatype: ref[parent.id]
