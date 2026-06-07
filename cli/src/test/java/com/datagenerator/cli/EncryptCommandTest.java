@@ -116,6 +116,22 @@ class EncryptCommandTest {
     assertThat(resolver.resolve(path)).isEqualTo("round-trip-value");
   }
 
+  // ── Exception path ────────────────────────────────────────────────────────
+
+  @Test
+  void exitCode1WhenKeyHexIsInvalid() {
+    EncryptCommand command = new EncryptCommand();
+    command.envReader = name -> "not-a-valid-64-char-hex-key"; // triggers hexToKey exception
+
+    StringWriter err = new StringWriter();
+    CommandLine cli = new CommandLine(command);
+    cli.setErr(new PrintWriter(err));
+    int code = cli.execute("my-secret");
+
+    assertThat(code).isEqualTo(1);
+    assertThat(err.toString()).contains("Encryption failed");
+  }
+
   @Test
   void twoCiphertextsForSamePlaintextDiffer(@TempDir Path tempDir) throws Exception {
     Path keyFile = tempDir.resolve("key.hex");

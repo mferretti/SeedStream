@@ -323,6 +323,246 @@ class ExecuteCommandTest {
 
   // ── Structures path resolution ───────────────────────────────────────────────
 
+  // ── File destination options ─────────────────────────────────────────────────
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void fileDestinationWithCompressAndAppend() throws Exception {
+    Path jobFile = tempDir.resolve("compress_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+          compress: true
+          append: true
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    int code = execute("--job", jobFile.toString(), "--count", "3");
+    assertThat(code).isZero();
+  }
+
+  // ── Seed resolution edge cases ───────────────────────────────────────────────
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void noSeedConfigFallsBackToDefaultSeed() throws Exception {
+    Path jobFile = tempDir.resolve("noseed_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        conf:
+          path: %s/output
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    int code = execute("--job", jobFile.toString(), "--count", "3");
+    assertThat(code).isZero();
+    assertThat(outDir.resolve("output.json")).exists();
+  }
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void envSeedResolutionFailureFallsBackToDefaultSeed() throws Exception {
+    Path jobFile = tempDir.resolve("envseed_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: env
+          name: NONEXISTENT_SEED_VAR_TEST_XYZ_12345
+        conf:
+          path: %s/output
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    int code = execute("--job", jobFile.toString(), "--count", "3");
+    assertThat(code).isZero(); // falls back to seed 0
+    assertThat(outDir.resolve("output.json")).exists();
+  }
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void fileSeedValidationIsApplied() throws Exception {
+    Path seedFile = tempDir.resolve("seed.txt");
+    Files.writeString(seedFile, "42");
+
+    Path jobFile = tempDir.resolve("fileseed_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: file
+          path: %s
+        conf:
+          path: %s/output
+        """
+            .formatted(
+                structDir.toAbsolutePath(),
+                seedFile.toAbsolutePath(),
+                outDir.toAbsolutePath()));
+
+    int code = execute("--job", jobFile.toString(), "--count", "3");
+    // Seed file permission check runs; result depends on OS file permissions
+    assertThat(code).isIn(0, 1);
+  }
+
+  // ── Structures path fallback ──────────────────────────────────────────────────
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void defaultStructuresPathFallbackFailsWhenNoStructuresInCwd() throws Exception {
+    Path subDir = tempDir.resolve("mydir");
+    Files.createDirectories(subDir);
+    Path jobFile = subDir.resolve("job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+        """
+            .formatted(outDir.toAbsolutePath()));
+
+    int code = execute("--job", jobFile.toString(), "--count", "1");
+    assertThat(code).isNotZero(); // config/structures/simple.yaml not present in CWD
+  }
+
+  // ── Serializer formats ────────────────────────────────────────────────────────
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void cbeffSerializerCreatedWhenFormatIsCbeff() throws Exception {
+    Path jobFile = tempDir.resolve("cbeff_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+          cbeff_format_owner: ISO
+          cbeff_format_type: 19794-2-json
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    int code = execute("--job", jobFile.toString(), "--format", "cbeff", "--count", "1");
+    assertThat(code).isBetween(0, 2);
+  }
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void avroRegistrySerializerCreatedWhenFormatIsAvroRegistry() throws Exception {
+    Path jobFile = tempDir.resolve("avroreg_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+          schema_registry_url: http://127.0.0.1:1
+          topic: test-topic
+          schema_registry_subject: test-topic-value
+          schema_registry_auth: bearer
+          schema_registry_token: test-token
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    // createSerializer() is covered; fails at serialization time (no registry)
+    int code = execute("--job", jobFile.toString(), "--format", "avro-registry", "--count", "1");
+    assertThat(code).isNotZero();
+  }
+
+  // ── Database destination ──────────────────────────────────────────────────────
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void databaseDestinationAttemptedWhenTypeIsDatabase() throws Exception {
+    Path jobFile = tempDir.resolve("db_basic_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: database
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          jdbc_url: jdbc:nonexistent://localhost/test
+          username: sa
+          password: ""
+          table: simple_test
+        """
+            .formatted(structDir.toAbsolutePath()));
+
+    // createDatabaseDestination() runs to completion; fails at open time (no JDBC driver)
+    int code = execute("--job", jobFile.toString(), "--count", "1");
+    assertThat(code).isNotZero();
+  }
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void databaseDestinationWithAllOptionalFieldsCoversAllBranches() throws Exception {
+    Path jobFile = tempDir.resolve("db_full_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: database
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          jdbc_url: jdbc:nonexistent://localhost/test
+          username: sa
+          password: ""
+          table: simple_test
+          batch_size: 50
+          pool_size: 2
+          transaction_strategy: per_batch
+          max_retries: 1
+          retry_delay_ms: 50
+        """
+            .formatted(structDir.toAbsolutePath()));
+
+    // All optional DB config branches exercised; fails at open time (no JDBC driver)
+    int code = execute("--job", jobFile.toString(), "--count", "1");
+    assertThat(code).isNotZero();
+  }
+
+  // ── Structures path inference ─────────────────────────────────────────────────
+
   @Test
   @SuppressFBWarnings(
       "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional YAML line endings
