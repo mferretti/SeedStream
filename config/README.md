@@ -458,6 +458,50 @@ Generate 10 million records with 12 worker threads:
 
 ---
 
+### Avro (OCF Container)
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format avro --count 100"
+```
+
+**Output** (`customers.avro`): Avro OCF binary file with embedded schema. Schema is derived automatically from the job structure — no `.avsc` file required.
+
+---
+
+### Avro + Confluent Schema Registry
+```yaml
+# In job YAML conf section:
+conf:
+  schema_registry_url: "http://localhost:8081"
+  schema_registry_auth_type: "bearer"         # bearer | basic | (omit for none)
+  schema_registry_token: "${ENV:SR_TOKEN}"
+```
+
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/kafka_customer.yaml --format avro-registry --count 100"
+```
+
+**Output**: Confluent wire format — magic byte (0x00) + 4-byte schema ID + Avro binary payload. Schema is registered on first write and cached for subsequent records.
+
+---
+
+### Protobuf (Binary)
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format protobuf --count 100"
+```
+
+**Output** (`customers.protobuf`): Length-prefixed binary records with dynamically generated schema.
+
+---
+
+### CBEFF (Biometric Envelope)
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_fingerprint_fmr.yaml --format cbeff --count 10"
+```
+
+**Output** (`fingerprints.cbeff.json`): CBEFF-like JSON envelope wrapping biometric field data per ISO/IEC 19785.
+
+---
+
 ## Reproducibility
 
 Same seed → identical output (bit-for-bit):
@@ -696,7 +740,7 @@ seed:
 conf:
   jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
   username: "dbuser"
-  password: "${DB_PASSWORD}"       # ${ENV_VAR} substitution supported
+  password: "${ENV:DB_PASSWORD}"   # env var, ${SECRET:enc:AES256GCM:...}, or cloud backend
   table: "passports"               # optional — defaults to structure name
   batch_size: 1000
   pool_size: 5
@@ -721,6 +765,85 @@ conf:
 Constraints:
 - ⚠️ Tables must pre-exist — no DDL generation
 - ⚠️ Parent `id` field required for FK injection in nested structures
+
+---
+
+## Secret Management Reference
+
+Secrets in job YAML are resolved before execution. Three mechanisms are supported.
+
+### 1. Environment Variable Substitution
+
+```yaml
+conf:
+  password: "${ENV:DB_PASSWORD}"
+  token: "${ENV:KAFKA_SASL_TOKEN}"
+```
+
+### 2. AES-256-GCM Inline Encryption
+
+Generate a key and encrypt credentials with the `encrypt` CLI command:
+
+```bash
+export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
+./seedstream encrypt "my-db-password"
+# → AES256GCM:BASE64ENCODED...
+```
+
+Reference in YAML:
+
+```yaml
+conf:
+  password: "${SECRET:enc:AES256GCM:BASE64ENCODED...}"
+```
+
+The key is loaded at runtime from `SEEDSTREAM_ENCRYPTION_KEY` (default) or `--key-file /path/to/key.hex`.
+
+### 3. Cloud Secret Backends
+
+Add a `secrets` block to the job YAML to pull secrets from a remote store:
+
+```yaml
+secrets:
+  type: vault                           # vault | aws | azure | encrypted-file
+  address: "https://vault.example.com"
+  token: "${ENV:VAULT_TOKEN}"
+
+conf:
+  password: "${SECRET:secret/db#password}"   # Vault path + optional #field
+```
+
+**HashiCorp Vault** (KV v1 and v2 auto-detected):
+```yaml
+secrets:
+  type: vault
+  address: "https://vault.example.com"
+  token: "${ENV:VAULT_TOKEN}"
+```
+
+**AWS Secrets Manager**:
+```yaml
+secrets:
+  type: aws
+  region: "us-east-1"
+  # Uses default AWS credential chain (env vars, instance profile, ~/.aws/credentials)
+```
+
+**Azure Key Vault**:
+```yaml
+secrets:
+  type: azure
+  vault_url: "https://my-vault.vault.azure.net"
+  # Uses DefaultAzureCredential (env vars, managed identity, CLI login)
+```
+
+**Encrypted file** (for CI secrets committed to repo):
+```yaml
+secrets:
+  type: encrypted-file
+  path: "secrets/creds.enc"
+  key_env: "SEEDSTREAM_ENCRYPTION_KEY"
+```
 
 ---
 

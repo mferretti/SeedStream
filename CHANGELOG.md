@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-06-06
+
+**Release**: Avro + Schema Registry, AES-256-GCM secret encryption, cloud secret backends (Vault, AWS, Azure), streaming JSON serialization, fault-tolerant retry policy.
+
+### Added
+
+#### Formats
+- **Avro serializer** (`avro`) — OCF container format with dynamic schema generation from job structure; no external dependencies
+- **Avro + Confluent Schema Registry** (`avro-registry`) — Confluent wire format (magic byte + schema ID + Avro binary); registers schema on first write, caches ID in memory; supports `bearer` and `basic` auth
+- **Jackson streaming JSON** — replaced tree-model serialization with `JsonGenerator` streaming API; suppresses redundant flush on `ByteArrayOutputStream` paths; ~15% throughput improvement for file/Kafka destinations
+
+#### Secret Management
+- **`${SECRET:enc:AES256GCM:<ciphertext>}`** — inline AES-256-GCM encrypted secrets in job YAML; key loaded from env var (`SEEDSTREAM_ENCRYPTION_KEY`) or key file (`--key-file`)
+- **`encrypt` CLI command** — `seedstream encrypt "my-password"` produces a ciphertext token ready to paste into YAML; supports `--key-env` and `--key-file` flags
+- **HashiCorp Vault backend** (`type: vault`) — KV v1/v2 auto-detection; field extraction via `#fieldname` suffix; bearer auth
+- **AWS Secrets Manager backend** (`type: aws`) — resolves `SecretString` and `SecretBinary`; region-configurable; uses default AWS credential chain
+- **Azure Key Vault backend** (`type: azure`) — resolves secrets by name/version; uses `DefaultAzureCredential`
+- **Encrypted file backend** (`type: encrypted-file`) — decrypts an AES-256-GCM ciphertext file at startup; suitable for CI secrets stored in repo
+- **`ConfigSubstitutor`** — resolves all `${SECRET:*}` and `${ENV:*}` placeholders in job YAML before job execution
+
+#### Reliability
+- **`RetryPolicy`** — exponential-backoff retry for destination operations (`open`, `write`, `flush`); configurable `maxAttempts` and `initialDelayMs`; Kafka and database destinations use it by default
+
+#### Testing
+- **`EncryptCommandTest`**, **`ExecuteCommandTest`** — CLI-level unit tests via picocli `CommandLine` test harness; covers encrypt/decrypt round-trip, key errors, format dispatch, destination wiring
+
+### Changed
+- `KafkaDestination`, `DatabaseDestination`, `FileDestination` constructors renamed parameters to avoid CheckStyle HiddenField violations
+- Switch expressions across codebase updated with `case null` branches (Codacy/PMD compliance)
+- `ExecuteCommand.createSerializer()` and `createDestination()` guard against `null` format/type before `toLowerCase()` (NPE-safe)
+
+### Fixed
+- `ExecuteCommand.createDestination()` switch default referenced wrong variable (`type` instead of `normalizedType`) — compilation error after Codacy renames; fixed
+
+---
+
 ## [0.5.0] - 2026-06-04
 
 **Release**: Foreign key reference generator (`ref[]`), dynamic count-based ID pools.
@@ -188,24 +224,17 @@ Not publicly released. Internal prototype for architecture validation.
 
 ## Roadmap
 
-### v0.5.0 (Planned - Q2 2026)
-- Reference generator for foreign keys (`ref[structure.field]`)
+### v0.7.0 (Planned)
 - Statistical distributions (normal, Zipfian, exponential)
 - Advanced Datafaker correlations and constraints
-- Memory profiling tooling
+- Binary FMR serializer (ISO/IEC 19794-2, pending spec access)
 
-### v0.6.0 (Planned - Q3 2026)
+### v1.0.0 (Planned)
 - REST API module
-- gRPC API module
-- Docker image and Kubernetes deployment
-- Helm chart
-
-### v1.0.0 (Planned - 2027)
 - Plugin architecture (ServiceLoader-based extensibility)
-- Schema registry integration (Confluent, AWS Glue)
 - Data masking and anonymization
+- Docker image
 - Metrics and monitoring (Prometheus, Grafana)
-- Web UI for configuration management
 
 ---
 

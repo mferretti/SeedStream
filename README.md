@@ -17,12 +17,12 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 25–33K rec/sec for realistic Datafaker data
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
 - 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
-- 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF container), CBEFF (biometric envelope)
+- 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
 - 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
-- 🔐 **Secure by Default**: File permission validation, `${ENV_VAR}` substitution for credentials
+- 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault backends
 
 ---
 
@@ -77,6 +77,11 @@ git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
 
 # Validate a configuration without running
 ./gradlew :cli:run --args="validate --job config/jobs/file_invoice.yaml"
+
+# Encrypt a credential for embedding in job YAML
+export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
+./gradlew :cli:run --args="encrypt my-db-password"
+# Paste the output into job YAML as: password: "${SECRET:enc:AES256GCM:<output>}"
 ```
 
 ### CLI options
@@ -84,7 +89,7 @@ git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--job` | required | Path to job YAML |
-| `--format` | `json` | `json`, `csv`, `protobuf` |
+| `--format` | `json` | `json`, `csv`, `protobuf`, `avro`, `avro-registry`, `cbeff` |
 | `--count` | `100` | Records to generate |
 | `--seed` | from config | Override seed for this run |
 | `--threads` | CPU cores | Worker threads |
@@ -133,6 +138,50 @@ See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading 
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Setup, development workflow, code standards |
 | [docs/QUALITY.md](docs/QUALITY.md) | Coverage, SpotBugs, Spotless configuration |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and roadmap |
+
+---
+
+## Secret Management
+
+Database passwords, Kafka credentials, and other secrets can be stored securely instead of in plaintext YAML.
+
+### Option 1 — AES-256-GCM inline encryption
+
+```bash
+# Generate a key (store it safely — you need it to decrypt)
+export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
+
+# Encrypt a credential
+./seedstream encrypt "my-db-password"
+# → AES256GCM:BASE64CIPHERTEXT...
+```
+
+Paste the output into your job YAML:
+
+```yaml
+conf:
+  password: "${SECRET:enc:AES256GCM:BASE64CIPHERTEXT...}"
+```
+
+### Option 2 — Environment variable substitution
+
+```yaml
+conf:
+  password: "${ENV:DB_PASSWORD}"
+```
+
+### Option 3 — Cloud secret backends
+
+```yaml
+secrets:
+  type: vault          # or: aws | azure | encrypted-file
+  address: "https://vault.example.com"
+  token: "${ENV:VAULT_TOKEN}"
+```
+
+Supported backends: HashiCorp Vault (KV v1/v2), AWS Secrets Manager, Azure Key Vault, encrypted file.
+
+See [config/README.md](config/README.md) for full secret configuration reference.
 
 ---
 
