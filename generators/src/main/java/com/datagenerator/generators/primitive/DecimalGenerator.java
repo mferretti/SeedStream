@@ -20,6 +20,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Random;
@@ -42,28 +43,22 @@ public class DecimalGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    if (!(dataType instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException(
-          "DecimalGenerator requires PrimitiveType, got: " + dataType.getClass().getSimpleName());
-    }
-    if (primitiveType.getKind() != PrimitiveType.Kind.DECIMAL) {
-      throw new GeneratorException(
-          "DecimalGenerator requires DECIMAL type, got: " + primitiveType.getKind());
-    }
+    PrimitiveType primitiveType =
+        GeneratorValidation.requirePrimitiveKind(
+            dataType, PrimitiveType.Kind.DECIMAL, "DecimalGenerator");
 
     // Parse min/max bounds as BigDecimal for precision
     BigDecimal min = parseDecimal(primitiveType.getMinValue(), "minValue");
     BigDecimal max = parseDecimal(primitiveType.getMaxValue(), "maxValue");
 
-    if (min.compareTo(max) > 0) {
-      throw new GeneratorException(
-          "Invalid decimal range: minValue (" + min + ") > maxValue (" + max + ")");
-    }
+    GeneratorValidation.requireValidRange(min, max, "decimal");
 
     // Determine scale (decimal places) from max precision in min/max
     int scale = Math.max(min.scale(), max.scale());
 
     // Generate random value: min + random * (max - min)
+    // nextDouble() returns [0.0, 1.0) so max is approached but not guaranteed; acceptable for
+    // decimals
     BigDecimal range = max.subtract(min);
     BigDecimal randomFactor = BigDecimal.valueOf(random.nextDouble());
     BigDecimal value = min.add(range.multiply(randomFactor));

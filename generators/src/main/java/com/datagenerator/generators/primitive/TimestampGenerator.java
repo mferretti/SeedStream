@@ -20,6 +20,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -60,27 +61,15 @@ public class TimestampGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    if (!(dataType instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException(
-          "TimestampGenerator requires PrimitiveType, got: " + dataType.getClass().getSimpleName());
-    }
-    if (primitiveType.getKind() != PrimitiveType.Kind.TIMESTAMP) {
-      throw new GeneratorException(
-          "TimestampGenerator requires TIMESTAMP type, got: " + primitiveType.getKind());
-    }
+    PrimitiveType primitiveType =
+        GeneratorValidation.requirePrimitiveKind(
+            dataType, PrimitiveType.Kind.TIMESTAMP, "TimestampGenerator");
 
     // Parse start/end timestamps
     Instant startTimestamp = parseTimestamp(primitiveType.getMinValue(), "minValue");
     Instant endTimestamp = parseTimestamp(primitiveType.getMaxValue(), "maxValue");
 
-    if (startTimestamp.isAfter(endTimestamp)) {
-      throw new GeneratorException(
-          "Invalid timestamp range: minValue ("
-              + startTimestamp
-              + ") > maxValue ("
-              + endTimestamp
-              + ")");
-    }
+    GeneratorValidation.requireValidRange(startTimestamp, endTimestamp, "timestamp");
 
     // Calculate seconds between timestamps
     long secondsBetween = ChronoUnit.SECONDS.between(startTimestamp, endTimestamp);
@@ -89,8 +78,9 @@ public class TimestampGenerator implements DataGenerator {
       return startTimestamp; // Same timestamp
     }
 
-    // Generate random seconds offset
-    long randomSeconds = (long) (random.nextDouble() * (secondsBetween + 1));
+    // Generate random seconds offset — clamp to include the end timestamp
+    long randomSeconds =
+        Math.min((long) (random.nextDouble() * (secondsBetween + 1)), secondsBetween);
 
     return startTimestamp.plusSeconds(randomSeconds);
   }

@@ -68,16 +68,7 @@ public final class FingerprintMinutiaeRules {
 
   // Rule 1: all required fields are present
   private static Optional<String> checkRequiredFields(Map<String, Object> record) {
-    List<String> missing = new ArrayList<>();
-    for (String field : REQUIRED_FIELDS) {
-      if (!record.containsKey(field)) {
-        missing.add(field);
-      }
-    }
-    if (missing.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of("Missing required fields: " + String.join(", ", missing));
+    return BiometricValidationUtils.checkRequiredFields(REQUIRED_FIELDS, record);
   }
 
   // Rule 2: minutiae is a non-empty List

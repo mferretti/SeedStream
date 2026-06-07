@@ -17,7 +17,13 @@
 package com.datagenerator.generators;
 
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.ArrayType;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.EnumType;
+import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.ReferenceType;
 import com.datagenerator.generators.composite.ArrayGenerator;
 import com.datagenerator.generators.composite.ObjectGenerator;
 import com.datagenerator.generators.composite.ReferenceGenerator;
@@ -30,8 +36,9 @@ import com.datagenerator.generators.primitive.IntegerGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Factory for creating appropriate data generators based on DataType.
@@ -59,61 +66,62 @@ import java.util.List;
  * </pre>
  */
 public class DataGeneratorFactory {
-  private static final List<DataGenerator> STATELESS_GENERATORS = new ArrayList<>();
+
+  // O(1) lookup maps — built once at class load / construction time
+  private static final EnumMap<PrimitiveType.Kind, DataGenerator> PRIMITIVE_MAP =
+      new EnumMap<>(PrimitiveType.Kind.class);
+  private static final Map<Class<? extends DataType>, DataGenerator> STATELESS_TYPE_MAP =
+      new HashMap<>();
 
   static {
-    // Register all primitive generators (stateless singletons)
-    STATELESS_GENERATORS.add(new CharGenerator());
-    STATELESS_GENERATORS.add(new IntegerGenerator());
-    STATELESS_GENERATORS.add(new DecimalGenerator());
-    STATELESS_GENERATORS.add(new BooleanGenerator());
-    STATELESS_GENERATORS.add(new DateGenerator());
-    STATELESS_GENERATORS.add(new TimestampGenerator());
-    STATELESS_GENERATORS.add(new EnumGenerator());
+    PRIMITIVE_MAP.put(PrimitiveType.Kind.CHAR, new CharGenerator());
+    PRIMITIVE_MAP.put(PrimitiveType.Kind.INT, new IntegerGenerator());
+    PRIMITIVE_MAP.put(PrimitiveType.Kind.DECIMAL, new DecimalGenerator());
+    PRIMITIVE_MAP.put(PrimitiveType.Kind.BOOLEAN, new BooleanGenerator());
+    PRIMITIVE_MAP.put(PrimitiveType.Kind.DATE, new DateGenerator());
+    PRIMITIVE_MAP.put(PrimitiveType.Kind.TIMESTAMP, new TimestampGenerator());
 
-    // Register semantic generators (Datafaker-based)
-    STATELESS_GENERATORS.add(new DatafakerGenerator());
-
-    // Register composite generators (stateless)
-    STATELESS_GENERATORS.add(new ArrayGenerator());
-    STATELESS_GENERATORS.add(new ReferenceGenerator());
-
-    // NOTE: ObjectGenerator is stateful and created with context
+    STATELESS_TYPE_MAP.put(EnumType.class, new EnumGenerator());
+    STATELESS_TYPE_MAP.put(CustomDatafakerType.class, new DatafakerGenerator());
+    STATELESS_TYPE_MAP.put(ArrayType.class, new ArrayGenerator());
+    STATELESS_TYPE_MAP.put(ReferenceType.class, new ReferenceGenerator());
+    // NOTE: ObjectGenerator is stateful and added per-instance in the constructor
   }
 
-  private final List<DataGenerator> allGenerators;
+  private final Map<Class<? extends DataType>, DataGenerator> typeMap;
 
   /** Create factory with context for stateful generators (e.g., ObjectGenerator). */
   public DataGeneratorFactory(StructureRegistry structureRegistry, Path structuresPath) {
-    // Combine stateless and stateful generators
-    this.allGenerators = new ArrayList<>(STATELESS_GENERATORS);
-    this.allGenerators.add(new ObjectGenerator(structureRegistry, structuresPath));
+    this.typeMap = new HashMap<>(STATELESS_TYPE_MAP);
+    this.typeMap.put(ObjectType.class, new ObjectGenerator(structureRegistry, structuresPath));
   }
 
   /**
-   * Create a generator for the given DataType (instance method - supports all types).
+   * Create a generator for the given DataType.
    *
    * @param dataType Type to generate
    * @return Matching generator
    * @throws GeneratorException if no generator supports the type
    */
   public DataGenerator create(DataType dataType) {
-    for (DataGenerator generator : allGenerators) {
-      if (generator.supports(dataType)) {
-        return generator;
-      }
+    if (dataType instanceof PrimitiveType pt) {
+      DataGenerator gen = PRIMITIVE_MAP.get(pt.getKind());
+      if (gen != null) return gen;
+    } else {
+      DataGenerator gen = typeMap.get(dataType.getClass());
+      if (gen != null) return gen;
     }
-
     throw new GeneratorException("No generator found for type: " + dataType.describe());
   }
 
   /**
-   * Check if a generator exists for the given DataType (instance method).
+   * Check if a generator exists for the given DataType.
    *
    * @param dataType Type to check
    * @return true if a generator exists
    */
   public boolean hasGenerator(DataType dataType) {
-    return allGenerators.stream().anyMatch(g -> g.supports(dataType));
+    if (dataType instanceof PrimitiveType pt) return PRIMITIVE_MAP.containsKey(pt.getKind());
+    return typeMap.containsKey(dataType.getClass());
   }
 }

@@ -34,6 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class RetryPolicy {
 
+  private static final long MAX_DELAY_MS = 30_000L;
+
   /** A runnable that may throw any checked or unchecked exception. */
   @FunctionalInterface
   public interface CheckedRunnable {
@@ -101,7 +103,7 @@ public final class RetryPolicy {
               delay,
               e.getMessage());
           sleepUninterruptibly(operationName, delay);
-          delay *= 2;
+          delay = Math.min(delay * 2, MAX_DELAY_MS);
         }
       }
     }

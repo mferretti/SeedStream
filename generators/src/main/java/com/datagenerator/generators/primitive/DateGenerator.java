@@ -20,6 +20,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -47,23 +48,15 @@ public class DateGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    if (!(dataType instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException(
-          "DateGenerator requires PrimitiveType, got: " + dataType.getClass().getSimpleName());
-    }
-    if (primitiveType.getKind() != PrimitiveType.Kind.DATE) {
-      throw new GeneratorException(
-          "DateGenerator requires DATE type, got: " + primitiveType.getKind());
-    }
+    PrimitiveType primitiveType =
+        GeneratorValidation.requirePrimitiveKind(
+            dataType, PrimitiveType.Kind.DATE, "DateGenerator");
 
     // Parse start/end dates
     LocalDate startDate = parseDate(primitiveType.getMinValue(), "minValue");
     LocalDate endDate = parseDate(primitiveType.getMaxValue(), "maxValue");
 
-    if (startDate.isAfter(endDate)) {
-      throw new GeneratorException(
-          "Invalid date range: minValue (%s) > maxValue (%s)".formatted(startDate, endDate));
-    }
+    GeneratorValidation.requireValidRange(startDate, endDate, "date");
 
     // Calculate days between dates
     long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
@@ -72,8 +65,8 @@ public class DateGenerator implements DataGenerator {
       return startDate; // Same date
     }
 
-    // Generate random days offset
-    long randomDays = (long) (random.nextDouble() * (daysBetween + 1));
+    // Generate random days offset — clamp to include the end date
+    long randomDays = Math.min((long) (random.nextDouble() * (daysBetween + 1)), daysBetween);
 
     return startDate.plusDays(randomDays);
   }

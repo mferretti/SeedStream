@@ -18,6 +18,8 @@ package com.datagenerator.formats.protobuf;
 
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.SerializationException;
+import com.datagenerator.formats.SerializerMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.DescriptorProto;
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
@@ -292,23 +294,11 @@ public class ProtobufSerializer implements FormatSerializer {
     }
   }
 
-  /**
-   * Format nested map as compact string representation.
-   *
-   * @param map nested map
-   * @return string representation
-   */
   private String formatMapAsString(Map<?, ?> map) {
-    StringBuilder sb = new StringBuilder("{");
-    boolean first = true;
-    for (Map.Entry<?, ?> entry : map.entrySet()) {
-      if (!first) {
-        sb.append(",");
-      }
-      sb.append(entry.getKey()).append(":").append(entry.getValue());
-      first = false;
+    try {
+      return SerializerMapper.INSTANCE.writeValueAsString(map);
+    } catch (JsonProcessingException e) {
+      return map.toString();
     }
-    sb.append("}");
-    return sb.toString();
   }
 }

@@ -20,6 +20,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
+import com.datagenerator.generators.GeneratorValidation;
 import java.util.Random;
 
 /**
@@ -39,30 +40,27 @@ public class IntegerGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    if (!(dataType instanceof PrimitiveType primitiveType)) {
-      throw new GeneratorException(
-          "IntegerGenerator requires PrimitiveType, got: " + dataType.getClass().getSimpleName());
-    }
-    if (primitiveType.getKind() != PrimitiveType.Kind.INT) {
-      throw new GeneratorException(
-          "IntegerGenerator requires INT type, got: " + primitiveType.getKind());
-    }
+    PrimitiveType primitiveType =
+        GeneratorValidation.requirePrimitiveKind(
+            dataType, PrimitiveType.Kind.INT, "IntegerGenerator");
 
     // Parse min/max bounds
     int min = parseInt(primitiveType.getMinValue(), "minValue");
     int max = parseInt(primitiveType.getMaxValue(), "maxValue");
 
-    if (min > max) {
-      throw new GeneratorException(
-          "Invalid int range: minValue (%d) > maxValue (%d)".formatted(min, max));
-    }
+    GeneratorValidation.requireValidRange(min, max, "int");
 
     // Generate random integer in range [min, max]
     // Use long arithmetic to avoid overflow when (max - min + 1) doesn't fit in int
     long range = (long) max - min + 1;
     if (range <= 0 || range > Integer.MAX_VALUE) {
-      // Range too large or wraps around - use fallback
-      return min + (random.nextInt() & 0x7FFFFFFF) % (int) range;
+      // Range exceeds int capacity — rejection sampling for uniform distribution
+      int result;
+      long limit = (long) Integer.MAX_VALUE + 1 - ((long) Integer.MAX_VALUE + 1) % range;
+      do {
+        result = random.nextInt() & Integer.MAX_VALUE;
+      } while (result >= limit);
+      return min + (int) (result % range);
     }
 
     return min + random.nextInt((int) range);

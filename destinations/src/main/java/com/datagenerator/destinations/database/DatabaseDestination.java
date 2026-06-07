@@ -18,7 +18,7 @@ package com.datagenerator.destinations.database;
 
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.TypeParser;
-import com.datagenerator.destinations.DestinationAdapter;
+import com.datagenerator.destinations.AbstractDestination;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.destinations.retry.RetryPolicy;
 import com.zaxxer.hikari.HikariConfig;
@@ -94,7 +94,7 @@ import lombok.extern.slf4j.Slf4j;
  * com.datagenerator.core.engine.GenerationEngine} uses a single writer thread.
  */
 @Slf4j
-public class DatabaseDestination implements DestinationAdapter {
+public class DatabaseDestination extends AbstractDestination {
 
   private static final String STRATEGY_PER_BATCH = "per_batch";
   private static final String STRATEGY_PER_JOB = "per_job";
@@ -151,7 +151,6 @@ public class DatabaseDestination implements DestinationAdapter {
 
   // --- Common state ---
   private long totalInserted = 0;
-  private boolean isOpen = false;
 
   /**
    * Create a database destination with the given configuration (Option A — no schema).
@@ -253,9 +252,7 @@ public class DatabaseDestination implements DestinationAdapter {
 
   @Override
   public void write(Map<String, Object> record) {
-    if (!isOpen) {
-      throw new DestinationException("Database destination not open. Call open() first.");
-    }
+    requireOpen("Database");
 
     // Strip empty List fields before routing. An empty list produces no JDBC value (flat mode)
     // and no child records (nested mode). Stripping here prevents the flat-mode validator from
@@ -370,12 +367,7 @@ public class DatabaseDestination implements DestinationAdapter {
               + "not a SQL injection risk")
   private void initializeStatement(Map<String, Object> firstRecord) {
     columnNames = new ArrayList<>(firstRecord.keySet());
-
-    String columns = String.join(", ", columnNames);
-    String placeholders = columnNames.stream().map(c -> "?").collect(Collectors.joining(", "));
-    String sql =
-        "INSERT INTO " + config.getTableName() + " (" + columns + ") VALUES (" + placeholders + ")";
-
+    String sql = buildInsertSql(config.getTableName(), columnNames);
     try {
       insertStatement = connection.prepareStatement(sql); // nosemgrep
       log.debug("Prepared INSERT statement: {}", sql);
@@ -490,10 +482,7 @@ public class DatabaseDestination implements DestinationAdapter {
 
     List<String> cols = new ArrayList<>(firstRecord.keySet());
     nestedColumnNames.put(tableName, cols);
-
-    String columns = String.join(", ", cols);
-    String placeholders = cols.stream().map(c -> "?").collect(Collectors.joining(", "));
-    String sql = "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + placeholders + ")";
+    String sql = buildInsertSql(tableName, cols);
 
     try {
       PreparedStatement ps = connection.prepareStatement(sql); // nosemgrep
@@ -502,6 +491,13 @@ public class DatabaseDestination implements DestinationAdapter {
     } catch (SQLException e) {
       throw new DestinationException("Failed to prepare nested INSERT for table: " + tableName, e);
     }
+  }
+
+  private static String buildInsertSql(String tableName, List<String> columns) {
+    String cols = String.join(", ", columns);
+    String placeholders = "?,".repeat(columns.size());
+    placeholders = placeholders.substring(0, placeholders.length() - 1);
+    return "INSERT INTO " + tableName + " (" + cols + ") VALUES (" + placeholders + ")";
   }
 
   private void executeNestedInsert(String tableName, Map<String, Object> record) {

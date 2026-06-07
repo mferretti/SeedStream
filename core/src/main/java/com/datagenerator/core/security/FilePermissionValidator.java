@@ -45,13 +45,9 @@ public class FilePermissionValidator {
    * @param configFile path to the configuration file
    */
   public void validateConfigFile(Path configFile) {
-    if (!IS_POSIX || !Files.exists(configFile)) {
-      return;
-    }
+    if (!IS_POSIX || !Files.exists(configFile)) return;
     try {
-      Set<PosixFilePermission> perms = Files.getPosixFilePermissions(configFile);
-      if (perms.contains(PosixFilePermission.GROUP_READ)
-          || perms.contains(PosixFilePermission.OTHERS_READ)) {
+      if (isWorldReadable(Files.getPosixFilePermissions(configFile))) {
         log.warn(
             "Configuration file {} has permissive permissions (readable by group or others). "
                 + "Consider restricting to owner-only: chmod 640 {}",
@@ -73,13 +69,9 @@ public class FilePermissionValidator {
    * @throws SecurityException if the seed file has insecure permissions
    */
   public void validateSeedFile(Path seedFile) {
-    if (!IS_POSIX || !Files.exists(seedFile)) {
-      return;
-    }
+    if (!IS_POSIX || !Files.exists(seedFile)) return;
     try {
-      Set<PosixFilePermission> perms = Files.getPosixFilePermissions(seedFile);
-      if (perms.contains(PosixFilePermission.GROUP_READ)
-          || perms.contains(PosixFilePermission.OTHERS_READ)) {
+      if (isWorldReadable(Files.getPosixFilePermissions(seedFile))) {
         throw new SecurityException(
             "Seed file has insecure permissions (readable by group or others). "
                 + "Restrict to owner-only: chmod 600 "
@@ -90,5 +82,10 @@ public class FilePermissionValidator {
     } catch (IOException e) {
       log.debug("Could not read permissions for seed file {}: {}", seedFile, e.getMessage());
     }
+  }
+
+  private static boolean isWorldReadable(Set<PosixFilePermission> perms) {
+    return perms.contains(PosixFilePermission.GROUP_READ)
+        || perms.contains(PosixFilePermission.OTHERS_READ);
   }
 }

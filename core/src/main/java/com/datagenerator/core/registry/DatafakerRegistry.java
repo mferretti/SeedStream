@@ -17,6 +17,7 @@
 package com.datagenerator.core.registry;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -272,7 +273,7 @@ public class DatafakerRegistry {
    * @return Set of registered type names
    */
   public static Set<String> listTypes() {
-    return Set.copyOf(registry.keySet());
+    return Collections.unmodifiableSet(registry.keySet());
   }
 
   /**

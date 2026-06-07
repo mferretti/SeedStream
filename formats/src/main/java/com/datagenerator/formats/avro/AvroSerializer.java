@@ -18,6 +18,7 @@ package com.datagenerator.formats.avro;
 
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.SerializationException;
+import com.datagenerator.formats.SerializerMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -67,7 +68,7 @@ import org.apache.avro.io.EncoderFactory;
 @Slf4j
 public class AvroSerializer implements FormatSerializer {
 
-  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+  private static final ObjectMapper JSON_MAPPER = SerializerMapper.INSTANCE;
 
   private volatile Schema schema;
   private volatile GenericDatumWriter<GenericRecord> datumWriter;
@@ -131,6 +132,7 @@ public class AvroSerializer implements FormatSerializer {
   private static String sanitizeFieldName(String name) {
     if (name == null || name.isEmpty()) return "_field";
     String sanitized = name.replaceAll("[^A-Za-z0-9_]", "_");
+    if (sanitized.isEmpty()) sanitized = "_field";
     return Character.isDigit(sanitized.charAt(0)) ? "_" + sanitized : sanitized;
   }
 

@@ -23,9 +23,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Base64;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,15 +36,25 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SeedResolver {
   private static final long DEFAULT_SEED = 0L;
-  private volatile HttpClient httpClient; // Lazy initialized only when needed
 
-  public SeedResolver() {
-    // HttpClient created lazily when needed for remote seeds
+  // LazyHolder defers HttpClient construction until resolveRemote() is first called
+  private static final class HttpClientHolder {
+    static final HttpClient INSTANCE =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
   }
 
-  // Constructor for testing with mock HttpClient
+  // Optional test-injected client (package-private constructor)
+  private final HttpClient injectedHttpClient;
+
+  public SeedResolver() {
+    this.injectedHttpClient = null;
+  }
+
   SeedResolver(HttpClient client) {
-    this.httpClient = client;
+    this.injectedHttpClient = client;
   }
 
   /**
@@ -140,58 +152,14 @@ public class SeedResolver {
 
   private long resolveRemote(SeedConfig.RemoteSeed remoteSeed) {
     String url = remoteSeed.getUrl();
-    SeedConfig.RemoteSeed.AuthConfig auth = remoteSeed.getAuth();
-
-    // Lazy initialization of HttpClient
-    if (httpClient == null) {
-      synchronized (this) {
-        if (httpClient == null) {
-          httpClient =
-              HttpClient.newBuilder()
-                  .connectTimeout(Duration.ofSeconds(10))
-                  .followRedirects(HttpClient.Redirect.NORMAL)
-                  .build();
-        }
-      }
-    }
-
+    HttpClient client = injectedHttpClient != null ? injectedHttpClient : HttpClientHolder.INSTANCE;
     HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
 
-    // Add authentication headers
-    if (auth != null) {
-      switch (auth.getType()) {
-        case "bearer":
-          if (auth.getToken() == null) {
-            throw new SeedResolutionException("Bearer token is required but not provided");
-          }
-          requestBuilder.header("Authorization", "Bearer " + auth.getToken());
-          break;
-        case "basic":
-          if (auth.getUsername() == null || auth.getPassword() == null) {
-            throw new SeedResolutionException("Username and password required for basic auth");
-          }
-          String credentials = auth.getUsername() + ":" + auth.getPassword();
-          String encoded =
-              java.util.Base64.getEncoder()
-                  .encodeToString(credentials.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-          requestBuilder.header("Authorization", "Basic " + encoded);
-          break;
-        case "api_key":
-          if (auth.getKey() == null || auth.getValue() == null) {
-            throw new SeedResolutionException("API key name and value are required");
-          }
-          requestBuilder.header(auth.getKey(), auth.getValue());
-          break;
-        case null:
-          throw new SeedResolutionException("Auth type cannot be null");
-        default:
-          throw new SeedResolutionException("Unsupported auth type: " + auth.getType());
-      }
-    }
+    applyAuth(requestBuilder, remoteSeed.getAuth());
 
     try {
       HttpResponse<String> response =
-          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+          client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() != 200) {
         throw new SeedResolutionException(
@@ -205,6 +173,38 @@ public class SeedResolver {
       throw new SeedResolutionException("Invalid seed value from remote API: " + url, e);
     } catch (IOException | InterruptedException e) {
       throw new SeedResolutionException("Failed to fetch seed from remote API: " + url, e);
+    }
+  }
+
+  private static void applyAuth(
+      HttpRequest.Builder builder, SeedConfig.RemoteSeed.AuthConfig auth) {
+    if (auth == null) return;
+    switch (auth.getType()) {
+      case "bearer" -> {
+        if (auth.getToken() == null) {
+          throw new SeedResolutionException("Bearer token is required but not provided");
+        }
+        builder.header("Authorization", "Bearer " + auth.getToken());
+      }
+      case "basic" -> {
+        if (auth.getUsername() == null || auth.getPassword() == null) {
+          throw new SeedResolutionException("Username and password required for basic auth");
+        }
+        String encoded =
+            Base64.getEncoder()
+                .encodeToString(
+                    (auth.getUsername() + ":" + auth.getPassword())
+                        .getBytes(StandardCharsets.UTF_8));
+        builder.header("Authorization", "Basic " + encoded);
+      }
+      case "api_key" -> {
+        if (auth.getKey() == null || auth.getValue() == null) {
+          throw new SeedResolutionException("API key name and value are required");
+        }
+        builder.header(auth.getKey(), auth.getValue());
+      }
+      case null -> throw new SeedResolutionException("Auth type cannot be null");
+      default -> throw new SeedResolutionException("Unsupported auth type: " + auth.getType());
     }
   }
 }

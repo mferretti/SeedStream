@@ -18,10 +18,9 @@ package com.datagenerator.formats.csv;
 
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.SerializationException;
+import com.datagenerator.formats.SerializerMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.opencsv.CSVWriter;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
@@ -65,7 +64,7 @@ public class CsvSerializer implements FormatSerializer {
 
   /** Create CSV serializer with default configuration. */
   public CsvSerializer() {
-    this.jsonMapper = createJsonMapper();
+    this.jsonMapper = SerializerMapper.INSTANCE;
   }
 
   /**
@@ -81,14 +80,6 @@ public class CsvSerializer implements FormatSerializer {
     this.jsonMapper = objectMapper;
   }
 
-  private static ObjectMapper createJsonMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.registerModule(new JavaTimeModule());
-    mapper.disable(SerializationFeature.INDENT_OUTPUT);
-    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    return mapper;
-  }
-
   /**
    * Serialize header row with column names.
    *
@@ -96,82 +87,53 @@ public class CsvSerializer implements FormatSerializer {
    * @return CSV header row
    */
   public String serializeHeader(Map<String, Object> record) {
-    if (record.isEmpty()) {
-      return "";
-    }
-
-    StringWriter stringWriter = new StringWriter();
-    try (CSVWriter csvWriter = new CSVWriter(stringWriter)) {
-      String[] headers = record.keySet().toArray(new String[0]);
-      csvWriter.writeNext(headers, true); // true = always quote
-    } catch (IOException e) {
-      log.error("Failed to serialize CSV header: {}", record.keySet(), e);
-      throw new SerializationException("CSV header serialization failed", e);
-    }
-
-    return stringWriter.toString().trim();
+    if (record.isEmpty()) return "";
+    return writeCsv(record.keySet().toArray(new String[0]));
   }
 
   @Override
   public String serialize(Map<String, Object> record) {
-    if (record.isEmpty()) {
-      return "";
+    if (record.isEmpty()) return "";
+    String[] values = new String[record.size()];
+    int i = 0;
+    for (Object value : record.values()) {
+      values[i++] = convertToString(value);
     }
-
-    StringWriter stringWriter = new StringWriter();
-    try (CSVWriter csvWriter = new CSVWriter(stringWriter)) {
-      String[] values = new String[record.size()];
-      int i = 0;
-
-      for (Object value : record.values()) {
-        values[i++] = convertToString(value);
-      }
-
-      csvWriter.writeNext(values, true); // true = always quote
-    } catch (IOException e) {
-      log.error("Failed to serialize record to CSV: {}", record, e);
-      throw new SerializationException("CSV serialization failed", e);
-    }
-
-    return stringWriter.toString().trim();
+    return writeCsv(values);
   }
 
-  /**
-   * Convert field value to CSV-compatible string.
-   *
-   * @param value the field value
-   * @return string representation
-   */
+  private String writeCsv(String[] values) {
+    StringWriter sw = new StringWriter();
+    try (CSVWriter csvWriter = new CSVWriter(sw)) {
+      csvWriter.writeNext(values, true);
+    } catch (IOException e) {
+      throw new SerializationException("CSV serialization failed", e);
+    }
+    return sw.toString().trim();
+  }
+
   private String convertToString(Object value) {
-    if (value == null) {
-      return "";
-    }
+    return switch (value) {
+      case null -> "";
+      case String s -> s;
+      case Number n -> n.toString();
+      case Boolean b -> b.toString();
+      case Character c -> c.toString();
+      case LocalDate d -> d.toString();
+      case Instant ts -> ts.toString();
+      case Map<?, ?> map -> toJson(map);
+      case List<?> list -> toJson(list);
+      default -> value.toString();
+    };
+  }
 
-    // Primitive types and strings
-    if (value instanceof String
-        || value instanceof Number
-        || value instanceof Boolean
-        || value instanceof Character) {
+  private String toJson(Object value) {
+    try {
+      return jsonMapper.writeValueAsString(value);
+    } catch (JsonProcessingException e) {
+      log.warn("Failed to serialize complex value to JSON, using toString(): {}", value, e);
       return value.toString();
     }
-
-    // Dates and timestamps (ISO-8601)
-    if (value instanceof LocalDate || value instanceof Instant) {
-      return value.toString();
-    }
-
-    // Complex types (nested objects, arrays) -> serialize to JSON
-    if (value instanceof Map || value instanceof List) {
-      try {
-        return jsonMapper.writeValueAsString(value);
-      } catch (JsonProcessingException e) {
-        log.warn("Failed to serialize complex value to JSON, using toString(): {}", value, e);
-        return value.toString();
-      }
-    }
-
-    // Fallback
-    return value.toString();
   }
 
   @Override

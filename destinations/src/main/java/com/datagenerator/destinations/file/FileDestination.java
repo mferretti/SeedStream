@@ -16,7 +16,7 @@
 
 package com.datagenerator.destinations.file;
 
-import com.datagenerator.destinations.DestinationAdapter;
+import com.datagenerator.destinations.AbstractDestination;
 import com.datagenerator.destinations.DestinationException;
 import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.FormatSerializer.StreamWriter;
@@ -75,11 +75,10 @@ import org.apache.avro.generic.GenericRecord;
  * <p><b>Thread Safety:</b> Not thread-safe. Each writer should use its own instance.
  */
 @Slf4j
-public class FileDestination implements DestinationAdapter {
+public class FileDestination extends AbstractDestination {
   private final FileDestinationConfig config;
   private final FormatSerializer serializer;
 
-  private boolean isOpen = false;
   private boolean headerWritten = false;
 
   // Text-format state
@@ -162,9 +161,7 @@ public class FileDestination implements DestinationAdapter {
 
   @Override
   public void write(Map<String, Object> record) {
-    if (!isOpen) {
-      throw new DestinationException("File destination not open. Call open() first.");
-    }
+    requireOpen("File");
 
     if (isAvro) {
       writeAvro(record);
@@ -172,9 +169,8 @@ public class FileDestination implements DestinationAdapter {
     }
 
     try {
-      if (!headerWritten && "csv".equals(serializer.getFormatName())) {
-        String header =
-            ((com.datagenerator.formats.csv.CsvSerializer) serializer).serializeHeader(record);
+      if (!headerWritten && serializer instanceof com.datagenerator.formats.csv.CsvSerializer csv) {
+        String header = csv.serializeHeader(record);
         if (!header.isEmpty()) {
           outputStream.write(header.getBytes(StandardCharsets.UTF_8));
           outputStream.write('\n');

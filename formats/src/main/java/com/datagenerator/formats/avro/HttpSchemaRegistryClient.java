@@ -50,6 +50,7 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
+  private static final HttpClient SHARED_HTTP_CLIENT = HttpClient.newHttpClient();
 
   private final String baseUrl;
   private final String authHeader;
@@ -60,9 +61,9 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
     if (url == null || url.isBlank()) {
       throw new SchemaRegistryException("schema_registry_url is required for avro-registry format");
     }
-    this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    this.baseUrl = normalizeUrl(url);
     this.authHeader = buildAuthHeader(authType, token);
-    this.httpClient = HttpClient.newHttpClient();
+    this.httpClient = SHARED_HTTP_CLIENT;
   }
 
   /** Package-private constructor for tests (no auth). */
@@ -72,9 +73,13 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
 
   /** Package-private constructor for tests (with explicit auth header value). */
   HttpSchemaRegistryClient(String url, HttpClient client, String header) {
-    this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    this.baseUrl = normalizeUrl(url);
     this.authHeader = header;
     this.httpClient = client;
+  }
+
+  private static String normalizeUrl(String url) {
+    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
   }
 
   @Override
