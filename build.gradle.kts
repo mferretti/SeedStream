@@ -7,7 +7,40 @@ plugins {
     alias(libs.plugins.spotless) apply false
     alias(libs.plugins.spotbugs) apply false
     alias(libs.plugins.dependency.check) apply false
-    alias(libs.plugins.sonarqube)
+    alias(libs.plugins.sonarqube) apply false
+}
+
+// Apply SonarQube only when a host is configured (via ~/.gradle/gradle.properties,
+// project gradle.properties, -Psonar.host.url=..., or SONAR_HOST_URL env var).
+// Without it, ./gradlew sonar is intentionally absent — no noise for devs not running
+// a Sonar instance. See docs/QUALITY.md for local setup.
+run {
+    val sonarHost: String? =
+        (project.findProperty("sonar.host.url") as String?)
+            ?: System.getProperty("sonar.host.url")
+            ?: System.getenv("SONAR_HOST_URL")
+
+    if (sonarHost != null) {
+        apply(plugin = "org.sonarqube")
+        val sonarToken: String? =
+            (project.findProperty("sonar.token") as String?)
+                ?: System.getProperty("sonar.token")
+                ?: System.getenv("SONAR_TOKEN")
+        val sonarProjectKey =
+            (project.findProperty("sonar.projectKey") as String?) ?: "seedstream"
+        val sonarProjectName =
+            (project.findProperty("sonar.projectName") as String?) ?: "Seedstream"
+        extensions.configure<org.sonarqube.gradle.SonarExtension> {
+            properties {
+                property("sonar.host.url", sonarHost)
+                property("sonar.projectKey", sonarProjectKey)
+                property("sonar.projectName", sonarProjectName)
+                if (sonarToken != null) {
+                    property("sonar.token", sonarToken)
+                }
+            }
+        }
+    }
 }
 
 allprojects {

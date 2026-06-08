@@ -1,18 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SONAR_URL="http://sonarqube.lab.local"
-PROJECT_KEY="seedstream"
-SONAR_TOKEN="${SONAR_TOKEN:-$(grep 'sonar.token' "$HOME/.gradle/gradle.properties" 2>/dev/null | cut -d= -f2 | tr -d ' ')}"
-SONAR_SCANNER="${HOME}/.local/bin/sonar-scanner"
-TIMEOUT=120
+# Per-developer SonarQube quality gate.
+# Enable: git config core.hooksPath .githooks
+# Requires: SONAR_HOST_URL (or sonar.host.url in ~/.gradle/gradle.properties),
+#           SONAR_TOKEN, and sonar-scanner on PATH (or at ~/.local/bin/sonar-scanner).
+
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+GRADLE_PROPS="$HOME/.gradle/gradle.properties"
+
+SONAR_URL="${SONAR_HOST_URL:-$(grep -E '^sonar\.host\.url=' "$GRADLE_PROPS" 2>/dev/null | cut -d= -f2- | tr -d ' ' || true)}"
+SONAR_TOKEN="${SONAR_TOKEN:-$(grep -E '^sonar\.token=' "$GRADLE_PROPS" 2>/dev/null | cut -d= -f2- | tr -d ' ' || true)}"
+
+if [[ -z "${SONAR_URL:-}" ]]; then
+    echo "[sonar] skipped — SONAR_HOST_URL not set (see docs/QUALITY.md)"
+    exit 0
+fi
+if [[ -z "${SONAR_TOKEN:-}" ]]; then
+    echo "[sonar] skipped — SONAR_TOKEN not set (see docs/QUALITY.md)"
+    exit 0
+fi
+
+SONAR_SCANNER="$(command -v sonar-scanner || echo "${HOME}/.local/bin/sonar-scanner")"
+if [[ ! -x "$SONAR_SCANNER" ]]; then
+    echo "[sonar] skipped — sonar-scanner not found on PATH or at ~/.local/bin/sonar-scanner"
+    exit 0
+fi
+
+PROJECT_KEY="seedstream"
+TIMEOUT=120
 
 echo "[sonar] Generating coverage reports..."
 cd "$REPO_DIR"
-./gradlew test jacocoTestReport -x test --rerun 2>/dev/null || ./gradlew jacocoTestReport
+./gradlew test jacocoTestReport --rerun
 
-echo "[sonar] Running SonarQube analysis..."
+echo "[sonar] Running SonarQube analysis against $SONAR_URL ..."
 JACOCO_PATHS=$(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | paste -sd ',' -)
 
 "$SONAR_SCANNER" \
@@ -29,16 +51,19 @@ JACOCO_PATHS=$(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' |
 echo "[sonar] Waiting for quality gate result..."
 elapsed=0
 while [[ $elapsed -lt $TIMEOUT ]]; do
-    response=$(python3 -c "
-import urllib.request, base64, json
-auth = base64.b64encode('${SONAR_TOKEN}:'.encode()).decode()
-req = urllib.request.Request('${SONAR_URL}/api/qualitygates/project_status?projectKey=${PROJECT_KEY}')
+    response=$(SONAR_URL="$SONAR_URL" SONAR_TOKEN="$SONAR_TOKEN" PROJECT_KEY="$PROJECT_KEY" python3 -c "
+import os, urllib.request, base64, json
+url = os.environ['SONAR_URL']
+token = os.environ['SONAR_TOKEN']
+key = os.environ['PROJECT_KEY']
+auth = base64.b64encode((token + ':').encode()).decode()
+req = urllib.request.Request(f'{url}/api/qualitygates/project_status?projectKey={key}')
 req.add_header('Authorization', 'Basic ' + auth)
 try:
     with urllib.request.urlopen(req, timeout=10) as r:
         d = json.loads(r.read().decode())
         print(d['projectStatus']['status'])
-except Exception as e:
+except Exception:
     print('PENDING')
 " 2>/dev/null)
 
@@ -67,5 +92,5 @@ except Exception as e:
     esac
 done
 
-echo "[sonar] Timeout waiting for quality gate — push allowed (check SonarQube manually)"
+echo "[sonar] Timeout waiting for quality gate — push allowed (check $SONAR_URL/dashboard?id=$PROJECT_KEY)"
 exit 0

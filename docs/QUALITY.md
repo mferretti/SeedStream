@@ -8,7 +8,7 @@ SeedStream uses multiple tools to ensure code quality, security, and maintainabi
 - **JaCoCo**: Test coverage reporting (70% minimum target)
 - **SpotBugs**: Static analysis for bug patterns
 - **OWASP Dependency-Check**: Security vulnerability scanning
-- **SonarQube**: Continuous code quality + coverage analysis (run `./gradlew sonar` or via the `.githooks/pre-push` quality gate)
+- **SonarQube**: Continuous code quality + coverage analysis (opt-in — see [Local SonarQube setup](#local-sonarqube-setup))
 - **Dependabot**: Automated dependency updates
 
 ## Local Development
@@ -235,3 +235,53 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     }
 }
 ```
+
+## Local SonarQube setup
+
+The SonarQube Gradle plugin and `.githooks/pre-push` quality gate are **opt-in**.
+Out of the box, `./gradlew sonar` is not registered and the hook is not active —
+zero noise for contributors who don't run a Sonar instance.
+
+### 1. Run a SonarQube server
+
+Anything that speaks the SonarQube API works: a local Docker container, a team
+instance, or SonarCloud.
+
+```bash
+# Quick local instance
+docker run -d --name sonarqube -p 9000:9000 sonarqube:community
+```
+
+### 2. Configure credentials per-developer
+
+Put these in `~/.gradle/gradle.properties` (preferred — never checked in):
+
+```properties
+sonar.host.url=http://localhost:9000
+sonar.token=<generate at /account/security on your Sonar instance>
+```
+
+Or export as env vars: `SONAR_HOST_URL`, `SONAR_TOKEN`.
+
+The project key/name (`seedstream` / `Seedstream`) live in the committed
+`gradle.properties`.
+
+### 3. Run analysis
+
+```bash
+./gradlew test jacocoTestReport sonar
+```
+
+The Sonar plugin is only applied when `sonar.host.url` is set, so the task is
+absent otherwise.
+
+### 4. (Optional) Enable the pre-push quality gate
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-push` runs the scanner and blocks the push if the quality gate
+returns ERROR. It silently skips if `SONAR_HOST_URL`/`SONAR_TOKEN` are unset or
+if `sonar-scanner` is not installed. Install the scanner via
+[the official package](https://docs.sonarqube.org/latest/analyzing-source-code/scanners/sonarscanner/).
