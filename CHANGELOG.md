@@ -9,43 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**In progress**: Parent-reference FK propagation, nested decomposer control, determinism bug fix.
-
-### Added
-
-#### Type System
-- **`ref[parent.field]`** — new type syntax that copies a scalar field from the immediately enclosing parent record into a nested structure field at generation time; guarantees referential integrity without a separate generation pass or post-processing step
-- **`ParentReferenceType`** — sealed `DataType` implementation for the parent-ref syntax; added to `DataType` permits clause
-- **`ParentReferenceGenerator`** — stateless `DataGenerator` registered in `DataGeneratorFactory`; reads the target field from `GeneratorContext`'s parent-record stack; throws `GeneratorException` if the stack is empty or the field has not yet been generated
-
-#### Generation Engine
-- **`GeneratorContext.PARENT_RECORD_STACK`** — `ThreadLocal<Deque<Map<String,Object>>>` that tracks partial parent records during nested generation; exposes `pushParentRecord`, `popParentRecord`, `peekParentRecord`; initialized in `enter()` and cleared in `close()`
-
-#### Database Destination
-- **`NestedRecordDecomposer.injectParentFk` flag** — when `false`, suppresses automatic `{tableName}_id` FK injection into child records; use when child structures already populate the FK via `ref[parent.field]`
-- **`DatabaseDestinationConfig.injectParentFk`** — boolean builder field (default `true`) that wires the decomposer flag through job configuration; set to `false` alongside `ref[parent.id]` to avoid a redundant second FK column
-
-### Changed
-- **`ObjectGenerator`** — rewrote field-generation loop as two passes: Pass 1 generates all non-nested (scalar/enum/parent-ref) fields first; Pass 2 generates nested fields (`ArrayType`, `ObjectType`) with the accumulated scalar result pushed onto the parent-record stack. Fixes a subtle ordering dependency: `id` is guaranteed to be present in the partial record when any child `ref[parent.id]` generator runs, regardless of `HashMap` iteration order.
-
-### Fixed
-- **`GenerationEngine.generateSingleThreaded()`** — `workerCleanup.run()` was never called in the single-threaded path (taken when `count < singleThreadedThreshold`, default 1000). Caused `FakerCache` to retain stale `Random` references between consecutive `generate()` calls with the same seed, producing non-deterministic output on the second run.
-- **`FakerCache.getOrCreate()`** — suppressed PMD `CompareObjectsWithEquals` false positive (Codacy); `Random` does not override `equals()` so identity comparison (`!=`) is correct and intentional.
-
-### Tests
-- **`ParentReferenceGeneratorTest`** (new, 7 tests) — supports(), integer/string field values, innermost-stack reads, empty-stack error, missing-field error, no-context error
-- **`TypeParserTest`** — 2 new cases: `ref[parent.id]` and `ref[parent.author_id]` parse to `ParentReferenceType` with correct `targetField` and `describe()`
-- **`GeneratorContextTest`** — 4 new cases: peek null on empty stack, peek pushed record, nested push/pop depth, stack cleared on context close
-- **`ObjectGeneratorTest`** — new case: scalar `id` available to `ref[parent.id]` in a `1..1` nested array regardless of field iteration order
-- **`NestedRecordDecomposerTest`** — 3 new cases: `injectParentFk=false` omits `lib_authors_id` column, produces no parent context for grandchildren, default constructor still injects
-- **`GenerationEngineTest`** — new case: `workerCleanup` `Runnable` is invoked in the single-threaded path
-- **`LibraryForeignKeyIT`** — full rewrite: 2-table schema (`lib_authors` + `books`), single `generate()` call with `injectParentFk=false`; 3 tests: row counts, orphan check (every `books.author_id` references an actual `lib_authors.id`), seed determinism
-
----
-
-## [0.6.0] - 2026-06-06
-
-**Release**: Avro + Schema Registry, AES-256-GCM secret encryption, cloud secret backends (Vault, AWS, Azure), streaming JSON serialization, fault-tolerant retry policy.
+**In progress**: Avro + Schema Registry, AES-256-GCM secret encryption, cloud secret backends, parent-reference FK propagation, determinism bug fixes.
 
 ### Added
 
@@ -66,15 +30,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Reliability
 - **`RetryPolicy`** — exponential-backoff retry for destination operations (`open`, `write`, `flush`); configurable `maxAttempts` and `initialDelayMs`; Kafka and database destinations use it by default
 
+#### Type System
+- **`ref[parent.field]`** — new type syntax that copies a scalar field from the immediately enclosing parent record into a nested structure field at generation time; guarantees referential integrity without a separate generation pass or post-processing step
+- **`ParentReferenceType`** — sealed `DataType` implementation for the parent-ref syntax; added to `DataType` permits clause
+- **`ParentReferenceGenerator`** — stateless `DataGenerator` registered in `DataGeneratorFactory`; reads the target field from `GeneratorContext`'s parent-record stack; throws `GeneratorException` if the stack is empty or the field has not yet been generated
+
+#### Generation Engine
+- **`GeneratorContext.PARENT_RECORD_STACK`** — `ThreadLocal<Deque<Map<String,Object>>>` that tracks partial parent records during nested generation; exposes `pushParentRecord`, `popParentRecord`, `peekParentRecord`; initialized in `enter()` and cleared in `close()`
+
+#### Database Destination
+- **`NestedRecordDecomposer.injectParentFk` flag** — when `false`, suppresses automatic `{tableName}_id` FK injection into child records; use when child structures already populate the FK via `ref[parent.field]`
+- **`DatabaseDestinationConfig.injectParentFk`** — boolean builder field (default `true`) that wires the decomposer flag through job configuration; set to `false` alongside `ref[parent.id]` to avoid a redundant second FK column
+
 #### Testing
 - **`EncryptCommandTest`**, **`ExecuteCommandTest`** — CLI-level unit tests via picocli `CommandLine` test harness; covers encrypt/decrypt round-trip, key errors, format dispatch, destination wiring
+- **`ParentReferenceGeneratorTest`** (new, 7 tests) — supports(), integer/string field values, innermost-stack reads, empty-stack error, missing-field error, no-context error
+- **`TypeParserTest`** — 2 new cases: `ref[parent.id]` and `ref[parent.author_id]` parse to `ParentReferenceType` with correct `targetField` and `describe()`
+- **`GeneratorContextTest`** — 4 new cases: peek null on empty stack, peek pushed record, nested push/pop depth, stack cleared on context close
+- **`ObjectGeneratorTest`** — new case: scalar `id` available to `ref[parent.id]` in a `1..1` nested array regardless of field iteration order
+- **`NestedRecordDecomposerTest`** — 3 new cases: `injectParentFk=false` omits `lib_authors_id` column, produces no parent context for grandchildren, default constructor still injects
+- **`GenerationEngineTest`** — new case: `workerCleanup` `Runnable` is invoked in the single-threaded path
+- **`LibraryForeignKeyIT`** — full rewrite: 2-table schema (`lib_authors` + `books`), single `generate()` call with `injectParentFk=false`; 3 tests: row counts, orphan check (every `books.author_id` references an actual `lib_authors.id`), seed determinism
 
 ### Changed
+- **`ObjectGenerator`** — rewrote field-generation loop as two passes: Pass 1 generates all non-nested (scalar/enum/parent-ref) fields first; Pass 2 generates nested fields (`ArrayType`, `ObjectType`) with the accumulated scalar result pushed onto the parent-record stack. Fixes a subtle ordering dependency: `id` is guaranteed to be present in the partial record when any child `ref[parent.id]` generator runs, regardless of `HashMap` iteration order.
 - `KafkaDestination`, `DatabaseDestination`, `FileDestination` constructors renamed parameters to avoid CheckStyle HiddenField violations
 - Switch expressions across codebase updated with `case null` branches (Codacy/PMD compliance)
 - `ExecuteCommand.createSerializer()` and `createDestination()` guard against `null` format/type before `toLowerCase()` (NPE-safe)
 
 ### Fixed
+- **`GenerationEngine.generateSingleThreaded()`** — `workerCleanup.run()` was never called in the single-threaded path (taken when `count < singleThreadedThreshold`, default 1000). Caused `FakerCache` to retain stale `Random` references between consecutive `generate()` calls with the same seed, producing non-deterministic output on the second run.
+- **`FakerCache.getOrCreate()`** — suppressed PMD `CompareObjectsWithEquals` false positive (Codacy); `Random` does not override `equals()` so identity comparison (`!=`) is correct and intentional.
 - `ExecuteCommand.createDestination()` switch default referenced wrong variable (`type` instead of `normalizedType`) — compilation error after Codacy renames; fixed
 
 ---
