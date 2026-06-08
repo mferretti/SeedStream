@@ -52,6 +52,7 @@ lombok-plugin = "9.5.0"
 spotless-plugin = "8.6.0"
 spotbugs-plugin = "6.5.5"
 dependency-check-plugin = "12.2.2"
+sonarqube-plugin = "5.1.0.4882"
 
 [libraries]
 # Lombok
@@ -160,3 +161,4 @@ lombok = { id = "io.freefair.lombok", version.ref = "lombok-plugin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless-plugin" }
 spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs-plugin" }
 dependency-check = { id = "org.owasp.dependencycheck", version.ref = "dependency-check-plugin" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube-plugin" }

@@ -182,7 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Validate command**: Validate YAML configurations without execution
 - **Progress logging**: Real-time throughput metrics (records/sec)
 - **Verbose mode**: Detailed worker activity and destination telemetry
-- **Debug mode**: `--debug` flag with intelligent trace sampling (`--trace-sample-rate` 1-100%, default 10%)
+- **Debug mode**: `--debug` flag with intelligent trace sampling (`--trace-sample` 1-100%, default 10%)
 
 #### Testing & Quality
 - **Unit tests**: 276+ tests across all modules (70%+ coverage)
@@ -200,7 +200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **benchmarks/README.md**: Benchmark execution guide and result interpretation
 
 ### Changed
-- **Module structure**: 6 modules (core, schema, generators, formats, destinations, cli)
+- **Module structure**: 7 modules (core, schema, generators, formats, destinations, cli, benchmarks)
 - **File I/O optimization**: 64KB buffer (up from 8KB), batching (1000 records/batch)
 - **Smart threading**: Automatic single-threaded mode for small jobs (< 1000 records)
 - **Seed warning**: Log warning when using default seed (0) for reproducibility awareness

@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SONAR_URL="http://sonarqube.lab.local"
+PROJECT_KEY="seedstream"
+SONAR_TOKEN="${SONAR_TOKEN:-$(grep 'sonar.token' "$HOME/.gradle/gradle.properties" 2>/dev/null | cut -d= -f2 | tr -d ' ')}"
+SONAR_SCANNER="${HOME}/.local/bin/sonar-scanner"
+TIMEOUT=120
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+echo "[sonar] Generating coverage reports..."
+cd "$REPO_DIR"
+./gradlew test jacocoTestReport -x test --rerun 2>/dev/null || ./gradlew jacocoTestReport
+
+echo "[sonar] Running SonarQube analysis..."
+JACOCO_PATHS=$(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | paste -sd ',' -)
+
+"$SONAR_SCANNER" \
+    -Dsonar.projectKey="$PROJECT_KEY" \
+    -Dsonar.projectName="Seedstream" \
+    -Dsonar.sources=. \
+    -Dsonar.java.binaries=. \
+    -Dsonar.host.url="$SONAR_URL" \
+    -Dsonar.token="$SONAR_TOKEN" \
+    -Dsonar.coverage.jacoco.xmlReportPaths="$JACOCO_PATHS" \
+    -Dsonar.exclusions="**/build/**,**/generated/**,**/.gradle/**" \
+    2>&1 | tee /tmp/sonar-push.log
+
+echo "[sonar] Waiting for quality gate result..."
+elapsed=0
+while [[ $elapsed -lt $TIMEOUT ]]; do
+    response=$(python3 -c "
+import urllib.request, base64, json
+auth = base64.b64encode('${SONAR_TOKEN}:'.encode()).decode()
+req = urllib.request.Request('${SONAR_URL}/api/qualitygates/project_status?projectKey=${PROJECT_KEY}')
+req.add_header('Authorization', 'Basic ' + auth)
+try:
+    with urllib.request.urlopen(req, timeout=10) as r:
+        d = json.loads(r.read().decode())
+        print(d['projectStatus']['status'])
+except Exception as e:
+    print('PENDING')
+" 2>/dev/null)
+
+    case "$response" in
+        OK)
+            echo "[sonar] Quality gate PASSED"
+            exit 0
+            ;;
+        ERROR)
+            echo "[sonar] Quality gate FAILED — push blocked"
+            echo "[sonar] Details: ${SONAR_URL}/dashboard?id=${PROJECT_KEY}"
+            exit 1
+            ;;
+        WARN)
+            echo "[sonar] Quality gate WARN — push allowed"
+            exit 0
+            ;;
+        NONE)
+            echo "[sonar] No quality gate configured — push allowed"
+            exit 0
+            ;;
+        *)
+            sleep 5
+            elapsed=$((elapsed + 5))
+            ;;
+    esac
+done
+
+echo "[sonar] Timeout waiting for quality gate — push allowed (check SonarQube manually)"
+exit 0

@@ -4,7 +4,7 @@
 [![Security Scan](https://github.com/mferretti/SeedStream/actions/workflows/security.yml/badge.svg)](https://github.com/mferretti/SeedStream/actions/workflows/security.yml)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5ddc8a45a98c4ea4b5a8968152634f2f)](https://app.codacy.com/gh/mferretti/SeedStream/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-[![Gradle](https://img.shields.io/badge/Gradle-9.4-brightgreen.svg)](https://gradle.org)
+[![Gradle](https://img.shields.io/badge/Gradle-9.5-brightgreen.svg)](https://gradle.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/mferretti/SeedStream/branch/main/graph/badge.svg)](https://codecov.io/gh/mferretti/SeedStream)
 
@@ -29,7 +29,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 ## Requirements
 
 - **Java 21+** (Amazon Corretto, OpenJDK, or GraalVM)
-- **Gradle 9.4+** wrapper included — no system install needed
+- **Gradle 9.5+** wrapper included — no system install needed
 - **Docker** (optional, for integration tests with Testcontainers)
 - **JDBC driver** (optional, for database destination — drop into `extras/`)
 
@@ -43,8 +43,8 @@ Download the release JAR and run immediately. You still need the config files, s
 
 ```bash
 git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
-wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.6.0.jar
-java -jar seedstream-0.6.0.jar execute --job config/jobs/file_address.yaml --count 100
+wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.5.0.jar
+java -jar seedstream-0.5.0.jar execute --job config/jobs/file_address.yaml --count 100
 ```
 
 ### Option 2 — Distribution zip
@@ -81,7 +81,8 @@ git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
 # Encrypt a credential for embedding in job YAML
 export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
 ./gradlew :cli:run --args="encrypt my-db-password"
-# Paste the output into job YAML as: password: "${SECRET:enc:AES256GCM:<output>}"
+# Output already includes the AES256GCM: prefix, e.g.:  AES256GCM:BASE64CIPHERTEXT...
+# Paste it verbatim into job YAML as: password: "${SECRET:enc:<output>}"
 ```
 
 ### CLI options
@@ -94,7 +95,8 @@ export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
 | `--seed` | from config | Override seed for this run |
 | `--threads` | CPU cores | Worker threads |
 | `--verbose` | off | Detailed logging |
-| `--debug` | off | Trace sampling (see `--trace-sample-rate`) |
+| `--debug` | off | Enables sampled TRACE logging (see `--trace-sample`) |
+| `--trace-sample` | `10` | TRACE sampling rate 1–100 (percentage); only effective with `--debug` |
 
 ---
 
@@ -119,9 +121,10 @@ See [PERFORMANCE.md](docs/PERFORMANCE.md) for full benchmarks, tuning guide, and
 
 ```
 cli → destinations → formats → generators → schema → core
+              (benchmarks: JMH harness, depends on core + generators)
 ```
 
-Six independent modules with clean one-way dependencies. Each layer is pluggable: add a destination by implementing `DestinationAdapter`, a format by implementing `FormatSerializer`, or a new semantic type by registering it with `DatafakerRegistry`.
+Seven modules — six in the runtime dependency chain plus `benchmarks` (JMH micro-benchmarks, excluded from production artifacts). Each layer is pluggable: add a destination by implementing `DestinationAdapter`, a format by implementing `FormatSerializer`, or a new semantic type by registering it with `DatafakerRegistry`.
 
 See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading reproducibility model, and extension points.
 

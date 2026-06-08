@@ -8,6 +8,7 @@ SeedStream uses multiple tools to ensure code quality, security, and maintainabi
 - **JaCoCo**: Test coverage reporting (70% minimum target)
 - **SpotBugs**: Static analysis for bug patterns
 - **OWASP Dependency-Check**: Security vulnerability scanning
+- **SonarQube**: Continuous code quality + coverage analysis (run `./gradlew sonar` or via the `.githooks/pre-push` quality gate)
 - **Dependabot**: Automated dependency updates
 
 ## Local Development
@@ -76,7 +77,7 @@ Access artifacts: GitHub Actions run → Artifacts section
 
 Configuration: `build.gradle.kts`
 - **Effort**: MAX (most thorough analysis)
-- **Report Level**: LOW (report all issues, but don't fail build)
+- **Report Level**: LOW (report all issues — `ignoreFailures = false`, so any reported issue fails the build)
 - **Exclusions**: `config/spotbugs-exclude.xml`
 
 Common exclusions:
@@ -113,10 +114,7 @@ To suppress false positives, add to `config/dependency-check-suppressions.xml`:
 </suppress>
 ```
 
-**Current Security Status** (as of March 2026):
-- ✅ **0 known vulnerabilities** (CVSS 7.0+)
-- ✅ **Latest stable versions**: All dependencies upgraded to latest stable releases
-- ✅ **Minimal suppressions**: Only 1 low-risk suppression (log4j in benchmarks module)
+**Current Security Status**: tracked in the README's *Security* section (the canonical, time-stamped list of open CVEs and their suppression expiry dates lives there to avoid drift between docs).
 
 ## Dependency Management
 
@@ -126,12 +124,12 @@ SeedStream uses [Gradle Version Catalog](https://docs.gradle.org/current/usergui
 
 All dependency versions are defined in: **`gradle/libs.versions.toml`**
 
-Example structure:
+Example structure (illustrative — current pinned versions live in `gradle/libs.versions.toml`):
 ```toml
 [versions]
-jackson = "2.21.1"
-kafka = "4.2.0"
-protobuf = "4.34.0"
+jackson = "2.22.0"
+kafka = "4.3.0"
+protobuf = "4.35.0"
 
 [libraries]
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }

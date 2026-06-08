@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 class DecimalGeneratorTest {
 
   private final DecimalGenerator generator = new DecimalGenerator();
+  private final Random sharedRandom = new Random(42L);
 
   @Test
   void shouldGenerateDecimalWithinRange() {
@@ -72,9 +73,8 @@ class DecimalGeneratorTest {
   @Test
   void shouldHandleSingleValueRange() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "42.5", "42.5");
-    Random random = new Random();
 
-    BigDecimal value = (BigDecimal) generator.generate(random, type);
+    BigDecimal value = (BigDecimal) generator.generate(sharedRandom, type);
     assertThat(value).isEqualByComparingTo(new BigDecimal("42.5"));
   }
 

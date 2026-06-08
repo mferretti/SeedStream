@@ -116,8 +116,9 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
         if (schemaId == null) {
           avroSerializer.ensureInitialized(record);
           String schemaJson = avroSerializer.getSchema().toString();
-          schemaId = registryClient.registerSchema(subject, schemaJson);
+          int registeredId = registryClient.registerSchema(subject, schemaJson);
           datumWriter = new GenericDatumWriter<>(avroSerializer.getSchema());
+          schemaId = registeredId;
           log.debug("Schema registered for subject '{}', id={}", subject, schemaId);
         }
       }

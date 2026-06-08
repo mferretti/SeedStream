@@ -108,7 +108,7 @@ class TimestampGeneratorTest {
     Instant result = (Instant) generator.generate(new Random(1L), type);
     assertThat(result)
         .isBetween(
-            Instant.now().minusSeconds(7 * 3600 + 5), Instant.now().plusSeconds(7 * 3600 + 5));
+            Instant.now().minusSeconds(7L * 3600 + 5), Instant.now().plusSeconds(7L * 3600 + 5));
   }
 
   @Test

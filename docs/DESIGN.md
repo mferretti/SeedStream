@@ -96,6 +96,8 @@ graph LR
 
 **Key Rule**: No circular dependencies. Each module depends only on modules to its right.
 
+**Seventh module — `benchmarks`**: JMH micro-benchmark harness used to validate NFR-1 performance targets. It depends on `core` and `generators` but is intentionally excluded from the runtime distribution and from the diagram above so the dependency flow describes the production graph only. Build it directly with `./gradlew :benchmarks:jmh` (see `benchmarks/README.md`).
+
 ### Core Module
 
 **Responsibility**: Foundation for all other modules.

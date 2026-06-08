@@ -87,7 +87,7 @@ The following must be **identical** across runs for output to match:
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --debug"
 
 # Adjust trace sample rate
-./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --debug --trace-sample-rate 50"
+./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --debug --trace-sample 50"
 
 # JVM-level debugging
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --verbose" --debug-jvm
@@ -142,10 +142,10 @@ created_at:
 `char` generates random alphanumeric strings (e.g., `"AbCdEf"`). `name` uses Datafaker to produce realistic person names (e.g., `"John Smith"`).
 
 **Q: Can I contribute new generators or destinations?**
-Yes — see [CONTRIBUTING.md](CONTRIBUTING.md). We welcome PRs for new semantic types, destinations (S3, Azure Blob, Elasticsearch), formats (Avro, Parquet), and performance optimisations.
+Yes — see [CONTRIBUTING.md](CONTRIBUTING.md). We welcome PRs for new semantic types, destinations (S3, Azure Blob, Elasticsearch), formats (Parquet — Avro and CBEFF already ship), and performance optimisations.
 
 **Q: Is there a REST API?**
-Not yet. Planned for v0.6. Current interface is CLI only.
+Not yet. Planned for v1.0 (see the Roadmap in [CHANGELOG.md](../CHANGELOG.md)). Current interface is CLI only.
 
 **Q: How do I handle sensitive data (PII)?**
 All generated data is synthetic — not real PII. That said:

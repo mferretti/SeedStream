@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.spotless) apply false
     alias(libs.plugins.spotbugs) apply false
     alias(libs.plugins.dependency.check) apply false
+    alias(libs.plugins.sonarqube)
 }
 
 allprojects {

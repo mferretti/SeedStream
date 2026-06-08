@@ -16,7 +16,7 @@
 
 package com.datagenerator.core.util;
 
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Utility class for logging operations with sampling support.
@@ -80,15 +80,6 @@ public final class LogUtils {
     TRACE_SAMPLE_RATE = rate;
   }
 
-  /**
-   * Thread-local Random instance for sampling decisions.
-   *
-   * <p>Each thread gets its own Random to avoid contention. We don't need cryptographic randomness
-   * or seed coordination here - just statistical sampling.
-   */
-  private static final ThreadLocal<Random> THREAD_LOCAL_RANDOM =
-      ThreadLocal.withInitial(Random::new);
-
   // Prevent instantiation
   private LogUtils() {
     throw new UnsupportedOperationException("Utility class cannot be instantiated");
@@ -134,7 +125,6 @@ public final class LogUtils {
     }
 
     // Statistical sampling: generate random number 0-99, check if < sampleRate
-    Random random = THREAD_LOCAL_RANDOM.get();
-    return random.nextInt(100) < TRACE_SAMPLE_RATE;
+    return ThreadLocalRandom.current().nextInt(100) < TRACE_SAMPLE_RATE;
   }
 }
