@@ -69,7 +69,7 @@ public final class LogUtils {
       try {
         rate = Integer.parseInt(propertyValue);
         // Clamp to valid range 1-100
-        rate = Math.max(1, Math.min(100, rate));
+        rate = Math.clamp(rate, 1, 100);
       } catch (NumberFormatException e) {
         // Invalid value, use default
         rate = DEFAULT_SAMPLE_RATE;

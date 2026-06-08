@@ -117,6 +117,7 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
     return "avro-registry";
   }
 
+  @SuppressWarnings("java:S3064")
   private void ensureSchemaRegistered(Map<String, Object> record) {
     if (schemaId == null) {
       synchronized (initLock) {

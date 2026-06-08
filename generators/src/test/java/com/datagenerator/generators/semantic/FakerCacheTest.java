@@ -233,8 +233,9 @@ class FakerCacheTest {
     executor2.awaitTermination(10, TimeUnit.SECONDS);
 
     // CRITICAL: Same seeds should produce IDENTICAL data (reproducibility)
-    assertThat(resultsByThread).containsEntry(0, thread0Values);
-    assertThat(resultsByThread).containsEntry(1, thread1Values);
-    assertThat(resultsByThread).containsEntry(2, thread2Values);
+    assertThat(resultsByThread)
+        .containsEntry(0, thread0Values)
+        .containsEntry(1, thread1Values)
+        .containsEntry(2, thread2Values);
   }
 }

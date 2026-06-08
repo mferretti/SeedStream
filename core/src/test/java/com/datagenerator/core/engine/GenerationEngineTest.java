@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 import org.junit.jupiter.api.Test;
 
 class GenerationEngineTest {
@@ -180,11 +181,7 @@ class GenerationEngineTest {
     GenerationEngine.RecordWriter slowWriter =
         record -> {
           writeCount.incrementAndGet();
-          try {
-            Thread.sleep(1); // Simulate slow write
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
+          LockSupport.parkNanos(1_000_000L);
         };
 
     GenerationEngine.RecordGenerator recordGenerator = (random) -> Map.of("id", 1);
@@ -212,8 +209,8 @@ class GenerationEngineTest {
 
     GenerationEngine engine =
         GenerationEngine.builder()
-            .recordGenerator((random) -> Map.of("id", 1))
-            .recordWriter(record -> {})
+            .recordGenerator(random -> Map.of("id", 1))
+            .recordWriter(r -> {})
             .masterSeed(42L)
             .workerCleanup(() -> cleanupCalled.set(true))
             .singleThreadedThreshold(1000) // 100 < 1000 → single-threaded path
@@ -231,7 +228,7 @@ class GenerationEngineTest {
 
     GenerationEngine.RecordGenerator recordGenerator =
         (random) -> {
-          long threadId = Thread.currentThread().getId();
+          long threadId = Thread.currentThread().threadId();
           threadCounts.merge(threadId, 1, Integer::sum);
           return Map.of("thread", threadId);
         };

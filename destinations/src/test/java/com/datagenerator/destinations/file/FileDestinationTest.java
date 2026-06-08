@@ -206,8 +206,8 @@ class FileDestinationTest {
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
     FileDestination destination = new FileDestination(config, new JsonSerializer());
 
-    var record = Map.of("name", "John");
-    assertThatThrownBy(() -> destination.write(record))
+    Map<String, Object> payload = Map.of("name", "John");
+    assertThatThrownBy(() -> destination.write(payload))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("not open");
   }

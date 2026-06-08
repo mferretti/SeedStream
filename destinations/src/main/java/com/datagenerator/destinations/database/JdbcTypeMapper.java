@@ -140,9 +140,13 @@ public class JdbcTypeMapper {
 
     if (type instanceof ReferenceType) {
       // ref[] generates Long; bind as BIGINT (fits INT columns when value is in range)
-      if (value instanceof Long l) ps.setLong(index, l);
-      else if (value instanceof Integer i) ps.setLong(index, i);
-      else ps.setLong(index, Long.parseLong(value.toString()));
+      ps.setLong(
+          index,
+          switch (value) {
+            case Long l -> l;
+            case Integer i -> i.longValue();
+            default -> Long.parseLong(value.toString());
+          });
       return;
     }
 

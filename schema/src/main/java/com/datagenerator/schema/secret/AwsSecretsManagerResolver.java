@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -64,7 +65,8 @@ public final class AwsSecretsManagerResolver implements SecretResolver {
       region = System.getProperty("AWS_DEFAULT_REGION");
     }
 
-    var builder = SecretsManagerClient.builder();
+    var builder =
+        SecretsManagerClient.builder().credentialsProvider(DefaultCredentialsProvider.create());
     if (region != null && !region.isBlank()) {
       builder.region(Region.of(region));
     }

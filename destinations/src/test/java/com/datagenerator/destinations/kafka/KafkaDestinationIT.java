@@ -35,8 +35,8 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -49,8 +49,8 @@ import org.testcontainers.utility.DockerImageName;
 class KafkaDestinationIT extends IntegrationTest {
 
   @Container
-  static KafkaContainer kafka =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"));
+  static ConfluentKafkaContainer kafka =
+      new ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"));
 
   private KafkaDestination destination;
   private KafkaConsumer<String, String> consumer;

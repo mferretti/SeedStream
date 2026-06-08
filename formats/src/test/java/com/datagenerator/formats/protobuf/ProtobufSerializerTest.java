@@ -259,8 +259,7 @@ class ProtobufSerializerTest {
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
-    assertThat(binary).isNotEmpty();
     // Complex record should still produce valid protobuf
-    assertThat(binary).hasSizeGreaterThan(10); // Reasonable size check
+    assertThat(binary).isNotEmpty().hasSizeGreaterThan(10);
   }
 }

@@ -208,8 +208,8 @@ class KafkaDestinationTest {
 
     KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
 
-    var record = Map.of("key", "value");
-    assertThatThrownBy(() -> dest.write(record))
+    Map<String, Object> msg = Map.of("key", "value");
+    assertThatThrownBy(() -> dest.write(msg))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("failed after 2 attempt");
 

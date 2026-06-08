@@ -17,7 +17,6 @@
 package com.datagenerator.schema.secret;
 
 import com.azure.core.exception.AzureException;
-import com.azure.core.exception.HttpResponseException;
 import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.security.keyvault.secrets.SecretClient;
@@ -86,9 +85,6 @@ public final class AzureKeyVaultResolver implements SecretResolver {
               : client.getSecret(secretName);
     } catch (ResourceNotFoundException e) {
       throw new SecretResolutionException("Azure secret not found: '" + secretName + "'", e);
-    } catch (HttpResponseException e) {
-      throw new SecretResolutionException(
-          "Azure Key Vault error for '" + secretName + "': " + e.getMessage(), e);
     } catch (AzureException e) {
       throw new SecretResolutionException(
           "Azure Key Vault error for '" + secretName + "': " + e.getMessage(), e);

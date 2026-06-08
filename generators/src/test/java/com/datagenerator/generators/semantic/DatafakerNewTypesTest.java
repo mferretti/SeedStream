@@ -198,8 +198,7 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateLoremSentence() {
     String sentence = (String) generateWithContext("usa", "lorem_sentence");
-    assertThat(sentence).isNotNull();
-    assertThat(sentence).hasSizeGreaterThan(10);
+    assertThat(sentence).isNotNull().hasSizeGreaterThan(10);
     // Sentence should contain multiple words
     assertThat(sentence.split("\\s+")).hasSizeGreaterThan(1);
   }
@@ -207,8 +206,7 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateLoremParagraph() {
     String paragraph = (String) generateWithContext("usa", "lorem_paragraph");
-    assertThat(paragraph).isNotNull();
-    assertThat(paragraph).hasSizeGreaterThan(50);
+    assertThat(paragraph).isNotNull().hasSizeGreaterThan(50);
     // Paragraph should contain multiple sentences or clauses
     assertThat(paragraph.split("\\s+")).hasSizeGreaterThan(10);
   }
