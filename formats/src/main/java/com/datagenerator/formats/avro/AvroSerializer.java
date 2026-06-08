@@ -70,8 +70,15 @@ public class AvroSerializer implements FormatSerializer {
 
   private static final ObjectMapper JSON_MAPPER = SerializerMapper.INSTANCE;
 
+  // Schema and datumWriter are populated once via double-checked locking and treated
+  // as immutable after publication; volatile guarantees safe publication of the fully
+  // initialised objects to other threads. They are never mutated post-init.
+  @SuppressWarnings("java:S3077")
   private volatile Schema schema;
+
+  @SuppressWarnings("java:S3077")
   private volatile GenericDatumWriter<GenericRecord> datumWriter;
+
   private final Object initLock = new Object();
 
   @Override

@@ -768,7 +768,7 @@ public class ExecuteCommand implements Callable<Integer> {
    * {@link com.datagenerator.core.util.LogUtils}.
    */
   private void configureLoggingLevel() {
-    Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Logger rootLogger = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
     Logger appLogger = (Logger) LoggerFactory.getLogger("com.datagenerator");
 
     if (debug) {
@@ -778,7 +778,7 @@ public class ExecuteCommand implements Callable<Integer> {
 
       // Set trace sample rate for LogUtils
       // Validate range (1-100)
-      int validatedSampleRate = Math.max(1, Math.min(100, traceSample));
+      int validatedSampleRate = Math.clamp(traceSample, 1, 100);
       System.setProperty("com.datagenerator.traceSampleRate", String.valueOf(validatedSampleRate));
 
       log.debug(

@@ -81,7 +81,12 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class ProtobufSerializer implements FormatSerializer {
+  // messageDescriptor is populated once via double-checked locking and treated as
+  // immutable after publication; volatile guarantees safe publication. Never mutated
+  // post-init.
+  @SuppressWarnings("java:S3077")
   private volatile Descriptor messageDescriptor;
+
   private final Object schemaLock = new Object();
 
   @Override

@@ -41,9 +41,4 @@ class EnvSecretResolverTest {
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("SEEDSTREAM_DEFINITELY_NOT_SET_XYZ789");
   }
-
-  @Test
-  void shouldReturnSingletonInstance() {
-    assertThat(EnvSecretResolver.INSTANCE).isSameAs(EnvSecretResolver.INSTANCE);
-  }
 }

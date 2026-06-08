@@ -101,44 +101,69 @@ public class JsonSerializer implements FormatSerializer {
    */
   @Override
   public StreamWriter createStreamWriter(OutputStream out) throws IOException {
-    // Proxy that forwards writes but swallows flush() — prevents gen.flush() from
-    // triggering a BufferedOutputStream drain on every single record.
-    OutputStream genOut =
-        new OutputStream() {
-          @Override
-          public void write(int b) throws IOException {
-            out.write(b);
-          }
-
-          @Override
-          public void write(byte[] b, int off, int len) throws IOException {
-            out.write(b, off, len);
-          }
-
-          @Override
-          public void flush() {} // suppress: real flush only on FileDestination.flush()
-        };
-
-    JsonGenerator gen = jsonFactory.createGenerator(genOut);
+    JsonGenerator gen = jsonFactory.createGenerator(new FlushSuppressingStream(out));
     gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
     gen.setCodec(mapper);
-    return new StreamWriter() {
-      @Override
-      public void writeRecord(Map<String, Object> record) throws IOException {
-        gen.writeObject(record);
-        gen.flush(); // drains generator's internal buffer → out's buffer; no OS call
-        out.write('\n');
-      }
-
-      @Override
-      public void close() throws IOException {
-        gen.close();
-      }
-    };
+    return new JsonStreamWriter(gen, out);
   }
 
   @Override
   public String getFormatName() {
     return "json";
+  }
+
+  /**
+   * Forwards writes to the wrapped stream but swallows {@link #flush()}, so per-record {@code
+   * gen.flush()} only drains the generator's internal buffer into the wrapped stream's buffer — the
+   * real flush is deferred to {@code FileDestination.flush()}.
+   */
+  private static final class FlushSuppressingStream extends OutputStream {
+    private final OutputStream delegate;
+
+    FlushSuppressingStream(OutputStream delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+      delegate.write(b);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+      delegate.write(b, off, len);
+    }
+
+    @Override
+    public void flush() {
+      // intentional no-op
+    }
+  }
+
+  /**
+   * Owns the {@link JsonGenerator} for the lifetime of a streaming write session. Closing the
+   * writer closes the generator (but not the underlying {@code OutputStream}, since {@code
+   * AUTO_CLOSE_TARGET} is disabled on the generator).
+   */
+  private static final class JsonStreamWriter implements StreamWriter {
+    private final JsonGenerator gen;
+    private final OutputStream out;
+
+    JsonStreamWriter(JsonGenerator gen, OutputStream out) {
+      this.gen = gen;
+      this.out = out;
+    }
+
+    @Override
+    public void writeRecord(Map<String, Object> record) throws IOException {
+      gen.writeObject(record);
+      gen.flush();
+      out.write('\n');
+    }
+
+    @Override
+    public void close() throws IOException {
+      gen.close();
+    }
   }
 }

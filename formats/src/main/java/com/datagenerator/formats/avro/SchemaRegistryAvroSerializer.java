@@ -60,8 +60,15 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
   private final SchemaRegistryClient registryClient;
   private final String subject;
 
+  // schemaId and datumWriter are populated once via double-checked locking and treated
+  // as immutable after publication; volatile guarantees safe publication. They are never
+  // mutated post-init.
+  @SuppressWarnings("java:S3077")
   private volatile Integer schemaId;
+
+  @SuppressWarnings("java:S3077")
   private volatile GenericDatumWriter<GenericRecord> datumWriter;
+
   private final Object initLock = new Object();
 
   /**

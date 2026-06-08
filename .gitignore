@@ -50,3 +50,6 @@ docs/DATABASE-DESTINATION-PLANNING.md
 
 # Claude Code — machine-specific permissions (local only)
 .claude/settings.local.json
+
+# SonarQube scanner working directory (local artifacts)
+.scannerwork/
