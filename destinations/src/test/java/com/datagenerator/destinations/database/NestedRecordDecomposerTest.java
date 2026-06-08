@@ -293,4 +293,61 @@ class NestedRecordDecomposerTest {
               assertThat(r.fields()).containsEntry("order_id", 99);
             });
   }
+
+  // --- injectParentFk=false ---
+
+  @Test
+  void shouldNotInjectParentFkWhenFlagIsFalse() {
+    NestedRecordDecomposer noInject = new NestedRecordDecomposer(false);
+
+    Map<String, Object> book = new LinkedHashMap<>();
+    book.put("id", 1);
+    book.put("author_id", 42); // set explicitly via ref[parent.id]
+
+    Map<String, Object> author = new LinkedHashMap<>();
+    author.put("id", 42);
+    author.put("books", List.of(book));
+
+    List<NestedRecordDecomposer.TableRecord> result =
+        noInject.decompose(author, "lib_authors", null);
+
+    assertThat(result).hasSize(2);
+    NestedRecordDecomposer.TableRecord bookRecord = result.get(1);
+    assertThat(bookRecord.tableName()).isEqualTo("books");
+    assertThat(bookRecord.fields()).containsEntry("author_id", 42);
+    assertThat(bookRecord.fields()).doesNotContainKey("lib_authors_id");
+  }
+
+  @Test
+  void shouldNotBuildParentContextForChildrenWhenFlagIsFalse() {
+    NestedRecordDecomposer noInject = new NestedRecordDecomposer(false);
+
+    Map<String, Object> child = new LinkedHashMap<>();
+    child.put("value", "x");
+
+    Map<String, Object> parent = new LinkedHashMap<>();
+    parent.put("id", 1);
+    parent.put("children", List.of(child));
+
+    List<NestedRecordDecomposer.TableRecord> result = noInject.decompose(parent, "parent", null);
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(1).fields()).doesNotContainKey("parent_id");
+  }
+
+  @Test
+  void shouldDefaultToInjectParentFkTrue() {
+    // Default constructor injects FK (regression guard)
+    Map<String, Object> child = new LinkedHashMap<>();
+    child.put("name", "child");
+
+    Map<String, Object> parent = new LinkedHashMap<>();
+    parent.put("id", 7);
+    parent.put("child", child);
+
+    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(parent, "parent", null);
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(1).fields()).containsEntry("parent_id", 7);
+  }
 }

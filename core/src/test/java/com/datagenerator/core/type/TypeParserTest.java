@@ -167,6 +167,24 @@ class TypeParserTest {
   }
 
   @Test
+  void shouldParseParentReferenceType() {
+    DataType type = parser.parse("ref[parent.id]");
+
+    assertThat(type).isInstanceOf(ParentReferenceType.class);
+    ParentReferenceType prt = (ParentReferenceType) type;
+    assertThat(prt.getTargetField()).isEqualTo("id");
+    assertThat(prt.describe()).isEqualTo("ref[parent.id]");
+  }
+
+  @Test
+  void shouldParseParentReferenceTypeWithUnderscoreField() {
+    DataType type = parser.parse("ref[parent.author_id]");
+
+    assertThat(type).isInstanceOf(ParentReferenceType.class);
+    assertThat(((ParentReferenceType) type).getTargetField()).isEqualTo("author_id");
+  }
+
+  @Test
   void shouldParseSimpleArrayType() {
     DataType type = parser.parse("array[int[1..100], 5..10]");
 

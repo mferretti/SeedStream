@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -203,6 +204,24 @@ class GenerationEngineTest {
 
     // Then: All records eventually written (backpressure handled)
     assertThat(writeCount.get()).isEqualTo(500);
+  }
+
+  @Test
+  void shouldCallWorkerCleanupInSingleThreadedPath() throws InterruptedException {
+    AtomicBoolean cleanupCalled = new AtomicBoolean(false);
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator((random) -> Map.of("id", 1))
+            .recordWriter(record -> {})
+            .masterSeed(42L)
+            .workerCleanup(() -> cleanupCalled.set(true))
+            .singleThreadedThreshold(1000) // 100 < 1000 → single-threaded path
+            .build();
+
+    engine.generate(100);
+
+    assertThat(cleanupCalled.get()).isTrue();
   }
 
   @Test

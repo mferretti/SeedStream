@@ -118,4 +118,51 @@ class GeneratorContextTest {
       assertThat(GeneratorContext.getFactory()).isSameAs(f2);
     }
   }
+
+  @Test
+  void shouldPeekNullWhenParentStackIsEmpty() {
+    try (var ctx = GeneratorContext.enter(newFactory(), null)) {
+      assertThat(GeneratorContext.peekParentRecord()).isNull();
+    }
+  }
+
+  @Test
+  void shouldPeekPushedParentRecord() {
+    try (var ctx = GeneratorContext.enter(newFactory(), null)) {
+      Map<String, Object> record = Map.of("id", 1);
+      GeneratorContext.pushParentRecord(record);
+      assertThat(GeneratorContext.peekParentRecord()).isSameAs(record);
+      GeneratorContext.popParentRecord();
+    }
+  }
+
+  @Test
+  void shouldSupportNestedPushPop() {
+    try (var ctx = GeneratorContext.enter(newFactory(), null)) {
+      Map<String, Object> outer = Map.of("id", 1);
+      Map<String, Object> inner = Map.of("id", 2);
+      GeneratorContext.pushParentRecord(outer);
+      GeneratorContext.pushParentRecord(inner);
+
+      assertThat(GeneratorContext.peekParentRecord()).isSameAs(inner);
+      GeneratorContext.popParentRecord();
+      assertThat(GeneratorContext.peekParentRecord()).isSameAs(outer);
+      GeneratorContext.popParentRecord();
+      assertThat(GeneratorContext.peekParentRecord()).isNull();
+    }
+  }
+
+  @Test
+  void shouldClearParentStackOnContextClose() {
+    Map<String, Object> record = Map.of("id", 99);
+
+    try (var ctx = GeneratorContext.enter(newFactory(), null)) {
+      GeneratorContext.pushParentRecord(record);
+    }
+
+    // Fresh context should start with an empty stack
+    try (var ctx = GeneratorContext.enter(newFactory(), null)) {
+      assertThat(GeneratorContext.peekParentRecord()).isNull();
+    }
+  }
 }

@@ -84,6 +84,9 @@ public class FakerCache {
    * @param random Thread-local Random instance (MUST be same instance for all calls in thread)
    * @return Cached Faker instance for this locale
    */
+  @SuppressWarnings(
+      "PMD.CompareObjectsWithEquals") // intentional identity check: Random inherits equals() from
+  // Object, so == IS the correct comparison here
   public static Faker getOrCreate(Locale locale, Random random) {
     // Validate that Random is consistent within thread
     Random storedRandom = THREAD_RANDOM.get();

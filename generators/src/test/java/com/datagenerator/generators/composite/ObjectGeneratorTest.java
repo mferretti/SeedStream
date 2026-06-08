@@ -24,6 +24,7 @@ import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.ParentReferenceType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
@@ -298,6 +299,33 @@ class ObjectGeneratorTest {
     assertThat(result.get("updated")).isInstanceOf(java.time.Instant.class);
     assertThat(result.get("status")).isIn("NEW", "ACTIVE", "CLOSED");
     assertThat(result.get("tags")).isInstanceOf(java.util.List.class);
+  }
+
+  @Test
+  void shouldPropagateScalarFieldsToNestedParentRefGenerators() {
+    // book: {author_id: ref[parent.id]} — copies id from enclosing author record
+    Map<String, DataType> bookFields = new LinkedHashMap<>();
+    bookFields.put("author_id", new ParentReferenceType("id"));
+    loader.addStructure("book", bookFields);
+
+    // author: {id: int[1..100], books: array[object[book], 1..1]}
+    Map<String, DataType> authorFields = new LinkedHashMap<>();
+    authorFields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"));
+    authorFields.put("books", new ArrayType(new ObjectType("book"), 1, 1));
+    loader.addStructure("author", authorFields);
+
+    ObjectType objectType = new ObjectType("author");
+    Random random = new Random(42);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> result = (Map<String, Object>) generateWithContext(objectType, random);
+
+    int authorId = (Integer) result.get("id");
+    @SuppressWarnings("unchecked")
+    java.util.List<Map<String, Object>> books =
+        (java.util.List<Map<String, Object>>) result.get("books");
+    assertThat(books).hasSize(1);
+    assertThat(books.get(0).get("author_id")).isEqualTo(authorId);
   }
 
   /** Mock StructureLoader for testing (avoids file I/O). */
