@@ -171,7 +171,7 @@ class FileDestinationTest {
   }
 
   @Test
-  void shouldCreateParentDirectories() throws Exception {
+  void shouldCreateParentDirectories() {
     Path outputFile = tempDir.resolve("nested/dir/output.json");
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
@@ -206,7 +206,8 @@ class FileDestinationTest {
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
     FileDestination destination = new FileDestination(config, new JsonSerializer());
 
-    assertThatThrownBy(() -> destination.write(Map.of("name", "John")))
+    var record = Map.of("name", "John");
+    assertThatThrownBy(() -> destination.write(record))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("not open");
   }
@@ -252,9 +253,9 @@ class FileDestinationTest {
       reader.forEach(records::add);
     }
     assertThat(records).hasSize(2);
-    assertThat(records.get(0).get("name").toString()).isEqualTo("Alice");
+    assertThat(records.get(0).get("name")).hasToString("Alice");
     assertThat(records.get(0).get("age")).isEqualTo(30);
-    assertThat(records.get(1).get("name").toString()).isEqualTo("Bob");
+    assertThat(records.get(1).get("name")).hasToString("Bob");
     assertThat(records.get(1).get("age")).isEqualTo(25);
   }
 
@@ -280,7 +281,7 @@ class FileDestinationTest {
       reader.forEach(records::add);
     }
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).get("name").toString()).isEqualTo("Alice");
+    assertThat(records.get(0).get("name")).hasToString("Alice");
   }
 
   @Test
@@ -293,7 +294,7 @@ class FileDestinationTest {
   }
 
   @Test
-  void shouldHandleMultipleOpenCallsGracefully() throws Exception {
+  void shouldHandleMultipleOpenCallsGracefully() {
     Path outputFile = tempDir.resolve("output.json");
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
@@ -307,7 +308,7 @@ class FileDestinationTest {
   }
 
   @Test
-  void shouldHandleMultipleCloseCallsGracefully() throws Exception {
+  void shouldHandleMultipleCloseCallsGracefully() {
     Path outputFile = tempDir.resolve("output.json");
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 

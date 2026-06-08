@@ -103,7 +103,7 @@ class RetryPolicyTest {
 
     assertThat(calls.get()).isEqualTo(1);
     assertThat(policy.getMaxAttempts()).isEqualTo(1);
-    assertThat(policy.getInitialDelayMs()).isEqualTo(0);
+    assertThat(policy.getInitialDelayMs()).isZero();
   }
 
   @Test

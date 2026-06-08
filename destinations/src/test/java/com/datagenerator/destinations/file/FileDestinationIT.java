@@ -146,7 +146,7 @@ class FileDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldCreateParentDirectories() throws Exception {
+  void shouldCreateParentDirectories() {
     // Given: Path with non-existent parent directories
     outputFile = tempDir.resolve("nested/deep/directory/output.json");
     assertThat(outputFile.getParent()).doesNotExist();

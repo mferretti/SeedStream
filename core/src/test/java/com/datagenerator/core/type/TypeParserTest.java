@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.*;
 import com.datagenerator.core.exception.TypeParseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class TypeParserTest {
   private TypeParser parser;
@@ -215,7 +217,7 @@ class TypeParserTest {
 
     assertThat(type).isInstanceOf(ArrayType.class);
     ArrayType arrayType = (ArrayType) type;
-    assertThat(arrayType.getMinLength()).isEqualTo(0);
+    assertThat(arrayType.getMinLength()).isZero();
     assertThat(arrayType.getMaxLength()).isEqualTo(5);
   }
 
@@ -271,45 +273,41 @@ class TypeParserTest {
     assertThat(customType.getTypeName()).isEqualTo("prefix");
   }
 
-  @Test
-  void shouldParseSuffix() {
-    DataType type = parser.parse("suffix");
+  @ParameterizedTest
+  @CsvSource({
+    "suffix, suffix",
+    "password, password",
+    "ssn, ssn",
+    "latitude, latitude",
+    "lat, latitude",
+    "longitude, longitude",
+    "country_code, country_code",
+    "countrycode, country_code",
+    "time_zone, time_zone",
+    "timezone, time_zone",
+    "bic, bic",
+    "swift, bic",
+    "cvv, cvv",
+    "cvc, cvv",
+    "credit_card_type, credit_card_type",
+    "creditcardtype, credit_card_type",
+    "stock_market, stock_market",
+    "product_name, product_name",
+    "department, department",
+    "color, color",
+    "material, material",
+    "promotion_code, promotion_code",
+    "lorem_word, lorem_word",
+    "loremword, lorem_word",
+    "lorem_sentence, lorem_sentence",
+    "loremsentence, lorem_sentence",
+    "lorem_paragraph, lorem_paragraph",
+    "loremparagraph, lorem_paragraph",
+  })
+  void shouldParseCustomDatafakerType(String input, String expectedTypeName) {
+    DataType type = parser.parse(input);
     assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("suffix");
-  }
-
-  @Test
-  void shouldParsePassword() {
-    DataType type = parser.parse("password");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("password");
-  }
-
-  @Test
-  void shouldParseSSN() {
-    DataType type = parser.parse("ssn");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("ssn");
-  }
-
-  @Test
-  void shouldParseLatitude() {
-    DataType type = parser.parse("latitude");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("latitude");
-  }
-
-  @Test
-  void shouldParseLatitudeAlias() {
-    DataType type = parser.parse("lat");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("latitude");
-  }
-
-  @Test
-  void shouldParseLongitude() {
-    DataType type = parser.parse("longitude");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("longitude");
+    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo(expectedTypeName);
   }
 
   @Test
@@ -317,78 +315,6 @@ class TypeParserTest {
     assertThat(((CustomDatafakerType) parser.parse("lon")).getTypeName()).isEqualTo("longitude");
     assertThat(((CustomDatafakerType) parser.parse("lng")).getTypeName()).isEqualTo("longitude");
     assertThat(((CustomDatafakerType) parser.parse("long")).getTypeName()).isEqualTo("longitude");
-  }
-
-  @Test
-  void shouldParseCountryCode() {
-    DataType type = parser.parse("country_code");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("country_code");
-  }
-
-  @Test
-  void shouldParseCountryCodeAlias() {
-    DataType type = parser.parse("countrycode");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("country_code");
-  }
-
-  @Test
-  void shouldParseTimeZone() {
-    DataType type = parser.parse("time_zone");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("time_zone");
-  }
-
-  @Test
-  void shouldParseTimeZoneAlias() {
-    DataType type = parser.parse("timezone");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("time_zone");
-  }
-
-  @Test
-  void shouldParseBIC() {
-    DataType type = parser.parse("bic");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("bic");
-  }
-
-  @Test
-  void shouldParseBICAliasSwift() {
-    DataType type = parser.parse("swift");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("bic");
-  }
-
-  @Test
-  void shouldParseCVV() {
-    DataType type = parser.parse("cvv");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("cvv");
-  }
-
-  @Test
-  void shouldParseCVVAliasCVC() {
-    DataType type = parser.parse("cvc");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("cvv");
-  }
-
-  @Test
-  void shouldParseCreditCardType() {
-    DataType type = parser.parse("credit_card_type");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("credit_card_type");
-  }
-
-  @Test
-  void shouldParseCreditCardTypeAlias() {
-    DataType type = parser.parse("creditcardtype");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("credit_card_type");
-  }
-
-  @Test
-  void shouldParseStockMarket() {
-    DataType type = parser.parse("stock_market");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("stock_market");
   }
 
   @Test
@@ -402,46 +328,11 @@ class TypeParserTest {
   }
 
   @Test
-  void shouldParseProductName() {
-    DataType type = parser.parse("product_name");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("product_name");
-  }
-
-  @Test
   void shouldParseProductNameAliases() {
     assertThat(((CustomDatafakerType) parser.parse("productname")).getTypeName())
         .isEqualTo("product_name");
     assertThat(((CustomDatafakerType) parser.parse("product")).getTypeName())
         .isEqualTo("product_name");
-  }
-
-  @Test
-  void shouldParseDepartment() {
-    DataType type = parser.parse("department");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("department");
-  }
-
-  @Test
-  void shouldParseColor() {
-    DataType type = parser.parse("color");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("color");
-  }
-
-  @Test
-  void shouldParseMaterial() {
-    DataType type = parser.parse("material");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("material");
-  }
-
-  @Test
-  void shouldParsePromotionCode() {
-    DataType type = parser.parse("promotion_code");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("promotion_code");
   }
 
   @Test
@@ -452,44 +343,5 @@ class TypeParserTest {
         .isEqualTo("promotion_code");
     assertThat(((CustomDatafakerType) parser.parse("coupon")).getTypeName())
         .isEqualTo("promotion_code");
-  }
-
-  @Test
-  void shouldParseLoremWord() {
-    DataType type = parser.parse("lorem_word");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("lorem_word");
-  }
-
-  @Test
-  void shouldParseLoremWordAlias() {
-    DataType type = parser.parse("loremword");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("lorem_word");
-  }
-
-  @Test
-  void shouldParseLoremSentence() {
-    DataType type = parser.parse("lorem_sentence");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("lorem_sentence");
-  }
-
-  @Test
-  void shouldParseLoremSentenceAlias() {
-    DataType type = parser.parse("loremsentence");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("lorem_sentence");
-  }
-
-  @Test
-  void shouldParseLoremParagraph() {
-    DataType type = parser.parse("lorem_paragraph");
-    assertThat(type).isInstanceOf(CustomDatafakerType.class);
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("lorem_paragraph");
-  }
-
-  @Test
-  void shouldParseLoremParagraphAlias() {
-    DataType type = parser.parse("loremparagraph");
-    assertThat(((CustomDatafakerType) type).getTypeName()).isEqualTo("lorem_paragraph");
   }
 }

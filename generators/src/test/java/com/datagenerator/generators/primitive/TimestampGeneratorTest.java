@@ -134,7 +134,8 @@ class TimestampGeneratorTest {
     PrimitiveType type =
         new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, "2025-12-31T23:59:59");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
   }
@@ -144,7 +145,8 @@ class TimestampGeneratorTest {
     PrimitiveType type =
         new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "2020-01-01T00:00:00", null);
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("maxValue");
   }
@@ -154,7 +156,8 @@ class TimestampGeneratorTest {
     PrimitiveType type =
         new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "not-a-timestamp", "2025-12-31T23:59:59");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
   }
@@ -165,7 +168,8 @@ class TimestampGeneratorTest {
         new PrimitiveType(
             PrimitiveType.Kind.TIMESTAMP, "2025-12-31T23:59:59", "2020-01-01T00:00:00");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("timestamp range");
   }
@@ -174,7 +178,8 @@ class TimestampGeneratorTest {
   void shouldThrowWhenWrongKind() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("TimestampGenerator");
   }

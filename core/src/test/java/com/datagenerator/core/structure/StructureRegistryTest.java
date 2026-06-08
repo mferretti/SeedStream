@@ -69,7 +69,8 @@ class StructureRegistryTest {
     selfRefFields.put("next", new ObjectType("self_ref"));
     loader.addStructure("self_ref", selfRefFields);
 
-    assertThatThrownBy(() -> registry.loadStructure("self_ref", Path.of("config/structures")))
+    var structuresPath = Path.of("config/structures");
+    assertThatThrownBy(() -> registry.loadStructure("self_ref", structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("self_ref → self_ref");
   }
@@ -85,7 +86,8 @@ class StructureRegistryTest {
     bFields.put("a_ref", new ObjectType("structure_a"));
     loader.addStructure("structure_b", bFields);
 
-    assertThatThrownBy(() -> registry.loadStructure("structure_a", Path.of("config/structures")))
+    var structuresPath = Path.of("config/structures");
+    assertThatThrownBy(() -> registry.loadStructure("structure_a", structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("Circular reference detected")
         .hasMessageContaining("structure_a")
@@ -98,7 +100,8 @@ class StructureRegistryTest {
     fields.put("children", new ArrayType(new ObjectType("node"), 0, 10));
     loader.addStructure("node", fields);
 
-    assertThatThrownBy(() -> registry.loadStructure("node", Path.of("config/structures")))
+    var structuresPath = Path.of("config/structures");
+    assertThatThrownBy(() -> registry.loadStructure("node", structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("node → node");
   }

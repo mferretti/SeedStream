@@ -86,21 +86,24 @@ class AwsSecretsManagerResolverIT extends IntegrationTest {
 
   @Test
   void shouldThrowForNonExistentSecret() {
-    assertThatThrownBy(() -> buildResolver().resolve("nonexistent/secret"))
+    var resolver = buildResolver();
+    assertThatThrownBy(() -> resolver.resolve("nonexistent/secret"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("not found");
   }
 
   @Test
   void shouldThrowForMissingFieldInJsonSecret() {
-    assertThatThrownBy(() -> buildResolver().resolve("myapp/db#nonexistent"))
+    var resolver = buildResolver();
+    assertThatThrownBy(() -> resolver.resolve("myapp/db#nonexistent"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("nonexistent");
   }
 
   @Test
   void shouldThrowForFieldSuffixOnPlainStringSecret() {
-    assertThatThrownBy(() -> buildResolver().resolve("myapp/token#field"))
+    var resolver = buildResolver();
+    assertThatThrownBy(() -> resolver.resolve("myapp/token#field"))
         .isInstanceOf(SecretResolutionException.class);
   }
 }

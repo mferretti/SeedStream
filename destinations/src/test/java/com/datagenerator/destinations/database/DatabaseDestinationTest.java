@@ -189,7 +189,8 @@ class DatabaseDestinationTest {
   void shouldThrowWhenWritingBeforeOpen() {
     DatabaseDestination dest = new DatabaseDestination(config());
 
-    assertThatThrownBy(() -> dest.write(record(1, "Alice", true)))
+    var rec = record(1, "Alice", true);
+    assertThatThrownBy(() -> dest.write(rec))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("not open");
 

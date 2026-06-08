@@ -83,14 +83,15 @@ class GeneratorContextTest {
   @Test
   void shouldReturnZeroJobCountWhenUsingTwoArgEnter() {
     try (var ctx = GeneratorContext.enter(newFactory(), "us")) {
-      assertThat(GeneratorContext.getJobCount()).isEqualTo(0L);
+      assertThat(GeneratorContext.getJobCount()).isZero();
     }
   }
 
   @Test
   void shouldThrowWhenEnteringContextTwice() {
     try (var ctx = GeneratorContext.enter(newFactory(), "us")) {
-      assertThatThrownBy(() -> GeneratorContext.enter(newFactory(), "uk"))
+      var factory = newFactory();
+      assertThatThrownBy(() -> GeneratorContext.enter(factory, "uk"))
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("already active");
     }

@@ -168,8 +168,7 @@ class ObjectGeneratorTest {
     @SuppressWarnings("unchecked")
     java.util.List<Map<String, Object>> items =
         (java.util.List<Map<String, Object>>) result.get("items");
-    assertThat(items).hasSizeBetween(1, 5);
-    assertThat(items).allMatch(item -> item.containsKey("price"));
+    assertThat(items).hasSizeBetween(1, 5).allMatch(item -> item.containsKey("price"));
   }
 
   @Test
@@ -244,7 +243,8 @@ class ObjectGeneratorTest {
   void shouldThrowExceptionForWrongType() {
     Random random = new Random(42);
 
-    assertThatThrownBy(() -> generateWithContext(new ObjectType("dummy"), random))
+    var dummyType = new ObjectType("dummy");
+    assertThatThrownBy(() -> generateWithContext(dummyType, random))
         .isInstanceOf(RuntimeException.class); // Structure not found
   }
 
@@ -325,7 +325,7 @@ class ObjectGeneratorTest {
     java.util.List<Map<String, Object>> books =
         (java.util.List<Map<String, Object>>) result.get("books");
     assertThat(books).hasSize(1);
-    assertThat(books.get(0).get("author_id")).isEqualTo(authorId);
+    assertThat(books.get(0)).containsEntry("author_id", authorId);
   }
 
   /** Mock StructureLoader for testing (avoids file I/O). */

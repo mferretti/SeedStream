@@ -156,11 +156,12 @@ class CsvSerializerTest {
     String csv = serializer.serialize(record);
 
     // Nested object should be JSON-serialized and quoted (CSV escapes inner quotes by doubling)
-    assertThat(csv).contains("Marco");
-    assertThat(csv).contains("Via Roma");
-    assertThat(csv).contains("Milano");
     // The JSON structure is preserved but quotes are escaped
-    assertThat(csv).matches(".*\\{.*street.*Via Roma.*city.*Milano.*\\}.*");
+    assertThat(csv)
+        .contains("Marco")
+        .contains("Via Roma")
+        .contains("Milano")
+        .matches(".*\\{.*street.*Via Roma.*city.*Milano.*\\}.*");
   }
 
   @Test
@@ -171,13 +172,14 @@ class CsvSerializerTest {
 
     String csv = serializer.serialize(record);
 
-    assertThat(csv).contains("Order");
-    assertThat(csv).contains("item1");
-    assertThat(csv).contains("item2");
-    assertThat(csv).contains("item3");
     // Array structure is preserved
-    assertThat(csv).contains("[");
-    assertThat(csv).contains("]");
+    assertThat(csv)
+        .contains("Order")
+        .contains("item1")
+        .contains("item2")
+        .contains("item3")
+        .contains("[")
+        .contains("]");
   }
 
   @Test
@@ -192,11 +194,12 @@ class CsvSerializerTest {
 
     String csv = serializer.serialize(record);
 
-    assertThat(csv).contains("INV-001");
-    assertThat(csv).contains("2024-03-15");
     // Nested array should be JSON-serialized
-    assertThat(csv).contains("Widget");
-    assertThat(csv).contains("Gadget");
+    assertThat(csv)
+        .contains("INV-001")
+        .contains("2024-03-15")
+        .contains("Widget")
+        .contains("Gadget");
   }
 
   @Test

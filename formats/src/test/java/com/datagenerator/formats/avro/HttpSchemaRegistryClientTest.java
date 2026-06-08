@@ -84,8 +84,8 @@ class HttpSchemaRegistryClientTest {
 
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     verify(httpClient).send(captor.capture(), any());
-    assertThat(captor.getValue().uri().toString())
-        .isEqualTo("http://registry:8081/subjects/orders-value/versions");
+    assertThat(captor.getValue().uri())
+        .hasToString("http://registry:8081/subjects/orders-value/versions");
   }
 
   @Test
@@ -98,8 +98,7 @@ class HttpSchemaRegistryClientTest {
 
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     verify(httpClient).send(captor.capture(), any());
-    assertThat(captor.getValue().uri().toString())
-        .isEqualTo("http://registry:8081/subjects/sub/versions");
+    assertThat(captor.getValue().uri()).hasToString("http://registry:8081/subjects/sub/versions");
   }
 
   // ── Caching ───────────────────────────────────────────────────────────────

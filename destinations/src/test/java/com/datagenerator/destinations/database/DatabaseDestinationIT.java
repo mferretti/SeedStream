@@ -333,7 +333,7 @@ class DatabaseDestinationIT extends IntegrationTest {
     }
 
     // Original passports table must be empty
-    assertThat(countRows()).isEqualTo(0);
+    assertThat(countRows()).isZero();
 
     // Alt table must have 1 record
     try (Statement st = verifyConnection.createStatement();

@@ -30,6 +30,8 @@ import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class FilePermissionValidatorTest {
 
@@ -44,27 +46,11 @@ class FilePermissionValidatorTest {
 
   // ── Config file tests (Unix only) ────────────────────────────────────────
 
-  @Test
+  @ParameterizedTest
   @DisabledOnOs(OS.WINDOWS)
-  void shouldNotWarnWhenConfigFileIsOwnerOnly() throws IOException {
-    Path file = createFileWithPermissions("config.yaml", "rw-------");
-    // No exception expected — just a log warn check (hard to assert without log capture)
-    assertThatNoException().isThrownBy(() -> validator.validateConfigFile(file));
-  }
-
-  @Test
-  @DisabledOnOs(OS.WINDOWS)
-  void shouldNotThrowWhenConfigFileIsGroupReadable() throws IOException {
-    Path file = createFileWithPermissions("config.yaml", "rw-r-----");
-    // warn only — no exception
-    assertThatNoException().isThrownBy(() -> validator.validateConfigFile(file));
-  }
-
-  @Test
-  @DisabledOnOs(OS.WINDOWS)
-  void shouldNotThrowWhenConfigFileIsWorldReadable() throws IOException {
-    Path file = createFileWithPermissions("config.yaml", "rw-r--r--");
-    // warn only — no exception
+  @ValueSource(strings = {"rw-------", "rw-r-----", "rw-r--r--"})
+  void shouldNotThrowForConfigFileWithAnyReadPermission(String perms) throws IOException {
+    Path file = createFileWithPermissions("config.yaml", perms);
     assertThatNoException().isThrownBy(() -> validator.validateConfigFile(file));
   }
 

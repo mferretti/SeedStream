@@ -26,10 +26,14 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,37 +58,29 @@ class VaultSecretResolverTest {
     System.clearProperty("VAULT_TOKEN");
   }
 
-  @Test
-  void shouldResolveKvV2FieldWithHashSuffix() throws Exception {
-    String body = "{\"data\": {\"data\": {\"password\": \"secret123\"}, \"metadata\": {}}}";
-    when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn(body);
-    doReturn(mockResponse).when(mockClient).send(any(), any());
-
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    assertThat(resolver.resolve("secret/data/myapp/db#password")).isEqualTo("secret123");
+  static Stream<Arguments> vaultResolveScenarios() {
+    return Stream.of(
+        Arguments.of(
+            "{\"data\": {\"data\": {\"password\": \"secret123\"}, \"metadata\": {}}}",
+            "secret/data/myapp/db#password",
+            "secret123"),
+        Arguments.of(
+            "{\"data\": {\"password\": \"kvv1-secret\"}}",
+            "secret/myapp/db#password",
+            "kvv1-secret"),
+        Arguments.of(
+            "{\"data\": {\"value\": \"single-value\"}}", "secret/myapp/token", "single-value"));
   }
 
-  @Test
-  void shouldResolveKvV1FieldWithHashSuffix() throws Exception {
-    String body = "{\"data\": {\"password\": \"kvv1-secret\"}}";
+  @ParameterizedTest
+  @MethodSource("vaultResolveScenarios")
+  void shouldResolveVaultSecret(String body, String path, String expected) throws Exception {
     when(mockResponse.statusCode()).thenReturn(200);
     when(mockResponse.body()).thenReturn(body);
     doReturn(mockResponse).when(mockClient).send(any(), any());
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    assertThat(resolver.resolve("secret/myapp/db#password")).isEqualTo("kvv1-secret");
-  }
-
-  @Test
-  void shouldResolveScalarValueWithoutFieldSuffix() throws Exception {
-    String body = "{\"data\": {\"value\": \"single-value\"}}";
-    when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn(body);
-    doReturn(mockResponse).when(mockClient).send(any(), any());
-
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    assertThat(resolver.resolve("secret/myapp/token")).isEqualTo("single-value");
+    assertThat(resolver.resolve(path)).isEqualTo(expected);
   }
 
   @Test
@@ -183,7 +179,6 @@ class VaultSecretResolverTest {
     VaultSecretResolver resolver = new VaultSecretResolver("http://vault:8200/", null, mockClient);
     resolver.resolve("secret/data/app#key");
 
-    assertThat(captor.getValue().uri().toString())
-        .isEqualTo("http://vault:8200/v1/secret/data/app");
+    assertThat(captor.getValue().uri()).hasToString("http://vault:8200/v1/secret/data/app");
   }
 }

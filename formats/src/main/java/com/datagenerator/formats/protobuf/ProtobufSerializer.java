@@ -246,8 +246,8 @@ public class ProtobufSerializer implements FormatSerializer {
   private Object convertToProtobufValue(Object value, FieldDescriptor fieldDescriptor) {
     switch (fieldDescriptor.getType()) {
       case INT64:
-        if (value instanceof Integer) {
-          return ((Integer) value).longValue();
+        if (value instanceof Integer i) {
+          return i.longValue();
         } else if (value instanceof Long) {
           return value;
         }
@@ -262,35 +262,33 @@ public class ProtobufSerializer implements FormatSerializer {
       case DOUBLE:
         if (value instanceof Double) {
           return value;
-        } else if (value instanceof Float) {
-          return ((Float) value).doubleValue();
-        } else if (value instanceof BigDecimal) {
-          return ((BigDecimal) value).doubleValue();
+        } else if (value instanceof Float f) {
+          return f.doubleValue();
+        } else if (value instanceof BigDecimal bd) {
+          return bd.doubleValue();
         }
         throw new IllegalArgumentException("Cannot convert " + value.getClass() + " to DOUBLE");
 
       case STRING:
         if (value instanceof String) {
           return value;
-        } else if (value instanceof LocalDate) {
-          return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
-        } else if (value instanceof Instant) {
-          return ((Instant) value).toString();
+        } else if (value instanceof LocalDate ld) {
+          return ld.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        } else if (value instanceof Instant instant) {
+          return instant.toString();
         } else if (value instanceof List) {
-          // Convert list items to strings
           List<?> list = (List<?>) value;
           return list.stream().map(item -> item == null ? "" : item.toString()).toList();
         } else if (value instanceof Map) {
-          // Convert nested map to JSON-like string
           return formatMapAsString((Map<?, ?>) value);
         }
         return value.toString();
 
       case BYTES:
-        if (value instanceof byte[]) {
-          return ByteString.copyFrom((byte[]) value);
-        } else if (value instanceof String) {
-          return ByteString.copyFromUtf8((String) value);
+        if (value instanceof byte[] bytes) {
+          return ByteString.copyFrom(bytes);
+        } else if (value instanceof String s) {
+          return ByteString.copyFromUtf8(s);
         }
         throw new IllegalArgumentException("Cannot convert " + value.getClass() + " to BYTES");
 

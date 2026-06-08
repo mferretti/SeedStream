@@ -20,8 +20,11 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import picocli.CommandLine;
 
 class ValidateCommandTest {
@@ -68,12 +71,18 @@ class ValidateCommandTest {
 
   // ── Invalid records ────────────────────────────────────────────────────────
 
-  @Test
-  void shouldReturnOneWhenFingerprintRecordHasViolations() throws Exception {
-    Path file = tempDir.resolve("invalid_fmr.ndjson");
-    // Missing required fields
-    Files.writeString(file, "{\"record_format\":\"FMR\"}");
+  static Stream<String> singleLineInvalidContents() {
+    return Stream.of(
+        "{\"record_format\":\"FMR\"}",
+        "{\"record_format\":\"XYZ\",\"subject_id\":\"abc\"}",
+        "not valid json at all");
+  }
 
+  @ParameterizedTest
+  @MethodSource("singleLineInvalidContents")
+  void shouldReturnOneForInvalidContent(String content) throws Exception {
+    Path file = tempDir.resolve("invalid.ndjson");
+    Files.writeString(file, content);
     assertThat(execute(file)).isEqualTo(1);
   }
 
@@ -83,22 +92,6 @@ class ValidateCommandTest {
     Files.writeString(
         file,
         validFingerprintRecord() + "\n" + "{\"record_format\":\"FMR\"}" + "\n" + validFaceRecord());
-
-    assertThat(execute(file)).isEqualTo(1);
-  }
-
-  @Test
-  void shouldReturnOneWhenRecordFormatIsUnknown() throws Exception {
-    Path file = tempDir.resolve("unknown_format.ndjson");
-    Files.writeString(file, "{\"record_format\":\"XYZ\",\"subject_id\":\"abc\"}");
-
-    assertThat(execute(file)).isEqualTo(1);
-  }
-
-  @Test
-  void shouldCountBadJsonLineAsViolation() throws Exception {
-    Path file = tempDir.resolve("bad_json.ndjson");
-    Files.writeString(file, "not valid json at all");
 
     assertThat(execute(file)).isEqualTo(1);
   }

@@ -28,8 +28,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Comprehensive tests for DatafakerGenerator covering multiple geolocations and all semantic types.
@@ -57,164 +63,45 @@ class DatafakerGeolocationTest {
   // GEOLOCATION TESTS - Test multiple locales
   // ==================================================================================
 
-  @Test
-  void shouldGenerateItalianNames() {
+  static Stream<Arguments> localeNamesWithPattern() {
+    return Stream.of(
+        Arguments.of("italy", "^[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]+$"),
+        Arguments.of("germany", "^[A-Za-zÄÖÜäöüß\\s'-]+$"),
+        Arguments.of("france", "^[A-Za-zÀ-ÿ\\s'-]+$"),
+        Arguments.of("spain", "^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s'-]+$"),
+        Arguments.of("brazil", "^[A-Za-zÀ-ÿ\\s'-]+$"),
+        Arguments.of("india", "^[A-Za-z\\s'-]+$"),
+        Arguments.of("sweden", "^[A-Za-zÅÄÖåäö\\s'-]+$"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("localeNamesWithPattern")
+  void shouldGenerateNameForLocaleMatchingPattern(String locale, String pattern) {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("italy", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Italian names typically use Latin characters
-    assertThat(name).matches("^[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]+$");
+    String name = (String) generateWithContext(locale, nameType);
+    assertThat(name).isNotNull().isNotEmpty().matches(pattern);
   }
 
-  @Test
-  void shouldGenerateGermanNames() {
+  @ParameterizedTest
+  @ValueSource(strings = {"japan", "china", "korea", "russia", "saudi arabia", "poland"})
+  void shouldGenerateNameForLocaleWithoutRegexConstraint(String locale) {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("germany", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    assertThat(name).matches("^[A-Za-zÄÖÜäöüß\\s'-]+$");
-  }
-
-  @Test
-  void shouldGenerateFrenchNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("france", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    assertThat(name).matches("^[A-Za-zÀ-ÿ\\s'-]+$");
-  }
-
-  @Test
-  void shouldGenerateSpanishNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("spain", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    assertThat(name).matches("^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s'-]+$");
-  }
-
-  @Test
-  void shouldGenerateBrazilianNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("brazil", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Brazilian Portuguese names
-    assertThat(name).matches("^[A-Za-zÀ-ÿ\\s'-]+$");
-  }
-
-  @Test
-  void shouldGenerateJapaneseNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("japan", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Japanese names can include Kanji, Hiragana, Katakana, or romanized text
-  }
-
-  @Test
-  void shouldGenerateChineseNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("china", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Chinese names can include Chinese characters or romanized text
-  }
-
-  @Test
-  void shouldGenerateKoreanNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("korea", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Korean names can include Hangul or romanized text
-  }
-
-  @Test
-  void shouldGenerateRussianNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("russia", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Russian names can include Cyrillic or romanized text
-  }
-
-  @Test
-  void shouldGenerateArabicNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("saudi arabia", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Arabic names can include Arabic script or romanized text
-  }
-
-  @Test
-  void shouldGenerateIndianNames() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("india", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Indian names typically romanized
-    assertThat(name).matches("^[A-Za-z\\s'-]+$");
-  }
-
-  @Test
-  void shouldGenerateAustralianData() {
-    CustomDatafakerType cityType = new CustomDatafakerType("city");
-    String city = (String) generateWithContext("australia", cityType);
-
-    assertThat(city).isNotNull().isNotEmpty();
-  }
-
-  @Test
-  void shouldGenerateMexicanData() {
-    CustomDatafakerType addressType = new CustomDatafakerType("address");
-    String address = (String) generateWithContext("mexico", addressType);
-
-    assertThat(address).isNotNull().isNotEmpty();
-  }
-
-  @Test
-  void shouldGenerateCanadianData() {
-    CustomDatafakerType postalCodeType = new CustomDatafakerType("postal_code");
-    String postalCode = (String) generateWithContext("canada", postalCodeType);
-
-    assertThat(postalCode).isNotNull().isNotEmpty();
-  }
-
-  @Test
-  void shouldGenerateDutchData() {
-    CustomDatafakerType cityType = new CustomDatafakerType("city");
-    String city = (String) generateWithContext("netherlands", cityType);
-
-    assertThat(city).isNotNull().isNotEmpty();
-  }
-
-  @Test
-  void shouldGenerateSwedishData() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("sweden", nameType);
-
-    assertThat(name).isNotNull().isNotEmpty();
-    // Swedish names can include special characters
-    assertThat(name).matches("^[A-Za-zÅÄÖåäö\\s'-]+$");
-  }
-
-  @Test
-  void shouldGeneratePolishData() {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("poland", nameType);
-
+    String name = (String) generateWithContext(locale, nameType);
     assertThat(name).isNotNull().isNotEmpty();
   }
 
-  @Test
-  void shouldGenerateTurkishData() {
-    CustomDatafakerType cityType = new CustomDatafakerType("city");
-    String city = (String) generateWithContext("turkey", cityType);
-
-    assertThat(city).isNotNull().isNotEmpty();
+  @ParameterizedTest
+  @CsvSource({
+    "australia, city",
+    "mexico, address",
+    "canada, postal_code",
+    "netherlands, city",
+    "turkey, city",
+  })
+  void shouldGenerateDataTypeForLocale(String locale, String dataType) {
+    CustomDatafakerType type = new CustomDatafakerType(dataType);
+    String result = (String) generateWithContext(locale, type);
+    assertThat(result).isNotNull().isNotEmpty();
   }
 
   // ==================================================================================

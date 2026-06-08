@@ -79,7 +79,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldWriteRecordsToKafka() throws Exception {
+  void shouldWriteRecordsToKafka() {
     // Given: Kafka destination configured with real Kafka container
     String topic = "test-topic";
     KafkaDestinationConfig config =
@@ -123,7 +123,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleLargeNumberOfRecords() throws Exception {
+  void shouldHandleLargeNumberOfRecords() {
     // Given: Kafka destination with batching
     String topic = "test-large-topic";
     KafkaDestinationConfig config =
@@ -161,7 +161,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldWriteRecordsWithSyncMode() throws Exception {
+  void shouldWriteRecordsWithSyncMode() {
     // Given: Kafka destination in sync mode
     String topic = "test-sync-topic";
     KafkaDestinationConfig config =
@@ -205,7 +205,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleCompressionMode() throws Exception {
+  void shouldHandleCompressionMode() {
     // Given: Kafka destination with compression
     String topic = "test-compression-topic";
     KafkaDestinationConfig config =
@@ -244,7 +244,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleSnappyCompression() throws Exception {
+  void shouldHandleSnappyCompression() {
     // Given: Kafka destination with Snappy compression
     String topic = "test-snappy-topic";
     KafkaDestinationConfig config =
@@ -283,7 +283,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleLz4Compression() throws Exception {
+  void shouldHandleLz4Compression() {
     // Given: Kafka destination with LZ4 compression
     String topic = "test-lz4-topic";
     KafkaDestinationConfig config =
@@ -322,7 +322,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleZstdCompression() throws Exception {
+  void shouldHandleZstdCompression() {
     // Given: Kafka destination with Zstandard compression
     String topic = "test-zstd-topic";
     KafkaDestinationConfig config =
@@ -361,7 +361,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleNoCompression() throws Exception {
+  void shouldHandleNoCompression() {
     // Given: Kafka destination with no compression (explicit)
     String topic = "test-no-compression-topic";
     KafkaDestinationConfig config =
@@ -399,7 +399,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleCustomBatchSizeAndLinger() throws Exception {
+  void shouldHandleCustomBatchSizeAndLinger() {
     // Given: Kafka destination with custom batch size and linger
     String topic = "test-custom-batch-topic";
     KafkaDestinationConfig config =
@@ -437,7 +437,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleDifferentAcksSettings() throws Exception {
+  void shouldHandleDifferentAcksSettings() {
     // Given: Kafka destination with acks="all" (idempotent producer requirement)
     String topic = "test-acks-topic";
     KafkaDestinationConfig config =
@@ -528,7 +528,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleWriteAfterClose() throws Exception {
+  void shouldHandleWriteAfterClose() {
     // Given: Kafka destination that has been closed
     String topic = "test-close-topic";
     KafkaDestinationConfig config =
@@ -551,7 +551,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleSerializationError() throws Exception {
+  void shouldHandleSerializationError() {
     // Given: Kafka destination with records that might have serialization issues
     String topic = "test-serialization-topic";
     KafkaDestinationConfig config =
@@ -591,7 +591,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleEmptyRecords() throws Exception {
+  void shouldHandleEmptyRecords() {
     // Given: Kafka destination
     String topic = "test-empty-topic";
     KafkaDestinationConfig config =
@@ -626,7 +626,7 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldHandleLargeRecords() throws Exception {
+  void shouldHandleLargeRecords() {
     // Given: Kafka destination with reasonably large messages
     String topic = "test-large-record-topic";
     KafkaDestinationConfig config =

@@ -124,7 +124,7 @@ class RandomProviderTest {
   }
 
   @Test
-  void shouldProduceSameSequencesAcrossRunsWithSameWorkerOrder() throws Exception {
+  void shouldProduceSameSequencesAcrossRunsWithSameWorkerOrder() {
     // Run 1
     RandomProvider provider1 = new RandomProvider(999L);
     List<List<Integer>> run1Sequences = generateSequencesInOrder(provider1, 3);
@@ -153,7 +153,7 @@ class RandomProviderTest {
   }
 
   @Test
-  void shouldProduceReproducibleSequenceForSameWorker() throws Exception {
+  void shouldProduceReproducibleSequenceForSameWorker() {
     RandomProvider provider1 = new RandomProvider(999L);
     RandomProvider provider2 = new RandomProvider(999L);
 
@@ -199,7 +199,7 @@ class RandomProviderTest {
   void shouldHandleZeroSeed() {
     RandomProvider provider = new RandomProvider(0L);
 
-    assertThat(provider.getMasterSeed()).isEqualTo(0L);
+    assertThat(provider.getMasterSeed()).isZero();
     assertThatCode(() -> provider.getRandom().nextInt()).doesNotThrowAnyException();
   }
 

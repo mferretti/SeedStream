@@ -265,8 +265,7 @@ class NestedRecordDecomposerTest {
     decomposer.decompose(record, "parent", null);
 
     // Original child must not have FK injected into it
-    assertThat(child).doesNotContainKey("parent_id");
-    assertThat(child).containsOnlyKeys("id");
+    assertThat(child).doesNotContainKey("parent_id").containsOnlyKeys("id");
   }
 
   @Test

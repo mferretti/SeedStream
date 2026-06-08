@@ -103,7 +103,7 @@ class FakerCacheTest {
     assertThat(FakerCache.getCacheSize()).isEqualTo(1);
 
     FakerCache.clear();
-    assertThat(FakerCache.getCacheSize()).isEqualTo(0);
+    assertThat(FakerCache.getCacheSize()).isZero();
 
     // After clear, should create new instance (even with same Random)
     Random random2 = new Random(42); // Use new Random with same seed
@@ -233,8 +233,8 @@ class FakerCacheTest {
     executor2.awaitTermination(10, TimeUnit.SECONDS);
 
     // CRITICAL: Same seeds should produce IDENTICAL data (reproducibility)
-    assertThat(resultsByThread.get(0)).isEqualTo(thread0Values);
-    assertThat(resultsByThread.get(1)).isEqualTo(thread1Values);
-    assertThat(resultsByThread.get(2)).isEqualTo(thread2Values);
+    assertThat(resultsByThread).containsEntry(0, thread0Values);
+    assertThat(resultsByThread).containsEntry(1, thread1Values);
+    assertThat(resultsByThread).containsEntry(2, thread2Values);
   }
 }

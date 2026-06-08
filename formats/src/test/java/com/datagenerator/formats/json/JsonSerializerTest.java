@@ -169,12 +169,11 @@ class JsonSerializerTest {
     String json = serializer.serialize(record);
 
     // Should NOT contain indentation or newlines
-    assertThat(json).doesNotContain("\n");
-    assertThat(json).doesNotContain("  ");
+    assertThat(json).doesNotContain("\n").doesNotContain("  ");
   }
 
   @Test
-  void shouldPreserveFieldOrder() throws Exception {
+  void shouldPreserveFieldOrder() {
     // Use LinkedHashMap to preserve insertion order
     Map<String, Object> record = new LinkedHashMap<>();
     record.put("field1", "A");
@@ -188,7 +187,7 @@ class JsonSerializerTest {
   }
 
   @Test
-  void shouldHandleEmptyRecord() throws Exception {
+  void shouldHandleEmptyRecord() {
     Map<String, Object> record = Map.of();
 
     String json = serializer.serialize(record);
@@ -372,7 +371,7 @@ class JsonSerializerTest {
   }
 
   @Test
-  void shouldBeThreadSafe() throws Exception {
+  void shouldBeThreadSafe() {
     // ObjectMapper is thread-safe, verify concurrent use
     Map<String, Object> record1 = Map.of("id", 1, "name", "Thread1");
     Map<String, Object> record2 = Map.of("id", 2, "name", "Thread2");

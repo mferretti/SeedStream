@@ -118,7 +118,7 @@ class SchemaRegistryAvroSerializerIT {
     BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(avroPayload, null);
     GenericRecord decoded = reader.read(null, decoder);
 
-    assertThat(decoded.get("name").toString()).isEqualTo("Alice");
+    assertThat(decoded.get("name")).hasToString("Alice");
     assertThat(decoded.get("score")).isEqualTo(42);
   }
 

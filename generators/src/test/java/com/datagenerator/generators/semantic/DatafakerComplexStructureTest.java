@@ -372,13 +372,13 @@ class DatafakerComplexStructureTest {
           (Map<String, Object>) generator.generate(random2, transactionType);
 
       // Verify same transaction ID
-      assertThat(transaction1.get("transaction_id")).isEqualTo(transaction2.get("transaction_id"));
+      assertThat(transaction1).containsEntry("transaction_id", transaction2.get("transaction_id"));
 
       // Verify same customer details
       Map<String, Object> customer1 = (Map<String, Object>) transaction1.get("customer");
       Map<String, Object> customer2 = (Map<String, Object>) transaction2.get("customer");
-      assertThat(customer1.get("customer_id")).isEqualTo(customer2.get("customer_id"));
-      assertThat(customer1.get("email")).isEqualTo(customer2.get("email"));
+      assertThat(customer1).containsEntry("customer_id", customer2.get("customer_id"));
+      assertThat(customer1).containsEntry("email", customer2.get("email"));
 
       // Verify same number of items
       List<Map<String, Object>> items1 = (List<Map<String, Object>>) transaction1.get("items");

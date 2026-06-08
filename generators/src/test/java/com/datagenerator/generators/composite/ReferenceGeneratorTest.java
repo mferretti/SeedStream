@@ -91,7 +91,8 @@ class ReferenceGeneratorTest {
   void shouldFailWhenNoRangeDefined() {
     ReferenceType type = new ReferenceType("user", "id", null, null, false);
 
-    assertThatThrownBy(() -> generator.generate(new Random(42L), type))
+    var rnd = new Random(42L);
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("min..max");
   }
@@ -100,7 +101,8 @@ class ReferenceGeneratorTest {
   void shouldFailForWrongType() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "1", "10");
 
-    assertThatThrownBy(() -> generator.generate(new Random(42L), type))
+    var rnd = new Random(42L);
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("ReferenceType");
   }
@@ -128,7 +130,8 @@ class ReferenceGeneratorTest {
 
     // enter with jobCount=0 (default)
     try (var ctx = GeneratorContext.enter(factory, null)) {
-      assertThatThrownBy(() -> generator.generate(new Random(42L), type))
+      var rnd = new Random(42L);
+      assertThatThrownBy(() -> generator.generate(rnd, type))
           .isInstanceOf(GeneratorException.class)
           .hasMessageContaining("no job count was set");
     }

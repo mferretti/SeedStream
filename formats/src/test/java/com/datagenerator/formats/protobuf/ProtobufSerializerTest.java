@@ -50,9 +50,8 @@ class ProtobufSerializerTest {
 
     String result = serializer.serialize(record);
 
-    assertThat(result).isNotBlank();
     // Result should be valid base64
-    assertThat(result).matches("^[A-Za-z0-9+/]+=*$");
+    assertThat(result).isNotBlank().matches("^[A-Za-z0-9+/]+=*$");
     // Should be able to decode
     byte[] binary = Base64.getDecoder().decode(result);
     assertThat(binary).isNotEmpty();
@@ -240,9 +239,9 @@ class ProtobufSerializerTest {
 
     // Protobuf binary should typically be smaller than JSON text
     // (though base64 encoding adds ~33% overhead)
-    assertThat(protobufBinary.length)
+    assertThat(protobufBinary)
         .withFailMessage("Protobuf should generally be more compact than JSON for structured data")
-        .isLessThan(jsonEquivalent.length());
+        .hasSizeLessThan(jsonEquivalent.length());
   }
 
   @Test
@@ -262,6 +261,6 @@ class ProtobufSerializerTest {
     byte[] binary = Base64.getDecoder().decode(result);
     assertThat(binary).isNotEmpty();
     // Complex record should still produce valid protobuf
-    assertThat(binary.length).isGreaterThan(10); // Reasonable size check
+    assertThat(binary).hasSizeGreaterThan(10); // Reasonable size check
   }
 }

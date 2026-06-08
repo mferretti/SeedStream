@@ -55,36 +55,33 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGeneratePrefix() {
     String prefix = (String) generateWithContext("usa", "prefix");
-    assertThat(prefix).isNotNull();
-    assertThat(prefix).isNotEmpty();
     // Common prefixes: Mr., Mrs., Ms., Dr., etc.
-    assertThat(prefix).matches("^[A-Za-z.]+$");
+    assertThat(prefix).isNotNull().isNotEmpty().matches("^[A-Za-z.]+$");
   }
 
   @Test
   void shouldGenerateSuffix() {
     String suffix = (String) generateWithContext("usa", "suffix");
-    assertThat(suffix).isNotNull();
-    assertThat(suffix).isNotEmpty();
     // Common suffixes: Jr., Sr., III, etc.
+    assertThat(suffix).isNotNull().isNotEmpty();
   }
 
   @Test
   void shouldGeneratePassword() {
     String password = (String) generateWithContext("usa", "password");
-    assertThat(password).isNotNull();
-    assertThat(password).hasSizeGreaterThanOrEqualTo(8);
-    assertThat(password).hasSizeLessThanOrEqualTo(20);
     // Password should contain alphanumeric characters
-    assertThat(password).matches("^[A-Za-z0-9]+$");
+    assertThat(password)
+        .isNotNull()
+        .hasSizeGreaterThanOrEqualTo(8)
+        .hasSizeLessThanOrEqualTo(20)
+        .matches("^[A-Za-z0-9]+$");
   }
 
   @Test
   void shouldGenerateSSN() {
     String ssn = (String) generateWithContext("usa", "ssn");
-    assertThat(ssn).isNotNull();
-    assertThat(ssn).isNotEmpty();
     // SSN format varies by locale
+    assertThat(ssn).isNotNull().isNotEmpty();
   }
 
   // ===== Address Extensions =====
@@ -108,18 +105,14 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateCountryCode() {
     String countryCode = (String) generateWithContext("usa", "country_code");
-    assertThat(countryCode).isNotNull();
-    assertThat(countryCode).hasSize(2); // ISO 3166-1 alpha-2
-    assertThat(countryCode).matches("^[A-Z]{2}$");
+    assertThat(countryCode).isNotNull().hasSize(2).matches("^[A-Z]{2}$"); // ISO 3166-1 alpha-2
   }
 
   @Test
   void shouldGenerateTimeZone() {
     String timeZone = (String) generateWithContext("usa", "time_zone");
-    assertThat(timeZone).isNotNull();
-    assertThat(timeZone).isNotEmpty();
     // Time zones like "America/New_York", "Europe/Rome"
-    assertThat(timeZone).matches("^[A-Za-z_/]+$");
+    assertThat(timeZone).isNotNull().isNotEmpty().matches("^[A-Za-z_/]+$");
   }
 
   // ===== Finance Extensions =====
@@ -127,17 +120,14 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateBIC() {
     String bic = (String) generateWithContext("germany", "bic");
-    assertThat(bic).isNotNull();
-    assertThat(bic).isNotEmpty();
     // BIC/SWIFT code format: 8 or 11 alphanumeric characters
-    assertThat(bic).matches("^[A-Z0-9]{8,11}$");
+    assertThat(bic).isNotNull().isNotEmpty().matches("^[A-Z0-9]{8,11}$");
   }
 
   @Test
   void shouldGenerateCVV() {
     String cvv = (String) generateWithContext("usa", "cvv");
-    assertThat(cvv).isNotNull();
-    assertThat(cvv).matches("^\\d{3}$"); // 3-digit CVV
+    assertThat(cvv).isNotNull().matches("^\\d{3}$"); // 3-digit CVV
     int cvvValue = Integer.parseInt(cvv);
     assertThat(cvvValue).isBetween(100, 999);
   }
@@ -145,18 +135,15 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateCreditCardType() {
     String cardType = (String) generateWithContext("usa", "credit_card_type");
-    assertThat(cardType).isNotNull();
-    assertThat(cardType).isNotEmpty();
     // Common card types: Visa, Mastercard, Discover, Amex, etc.
+    assertThat(cardType).isNotNull().isNotEmpty();
   }
 
   @Test
   void shouldGenerateStockMarket() {
     String ticker = (String) generateWithContext("usa", "stock_market");
-    assertThat(ticker).isNotNull();
-    assertThat(ticker).isNotEmpty();
     // Stock ticker symbols are typically 1-5 uppercase letters
-    assertThat(ticker).matches("^[A-Z]{1,5}$");
+    assertThat(ticker).isNotNull().isNotEmpty().matches("^[A-Z]{1,5}$");
   }
 
   // ===== Commerce Types =====
@@ -164,44 +151,36 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateProductName() {
     String productName = (String) generateWithContext("usa", "product_name");
-    assertThat(productName).isNotNull();
-    assertThat(productName).isNotEmpty();
     // Product names like "Ergonomic Steel Chair"
-    assertThat(productName).hasSizeGreaterThan(5);
+    assertThat(productName).isNotNull().isNotEmpty().hasSizeGreaterThan(5);
   }
 
   @Test
   void shouldGenerateDepartment() {
     String department = (String) generateWithContext("usa", "department");
-    assertThat(department).isNotNull();
-    assertThat(department).isNotEmpty();
     // Department names like "Electronics", "Clothing"
+    assertThat(department).isNotNull().isNotEmpty();
   }
 
   @Test
   void shouldGenerateColor() {
     String color = (String) generateWithContext("usa", "color");
-    assertThat(color).isNotNull();
-    assertThat(color).isNotEmpty();
     // Color names like "red", "blue", "sky blue"
-    assertThat(color).matches("^[a-z\\s]+$");
+    assertThat(color).isNotNull().isNotEmpty().matches("^[a-z\\s]+$");
   }
 
   @Test
   void shouldGenerateMaterial() {
     String material = (String) generateWithContext("usa", "material");
-    assertThat(material).isNotNull();
-    assertThat(material).isNotEmpty();
     // Materials like "Cotton", "Steel", "Plastic"
+    assertThat(material).isNotNull().isNotEmpty();
   }
 
   @Test
   void shouldGeneratePromotionCode() {
     String promoCode = (String) generateWithContext("usa", "promotion_code");
-    assertThat(promoCode).isNotNull();
-    assertThat(promoCode).isNotEmpty();
     // Promo codes like "SAVE20", "SaleCool194130"
-    assertThat(promoCode).hasSizeGreaterThan(3);
+    assertThat(promoCode).isNotNull().isNotEmpty().hasSizeGreaterThan(3);
   }
 
   // ===== Text/Lorem Types =====
@@ -209,10 +188,11 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateLoremWord() {
     String word = (String) generateWithContext("usa", "lorem_word");
-    assertThat(word).isNotNull();
-    assertThat(word).isNotEmpty();
-    assertThat(word).matches("^[a-z]+$");
-    assertThat(word).hasSizeLessThan(20); // Single word, reasonable length
+    assertThat(word)
+        .isNotNull()
+        .isNotEmpty()
+        .matches("^[a-z]+$")
+        .hasSizeLessThan(20); // Single word, reasonable length
   }
 
   @Test

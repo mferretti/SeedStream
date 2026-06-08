@@ -139,14 +139,16 @@ class GoogleSecretManagerResolverIT extends IntegrationTest {
 
   @Test
   void shouldThrowForNonExistentSecret() {
-    assertThatThrownBy(() -> resolver().resolve("does-not-exist"))
+    var r = resolver();
+    assertThatThrownBy(() -> r.resolve("does-not-exist"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("does-not-exist");
   }
 
   @Test
   void shouldThrowForMissingFieldInJsonSecret() {
-    assertThatThrownBy(() -> resolver().resolve("json-secret#nonexistent"))
+    var r = resolver();
+    assertThatThrownBy(() -> r.resolve("json-secret#nonexistent"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("nonexistent");
   }

@@ -60,7 +60,8 @@ class DateGeneratorTest {
   void shouldThrowWhenMinValueIsNull() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, null, "2025-12-31");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
   }
@@ -69,7 +70,8 @@ class DateGeneratorTest {
   void shouldThrowWhenMaxValueIsNull() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", null);
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("maxValue");
   }
@@ -78,7 +80,8 @@ class DateGeneratorTest {
   void shouldThrowWhenMinValueHasInvalidFormat() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "not-a-date", "2025-12-31");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue")
         .hasMessageContaining("yyyy-MM-dd");
@@ -88,7 +91,8 @@ class DateGeneratorTest {
   void shouldThrowWhenMaxValueHasInvalidFormat() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "31/12/2025");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("maxValue");
   }
@@ -97,7 +101,8 @@ class DateGeneratorTest {
   void shouldThrowWhenMinGreaterThanMax() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "2025-12-31", "2020-01-01");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("date range");
   }
@@ -106,7 +111,8 @@ class DateGeneratorTest {
   void shouldThrowWhenWrongKind() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "0", "100");
 
-    assertThatThrownBy(() -> generator.generate(new Random(), type))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("DateGenerator");
   }

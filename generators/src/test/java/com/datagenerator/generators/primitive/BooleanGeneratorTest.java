@@ -56,7 +56,8 @@ class BooleanGeneratorTest {
   @Test
   void shouldThrowWhenWrongType() {
     PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "5");
-    assertThatThrownBy(() -> generator.generate(new Random(), charType))
+    var rnd = new Random();
+    assertThatThrownBy(() -> generator.generate(rnd, charType))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("BooleanGenerator");
   }

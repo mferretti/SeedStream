@@ -63,8 +63,7 @@ class ArrayGeneratorTest {
     @SuppressWarnings("unchecked")
     List<Integer> array = (List<Integer>) generateWithContext(arrayType, random);
 
-    assertThat(array).hasSizeBetween(5, 10);
-    assertThat(array).allMatch(value -> value >= 1 && value <= 100);
+    assertThat(array).hasSizeBetween(5, 10).allMatch(value -> value >= 1 && value <= 100);
   }
 
   @Test
@@ -92,8 +91,7 @@ class ArrayGeneratorTest {
     @SuppressWarnings("unchecked")
     List<String> array = (List<String>) generateWithContext(arrayType, random);
 
-    assertThat(array).hasSizeBetween(2, 5);
-    assertThat(array).allMatch(str -> str.length() >= 3 && str.length() <= 10);
+    assertThat(array).hasSizeBetween(2, 5).allMatch(str -> str.length() >= 3 && str.length() <= 10);
   }
 
   @Test
@@ -106,8 +104,9 @@ class ArrayGeneratorTest {
     @SuppressWarnings("unchecked")
     List<String> array = (List<String>) generateWithContext(arrayType, random);
 
-    assertThat(array).hasSize(3);
-    assertThat(array).allMatch(value -> List.of("ACTIVE", "INACTIVE", "PENDING").contains(value));
+    assertThat(array)
+        .hasSize(3)
+        .allMatch(value -> List.of("ACTIVE", "INACTIVE", "PENDING").contains(value));
   }
 
   @Test
@@ -170,7 +169,7 @@ class ArrayGeneratorTest {
     }
 
     // With 100 samples from [1, 10], we should see multiple different lengths
-    assertThat(observedLengths.size()).isGreaterThan(5);
+    assertThat(observedLengths).hasSizeGreaterThan(5);
   }
 
   @Test

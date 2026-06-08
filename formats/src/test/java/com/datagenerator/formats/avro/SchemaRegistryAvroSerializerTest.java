@@ -81,7 +81,7 @@ class SchemaRegistryAvroSerializerTest {
 
     byte[] bytes = serializer.serializeToBytes(record("name", "Alice"));
 
-    assertThat(bytes.length).isGreaterThan(5); // magic + id + at least 1 avro byte
+    assertThat(bytes).hasSizeGreaterThan(5); // magic + id + at least 1 avro byte
   }
 
   @Test
@@ -158,7 +158,8 @@ class SchemaRegistryAvroSerializerTest {
     when(registryClient.registerSchema(anyString(), anyString()))
         .thenThrow(new SchemaRegistryException("registry down"));
 
-    assertThatThrownBy(() -> serializer.serializeToBytes(record("f", "v")))
+    var rec = record("f", "v");
+    assertThatThrownBy(() -> serializer.serializeToBytes(rec))
         .isInstanceOf(SchemaRegistryException.class)
         .hasMessageContaining("registry down");
   }

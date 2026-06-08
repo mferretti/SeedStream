@@ -96,7 +96,9 @@ class ParentReferenceGeneratorTest {
   @Test
   void shouldThrowWhenStackIsEmpty() {
     try (var ctx = GeneratorContext.enter(factory, null)) {
-      assertThatThrownBy(() -> generator.generate(new Random(1L), new ParentReferenceType("id")))
+      var rnd = new Random(1L);
+      var refType = new ParentReferenceType("id");
+      assertThatThrownBy(() -> generator.generate(rnd, refType))
           .isInstanceOf(GeneratorException.class)
           .hasMessageContaining("ref[parent.id]");
     }
@@ -107,7 +109,9 @@ class ParentReferenceGeneratorTest {
     try (var ctx = GeneratorContext.enter(factory, null)) {
       GeneratorContext.pushParentRecord(Map.of("name", "Alice"));
       try {
-        assertThatThrownBy(() -> generator.generate(new Random(1L), new ParentReferenceType("id")))
+        var rnd = new Random(1L);
+        var refType = new ParentReferenceType("id");
+        assertThatThrownBy(() -> generator.generate(rnd, refType))
             .isInstanceOf(GeneratorException.class)
             .hasMessageContaining("id");
       } finally {
@@ -118,7 +122,9 @@ class ParentReferenceGeneratorTest {
 
   @Test
   void shouldThrowWhenNoContextActive() {
-    assertThatThrownBy(() -> generator.generate(new Random(1L), new ParentReferenceType("id")))
+    var rnd = new Random(1L);
+    var refType = new ParentReferenceType("id");
+    assertThatThrownBy(() -> generator.generate(rnd, refType))
         .isInstanceOf(GeneratorException.class);
   }
 }

@@ -25,6 +25,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class SecretResolverFactoryTest {
 
@@ -33,21 +36,11 @@ class SecretResolverFactoryTest {
     assertThat(SecretResolverFactory.create(null)).isSameAs(EnvSecretResolver.INSTANCE);
   }
 
-  @Test
-  void shouldReturnEnvResolverWhenResolverTypeIsNull() {
-    SecretsConfig config = new SecretsConfig(null, null, null, null, null, null, null, null);
-    assertThat(SecretResolverFactory.create(config)).isSameAs(EnvSecretResolver.INSTANCE);
-  }
-
-  @Test
-  void shouldReturnEnvResolverForEnvType() {
-    SecretsConfig config = new SecretsConfig("env", null, null, null, null, null, null, null);
-    assertThat(SecretResolverFactory.create(config)).isSameAs(EnvSecretResolver.INSTANCE);
-  }
-
-  @Test
-  void shouldReturnEnvResolverForEnvTypeUpperCase() {
-    SecretsConfig config = new SecretsConfig("ENV", null, null, null, null, null, null, null);
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"env", "ENV"})
+  void shouldReturnEnvResolverForNullOrEnvType(String type) {
+    SecretsConfig config = new SecretsConfig(type, null, null, null, null, null, null, null);
     assertThat(SecretResolverFactory.create(config)).isSameAs(EnvSecretResolver.INSTANCE);
   }
 

@@ -120,8 +120,9 @@ class CbeffSerializerTest {
 
     String creationDate = envelope.get("creation_date").asText();
     // ISO-8601 instant ends with Z
-    assertThat(creationDate).endsWith("Z");
-    assertThat(creationDate).matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z");
+    assertThat(creationDate)
+        .endsWith("Z")
+        .matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z");
   }
 
   @Test

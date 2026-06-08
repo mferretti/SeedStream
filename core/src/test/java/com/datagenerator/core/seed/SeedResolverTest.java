@@ -246,7 +246,7 @@ class SeedResolverTest {
   void shouldReturnDefaultSeedWhenConfigIsNull() {
     long seed = resolver.resolve(null);
 
-    assertThat(seed).isEqualTo(0L);
+    assertThat(seed).isZero();
   }
 
   @Test

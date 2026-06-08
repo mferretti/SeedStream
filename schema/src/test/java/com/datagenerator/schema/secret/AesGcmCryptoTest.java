@@ -45,7 +45,7 @@ class AesGcmCryptoTest {
   @Test
   void roundTripWithEmptyString() {
     String ciphertext = AesGcmCrypto.encrypt(key, "");
-    assertThat(AesGcmCrypto.decrypt(key, ciphertext)).isEqualTo("");
+    assertThat(AesGcmCrypto.decrypt(key, ciphertext)).isEmpty();
   }
 
   @Test

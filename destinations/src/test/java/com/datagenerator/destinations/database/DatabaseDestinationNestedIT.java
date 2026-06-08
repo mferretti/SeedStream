@@ -229,7 +229,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
     }
 
     assertThat(countRows("orders")).isEqualTo(1);
-    assertThat(countRows("line_items")).isEqualTo(0);
+    assertThat(countRows("line_items")).isZero();
   }
 
   @Test
@@ -248,7 +248,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
     assertThat(countRows("line_items")).isEqualTo(3);
     assertThat(countRowsWhere("line_items", "orders_id = 1")).isEqualTo(2);
     assertThat(countRowsWhere("line_items", "orders_id = 2")).isEqualTo(1);
-    assertThat(countRowsWhere("line_items", "orders_id = 3")).isEqualTo(0);
+    assertThat(countRowsWhere("line_items", "orders_id = 3")).isZero();
   }
 
   @Test

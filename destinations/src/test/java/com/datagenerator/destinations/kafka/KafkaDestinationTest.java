@@ -40,7 +40,8 @@ class KafkaDestinationTest {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder().bootstrap(null).topic("test-topic").build();
 
-    assertThatThrownBy(() -> new KafkaDestination(config, new JsonSerializer()))
+    var serializer = new JsonSerializer();
+    assertThatThrownBy(() -> new KafkaDestination(config, serializer))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("bootstrap");
   }
@@ -50,7 +51,8 @@ class KafkaDestinationTest {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder().bootstrap("   ").topic("test-topic").build();
 
-    assertThatThrownBy(() -> new KafkaDestination(config, new JsonSerializer()))
+    var serializer = new JsonSerializer();
+    assertThatThrownBy(() -> new KafkaDestination(config, serializer))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("bootstrap");
   }
@@ -60,7 +62,8 @@ class KafkaDestinationTest {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder().bootstrap("localhost:9092").topic(null).build();
 
-    assertThatThrownBy(() -> new KafkaDestination(config, new JsonSerializer()))
+    var serializer = new JsonSerializer();
+    assertThatThrownBy(() -> new KafkaDestination(config, serializer))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("topic");
   }
@@ -70,7 +73,8 @@ class KafkaDestinationTest {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder().bootstrap("localhost:9092").topic("").build();
 
-    assertThatThrownBy(() -> new KafkaDestination(config, new JsonSerializer()))
+    var serializer = new JsonSerializer();
+    assertThatThrownBy(() -> new KafkaDestination(config, serializer))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("topic");
   }
@@ -204,7 +208,8 @@ class KafkaDestinationTest {
 
     KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
 
-    assertThatThrownBy(() -> dest.write(Map.of("key", "value")))
+    var record = Map.of("key", "value");
+    assertThatThrownBy(() -> dest.write(record))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("failed after 2 attempt");
 

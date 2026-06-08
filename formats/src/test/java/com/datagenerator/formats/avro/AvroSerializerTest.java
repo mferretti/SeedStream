@@ -57,8 +57,7 @@ class AvroSerializerTest {
 
     String result = serializer.serialize(record);
 
-    assertThat(result).isNotBlank();
-    assertThat(result).matches("^[A-Za-z0-9+/]+=*$");
+    assertThat(result).isNotBlank().matches("^[A-Za-z0-9+/]+=*$");
     byte[] binary = Base64.getDecoder().decode(result);
     assertThat(binary).isNotEmpty();
   }
@@ -70,7 +69,7 @@ class AvroSerializerTest {
 
     GenericRecord decoded = roundTrip(record);
 
-    assertThat(decoded.get("name").toString()).isEqualTo("Alice");
+    assertThat(decoded.get("name")).hasToString("Alice");
   }
 
   @Test
@@ -171,7 +170,7 @@ class AvroSerializerTest {
 
     GenericRecord decoded = roundTrip(record);
 
-    assertThat(decoded.get("name").toString()).isEqualTo("Bob");
+    assertThat(decoded.get("name")).hasToString("Bob");
     assertThat(decoded.get("middle_name")).isNull();
   }
 
@@ -184,9 +183,9 @@ class AvroSerializerTest {
 
     GenericRecord decoded = roundTrip(record);
 
-    assertThat(decoded.get("first_name").toString()).isEqualTo("Alice");
-    assertThat(decoded.get("_123id").toString()).isEqualTo("XYZ");
-    assertThat(decoded.get("valid_field").toString()).isEqualTo("ok");
+    assertThat(decoded.get("first_name")).hasToString("Alice");
+    assertThat(decoded.get("_123id")).hasToString("XYZ");
+    assertThat(decoded.get("valid_field")).hasToString("ok");
   }
 
   @Test
@@ -218,11 +217,11 @@ class AvroSerializerTest {
     List<GenericRecord> results = roundTripAll(List.of(r1, r2, r3));
 
     assertThat(results).hasSize(3);
-    assertThat(results.get(0).get("name").toString()).isEqualTo("Alice");
+    assertThat(results.get(0).get("name")).hasToString("Alice");
     assertThat(results.get(0).get("age")).isEqualTo(30);
-    assertThat(results.get(1).get("name").toString()).isEqualTo("Bob");
+    assertThat(results.get(1).get("name")).hasToString("Bob");
     assertThat(results.get(1).get("age")).isEqualTo(25);
-    assertThat(results.get(2).get("name").toString()).isEqualTo("Carol");
+    assertThat(results.get(2).get("name")).hasToString("Carol");
     assertThat(results.get(2).get("age")).isEqualTo(42);
   }
 

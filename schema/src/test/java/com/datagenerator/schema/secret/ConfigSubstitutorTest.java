@@ -37,7 +37,7 @@ class ConfigSubstitutorTest {
 
   @Test
   void shouldReturnEmptyStringUnchanged() {
-    assertThat(ConfigSubstitutor.substitute("", mockResolver)).isEqualTo("");
+    assertThat(ConfigSubstitutor.substitute("", mockResolver)).isEmpty();
   }
 
   @Test

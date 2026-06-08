@@ -96,9 +96,10 @@ class DatafakerGeneratorTest {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext("italy", nameType);
 
-    assertThat(name).isNotNull();
-    assertThat(name).isNotEmpty();
-    assertThat(name).matches("^[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]+$"); // Italian name characters
+    assertThat(name)
+        .isNotNull()
+        .isNotEmpty()
+        .matches("^[A-Za-zÀ-ÖØ-öø-ÿ\\s'-]+$"); // Italian name characters
   }
 
   @Test
@@ -106,9 +107,10 @@ class DatafakerGeneratorTest {
     CustomDatafakerType emailType = new CustomDatafakerType("email");
     String email = (String) generateWithContext("usa", emailType);
 
-    assertThat(email).isNotNull();
-    assertThat(email).contains("@");
-    assertThat(email).matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}$");
+    assertThat(email)
+        .isNotNull()
+        .contains("@")
+        .matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}$");
   }
 
   @Test
@@ -116,10 +118,8 @@ class DatafakerGeneratorTest {
     CustomDatafakerType phoneType = new CustomDatafakerType("phone_number");
     String phone = (String) generateWithContext("usa", phoneType);
 
-    assertThat(phone).isNotNull();
-    assertThat(phone).isNotEmpty();
     // Phone numbers can have various formats with digits, spaces, parentheses, hyphens
-    assertThat(phone).matches("^[\\d\\s()+-]+$");
+    assertThat(phone).isNotNull().isNotEmpty().matches("^[\\d\\s()+-]+$");
   }
 
   @Test
@@ -127,8 +127,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType addressType = new CustomDatafakerType("address");
     String address = (String) generateWithContext("usa", addressType);
 
-    assertThat(address).isNotNull();
-    assertThat(address).isNotEmpty();
+    assertThat(address).isNotNull().isNotEmpty();
   }
 
   @Test
@@ -136,8 +135,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType companyType = new CustomDatafakerType("company");
     String company = (String) generateWithContext("usa", companyType);
 
-    assertThat(company).isNotNull();
-    assertThat(company).isNotEmpty();
+    assertThat(company).isNotNull().isNotEmpty();
   }
 
   @Test
@@ -145,8 +143,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType urlType = new CustomDatafakerType("url");
     String url = (String) generateWithContext("usa", urlType);
 
-    assertThat(url).isNotNull();
-    assertThat(url).matches("^https?://.*");
+    assertThat(url).isNotNull().matches("^https?://.*");
   }
 
   @Test
@@ -154,8 +151,9 @@ class DatafakerGeneratorTest {
     CustomDatafakerType uuidType = new CustomDatafakerType("uuid");
     String uuid = (String) generateWithContext("usa", uuidType);
 
-    assertThat(uuid).isNotNull();
-    assertThat(uuid).matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+    assertThat(uuid)
+        .isNotNull()
+        .matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
   }
 
   @Test
@@ -163,8 +161,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType ipv4Type = new CustomDatafakerType("ipv4");
     String ipv4 = (String) generateWithContext("usa", ipv4Type);
 
-    assertThat(ipv4).isNotNull();
-    assertThat(ipv4).matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
+    assertThat(ipv4).isNotNull().matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
   }
 
   @Test
@@ -172,8 +169,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType isbnType = new CustomDatafakerType("isbn");
     String isbn = (String) generateWithContext("usa", isbnType);
 
-    assertThat(isbn).isNotNull();
-    assertThat(isbn).matches("^\\d{13}$"); // ISBN-13 format
+    assertThat(isbn).isNotNull().matches("^\\d{13}$"); // ISBN-13 format
   }
 
   @Test
@@ -181,9 +177,10 @@ class DatafakerGeneratorTest {
     CustomDatafakerType ibanType = new CustomDatafakerType("iban");
     String iban = (String) generateWithContext("germany", ibanType);
 
-    assertThat(iban).isNotNull();
-    assertThat(iban).isNotEmpty();
-    assertThat(iban).matches("^[A-Z]{2}[0-9]{2}[A-Z0-9]+$"); // Basic IBAN format
+    assertThat(iban)
+        .isNotNull()
+        .isNotEmpty()
+        .matches("^[A-Z]{2}[0-9]{2}[A-Z0-9]+$"); // Basic IBAN format
   }
 
   @Test
@@ -192,8 +189,7 @@ class DatafakerGeneratorTest {
     String name = (String) generateWithContext("unknown_locale_12345", nameType);
 
     // Should generate valid name (English fallback)
-    assertThat(name).isNotNull();
-    assertThat(name).isNotEmpty();
+    assertThat(name).isNotNull().isNotEmpty();
   }
 
   @Test
@@ -202,8 +198,7 @@ class DatafakerGeneratorTest {
     String name = (String) generateWithContext(null, nameType);
 
     // Should generate valid name (English fallback)
-    assertThat(name).isNotNull();
-    assertThat(name).isNotEmpty();
+    assertThat(name).isNotNull().isNotEmpty();
   }
 
   @ParameterizedTest
@@ -224,8 +219,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType type = new CustomDatafakerType(typeName);
     String value = (String) generateWithContext("usa", type);
 
-    assertThat(value).isNotNull();
-    assertThat(value).isNotEmpty();
+    assertThat(value).isNotNull().isNotEmpty();
   }
 
   @Test
@@ -267,8 +261,7 @@ class DatafakerGeneratorTest {
     CustomDatafakerType priceType = new CustomDatafakerType("price");
     String price = (String) generateWithContext("usa", priceType);
 
-    assertThat(price).isNotNull();
-    assertThat(price).isNotEmpty(); // Price format can vary
+    assertThat(price).isNotNull().isNotEmpty(); // Price format can vary
   }
 
   @Test
@@ -276,7 +269,8 @@ class DatafakerGeneratorTest {
     CustomDatafakerType macType = new CustomDatafakerType("mac_address");
     String mac = (String) generateWithContext("usa", macType);
 
-    assertThat(mac).isNotNull();
-    assertThat(mac).matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"); // MAC address format
+    assertThat(mac)
+        .isNotNull()
+        .matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"); // MAC address format
   }
 }
