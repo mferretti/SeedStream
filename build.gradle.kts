@@ -112,9 +112,9 @@ subprojects {
             "org.apache.logging.log4j:log4j-core:2.26.0",
             "org.apache.logging.log4j:log4j-api:2.26.0",
             // commons-lang3: compileClasspath resolves 3.14.0 (from AWS SDK transitive)
-            // while runtimeClasspath correctly overrides to 3.18.0. Force 3.18.0 everywhere
+            // while runtimeClasspath correctly overrides to 3.20.0. Force 3.20.0 everywhere
             // so OWASP DC never sees 3.14.0 on any configuration.
-            "org.apache.commons:commons-lang3:3.18.0"
+            "org.apache.commons:commons-lang3:3.20.0"
         )
     }
 

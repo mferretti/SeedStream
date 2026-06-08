@@ -20,7 +20,7 @@ jakarta-el = "4.0.2"
 # I/O & Serialization
 opencsv = "5.12.0"
 protobuf = "4.35.0"  # Updated from 3.25.5 (major version upgrade)
-avro = "1.12.0"
+avro = "1.12.1"
 
 # Messaging
 kafka = "4.3.0"
@@ -38,10 +38,10 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.28.0"
+aws-sdk = "2.46.5"
 azure-keyvault-secrets = "4.11.0"
 azure-identity = "1.18.3"
-gcp-secretmanager = "2.57.0"
+gcp-secretmanager = "2.93.0"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.0"
