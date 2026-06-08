@@ -48,8 +48,10 @@ profiling-output/
 # Internal planning documents (work in progress, not for publication)
 docs/DATABASE-DESTINATION-PLANNING.md
 
-# Claude Code — machine-specific permissions (local only)
+# Claude Code — machine-specific permissions and generated knowledge graph (local only)
 .claude/settings.local.json
+.claude/skills/
+graphify-out/
 
 # SonarQube scanner working directory (local artifacts)
 .scannerwork/
