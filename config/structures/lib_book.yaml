@@ -1,7 +1,7 @@
 name: lib_book
 data:
   id:
-    datatype: int[1..9999]
+    datatype: int[1..500]
   title:
     datatype: lorem_sentence
   isbn:
@@ -18,3 +18,9 @@ data:
     datatype: date[1900-01-01..2025-12-31]
   author_id:
     datatype: ref[parent.id]
+  publisher_id:
+    datatype: ref[lib_publication.id, 1..20]
+  lib_book_sales:
+    datatype: array[object[lib_book_sale], 0..10]
+  lib_supplies:
+    datatype: array[object[lib_supply], 0..3]

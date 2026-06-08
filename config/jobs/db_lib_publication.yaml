@@ -1,0 +1,13 @@
+source: lib_publication.yaml
+type: database
+seed:
+  type: embedded
+  value: 42
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/librarydb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"
+  table: "lib_publications"
+  batch_size: 20
+  pool_size: 2
+  transaction_strategy: per_batch

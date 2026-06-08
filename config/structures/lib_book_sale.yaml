@@ -1,0 +1,16 @@
+name: lib_book_sale
+data:
+  id:
+    datatype: int[1..100000]
+  sale_date:
+    datatype: date[2015-01-01..2025-12-31]
+  quantity:
+    datatype: int[1..50]
+  unit_price:
+    datatype: decimal[5.00..99.99]
+  channel:
+    datatype: enum[ONLINE,IN_STORE,WHOLESALE]
+  customer_name:
+    datatype: full_name
+  book_id:
+    datatype: ref[parent.id]

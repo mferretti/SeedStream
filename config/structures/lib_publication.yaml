@@ -1,0 +1,12 @@
+name: lib_publication
+data:
+  id:
+    datatype: int[1..20]
+  name:
+    datatype: company
+  founded_year:
+    datatype: int[1800..2024]
+  country:
+    datatype: country
+  website:
+    datatype: url

@@ -709,6 +709,9 @@ public class ExecuteCommand implements Callable<Integer> {
     if (conf.has("retry_delay_ms")) {
       builder.retryDelayMs(conf.get("retry_delay_ms").asLong());
     }
+    if (conf.has("inject_parent_fk")) {
+      builder.injectParentFk(conf.get("inject_parent_fk").asBoolean());
+    }
 
     DatabaseDestinationConfig dbConfig = builder.build();
     log.info(

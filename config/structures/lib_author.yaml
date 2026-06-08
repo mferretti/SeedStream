@@ -12,5 +12,5 @@ data:
     datatype: country
   email:
     datatype: email
-  books:
+  lib_books:
     datatype: array[object[lib_book], 1..5]

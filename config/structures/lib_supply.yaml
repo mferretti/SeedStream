@@ -1,0 +1,18 @@
+name: lib_supply
+data:
+  id:
+    datatype: int[1..10000]
+  supply_date:
+    datatype: date[2010-01-01..2025-12-31]
+  quantity:
+    datatype: int[10..1000]
+  cost_per_unit:
+    datatype: decimal[2.00..50.00]
+  supplier_name:
+    datatype: company
+  status:
+    datatype: enum[ORDERED,RECEIVED,CANCELLED,RETURNED]
+  book_id:
+    datatype: ref[parent.id]
+  publisher_id:
+    datatype: ref[lib_publication.id, 1..20]
