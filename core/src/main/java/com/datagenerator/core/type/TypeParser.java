@@ -80,7 +80,7 @@ public class TypeParser {
     m = REF_PATTERN.matcher(trimmed);
     if (m.matches()) return new ReferenceType(m.group(1), m.group(2), null, null, false);
     m = ARRAY_PATTERN.matcher(trimmed);
-    if (m.matches()) return parseArray(m, typeString);
+    if (m.matches()) return parseArray(m);
 
     if (DatafakerRegistry.isRegistered(trimmed)) {
       return new CustomDatafakerType(DatafakerRegistry.getCanonicalName(trimmed));
@@ -121,7 +121,7 @@ public class TypeParser {
     return new ReferenceType(m.group(1), m.group(2), min, max, false);
   }
 
-  private DataType parseArray(Matcher m, String typeString) {
+  private DataType parseArray(Matcher m) {
     int minLength = Integer.parseInt(m.group(2));
     int maxLength = Integer.parseInt(m.group(3));
     if (minLength < 0 || maxLength < minLength) {

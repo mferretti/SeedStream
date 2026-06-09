@@ -35,6 +35,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AzureKeyVaultResolverTest {
 
   private static final String SECRET_NAME = "my-secret";
+  private static final String MY_PASSWORD = "my-password";
+  private static final String API_PORT = "api-port";
+  private static final String MISSING_SECRET = "missing-secret";
+  private static final String FORBIDDEN_SECRET = "forbidden-secret";
+  private static final String NULL_SECRET = "null-secret";
+  private static final String DB_PASS = "db-pass";
 
   @Mock private SecretClient client;
 
@@ -49,16 +55,16 @@ class AzureKeyVaultResolverTest {
 
   @Test
   void shouldResolvePlainSecret() {
-    KeyVaultSecret secret = new KeyVaultSecret("my-password", "s3cr3t!");
-    when(client.getSecret("my-password")).thenReturn(secret);
+    KeyVaultSecret secret = new KeyVaultSecret(MY_PASSWORD, "s3cr3t!");
+    when(client.getSecret(MY_PASSWORD)).thenReturn(secret);
 
-    assertThat(resolver.resolve("my-password")).isEqualTo("s3cr3t!");
+    assertThat(resolver.resolve(MY_PASSWORD)).isEqualTo("s3cr3t!");
   }
 
   @Test
   void shouldResolveSecretWithVersion() {
-    KeyVaultSecret secret = new KeyVaultSecret("my-password", "versioned-value");
-    when(client.getSecret("my-password", "abc123")).thenReturn(secret);
+    KeyVaultSecret secret = new KeyVaultSecret(MY_PASSWORD, "versioned-value");
+    when(client.getSecret(MY_PASSWORD, "abc123")).thenReturn(secret);
 
     assertThat(resolver.resolve("my-password/abc123")).isEqualTo("versioned-value");
   }
@@ -74,43 +80,43 @@ class AzureKeyVaultResolverTest {
 
   @Test
   void shouldResolveNumericSecret() {
-    KeyVaultSecret secret = new KeyVaultSecret("api-port", "8443");
-    when(client.getSecret("api-port")).thenReturn(secret);
+    KeyVaultSecret secret = new KeyVaultSecret(API_PORT, "8443");
+    when(client.getSecret(API_PORT)).thenReturn(secret);
 
-    assertThat(resolver.resolve("api-port")).isEqualTo("8443");
+    assertThat(resolver.resolve(API_PORT)).isEqualTo("8443");
   }
 
   // ── Error handling ─────────────────────────────────────────────────────────
 
   @Test
   void shouldThrowSecretResolutionExceptionOnResourceNotFound() {
-    when(client.getSecret("missing-secret"))
+    when(client.getSecret(MISSING_SECRET))
         .thenThrow(new ResourceNotFoundException("Secret not found", null));
 
-    assertThatThrownBy(() -> resolver.resolve("missing-secret"))
+    assertThatThrownBy(() -> resolver.resolve(MISSING_SECRET))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("not found")
-        .hasMessageContaining("missing-secret");
+        .hasMessageContaining(MISSING_SECRET);
   }
 
   @Test
   void shouldThrowSecretResolutionExceptionOnHttpError() {
-    when(client.getSecret("forbidden-secret"))
+    when(client.getSecret(FORBIDDEN_SECRET))
         .thenThrow(new HttpResponseException("Forbidden", null));
 
-    assertThatThrownBy(() -> resolver.resolve("forbidden-secret"))
+    assertThatThrownBy(() -> resolver.resolve(FORBIDDEN_SECRET))
         .isInstanceOf(SecretResolutionException.class)
-        .hasMessageContaining("forbidden-secret");
+        .hasMessageContaining(FORBIDDEN_SECRET);
   }
 
   @Test
   void shouldThrowWhenSecretValueIsNull() {
-    KeyVaultSecret secret = new KeyVaultSecret("null-secret", null);
-    when(client.getSecret("null-secret")).thenReturn(secret);
+    KeyVaultSecret secret = new KeyVaultSecret(NULL_SECRET, null);
+    when(client.getSecret(NULL_SECRET)).thenReturn(secret);
 
-    assertThatThrownBy(() -> resolver.resolve("null-secret"))
+    assertThatThrownBy(() -> resolver.resolve(NULL_SECRET))
         .isInstanceOf(SecretResolutionException.class)
-        .hasMessageContaining("null-secret");
+        .hasMessageContaining(NULL_SECRET);
   }
 
   @Test
@@ -127,13 +133,13 @@ class AzureKeyVaultResolverTest {
 
   @Test
   void shouldSplitNameAndVersionAtFirstSlash() {
-    KeyVaultSecret secret = new KeyVaultSecret("db-pass", "value-v2");
-    when(client.getSecret("db-pass", "v2")).thenReturn(secret);
+    KeyVaultSecret secret = new KeyVaultSecret(DB_PASS, "value-v2");
+    when(client.getSecret(DB_PASS, "v2")).thenReturn(secret);
 
     assertThat(resolver.resolve("db-pass/v2")).isEqualTo("value-v2");
 
-    verify(client).getSecret("db-pass", "v2");
-    verify(client, never()).getSecret("db-pass");
+    verify(client).getSecret(DB_PASS, "v2");
+    verify(client, never()).getSecret(DB_PASS);
   }
 
   // ── Constructor validation ──────────────────────────────────────────────────
@@ -167,12 +173,12 @@ class AzureKeyVaultResolverTest {
 
   @Test
   void shouldUseLatestVersionWhenNoSlash() {
-    KeyVaultSecret secret = new KeyVaultSecret("db-pass", "latest-value");
-    when(client.getSecret("db-pass")).thenReturn(secret);
+    KeyVaultSecret secret = new KeyVaultSecret(DB_PASS, "latest-value");
+    when(client.getSecret(DB_PASS)).thenReturn(secret);
 
-    resolver.resolve("db-pass");
+    resolver.resolve(DB_PASS);
 
-    verify(client).getSecret("db-pass");
-    verify(client, never()).getSecret(eq("db-pass"), anyString());
+    verify(client).getSecret(DB_PASS);
+    verify(client, never()).getSecret(eq(DB_PASS), anyString());
   }
 }

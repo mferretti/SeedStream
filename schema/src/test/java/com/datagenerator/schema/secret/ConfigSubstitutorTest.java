@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 
 class ConfigSubstitutorTest {
 
-  private final SecretResolver mockResolver = path -> "resolved:" + path;
+  private static final SecretResolver mockResolver = path -> "resolved:" + path;
 
   @Test
   void shouldReturnNullForNullInput() {

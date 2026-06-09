@@ -58,6 +58,7 @@ public class LocaleMapper {
    * @param geolocation Geolocation name (e.g., "italy", "usa", "france") or null
    * @return Java Locale (defaults to US English if unknown or null)
    */
+  @SuppressWarnings("java:S1479")
   public static Locale map(String geolocation) {
     if (geolocation == null || geolocation.isBlank()) {
       log.debug("No geolocation specified, defaulting to US English");

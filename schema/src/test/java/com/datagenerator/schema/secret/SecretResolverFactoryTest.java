@@ -52,7 +52,7 @@ class SecretResolverFactoryTest {
   void shouldReturnVaultResolverWhenVaultTypeWithAddr() {
     SecretsConfig config =
         new SecretsConfig(
-            "vault", "https://vault.example.com:8200", null, null, null, null, null, null);
+            TYPE_VAULT, "https://vault.example.com:8200", null, null, null, null, null, null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(VaultSecretResolver.class);
   }
 
@@ -60,7 +60,7 @@ class SecretResolverFactoryTest {
   void shouldReturnVaultResolverWithNamespace() {
     SecretsConfig config =
         new SecretsConfig(
-            "vault", "https://vault.example.com:8200", "myteam", null, null, null, null, null);
+            TYPE_VAULT, "https://vault.example.com:8200", "myteam", null, null, null, null, null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(VaultSecretResolver.class);
   }
 

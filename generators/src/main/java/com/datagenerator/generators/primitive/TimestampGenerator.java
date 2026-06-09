@@ -79,8 +79,7 @@ public class TimestampGenerator implements DataGenerator {
     }
 
     // Generate random seconds offset — clamp to include the end timestamp
-    long randomSeconds =
-        Math.min((long) (random.nextDouble() * (secondsBetween + 1)), secondsBetween);
+    long randomSeconds = random.nextLong(secondsBetween + 1);
 
     return startTimestamp.plusSeconds(randomSeconds);
   }

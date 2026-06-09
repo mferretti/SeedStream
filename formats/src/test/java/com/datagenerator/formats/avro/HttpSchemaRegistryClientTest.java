@@ -35,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class HttpSchemaRegistryClientTest {
 
   private static final String HEADER_AUTHORIZATION = "Authorization";
+  private static final String REGISTRY_URL = "http://registry:8081";
 
   @Mock private HttpClient httpClient;
 
@@ -46,7 +47,7 @@ class HttpSchemaRegistryClientTest {
 
   @BeforeEach
   void setUp() {
-    client = new HttpSchemaRegistryClient("http://registry:8081", httpClient);
+    client = new HttpSchemaRegistryClient(REGISTRY_URL, httpClient);
   }
 
   @SuppressWarnings("unchecked")
@@ -169,28 +170,29 @@ class HttpSchemaRegistryClientTest {
   @Test
   void bearerAuthHeaderSentWhenConfigured() throws Exception {
     HttpSchemaRegistryClient bearerClient =
-        new HttpSchemaRegistryClient("http://registry:8081", httpClient, "Bearer my-token");
+        new HttpSchemaRegistryClient(REGISTRY_URL, httpClient, "Bearer my-token");
     stubResponse(200, "{\"id\":1}");
 
     bearerClient.registerSchema("subj", "{}");
 
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     verify(httpClient).send(captor.capture(), any());
-    assertThat(captor.getValue().headers().firstValue("Authorization")).hasValue("Bearer my-token");
+    assertThat(captor.getValue().headers().firstValue(HEADER_AUTHORIZATION))
+        .hasValue("Bearer my-token");
   }
 
   @Test
   void basicAuthHeaderSentWhenConfigured() throws Exception {
     // "user:pass" base64 = "dXNlcjpwYXNz"
     HttpSchemaRegistryClient basicClient =
-        new HttpSchemaRegistryClient("http://registry:8081", httpClient, "Basic dXNlcjpwYXNz");
+        new HttpSchemaRegistryClient(REGISTRY_URL, httpClient, "Basic dXNlcjpwYXNz");
     stubResponse(200, "{\"id\":2}");
 
     basicClient.registerSchema("subj", "{}");
 
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     verify(httpClient).send(captor.capture(), any());
-    assertThat(captor.getValue().headers().firstValue("Authorization"))
+    assertThat(captor.getValue().headers().firstValue(HEADER_AUTHORIZATION))
         .hasValue("Basic dXNlcjpwYXNz");
   }
 
@@ -202,7 +204,7 @@ class HttpSchemaRegistryClientTest {
 
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     verify(httpClient).send(captor.capture(), any());
-    assertThat(captor.getValue().headers().firstValue("Authorization")).isEmpty();
+    assertThat(captor.getValue().headers().firstValue(HEADER_AUTHORIZATION)).isEmpty();
   }
 
   // ── Constructor validation ────────────────────────────────────────────────

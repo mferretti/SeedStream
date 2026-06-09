@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class JobConfigParserTest {
+  private static final String JOB_FILE = "job.yaml";
+
   private JobConfigParser parser;
 
   @TempDir Path tempDir;
@@ -52,7 +54,7 @@ class JobConfigParserTest {
               topic: addresses
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -77,7 +79,7 @@ class JobConfigParserTest {
               path: output/users
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -99,7 +101,7 @@ class JobConfigParserTest {
               url: jdbc:postgresql://localhost/db
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -125,7 +127,7 @@ class JobConfigParserTest {
               topic: events
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -147,7 +149,7 @@ class JobConfigParserTest {
               path: output/data
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -207,7 +209,7 @@ class JobConfigParserTest {
               topic: events
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -231,7 +233,7 @@ class JobConfigParserTest {
               path: output/data
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -255,7 +257,7 @@ class JobConfigParserTest {
               jdbc_url: jdbc:postgresql://localhost/mydb
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -281,7 +283,7 @@ class JobConfigParserTest {
               topic: events
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -304,7 +306,7 @@ class JobConfigParserTest {
               path: output/data
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -325,7 +327,7 @@ class JobConfigParserTest {
               jdbc_url: jdbc:postgresql://localhost/mydb
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);
@@ -350,7 +352,7 @@ class JobConfigParserTest {
               jdbc_url: jdbc:postgresql://localhost/mydb
             """;
 
-    Path file = tempDir.resolve("job.yaml");
+    Path file = tempDir.resolve(JOB_FILE);
     Files.writeString(file, yaml);
 
     JobConfig config = parser.parse(file);

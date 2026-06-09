@@ -189,8 +189,8 @@ class ObjectGeneratorTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> result = (Map<String, Object>) generateWithContext(objectType, random);
 
-    assertThat(result).containsOnlyKeys("status", "code");
-    assertThat(result.get("status")).isIn("ACTIVE", "INACTIVE", "PENDING");
+    assertThat(result).containsOnlyKeys(F_STATUS, "code");
+    assertThat(result.get(F_STATUS)).isIn(V_ACTIVE, "INACTIVE", "PENDING");
   }
 
   @Test
@@ -215,17 +215,17 @@ class ObjectGeneratorTest {
   void shouldGenerateDeeplyNestedObjects() {
     // level3: {value: int[1..10]}
     Map<String, DataType> level3 = new LinkedHashMap<>();
-    level3.put("value", new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"));
+    level3.put(F_VALUE, new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"));
     loader.addStructure("level3", level3);
 
     // level2: {nested: object[level3]}
     Map<String, DataType> level2 = new LinkedHashMap<>();
-    level2.put("nested", new ObjectType("level3"));
+    level2.put(F_NESTED, new ObjectType("level3"));
     loader.addStructure("level2", level2);
 
     // level1: {nested: object[level2]}
     Map<String, DataType> level1 = new LinkedHashMap<>();
-    level1.put("nested", new ObjectType("level2"));
+    level1.put(F_NESTED, new ObjectType("level2"));
     loader.addStructure("level1", level1);
 
     ObjectType objectType = new ObjectType("level1");
@@ -234,14 +234,14 @@ class ObjectGeneratorTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> result = (Map<String, Object>) generateWithContext(objectType, random);
 
-    assertThat(result).containsOnlyKeys("nested");
+    assertThat(result).containsOnlyKeys(F_NESTED);
     @SuppressWarnings("unchecked")
-    Map<String, Object> level2Result = (Map<String, Object>) result.get("nested");
-    assertThat(level2Result).containsOnlyKeys("nested");
+    Map<String, Object> level2Result = (Map<String, Object>) result.get(F_NESTED);
+    assertThat(level2Result).containsOnlyKeys(F_NESTED);
     @SuppressWarnings("unchecked")
-    Map<String, Object> level3Result = (Map<String, Object>) level2Result.get("nested");
-    assertThat(level3Result).containsOnlyKeys("value");
-    assertThat(level3Result.get("value")).isInstanceOf(Integer.class);
+    Map<String, Object> level3Result = (Map<String, Object>) level2Result.get(F_NESTED);
+    assertThat(level3Result).containsOnlyKeys(F_VALUE);
+    assertThat(level3Result.get(F_VALUE)).isInstanceOf(Integer.class);
   }
 
   @Test
@@ -308,12 +308,10 @@ class ObjectGeneratorTest {
 
   @Test
   void shouldPropagateScalarFieldsToNestedParentRefGenerators() {
-    // book: {author_id: ref[parent.id]} — copies id from enclosing author record
     Map<String, DataType> bookFields = new LinkedHashMap<>();
     bookFields.put("author_id", new ParentReferenceType("id"));
     loader.addStructure("book", bookFields);
 
-    // author: {id: int[1..100], books: array[object[book], 1..1]}
     Map<String, DataType> authorFields = new LinkedHashMap<>();
     authorFields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"));
     authorFields.put("books", new ArrayType(new ObjectType("book"), 1, 1));

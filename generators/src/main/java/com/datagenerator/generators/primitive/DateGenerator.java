@@ -66,7 +66,7 @@ public class DateGenerator implements DataGenerator {
     }
 
     // Generate random days offset — clamp to include the end date
-    long randomDays = Math.min((long) (random.nextDouble() * (daysBetween + 1)), daysBetween);
+    long randomDays = random.nextLong(daysBetween + 1);
 
     return startDate.plusDays(randomDays);
   }

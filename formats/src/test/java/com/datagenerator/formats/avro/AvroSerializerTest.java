@@ -39,6 +39,8 @@ import org.junit.jupiter.api.Test;
 
 class AvroSerializerTest {
 
+  private static final String ALICE = "Alice";
+
   private AvroSerializer serializer;
 
   @BeforeEach
@@ -53,9 +55,9 @@ class AvroSerializerTest {
 
   @Test
   void shouldSerializeSimpleStringRecord() {
-    Map<String, Object> record = Map.of("name", "Alice", "city", "Rome");
+    Map<String, Object> data = Map.of("name", ALICE, "city", "Rome");
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank().matches("^[A-Za-z0-9+/]+=*$");
     byte[] binary = Base64.getDecoder().decode(result);
@@ -64,50 +66,50 @@ class AvroSerializerTest {
 
   @Test
   void shouldRoundTripStringField() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Alice");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", ALICE);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
-    assertThat(decoded.get("name")).hasToString("Alice");
+    assertThat(decoded.get("name")).hasToString(ALICE);
   }
 
   @Test
   void shouldRoundTripIntegerField() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("count", 42);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("count", 42);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     assertThat(decoded.get("count")).isEqualTo(42);
   }
 
   @Test
   void shouldRoundTripLongField() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", 9_999_999_999L);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", 9_999_999_999L);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     assertThat(decoded.get("id")).isEqualTo(9_999_999_999L);
   }
 
   @Test
   void shouldRoundTripBooleanField() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("active", true);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("active", true);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     assertThat(decoded.get("active")).isEqualTo(true);
   }
 
   @Test
   void shouldRoundTripBigDecimalAsDouble() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("price", new BigDecimal("99.95"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("price", new BigDecimal("99.95"));
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     assertThat((double) decoded.get("price"))
         .isCloseTo(99.95, org.assertj.core.data.Offset.offset(0.001));
@@ -116,10 +118,10 @@ class AvroSerializerTest {
   @Test
   void shouldRoundTripLocalDateAsDateLogicalType() throws Exception {
     LocalDate date = LocalDate.of(2024, 3, 15);
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("dob", date);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("dob", date);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     // date logical type stored as int (days since epoch)
     int daysSinceEpoch = (int) decoded.get("dob");
@@ -129,10 +131,10 @@ class AvroSerializerTest {
   @Test
   void shouldRoundTripInstantAsTimestampMillis() throws Exception {
     Instant ts = Instant.ofEpochMilli(1_700_000_000_000L);
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("created_at", ts);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("created_at", ts);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     long millis = (long) decoded.get("created_at");
     assertThat(millis).isEqualTo(ts.toEpochMilli());
@@ -140,10 +142,10 @@ class AvroSerializerTest {
 
   @Test
   void shouldSerializeListAsAvroArray() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("tags", List.of("a", "b", "c"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("tags", List.of("a", "b", "c"));
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     Object tagsObj = decoded.get("tags");
     assertThat(tagsObj).isNotNull();
@@ -153,10 +155,10 @@ class AvroSerializerTest {
   @Test
   void shouldSerializeNestedMapAsJsonString() throws Exception {
     Map<String, Object> nested = Map.of("street", "Via Roma", "number", 1);
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("address", nested);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("address", nested);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     String addressStr = decoded.get("address").toString();
     assertThat(addressStr).contains("Via Roma");
@@ -164,11 +166,11 @@ class AvroSerializerTest {
 
   @Test
   void shouldHandleNullValues() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Bob");
-    record.put("middle_name", null);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Bob");
+    data.put("middle_name", null);
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
     assertThat(decoded.get("name")).hasToString("Bob");
     assertThat(decoded.get("middle_name")).isNull();
@@ -176,26 +178,26 @@ class AvroSerializerTest {
 
   @Test
   void shouldSanitizeInvalidFieldNames() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("first-name", "Alice");
-    record.put("123id", "XYZ");
-    record.put("valid_field", "ok");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("first-name", ALICE);
+    data.put("123id", "XYZ");
+    data.put("valid_field", "ok");
 
-    GenericRecord decoded = roundTrip(record);
+    GenericRecord decoded = roundTrip(data);
 
-    assertThat(decoded.get("first_name")).hasToString("Alice");
+    assertThat(decoded.get("first_name")).hasToString(ALICE);
     assertThat(decoded.get("_123id")).hasToString("XYZ");
     assertThat(decoded.get("valid_field")).hasToString("ok");
   }
 
   @Test
   void shouldProduceDeterministicOutputForSameInput() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", 1);
-    record.put("name", "Alice");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", 1);
+    data.put("name", ALICE);
 
-    String first = serializer.serialize(record);
-    String second = serializer.serialize(record);
+    String first = serializer.serialize(data);
+    String second = serializer.serialize(data);
 
     assertThat(first).isEqualTo(second);
   }
@@ -203,7 +205,7 @@ class AvroSerializerTest {
   @Test
   void shouldRoundTripMultipleRecordsPreservingFieldValues() throws Exception {
     Map<String, Object> r1 = new LinkedHashMap<>();
-    r1.put("name", "Alice");
+    r1.put("name", ALICE);
     r1.put("age", 30);
 
     Map<String, Object> r2 = new LinkedHashMap<>();
@@ -217,7 +219,7 @@ class AvroSerializerTest {
     List<GenericRecord> results = roundTripAll(List.of(r1, r2, r3));
 
     assertThat(results).hasSize(3);
-    assertThat(results.get(0).get("name")).hasToString("Alice");
+    assertThat(results.get(0).get("name")).hasToString(ALICE);
     assertThat(results.get(0).get("age")).isEqualTo(30);
     assertThat(results.get(1).get("name")).hasToString("Bob");
     assertThat(results.get(1).get("age")).isEqualTo(25);
@@ -241,11 +243,11 @@ class AvroSerializerTest {
             try {
               start.await();
               for (int i = 0; i < recordsPerThread; i++) {
-                Map<String, Object> record = new LinkedHashMap<>();
-                record.put("thread", threadId);
-                record.put("seq", i);
-                record.put("name", "worker-" + threadId);
-                String result = serializer.serialize(record);
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("thread", threadId);
+                data.put("seq", i);
+                data.put("name", "worker-" + threadId);
+                String result = serializer.serialize(data);
                 if (result == null || result.isBlank()) {
                   errors.incrementAndGet();
                 }
@@ -268,8 +270,8 @@ class AvroSerializerTest {
 
   // --- helpers ---
 
-  private GenericRecord roundTrip(Map<String, Object> record) throws Exception {
-    String base64 = serializer.serialize(record);
+  private GenericRecord roundTrip(Map<String, Object> data) throws Exception {
+    String base64 = serializer.serialize(data);
     byte[] binary = Base64.getDecoder().decode(base64);
 
     GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(serializer.getSchema());
@@ -279,8 +281,8 @@ class AvroSerializerTest {
 
   private List<GenericRecord> roundTripAll(List<Map<String, Object>> records) throws Exception {
     List<GenericRecord> result = new java.util.ArrayList<>();
-    for (Map<String, Object> record : records) {
-      result.add(roundTrip(record));
+    for (Map<String, Object> data : records) {
+      result.add(roundTrip(data));
     }
     return result;
   }

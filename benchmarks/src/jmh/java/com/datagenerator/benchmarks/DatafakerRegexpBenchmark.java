@@ -95,27 +95,27 @@ public class DatafakerRegexpBenchmark {
   // ── Warm Faker (single instance reused) ──────────────────────────────────
 
   @Benchmark
-  public String regexifyWarm_short() {
+  public String regexifyWarmShort() {
     return warmFaker.regexify(PATTERN_SHORT);
   }
 
   @Benchmark
-  public String regexifyWarm_medium() {
+  public String regexifyWarmMedium() {
     return warmFaker.regexify(PATTERN_MEDIUM);
   }
 
   @Benchmark
-  public String regexifyWarm_uuidLike() {
+  public String regexifyWarmUuidLike() {
     return warmFaker.regexify(PATTERN_UUID_LIKE);
   }
 
   @Benchmark
-  public String expressionWarm_regexify() {
+  public String expressionWarmRegexify() {
     return warmFaker.expression(EXPRESSION_REGEXIFY);
   }
 
   @Benchmark
-  public String expressionWarm_name() {
+  public String expressionWarmName() {
     return warmFaker.expression(EXPRESSION_NAME);
   }
 
@@ -124,27 +124,27 @@ public class DatafakerRegexpBenchmark {
   // 2.5.4 recompiles on every new Faker instance.
 
   @Benchmark
-  public String regexifyFresh_short() {
+  public String regexifyFreshShort() {
     return new Faker(Locale.ENGLISH, new Random(42L)).regexify(PATTERN_SHORT);
   }
 
   @Benchmark
-  public String regexifyFresh_medium() {
+  public String regexifyFreshMedium() {
     return new Faker(Locale.ENGLISH, new Random(42L)).regexify(PATTERN_MEDIUM);
   }
 
   @Benchmark
-  public String regexifyFresh_uuidLike() {
+  public String regexifyFreshUuidLike() {
     return new Faker(Locale.ENGLISH, new Random(42L)).regexify(PATTERN_UUID_LIKE);
   }
 
   @Benchmark
-  public String expressionFresh_regexify() {
+  public String expressionFreshRegexify() {
     return new Faker(Locale.ENGLISH, new Random(42L)).expression(EXPRESSION_REGEXIFY);
   }
 
   @Benchmark
-  public String expressionFresh_name() {
+  public String expressionFreshName() {
     return new Faker(Locale.ENGLISH, new Random(42L)).expression(EXPRESSION_NAME);
   }
 
@@ -153,13 +153,13 @@ public class DatafakerRegexpBenchmark {
   // datafaker names/emails + regexify codes), then serialize to JSON.
 
   @Benchmark
-  public String jsonComplexWithRegexp_warmFaker() {
+  public String jsonComplexWithRegexpWarmFaker() {
     Map<String, Object> record = buildComplexRecord(warmFaker);
     return jsonSerializer.serialize(record);
   }
 
   @Benchmark
-  public String jsonComplexWithRegexp_freshFaker() {
+  public String jsonComplexWithRegexpFreshFaker() {
     Faker fresh = new Faker(Locale.ENGLISH, new Random(42L));
     Map<String, Object> record = buildComplexRecord(fresh);
     return jsonSerializer.serialize(record);

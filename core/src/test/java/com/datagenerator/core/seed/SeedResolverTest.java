@@ -34,6 +34,7 @@ import org.junit.jupiter.api.io.TempDir;
 class SeedResolverTest {
   private static final String TYPE_REMOTE = "remote";
   private static final String REMOTE_URL = "https://api.example.com/seed";
+  private static final String ENV_SEED_KEY = "SEEDSTREAM_TEST_ENV_SEED_42";
 
   private SeedResolver resolver;
 
@@ -97,12 +98,12 @@ class SeedResolverTest {
 
   @Test
   void shouldResolveEnvSeed() {
-    System.setProperty("SEEDSTREAM_TEST_ENV_SEED_42", "99887766");
+    System.setProperty(ENV_SEED_KEY, "99887766");
     try {
-      SeedConfig.EnvSeed config = new SeedConfig.EnvSeed("env", "SEEDSTREAM_TEST_ENV_SEED_42");
+      SeedConfig.EnvSeed config = new SeedConfig.EnvSeed("env", ENV_SEED_KEY);
       assertThat(resolver.resolve(config)).isEqualTo(99887766L);
     } finally {
-      System.clearProperty("SEEDSTREAM_TEST_ENV_SEED_42");
+      System.clearProperty(ENV_SEED_KEY);
     }
   }
 

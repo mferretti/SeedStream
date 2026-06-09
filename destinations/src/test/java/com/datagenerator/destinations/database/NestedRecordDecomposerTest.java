@@ -34,6 +34,7 @@ class NestedRecordDecomposerTest {
 
   private static final String TABLE_PARENT = "parent";
   private static final String COL_PARENT_ID = "parent_id";
+  private static final String FIELD_CHILDREN = "children";
 
   private NestedRecordDecomposer decomposer;
 
@@ -212,7 +213,7 @@ class NestedRecordDecomposerTest {
 
     Map<String, Object> root = new LinkedHashMap<>();
     root.put("id", 10);
-    root.put("children", List.of(child));
+    root.put(FIELD_CHILDREN, List.of(child));
 
     List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(root, "root", null);
 
@@ -246,7 +247,7 @@ class NestedRecordDecomposerTest {
 
     Map<String, Object> parent = new LinkedHashMap<>();
     parent.put("title", "no-id-parent"); // no "id" field
-    parent.put("children", List.of(child));
+    parent.put(FIELD_CHILDREN, List.of(child));
 
     List<NestedRecordDecomposer.TableRecord> result =
         decomposer.decompose(parent, TABLE_PARENT, null);
@@ -330,7 +331,7 @@ class NestedRecordDecomposerTest {
 
     Map<String, Object> parent = new LinkedHashMap<>();
     parent.put("id", 1);
-    parent.put("children", List.of(child));
+    parent.put(FIELD_CHILDREN, List.of(child));
 
     List<NestedRecordDecomposer.TableRecord> result =
         noInject.decompose(parent, TABLE_PARENT, null);

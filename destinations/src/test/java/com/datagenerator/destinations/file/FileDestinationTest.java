@@ -105,11 +105,11 @@ class FileDestinationTest {
     Path outputFile = tempDir.resolve("output.json");
     FileDestinationConfig config = configBuilder.filePath(outputFile).compress(true).build();
 
-    Map<String, Object> record = Map.of("name", "John", "age", 42);
+    Map<String, Object> data = Map.of("name", "John", "age", 42);
 
     try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
       destination.open();
-      destination.write(record);
+      destination.write(data);
     }
 
     // File should have .gz extension
@@ -129,14 +129,14 @@ class FileDestinationTest {
   void shouldAppendToExistingFile() throws Exception {
     Path outputFile = tempDir.resolve("output.json");
 
-    // Write first record
+    // Write first data
     FileDestinationConfig config1 = configBuilder.filePath(outputFile).build();
     try (FileDestination destination = new FileDestination(config1, new JsonSerializer())) {
       destination.open();
       destination.write(Map.of("name", "John"));
     }
 
-    // Append second record
+    // Append second data
     FileDestinationConfig config2 = configBuilder.filePath(outputFile).append(true).build();
     try (FileDestination destination = new FileDestination(config2, new JsonSerializer())) {
       destination.open();
@@ -153,14 +153,14 @@ class FileDestinationTest {
   void shouldOverwriteFileByDefault() throws Exception {
     Path outputFile = tempDir.resolve("output.json");
 
-    // Write first record
+    // Write first data
     FileDestinationConfig config1 = configBuilder.filePath(outputFile).build();
     try (FileDestination destination = new FileDestination(config1, new JsonSerializer())) {
       destination.open();
       destination.write(Map.of("name", "John"));
     }
 
-    // Overwrite with second record
+    // Overwrite with second data
     FileDestinationConfig config2 = configBuilder.filePath(outputFile).build();
     try (FileDestination destination = new FileDestination(config2, new JsonSerializer())) {
       destination.open();
@@ -168,7 +168,7 @@ class FileDestinationTest {
     }
 
     List<String> lines = Files.readAllLines(outputFile);
-    assertThat(lines).hasSize(1); // Only second record
+    assertThat(lines).hasSize(1); // Only second data
     assertThat(lines.get(0)).contains("Jane");
   }
 
@@ -266,13 +266,13 @@ class FileDestinationTest {
     Path outputFile = tempDir.resolve("output.avro");
     FileDestinationConfig config = configBuilder.filePath(outputFile).compress(true).build();
 
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", ALICE);
-    record.put("age", 30);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", ALICE);
+    data.put("age", 30);
 
     try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
       destination.open();
-      destination.write(record);
+      destination.write(data);
     }
 
     // File readable by DataFileReader — codec handled internally

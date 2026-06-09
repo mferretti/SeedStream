@@ -123,6 +123,11 @@ class DatabaseReferenceIT extends IntegrationTest {
       )
       """;
 
+  private static final String TABLE_IT_CUSTOMERS = "it_customers";
+  private static final String TABLE_IT_ORDER = "it_order";
+  private static final String TABLE_IT_ORDERS = "it_orders";
+  private static final String TABLE_IT_ORDER_ITEMS = "it_order_items";
+
   // --- Container ---
 
   @Container
@@ -178,13 +183,13 @@ class DatabaseReferenceIT extends IntegrationTest {
     int orderCount = 100;
     int orderItemCount = 200;
 
-    generate("it_customer", "it_customers", customerCount);
-    generate("it_order", "it_orders", orderCount);
-    generate("it_order_item", "it_order_items", orderItemCount);
+    generate("it_customer", TABLE_IT_CUSTOMERS, customerCount);
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, orderCount);
+    generate("it_order_item", TABLE_IT_ORDER_ITEMS, orderItemCount);
 
-    assertThat(countRows("it_customers")).isEqualTo(customerCount);
-    assertThat(countRows("it_orders")).isEqualTo(orderCount);
-    assertThat(countRows("it_order_items")).isEqualTo(orderItemCount);
+    assertThat(countRows(TABLE_IT_CUSTOMERS)).isEqualTo(customerCount);
+    assertThat(countRows(TABLE_IT_ORDERS)).isEqualTo(orderCount);
+    assertThat(countRows(TABLE_IT_ORDER_ITEMS)).isEqualTo(orderItemCount);
   }
 
   @Test
@@ -193,8 +198,8 @@ class DatabaseReferenceIT extends IntegrationTest {
     // for the ORDER job, so pass the customer count as the order job count.
     int count = 50;
 
-    generate("it_customer", "it_customers", count);
-    generate("it_order", "it_orders", count);
+    generate("it_customer", TABLE_IT_CUSTOMERS, count);
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, count);
 
     try (Statement st = verify.createStatement();
         ResultSet rs =
@@ -211,8 +216,8 @@ class DatabaseReferenceIT extends IntegrationTest {
     // Passing the same count to both jobs keeps FK values in [1..count].
     int count = 80;
 
-    generate("it_order", "it_orders", count);
-    generate("it_order_item", "it_order_items", count);
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, count);
+    generate("it_order_item", TABLE_IT_ORDER_ITEMS, count);
 
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT MIN(order_id), MAX(order_id) FROM it_order_items")) {
@@ -225,16 +230,16 @@ class DatabaseReferenceIT extends IntegrationTest {
   @Test
   void shouldBeDeterministicWithSameSeed() throws InterruptedException, SQLException {
     // Run A
-    generate("it_order", "it_orders", 20, 42L);
-    long sumA = sumColumn("it_orders", "customer_id");
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, 20, 42L);
+    long sumA = sumColumn(TABLE_IT_ORDERS, "customer_id");
 
     try (Statement st = verify.createStatement()) {
       st.execute("TRUNCATE it_orders");
     }
 
     // Run B — same seed, same result
-    generate("it_order", "it_orders", 20, 42L);
-    long sumB = sumColumn("it_orders", "customer_id");
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, 20, 42L);
+    long sumB = sumColumn(TABLE_IT_ORDERS, "customer_id");
 
     assertThat(sumA).isEqualTo(sumB);
   }
@@ -244,7 +249,7 @@ class DatabaseReferenceIT extends IntegrationTest {
     int smallCount = 10;
     int largeCount = 500;
 
-    generate("it_order", "it_orders", smallCount);
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, smallCount);
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT MAX(customer_id) FROM it_orders")) {
       rs.next();
@@ -255,7 +260,7 @@ class DatabaseReferenceIT extends IntegrationTest {
       st.execute("TRUNCATE it_orders");
     }
 
-    generate("it_order", "it_orders", largeCount);
+    generate(TABLE_IT_ORDER, TABLE_IT_ORDERS, largeCount);
     try (Statement st = verify.createStatement();
         ResultSet rs = st.executeQuery("SELECT MAX(customer_id) FROM it_orders")) {
       rs.next();
@@ -310,12 +315,12 @@ class DatabaseReferenceIT extends IntegrationTest {
       GenerationEngine engine =
           GenerationEngine.builder()
               .recordGenerator(
-                  (random) -> {
+                  random -> {
                     try (var ctx = GeneratorContext.enter(factory, null, count)) {
                       @SuppressWarnings("unchecked")
-                      Map<String, Object> record =
+                      Map<String, Object> data =
                           (Map<String, Object>) generator.generate(random, objectType);
-                      return record;
+                      return data;
                     }
                   })
               .recordWriter(dest::write)

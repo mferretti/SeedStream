@@ -101,14 +101,14 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
   }
 
   @Override
-  public String serialize(Map<String, Object> record) {
-    return Base64.getEncoder().encodeToString(serializeToBytes(record));
+  public String serialize(Map<String, Object> data) {
+    return Base64.getEncoder().encodeToString(serializeToBytes(data));
   }
 
   @Override
-  public byte[] serializeToBytes(Map<String, Object> record) {
-    ensureSchemaRegistered(record);
-    byte[] avroPayload = buildAvroPayload(record);
+  public byte[] serializeToBytes(Map<String, Object> data) {
+    ensureSchemaRegistered(data);
+    byte[] avroPayload = buildAvroPayload(data);
     return buildWireFormat(schemaId, avroPayload);
   }
 
@@ -118,11 +118,11 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
   }
 
   @SuppressWarnings("java:S3064")
-  private void ensureSchemaRegistered(Map<String, Object> record) {
+  private void ensureSchemaRegistered(Map<String, Object> data) {
     if (schemaId == null) {
       synchronized (initLock) {
         if (schemaId == null) {
-          avroSerializer.ensureInitialized(record);
+          avroSerializer.ensureInitialized(data);
           String schemaJson = avroSerializer.getSchema().toString();
           int registeredId = registryClient.registerSchema(subject, schemaJson);
           datumWriter = new GenericDatumWriter<>(avroSerializer.getSchema());
@@ -133,9 +133,9 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
     }
   }
 
-  private byte[] buildAvroPayload(Map<String, Object> record) {
+  private byte[] buildAvroPayload(Map<String, Object> data) {
     try {
-      GenericRecord avroRecord = avroSerializer.buildGenericRecord(record);
+      GenericRecord avroRecord = avroSerializer.buildGenericRecord(data);
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
       datumWriter.write(avroRecord, encoder);

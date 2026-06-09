@@ -33,19 +33,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SchemaRegistryAvroSerializerTest {
 
+  private static final String SUBJECT = "test-topic-value";
+  private static final String ALICE = "Alice";
+
   @Mock private SchemaRegistryClient registryClient;
 
-  private AvroSerializer avroSerializer;
   private SchemaRegistryAvroSerializer serializer;
 
   @BeforeEach
   void setUp() {
-    avroSerializer = new AvroSerializer();
-    serializer =
-        new SchemaRegistryAvroSerializer(avroSerializer, registryClient, "test-topic-value");
+    AvroSerializer avroSerializer = new AvroSerializer();
+    serializer = new SchemaRegistryAvroSerializer(avroSerializer, registryClient, SUBJECT);
   }
 
-  private Map<String, Object> record(Object... keysAndValues) {
+  private Map<String, Object> buildRecord(Object... keysAndValues) {
     Map<String, Object> m = new LinkedHashMap<>();
     for (int i = 0; i < keysAndValues.length; i += 2) {
       m.put((String) keysAndValues[i], keysAndValues[i + 1]);
@@ -59,7 +60,7 @@ class SchemaRegistryAvroSerializerTest {
   void wireFormatStartsWithMagicByte() {
     when(registryClient.registerSchema(anyString(), anyString())).thenReturn(42);
 
-    byte[] bytes = serializer.serializeToBytes(record("name", "Alice"));
+    byte[] bytes = serializer.serializeToBytes(buildRecord("name", ALICE));
 
     assertThat(bytes[0]).isEqualTo(SchemaRegistryAvroSerializer.MAGIC_BYTE);
   }
@@ -68,7 +69,7 @@ class SchemaRegistryAvroSerializerTest {
   void wireFormatContainsSchemaIdInBytes1To4() {
     when(registryClient.registerSchema(anyString(), anyString())).thenReturn(7);
 
-    byte[] bytes = serializer.serializeToBytes(record("name", "Alice"));
+    byte[] bytes = serializer.serializeToBytes(buildRecord("name", ALICE));
 
     ByteBuffer buf = ByteBuffer.wrap(bytes);
     buf.get(); // skip magic byte
@@ -79,7 +80,7 @@ class SchemaRegistryAvroSerializerTest {
   void wireFormatPayloadIsAvroBytes() {
     when(registryClient.registerSchema(anyString(), anyString())).thenReturn(1);
 
-    byte[] bytes = serializer.serializeToBytes(record("name", "Alice"));
+    byte[] bytes = serializer.serializeToBytes(buildRecord("name", ALICE));
 
     assertThat(bytes).hasSizeGreaterThan(5); // magic + id + at least 1 avro byte
   }
@@ -104,7 +105,7 @@ class SchemaRegistryAvroSerializerTest {
   void schemaRegisteredOnlyOnFirstRecord() {
     when(registryClient.registerSchema(anyString(), anyString())).thenReturn(1);
 
-    Map<String, Object> rec = record("x", "v");
+    Map<String, Object> rec = buildRecord("x", "v");
     serializer.serializeToBytes(rec);
     serializer.serializeToBytes(rec);
     serializer.serializeToBytes(rec);
@@ -114,19 +115,19 @@ class SchemaRegistryAvroSerializerTest {
 
   @Test
   void correctSubjectPassedToRegistry() {
-    when(registryClient.registerSchema(eq("test-topic-value"), anyString())).thenReturn(5);
+    when(registryClient.registerSchema(eq(SUBJECT), anyString())).thenReturn(5);
 
-    serializer.serializeToBytes(record("key", "val"));
+    serializer.serializeToBytes(buildRecord("key", "val"));
 
-    verify(registryClient).registerSchema(eq("test-topic-value"), anyString());
+    verify(registryClient).registerSchema(eq(SUBJECT), anyString());
   }
 
   @Test
   void schemaIdUsedConsistentlyAcrossRecords() {
     when(registryClient.registerSchema(anyString(), anyString())).thenReturn(123);
 
-    byte[] first = serializer.serializeToBytes(record("a", "1"));
-    byte[] second = serializer.serializeToBytes(record("a", "2"));
+    byte[] first = serializer.serializeToBytes(buildRecord("a", "1"));
+    byte[] second = serializer.serializeToBytes(buildRecord("a", "2"));
 
     assertThat(ByteBuffer.wrap(first, 1, 4).getInt()).isEqualTo(123);
     assertThat(ByteBuffer.wrap(second, 1, 4).getInt()).isEqualTo(123);
@@ -138,7 +139,7 @@ class SchemaRegistryAvroSerializerTest {
   void serializeReturnsBase64OfWireFormat() {
     when(registryClient.registerSchema(anyString(), anyString())).thenReturn(3);
 
-    String result = serializer.serialize(record("x", "y"));
+    String result = serializer.serialize(buildRecord("x", "y"));
     byte[] decoded = Base64.getDecoder().decode(result);
 
     assertThat(decoded[0]).isEqualTo(SchemaRegistryAvroSerializer.MAGIC_BYTE);
@@ -158,7 +159,7 @@ class SchemaRegistryAvroSerializerTest {
     when(registryClient.registerSchema(anyString(), anyString()))
         .thenThrow(new SchemaRegistryException("registry down"));
 
-    var rec = record("f", "v");
+    var rec = buildRecord("f", "v");
     assertThatThrownBy(() -> serializer.serializeToBytes(rec))
         .isInstanceOf(SchemaRegistryException.class)
         .hasMessageContaining("registry down");

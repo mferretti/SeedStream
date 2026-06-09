@@ -58,6 +58,7 @@ class DatabaseDestinationTest {
   private Connection h2Connection;
 
   @BeforeEach
+  @SuppressWarnings("java:S2115")
   void setUp() throws SQLException {
     h2Connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD); // nosemgrep
     try (Statement st = h2Connection.createStatement()) {

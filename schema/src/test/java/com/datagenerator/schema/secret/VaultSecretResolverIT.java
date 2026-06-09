@@ -32,6 +32,7 @@ class VaultSecretResolverIT extends IntegrationTest {
 
   private static final String VAULT_TOKEN = "test-root-token";
 
+  @SuppressWarnings("java:S2068")
   @Container
   static VaultContainer<?> vault =
       new VaultContainer<>(DockerImageName.parse("hashicorp/vault:1.17.3"))

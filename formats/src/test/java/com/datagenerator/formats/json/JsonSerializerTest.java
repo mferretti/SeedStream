@@ -37,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonSerializerTest {
+  private static final String FIELD_ITEMS = "items";
   private static final String THREAD_1 = "Thread1";
   private static final String THREAD_2 = "Thread2";
 
@@ -51,9 +52,9 @@ class JsonSerializerTest {
 
   @Test
   void shouldSerializeSimpleRecord() throws Exception {
-    Map<String, Object> record = Map.of("name", "John", "age", 42, "active", true);
+    Map<String, Object> data = Map.of("name", "John", "age", 42, "active", true);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     assertThat(json).isNotBlank();
     JsonNode node = mapper.readTree(json);
@@ -65,9 +66,9 @@ class JsonSerializerTest {
   @Test
   void shouldSerializeWithFieldAliases() throws Exception {
     // Simulate generator output with aliases
-    Map<String, Object> record = Map.of("nome", "Marco", "citta", "Milano");
+    Map<String, Object> data = Map.of("nome", "Marco", "citta", "Milano");
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     JsonNode node = mapper.readTree(json);
     assertThat(node.get("nome").asText()).isEqualTo("Marco");
@@ -76,9 +77,9 @@ class JsonSerializerTest {
 
   @Test
   void shouldSerializeBigDecimalAsNumber() throws Exception {
-    Map<String, Object> record = Map.of("price", new BigDecimal("99.95"), "quantity", 5);
+    Map<String, Object> data = Map.of("price", new BigDecimal("99.95"), "quantity", 5);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     assertThat(json).contains("\"price\":99.95"); // Not "99.95" (string)
     // Note: When parsing JSON, numbers may be deserialized as Double by default
@@ -90,9 +91,9 @@ class JsonSerializerTest {
   @Test
   void shouldSerializeLocalDateAsIso8601() throws Exception {
     LocalDate date = LocalDate.of(2024, 3, 15);
-    Map<String, Object> record = Map.of("birthDate", date);
+    Map<String, Object> data = Map.of("birthDate", date);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     assertThat(json).contains("\"2024-03-15\"");
     JsonNode node = mapper.readTree(json);
@@ -102,9 +103,9 @@ class JsonSerializerTest {
   @Test
   void shouldSerializeInstantAsIso8601() throws Exception {
     Instant timestamp = Instant.parse("2024-03-15T14:30:00Z");
-    Map<String, Object> record = Map.of("createdAt", timestamp);
+    Map<String, Object> data = Map.of("createdAt", timestamp);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     assertThat(json).contains("2024-03-15");
     JsonNode node = mapper.readTree(json);
@@ -114,9 +115,9 @@ class JsonSerializerTest {
   @Test
   void shouldSerializeNestedObjects() throws Exception {
     Map<String, Object> address = Map.of("street", "Via Roma", "city", "Milano");
-    Map<String, Object> record = Map.of("name", "Marco", "address", address);
+    Map<String, Object> data = Map.of("name", "Marco", "address", address);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     JsonNode node = mapper.readTree(json);
     assertThat(node.get("name").asText()).isEqualTo("Marco");
@@ -127,15 +128,15 @@ class JsonSerializerTest {
 
   @Test
   void shouldSerializeArrays() throws Exception {
-    Map<String, Object> record =
-        Map.of("name", "Order", "items", List.of("item1", "item2", "item3"));
+    Map<String, Object> data =
+        Map.of("name", "Order", FIELD_ITEMS, List.of("item1", "item2", "item3"));
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     JsonNode node = mapper.readTree(json);
-    assertThat(node.get("items").isArray()).isTrue();
-    assertThat(node.get("items")).hasSize(3);
-    assertThat(node.get("items").get(0).asText()).isEqualTo("item1");
+    assertThat(node.get(FIELD_ITEMS).isArray()).isTrue();
+    assertThat(node.get(FIELD_ITEMS)).hasSize(3);
+    assertThat(node.get(FIELD_ITEMS).get(0).asText()).isEqualTo("item1");
   }
 
   @Test
@@ -167,9 +168,9 @@ class JsonSerializerTest {
 
   @Test
   void shouldProduceCompactJson() {
-    Map<String, Object> record = Map.of("name", "John", "age", 42);
+    Map<String, Object> data = Map.of("name", "John", "age", 42);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     // Should NOT contain indentation or newlines
     assertThat(json).doesNotContain("\n").doesNotContain("  ");
@@ -178,12 +179,12 @@ class JsonSerializerTest {
   @Test
   void shouldPreserveFieldOrder() {
     // Use LinkedHashMap to preserve insertion order
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("field1", "A");
-    record.put("field2", "B");
-    record.put("field3", "C");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("field1", "A");
+    data.put("field2", "B");
+    data.put("field3", "C");
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     // JSON spec doesn't guarantee order, but Jackson preserves it by default
     assertThat(json).matches(".*\"field1\".*\"field2\".*\"field3\".*");
@@ -191,21 +192,21 @@ class JsonSerializerTest {
 
   @Test
   void shouldHandleEmptyRecord() {
-    Map<String, Object> record = Map.of();
+    Map<String, Object> data = Map.of();
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     assertThat(json).isEqualTo("{}");
   }
 
   @Test
   void shouldHandleNullValues() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "John");
-    record.put("middleName", null);
-    record.put("age", 42);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("middleName", null);
+    data.put("age", 42);
 
-    String json = serializer.serialize(record);
+    String json = serializer.serialize(data);
 
     JsonNode node = mapper.readTree(json);
     assertThat(node.get("middleName").isNull()).isTrue();
@@ -245,18 +246,18 @@ class JsonSerializerTest {
 
   @Test
   void streamWriterOutputMatchesSerialize() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Bob");
-    record.put("score", new BigDecimal("9.5"));
-    record.put("date", LocalDate.of(2025, 1, 1));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Bob");
+    data.put("score", new BigDecimal("9.5"));
+    data.put("date", LocalDate.of(2025, 1, 1));
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     try (StreamWriter writer = serializer.createStreamWriter(out)) {
-      writer.writeRecord(record);
+      writer.writeRecord(data);
     }
 
     String streamed = out.toString(StandardCharsets.UTF_8).trim();
-    String direct = serializer.serialize(record);
+    String direct = serializer.serialize(data);
     assertThat(mapper.readTree(streamed)).isEqualTo(mapper.readTree(direct));
   }
 
@@ -337,17 +338,17 @@ class JsonSerializerTest {
 
   @Test
   void streamWriterHandlesComplexTypes() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("items", List.of("a", "b"));
-    record.put("ts", Instant.parse("2025-06-01T00:00:00Z"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put(FIELD_ITEMS, List.of("a", "b"));
+    data.put("ts", Instant.parse("2025-06-01T00:00:00Z"));
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     try (StreamWriter writer = serializer.createStreamWriter(out)) {
-      writer.writeRecord(record);
+      writer.writeRecord(data);
     }
 
     JsonNode node = mapper.readTree(out.toString(StandardCharsets.UTF_8).trim());
-    assertThat(node.get("items").isArray()).isTrue();
+    assertThat(node.get(FIELD_ITEMS).isArray()).isTrue();
     assertThat(node.get("ts").asText()).isEqualTo("2025-06-01T00:00:00Z");
   }
 
@@ -366,9 +367,9 @@ class JsonSerializerTest {
           }
         };
 
-    Map<String, Object> record = Map.of("circular", unserializable);
+    Map<String, Object> data = Map.of("circular", unserializable);
 
-    assertThatThrownBy(() -> serializer.serialize(record))
+    assertThatThrownBy(() -> serializer.serialize(data))
         .isInstanceOf(SerializationException.class)
         .hasMessageContaining("JSON serialization failed");
   }

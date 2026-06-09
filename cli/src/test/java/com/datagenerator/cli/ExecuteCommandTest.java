@@ -23,6 +23,7 @@ import ch.qos.logback.classic.Logger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -37,7 +38,10 @@ class ExecuteCommandTest {
   private static final String OPT_JOB = "--job";
   private static final String OPT_COUNT = "--count";
   private static final String OPT_FORMAT = "--format";
+  private static final String OPT_SEED = "--seed";
   private static final String OUTPUT_JSON = "output.json";
+  private static final String JOB_FILE = "job.yaml";
+  private static final String SIMPLE_YAML = "simple.yaml";
 
   @TempDir Path tempDir;
 
@@ -45,14 +49,14 @@ class ExecuteCommandTest {
   private Path outDir;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() throws IOException {
     structDir = tempDir.resolve("structures");
     outDir = tempDir.resolve("out");
     Files.createDirectories(structDir);
     Files.createDirectories(outDir);
 
     Files.writeString(
-        structDir.resolve("simple.yaml"),
+        structDir.resolve(SIMPLE_YAML),
         """
         name: simple
         data:
@@ -73,14 +77,14 @@ class ExecuteCommandTest {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  private Path writeJobFile() throws Exception {
+  private Path writeJobFile() throws IOException {
     return writeJobFile("file", "");
   }
 
   @SuppressFBWarnings(
       "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional YAML line endings
-  private Path writeJobFile(String destType, String extraConf) throws Exception {
-    Path jobFile = tempDir.resolve("job.yaml");
+  private Path writeJobFile(String destType, String extraConf) throws IOException {
+    Path jobFile = tempDir.resolve(JOB_FILE);
     Files.writeString(
         jobFile,
         """
@@ -176,12 +180,12 @@ class ExecuteCommandTest {
   void seedOverrideProducesReproducibleOutput() throws Exception {
     Path jobFile = writeJobFile();
 
-    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "999");
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", OPT_SEED, "999");
     String first = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     Files.delete(outDir.resolve(OUTPUT_JSON));
 
-    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "999");
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", OPT_SEED, "999");
     String second = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     assertThat(first).isEqualTo(second);
@@ -191,12 +195,12 @@ class ExecuteCommandTest {
   void differentSeedsProduceDifferentOutput() throws Exception {
     Path jobFile = writeJobFile();
 
-    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "1");
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", OPT_SEED, "1");
     String first = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     Files.delete(outDir.resolve(OUTPUT_JSON));
 
-    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "2");
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", OPT_SEED, "2");
     String second = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     assertThat(first).isNotEqualTo(second);
@@ -213,7 +217,7 @@ class ExecuteCommandTest {
     Files.delete(outDir.resolve(OUTPUT_JSON));
 
     // Run with a different seed override
-    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "5", "--seed", "99999");
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "5", OPT_SEED, "99999");
     String withOverride = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     assertThat(withJobSeed).isNotEqualTo(withOverride);
@@ -432,7 +436,7 @@ class ExecuteCommandTest {
   void defaultStructuresPathFallbackFailsWhenNoStructuresInCwd() throws Exception {
     Path subDir = tempDir.resolve("mydir");
     Files.createDirectories(subDir);
-    Path jobFile = subDir.resolve("job.yaml");
+    Path jobFile = subDir.resolve(JOB_FILE);
     Files.writeString(
         jobFile,
         """
@@ -575,9 +579,9 @@ class ExecuteCommandTest {
     Path structuresDir = configDir.resolve("structures");
     Files.createDirectories(jobsDir);
     Files.createDirectories(structuresDir);
-    Files.copy(structDir.resolve("simple.yaml"), structuresDir.resolve("simple.yaml"));
+    Files.copy(structDir.resolve(SIMPLE_YAML), structuresDir.resolve(SIMPLE_YAML));
 
-    Path jobFile = jobsDir.resolve("job.yaml");
+    Path jobFile = jobsDir.resolve(JOB_FILE);
     Files.writeString(
         jobFile,
         """

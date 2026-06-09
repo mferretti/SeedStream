@@ -155,8 +155,8 @@ public class JsonSerializer implements FormatSerializer {
     }
 
     @Override
-    public void writeRecord(Map<String, Object> record) throws IOException {
-      gen.writeObject(record);
+    public void writeRecord(Map<String, Object> data) throws IOException {
+      gen.writeObject(data);
       gen.flush();
       out.write('\n');
     }

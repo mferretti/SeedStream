@@ -100,7 +100,8 @@ class LogUtilsTest {
                   for (int i = 0; i < callsPerThread; i++) {
                     LogUtils.shouldTrace(); // should not throw
                   }
-                } catch (Exception e) {
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
                   errors.incrementAndGet();
                 }
               });

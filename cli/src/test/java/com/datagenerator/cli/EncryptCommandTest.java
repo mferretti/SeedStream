@@ -32,6 +32,8 @@ class EncryptCommandTest {
 
   private static final String VALID_KEY_HEX = "0".repeat(64);
   private static final String SECRET_NAME = "my-secret";
+  private static final String OPT_KEY_FILE = "--key-file";
+  private static final String KEY_FILE_NAME = "key.hex";
 
   private CommandLine cmd() {
     return new CommandLine(new EncryptCommand());
@@ -41,10 +43,10 @@ class EncryptCommandTest {
 
   @Test
   void exitCode0WhenKeyFileProvided(@TempDir Path tempDir) throws Exception {
-    Path keyFile = tempDir.resolve("key.hex");
+    Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
 
-    int code = cmd().execute("--key-file", keyFile.toString(), SECRET_NAME);
+    int code = cmd().execute(OPT_KEY_FILE, keyFile.toString(), SECRET_NAME);
     assertThat(code).isZero();
   }
 
@@ -57,7 +59,7 @@ class EncryptCommandTest {
 
   @Test
   void exitCode1WhenKeyFileNotFound() {
-    int code = cmd().execute("--key-file", "/nonexistent/path/key.hex", SECRET_NAME);
+    int code = cmd().execute(OPT_KEY_FILE, "/nonexistent/path/key.hex", SECRET_NAME);
     assertThat(code).isEqualTo(1);
   }
 
@@ -77,10 +79,10 @@ class EncryptCommandTest {
 
   @Test
   void keyFileWithTrailingNewlineSucceeds(@TempDir Path tempDir) throws Exception {
-    Path keyFile = tempDir.resolve("key.hex");
+    Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX + "\n");
 
-    int code = cmd().execute("--key-file", keyFile.toString(), SECRET_NAME);
+    int code = cmd().execute(OPT_KEY_FILE, keyFile.toString(), SECRET_NAME);
     assertThat(code).isZero();
   }
 
@@ -88,26 +90,26 @@ class EncryptCommandTest {
 
   @Test
   void outputStartsWithAes256GcmPrefix(@TempDir Path tempDir) throws Exception {
-    Path keyFile = tempDir.resolve("key.hex");
+    Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
 
     StringWriter out = new StringWriter();
     CommandLine cli = cmd();
     cli.setOut(new PrintWriter(out));
-    cli.execute("--key-file", keyFile.toString(), SECRET_NAME);
+    cli.execute(OPT_KEY_FILE, keyFile.toString(), SECRET_NAME);
 
     assertThat(out.toString().trim()).startsWith(AesGcmCrypto.PREFIX);
   }
 
   @Test
   void outputCanBeDecryptedBack(@TempDir Path tempDir) throws Exception {
-    Path keyFile = tempDir.resolve("key.hex");
+    Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
 
     StringWriter out = new StringWriter();
     CommandLine cli = cmd();
     cli.setOut(new PrintWriter(out));
-    cli.execute("--key-file", keyFile.toString(), "round-trip-value");
+    cli.execute(OPT_KEY_FILE, keyFile.toString(), "round-trip-value");
 
     String ciphertext = out.toString().trim();
     byte[] key = AesGcmCrypto.hexToKey(VALID_KEY_HEX);
@@ -135,18 +137,18 @@ class EncryptCommandTest {
 
   @Test
   void twoCiphertextsForSamePlaintextDiffer(@TempDir Path tempDir) throws Exception {
-    Path keyFile = tempDir.resolve("key.hex");
+    Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
 
     StringWriter out1 = new StringWriter();
     StringWriter out2 = new StringWriter();
     CommandLine c1 = cmd();
     c1.setOut(new PrintWriter(out1));
-    c1.execute("--key-file", keyFile.toString(), "same-value");
+    c1.execute(OPT_KEY_FILE, keyFile.toString(), "same-value");
 
     CommandLine c2 = cmd();
     c2.setOut(new PrintWriter(out2));
-    c2.execute("--key-file", keyFile.toString(), "same-value");
+    c2.execute(OPT_KEY_FILE, keyFile.toString(), "same-value");
 
     assertThat(out1.toString().trim()).isNotEqualTo(out2.toString().trim());
   }

@@ -127,6 +127,9 @@ import picocli.CommandLine.Option;
     mixinStandardHelpOptions = true)
 public class ExecuteCommand implements Callable<Integer> {
 
+  private static final String CONF_MAX_RETRIES = "max_retries";
+  private static final String CONF_RETRY_DELAY_MS = "retry_delay_ms";
+
   /**
    * Path to the job configuration YAML file.
    *
@@ -635,11 +638,11 @@ public class ExecuteCommand implements Callable<Integer> {
       configBuilder.acks(conf.get("acks").asText());
     }
 
-    if (conf.has("max_retries")) {
-      configBuilder.maxRetries(conf.get("max_retries").asInt());
+    if (conf.has(CONF_MAX_RETRIES)) {
+      configBuilder.maxRetries(conf.get(CONF_MAX_RETRIES).asInt());
     }
-    if (conf.has("retry_delay_ms")) {
-      configBuilder.retryDelayMs(conf.get("retry_delay_ms").asLong());
+    if (conf.has(CONF_RETRY_DELAY_MS)) {
+      configBuilder.retryDelayMs(conf.get(CONF_RETRY_DELAY_MS).asLong());
     }
 
     // SASL/SSL configuration — credential fields support ${VAR} and ${SECRET:path} substitution
@@ -703,11 +706,11 @@ public class ExecuteCommand implements Callable<Integer> {
     if (conf.has("transaction_strategy")) {
       builder.transactionStrategy(conf.get("transaction_strategy").asText());
     }
-    if (conf.has("max_retries")) {
-      builder.maxRetries(conf.get("max_retries").asInt());
+    if (conf.has(CONF_MAX_RETRIES)) {
+      builder.maxRetries(conf.get(CONF_MAX_RETRIES).asInt());
     }
-    if (conf.has("retry_delay_ms")) {
-      builder.retryDelayMs(conf.get("retry_delay_ms").asLong());
+    if (conf.has(CONF_RETRY_DELAY_MS)) {
+      builder.retryDelayMs(conf.get(CONF_RETRY_DELAY_MS).asLong());
     }
     if (conf.has("inject_parent_fk")) {
       builder.injectParentFk(conf.get("inject_parent_fk").asBoolean());

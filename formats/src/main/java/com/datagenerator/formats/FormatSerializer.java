@@ -47,7 +47,7 @@ public interface FormatSerializer {
      *
      * @throws IOException if writing fails
      */
-    void writeRecord(Map<String, Object> record) throws IOException;
+    void writeRecord(Map<String, Object> data) throws IOException;
 
     /**
      * Release any resources held by this writer. Does NOT close the underlying stream.
@@ -65,7 +65,7 @@ public interface FormatSerializer {
    * @return formatted string representation
    * @throws SerializationException if serialization fails
    */
-  String serialize(Map<String, Object> record);
+  String serialize(Map<String, Object> data);
 
   /**
    * Serialize a single record to raw bytes. Default implementation encodes {@link #serialize}
@@ -76,8 +76,8 @@ public interface FormatSerializer {
    * @return serialized bytes
    * @throws SerializationException if serialization fails
    */
-  default byte[] serializeToBytes(Map<String, Object> record) {
-    return serialize(record).getBytes(StandardCharsets.UTF_8);
+  default byte[] serializeToBytes(Map<String, Object> data) {
+    return serialize(data).getBytes(StandardCharsets.UTF_8);
   }
 
   /**
@@ -92,8 +92,8 @@ public interface FormatSerializer {
    * @throws IOException if the underlying stream cannot be initialized
    */
   default StreamWriter createStreamWriter(OutputStream out) throws IOException {
-    return record -> {
-      out.write(serialize(record).getBytes(StandardCharsets.UTF_8));
+    return data -> {
+      out.write(serialize(data).getBytes(StandardCharsets.UTF_8));
       out.write('\n');
     };
   }

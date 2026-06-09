@@ -186,11 +186,11 @@ public class FileDestination extends AbstractDestination {
     }
   }
 
-  private void writeAvro(Map<String, Object> record) {
+  private void writeAvro(Map<String, Object> data) {
     try {
       AvroSerializer avroSer = (AvroSerializer) serializer;
       if (avroFileWriter == null) {
-        avroSer.ensureInitialized(record);
+        avroSer.ensureInitialized(data);
         GenericDatumWriter<GenericRecord> dw = new GenericDatumWriter<>(avroSer.getSchema());
         avroFileWriter = new DataFileWriter<>(dw);
         if (config.isCompress()) {
@@ -198,7 +198,7 @@ public class FileDestination extends AbstractDestination {
         }
         avroFileWriter.create(avroSer.getSchema(), avroRawOut);
       }
-      avroFileWriter.append(avroSer.buildGenericRecord(record));
+      avroFileWriter.append(avroSer.buildGenericRecord(data));
     } catch (IOException e) {
       throw new DestinationException("Failed to write Avro record", e);
     }

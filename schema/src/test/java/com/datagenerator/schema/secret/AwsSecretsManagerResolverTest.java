@@ -34,6 +34,8 @@ import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundExce
 @ExtendWith(MockitoExtension.class)
 class AwsSecretsManagerResolverTest {
 
+  private static final String SECRET_PATH = "myapp/db#password";
+
   @Mock SecretsManagerClient mockClient;
 
   private GetSecretValueResponse responseWith(String secretString) {
@@ -55,7 +57,7 @@ class AwsSecretsManagerResolverTest {
         .thenReturn(responseWith("{\"username\": \"admin\", \"password\": \"secret123\"}"));
 
     AwsSecretsManagerResolver resolver = new AwsSecretsManagerResolver(mockClient);
-    assertThat(resolver.resolve("myapp/db#password")).isEqualTo("secret123");
+    assertThat(resolver.resolve(SECRET_PATH)).isEqualTo("secret123");
   }
 
   @Test
@@ -84,7 +86,7 @@ class AwsSecretsManagerResolverTest {
         .thenReturn(responseWith("{\"username\": \"admin\"}"));
 
     AwsSecretsManagerResolver resolver = new AwsSecretsManagerResolver(mockClient);
-    assertThatThrownBy(() -> resolver.resolve("myapp/db#password"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("password");
   }
@@ -117,7 +119,7 @@ class AwsSecretsManagerResolverTest {
         .thenThrow(SdkClientException.builder().message("connection refused").build());
 
     AwsSecretsManagerResolver resolver = new AwsSecretsManagerResolver(mockClient);
-    assertThatThrownBy(() -> resolver.resolve("myapp/db#password"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("myapp/db");
   }

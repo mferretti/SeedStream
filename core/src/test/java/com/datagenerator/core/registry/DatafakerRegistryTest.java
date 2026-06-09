@@ -28,6 +28,7 @@ class DatafakerRegistryTest {
 
   private static final Faker FAKER = new Faker(Locale.US, new Random(42));
   private static final Random RANDOM = new Random(42);
+  private static final String STYPE_EMAIL = "email";
 
   // ── Built-in presence ──────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ class DatafakerRegistryTest {
   @Test
   void shouldBeRegisteredForCoreBuiltInTypes() {
     assertThat(DatafakerRegistry.isRegistered("name")).isTrue();
-    assertThat(DatafakerRegistry.isRegistered("email")).isTrue();
+    assertThat(DatafakerRegistry.isRegistered(STYPE_EMAIL)).isTrue();
     assertThat(DatafakerRegistry.isRegistered("city")).isTrue();
     assertThat(DatafakerRegistry.isRegistered("uuid")).isTrue();
     assertThat(DatafakerRegistry.isRegistered("iban")).isTrue();
@@ -71,7 +72,7 @@ class DatafakerRegistryTest {
 
   @Test
   void shouldGenerateNonNullValueForBuiltInEmail() {
-    String value = DatafakerRegistry.generate("email", FAKER, RANDOM);
+    String value = DatafakerRegistry.generate(STYPE_EMAIL, FAKER, RANDOM);
     assertThat(value).isNotBlank().contains("@");
   }
 
@@ -91,18 +92,18 @@ class DatafakerRegistryTest {
   // ── Alias resolution ───────────────────────────────────────────────────────
 
   @Test
-  void shouldResolveBuiltInAlias_latToLatitude() {
+  void shouldResolveBuiltInAliasLatToLatitude() {
     assertThat(DatafakerRegistry.getCanonicalName("lat")).isEqualTo("latitude");
   }
 
   @Test
-  void shouldResolveBuiltInAlias_lonToLongitude() {
+  void shouldResolveBuiltInAliasLonToLongitude() {
     assertThat(DatafakerRegistry.getCanonicalName("lon")).isEqualTo("longitude");
   }
 
   @Test
   void shouldReturnSameNameWhenNoAlias() {
-    assertThat(DatafakerRegistry.getCanonicalName("email")).isEqualTo("email");
+    assertThat(DatafakerRegistry.getCanonicalName(STYPE_EMAIL)).isEqualTo(STYPE_EMAIL);
   }
 
   @Test
@@ -157,7 +158,7 @@ class DatafakerRegistryTest {
 
   @Test
   void shouldNormalizeTypeNamesToLowercase() {
-    // Built-in "email" is registered lowercase; querying uppercase should resolve
+    // Built-in STYPE_EMAIL is registered lowercase; querying uppercase should resolve
     assertThat(DatafakerRegistry.isRegistered("EMAIL")).isTrue();
     assertThat(DatafakerRegistry.isRegistered("Name")).isTrue();
   }

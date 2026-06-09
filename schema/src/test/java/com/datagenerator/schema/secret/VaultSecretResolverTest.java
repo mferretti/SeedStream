@@ -45,6 +45,7 @@ class VaultSecretResolverTest {
   private static final String VAULT_ADDR = "http://vault:8200";
   private static final String TEST_TOKEN = "test-vault-token";
   private static final String VAULT_TOKEN_KEY = "VAULT_TOKEN";
+  private static final String SECRET_PATH = "secret/data/app#key";
 
   @Mock HttpClient mockClient;
   @Mock HttpResponse<String> mockResponse;
@@ -90,7 +91,7 @@ class VaultSecretResolverTest {
     doReturn(mockResponse).when(mockClient).send(any(), any());
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    assertThatThrownBy(() -> resolver.resolve("secret/data/app#key"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("403");
   }
@@ -144,7 +145,7 @@ class VaultSecretResolverTest {
     doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    resolver.resolve("secret/data/app#key");
+    resolver.resolve(SECRET_PATH);
 
     assertThat(captor.getValue().headers().firstValue("X-Vault-Token")).hasValue(TEST_TOKEN);
   }
@@ -154,7 +155,7 @@ class VaultSecretResolverTest {
     System.clearProperty(VAULT_TOKEN_KEY);
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    assertThatThrownBy(() -> resolver.resolve("secret/data/app#key"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining(VAULT_TOKEN_KEY);
   }
@@ -164,7 +165,7 @@ class VaultSecretResolverTest {
     when(mockClient.send(any(), any())).thenThrow(new IOException("connection refused"));
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
-    assertThatThrownBy(() -> resolver.resolve("secret/data/app#key"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining(VAULT_ADDR);
   }
@@ -178,7 +179,7 @@ class VaultSecretResolverTest {
     doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
 
     VaultSecretResolver resolver = new VaultSecretResolver("http://vault:8200/", null, mockClient);
-    resolver.resolve("secret/data/app#key");
+    resolver.resolve(SECRET_PATH);
 
     assertThat(captor.getValue().uri()).hasToString("http://vault:8200/v1/secret/data/app");
   }

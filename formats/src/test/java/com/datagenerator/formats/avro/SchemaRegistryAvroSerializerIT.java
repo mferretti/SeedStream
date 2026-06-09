@@ -86,12 +86,12 @@ class SchemaRegistryAvroSerializerIT {
 
   @Test
   void producesConfluentWireFormatWithValidSchemaId() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("orderId", "ORD-001");
-    record.put("amount", 49.99);
-    record.put("quantity", 3);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("orderId", "ORD-001");
+    data.put("amount", 49.99);
+    data.put("quantity", 3);
 
-    byte[] bytes = serializer.serializeToBytes(record);
+    byte[] bytes = serializer.serializeToBytes(data);
 
     // magic byte
     assertThat(bytes[0]).isEqualTo(SchemaRegistryAvroSerializer.MAGIC_BYTE);
@@ -103,11 +103,11 @@ class SchemaRegistryAvroSerializerIT {
 
   @Test
   void avroPayloadDecodesToExpectedValues() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Alice");
-    record.put("score", 42);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Alice");
+    data.put("score", 42);
 
-    byte[] wireBytes = serializer.serializeToBytes(record);
+    byte[] wireBytes = serializer.serializeToBytes(data);
 
     // strip 5-byte header, decode remaining as Avro binary
     byte[] avroPayload = new byte[wireBytes.length - 5];
