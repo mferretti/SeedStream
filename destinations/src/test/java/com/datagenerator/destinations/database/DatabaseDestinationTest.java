@@ -54,6 +54,9 @@ class DatabaseDestinationTest {
   private static final String TYPE_CHAR = "char[1..255]";
   private static final String TYPE_BOOL = "boolean";
   private static final String COL_STATUS = "status";
+  private static final String FIELD_ACTIVE = "active";
+  private static final String NAME_ALICE = "Alice";
+  private static final String NAME_CAROL = "Carol";
 
   private Connection h2Connection;
 
@@ -93,7 +96,7 @@ class DatabaseDestinationTest {
     Map<String, Object> record = new LinkedHashMap<>();
     record.put("id", id);
     record.put("name", name);
-    record.put("active", active);
+    record.put(FIELD_ACTIVE, active);
     return record;
   }
 
@@ -101,12 +104,12 @@ class DatabaseDestinationTest {
   void shouldInsertSingleRecord() throws SQLException {
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      dest.write(record(1, "Alice", true));
+      dest.write(record(1, NAME_ALICE, true));
       dest.flush();
     }
 
     assertThat(countRows()).isEqualTo(1);
-    assertThat(fetchName(1)).isEqualTo("Alice");
+    assertThat(fetchName(1)).isEqualTo(NAME_ALICE);
   }
 
   @Test
@@ -127,9 +130,9 @@ class DatabaseDestinationTest {
     // batchSize=10 but only 3 records written — must flush on close
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      dest.write(record(1, "Alice", true));
+      dest.write(record(1, NAME_ALICE, true));
       dest.write(record(2, "Bob", false));
-      dest.write(record(3, "Carol", true));
+      dest.write(record(3, NAME_CAROL, true));
       // close() without explicit flush() — should still persist all 3
     }
 
@@ -194,7 +197,7 @@ class DatabaseDestinationTest {
   void shouldThrowWhenWritingBeforeOpen() {
     DatabaseDestination dest = new DatabaseDestination(config());
 
-    var rec = record(1, "Alice", true);
+    var rec = record(1, NAME_ALICE, true);
     assertThatThrownBy(() -> dest.write(rec))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("not open");
@@ -273,27 +276,27 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldInsertWithSchemaUsingTypedBinding() throws SQLException {
-    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, "active", TYPE_BOOL);
+    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, FIELD_ACTIVE, TYPE_BOOL);
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
       dest.open();
-      dest.write(record(1, "Alice", true));
+      dest.write(record(1, NAME_ALICE, true));
       dest.flush();
     }
 
     assertThat(countRows()).isEqualTo(1);
-    assertThat(fetchName(1)).isEqualTo("Alice");
+    assertThat(fetchName(1)).isEqualTo(NAME_ALICE);
   }
 
   @Test
   void shouldCoerceStringValueToIntWhenSchemaDeclaresIntType() throws SQLException {
     // Simulates a Datafaker numeric type returning a String (e.g. age, quantity)
-    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, "active", TYPE_BOOL);
+    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, FIELD_ACTIVE, TYPE_BOOL);
 
     Map<String, Object> recordWithStringId = new LinkedHashMap<>();
     recordWithStringId.put("id", "7"); // String instead of Integer — coercion expected
     recordWithStringId.put("name", "Bob");
-    recordWithStringId.put("active", true);
+    recordWithStringId.put(FIELD_ACTIVE, true);
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
       dest.open();
@@ -311,12 +314,12 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldHandleNullWithTypedSchemaForCorrectSqlType() throws SQLException {
-    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, "active", TYPE_BOOL);
+    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, FIELD_ACTIVE, TYPE_BOOL);
 
     Map<String, Object> recordWithNull = new LinkedHashMap<>();
     recordWithNull.put("id", 5);
     recordWithNull.put("name", null); // null with schema → setNull(Types.VARCHAR)
-    recordWithNull.put("active", false);
+    recordWithNull.put(FIELD_ACTIVE, false);
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
       dest.open();
@@ -338,12 +341,12 @@ class DatabaseDestinationTest {
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), partialSchema)) {
       dest.open();
-      dest.write(record(3, "Carol", true));
+      dest.write(record(3, NAME_CAROL, true));
       dest.flush();
     }
 
     assertThat(countRows()).isEqualTo(1);
-    assertThat(fetchName(3)).isEqualTo("Carol");
+    assertThat(fetchName(3)).isEqualTo(NAME_CAROL);
   }
 
   @Test

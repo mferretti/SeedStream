@@ -37,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonSerializerTest {
+  private static final String FIELD_PRODUCT = "product";
   private static final String FIELD_ITEMS = "items";
   private static final String FIELD_PRICE = "price";
   private static final String FIELD_QUANTITY = "quantity";
@@ -147,9 +148,9 @@ class JsonSerializerTest {
   @Test
   void shouldSerializeComplexNestedStructure() throws Exception {
     Map<String, Object> lineItem1 =
-        Map.of("product", "Widget", FIELD_QUANTITY, 5, FIELD_PRICE, 10.50);
+        Map.of(FIELD_PRODUCT, "Widget", FIELD_QUANTITY, 5, FIELD_PRICE, 10.50);
     Map<String, Object> lineItem2 =
-        Map.of("product", "Gadget", FIELD_QUANTITY, 2, FIELD_PRICE, 25.00);
+        Map.of(FIELD_PRODUCT, "Gadget", FIELD_QUANTITY, 2, FIELD_PRICE, 25.00);
 
     Map<String, Object> company = Map.of("name", "ACME Corp", "taxId", "12345678");
 
@@ -170,7 +171,7 @@ class JsonSerializerTest {
     assertThat(node.get("invoiceNumber").asText()).isEqualTo("INV-001");
     assertThat(node.get("company").get("name").asText()).isEqualTo("ACME Corp");
     assertThat(node.get("lineItems")).hasSize(2);
-    assertThat(node.get("lineItems").get(0).get("product").asText()).isEqualTo("Widget");
+    assertThat(node.get("lineItems").get(0).get(FIELD_PRODUCT).asText()).isEqualTo("Widget");
   }
 
   @Test

@@ -46,20 +46,19 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Flat structures only — nested objects and arrays are silently auto-detected and switch the
  *       destination to Stage 2 nested mode (see below)
  *   <li>Table must already exist (no DDL generation)
- *   <li>Column names are derived from record field names; aliases are already resolved by
- *       generators
+ *   <li>Column names are derived from data field names; aliases are already resolved by generators
  * </ul>
  *
  * <p><b>Stage 2 — nested auto-decomposition:</b>
  *
- * <p>When the first written record contains a nested {@code Map} or {@code List<Map>} field, the
+ * <p>When the first written data contains a nested {@code Map} or {@code List<Map>} field, the
  * destination automatically switches to nested mode. In nested mode:
  *
  * <ul>
  *   <li>Each nested {@code object[X]} field → one child-table INSERT into a table named after the
  *       YAML field key
  *   <li>Each {@code array[object[X], min..max]} field → N child-table INSERTs
- *   <li>FK column {@code {parent_table}_id} is injected into every child record automatically
+ *   <li>FK column {@code {parent_table}_id} is injected into every child data automatically
  *   <li>Inserts are depth-first: parent row is always written before its children
  *   <li>Works recursively at any nesting depth
  * </ul>
@@ -73,7 +72,7 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>{@link #close()} — flushes, closes all statements, connection, and pool
  * </ol>
  *
- * <p><b>INSERT statement:</b> Built lazily from the first record's key set. One statement per table
+ * <p><b>INSERT statement:</b> Built lazily from the first data's key set. One statement per table
  * in nested mode (cached in {@link #nestedStatements}).
  *
  * <p><b>Transaction strategies:</b>
@@ -133,8 +132,8 @@ public class DatabaseDestination extends AbstractDestination {
   private NestedRecordDecomposer decomposer;
 
   /**
-   * Per-table PreparedStatements, initialised lazily on the first record for each table. Key =
-   * table name.
+   * Per-table PreparedStatements, initialised lazily on the first data for each table. Key = table
+   * name.
    */
   private final Map<String, PreparedStatement> nestedStatements = new LinkedHashMap<>();
 
@@ -251,23 +250,21 @@ public class DatabaseDestination extends AbstractDestination {
   }
 
   @Override
-  public void write(Map<String, Object> record) {
+  public void write(Map<String, Object> data) {
     requireOpen("Database");
 
     // Strip empty List fields before routing. An empty list produces no JDBC value (flat mode)
     // and no child records (nested mode). Stripping here prevents the flat-mode validator from
-    // rejecting a record that simply has an empty array[object[...]] field.
-    Map<String, Object> effectiveRecord = stripEmptyLists(record);
+    // rejecting a data that simply has an empty array[object[...]] field.
+    Map<String, Object> effectiveRecord = stripEmptyLists(data);
 
-    // Auto-detect nested mode on the first record
-    if (columnNames == null && !nestedMode) {
-      if (hasNestedFields(effectiveRecord)) {
-        nestedMode = true;
-        decomposer = new NestedRecordDecomposer(config.isInjectParentFk());
-        log.info(
-            "Nested record detected — switching to multi-table decomposition mode (table={})",
-            config.getTableName());
-      }
+    // Auto-detect nested mode on the first data
+    if (columnNames == null && !nestedMode && hasNestedFields(effectiveRecord)) {
+      nestedMode = true;
+      decomposer = new NestedRecordDecomposer(config.isInjectParentFk());
+      log.info(
+          "Nested data detected — switching to multi-table decomposition mode (table={})",
+          config.getTableName());
     }
 
     if (nestedMode) {
@@ -325,22 +322,22 @@ public class DatabaseDestination extends AbstractDestination {
 
   // --- Private: flat mode ---
 
-  private void writeFlatRecord(Map<String, Object> record) {
-    validateFlatRecord(record);
+  private void writeFlatRecord(Map<String, Object> data) {
+    validateFlatRecord(data);
 
     if (columnNames == null) {
-      initializeStatement(record);
+      initializeStatement(data);
     }
 
-    batch.add(record);
+    batch.add(data);
 
     if (batch.size() >= config.getBatchSize()) {
       flushBatch();
     }
   }
 
-  private void validateFlatRecord(Map<String, Object> record) {
-    for (Map.Entry<String, Object> entry : record.entrySet()) {
+  private void validateFlatRecord(Map<String, Object> data) {
+    for (Map.Entry<String, Object> entry : data.entrySet()) {
       Object value = entry.getValue();
       if (value instanceof Map) {
         throw new DestinationException(
@@ -382,10 +379,10 @@ public class DatabaseDestination extends AbstractDestination {
     }
 
     try {
-      for (Map<String, Object> record : batch) {
+      for (Map<String, Object> data : batch) {
         for (int i = 0; i < columnNames.size(); i++) {
           String col = columnNames.get(i);
-          Object value = record.get(col);
+          Object value = data.get(col);
           if (schema != null && schema.containsKey(col)) {
             JdbcTypeMapper.bind(insertStatement, i + 1, value, schema.get(col));
           } else {
@@ -414,22 +411,22 @@ public class DatabaseDestination extends AbstractDestination {
 
   // --- Private: nested mode ---
 
-  private Map<String, Object> stripEmptyLists(Map<String, Object> record) {
+  private Map<String, Object> stripEmptyLists(Map<String, Object> data) {
     boolean hasEmpty = false;
-    for (Object value : record.values()) {
+    for (Object value : data.values()) {
       if (value instanceof List<?> list && list.isEmpty()) {
         hasEmpty = true;
         break;
       }
     }
-    if (!hasEmpty) return record;
-    Map<String, Object> cleaned = new LinkedHashMap<>(record);
+    if (!hasEmpty) return data;
+    Map<String, Object> cleaned = new LinkedHashMap<>(data);
     cleaned.entrySet().removeIf(e -> e.getValue() instanceof List<?> l && l.isEmpty());
     return cleaned;
   }
 
-  private boolean hasNestedFields(Map<String, Object> record) {
-    for (Object value : record.values()) {
+  private boolean hasNestedFields(Map<String, Object> data) {
+    for (Object value : data.values()) {
       if (value instanceof Map) return true;
       if (value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Map)
         return true;
@@ -437,9 +434,9 @@ public class DatabaseDestination extends AbstractDestination {
     return false;
   }
 
-  private void writeNested(Map<String, Object> record) {
+  private void writeNested(Map<String, Object> data) {
     List<NestedRecordDecomposer.TableRecord> tableRecords =
-        decomposer.decompose(record, config.getTableName(), null);
+        decomposer.decompose(data, config.getTableName(), null);
 
     for (NestedRecordDecomposer.TableRecord tr : tableRecords) {
       initNestedStatementIfAbsent(tr.tableName(), tr.fields());
@@ -500,17 +497,17 @@ public class DatabaseDestination extends AbstractDestination {
     return "INSERT INTO " + tableName + " (" + cols + ") VALUES (" + placeholders + ")";
   }
 
-  private void executeNestedInsert(String tableName, Map<String, Object> record) {
+  private void executeNestedInsert(String tableName, Map<String, Object> data) {
     PreparedStatement ps = nestedStatements.get(tableName);
     List<String> cols = nestedColumnNames.get(tableName);
 
     try {
       for (int i = 0; i < cols.size(); i++) {
-        JdbcTypeMapper.bind(ps, i + 1, record.get(cols.get(i)));
+        JdbcTypeMapper.bind(ps, i + 1, data.get(cols.get(i)));
       }
       ps.executeUpdate();
     } catch (SQLException e) {
-      throw new DestinationException("Failed to insert nested record into table: " + tableName, e);
+      throw new DestinationException("Failed to insert nested data into table: " + tableName, e);
     }
   }
 

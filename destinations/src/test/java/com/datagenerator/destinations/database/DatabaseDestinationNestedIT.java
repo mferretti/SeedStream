@@ -54,6 +54,11 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
           .withUsername("testuser")
           .withPassword("testpass");
 
+  private static final String TABLE_ORDERS = "orders";
+  private static final String TABLE_LINE_ITEMS = "line_items";
+  private static final String TABLE_ATTRIBUTES = "attributes";
+  private static final String STATUS_PENDING = "PENDING";
+
   private static final String CREATE_ORDERS =
       """
       CREATE TABLE orders (
@@ -113,7 +118,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
         .jdbcUrl(postgres.getJdbcUrl())
         .username(postgres.getUsername())
         .password(postgres.getPassword())
-        .tableName("orders")
+        .tableName(TABLE_ORDERS)
         .batchSize(100)
         .build();
   }
@@ -123,18 +128,18 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
         .jdbcUrl(postgres.getJdbcUrl())
         .username(postgres.getUsername())
         .password(postgres.getPassword())
-        .tableName("orders")
+        .tableName(TABLE_ORDERS)
         .batchSize(batchSize)
         .transactionStrategy(strategy)
         .build();
   }
 
   private Map<String, Object> orderRecord(int id, String status, List<Map<String, Object>> items) {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", id);
-    record.put("status", status);
-    record.put("line_items", items);
-    return record;
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", id);
+    data.put("status", status);
+    data.put(TABLE_LINE_ITEMS, items);
+    return data;
   }
 
   private Map<String, Object> lineItemRecord(int id, String product, int qty) {
@@ -148,7 +153,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
   private Map<String, Object> lineItemWithAttributes(
       int id, String product, int qty, List<Map<String, Object>> attrs) {
     Map<String, Object> item = lineItemRecord(id, product, qty);
-    item.put("attributes", attrs);
+    item.put(TABLE_ATTRIBUTES, attrs);
     return item;
   }
 
@@ -191,7 +196,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
     Map<String, Object> order =
         orderRecord(
             1,
-            "PENDING",
+            STATUS_PENDING,
             List.of(lineItemRecord(101, "Widget", 2), lineItemRecord(102, "Gadget", 1)));
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
@@ -200,8 +205,8 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(1);
-    assertThat(countRows("line_items")).isEqualTo(2);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(1);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(2);
   }
 
   @Test
@@ -215,7 +220,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(countRowsWhere("line_items", "orders_id = 42")).isEqualTo(1);
+    assertThat(countRowsWhere(TABLE_LINE_ITEMS, "orders_id = 42")).isEqualTo(1);
   }
 
   @Test
@@ -228,8 +233,8 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(1);
-    assertThat(countRows("line_items")).isZero();
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(1);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isZero();
   }
 
   @Test
@@ -238,17 +243,17 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.open();
       dest.write(
           orderRecord(
-              1, "PENDING", List.of(lineItemRecord(11, "A", 1), lineItemRecord(12, "B", 2))));
+              1, STATUS_PENDING, List.of(lineItemRecord(11, "A", 1), lineItemRecord(12, "B", 2))));
       dest.write(orderRecord(2, "SHIPPED", List.of(lineItemRecord(21, "C", 5))));
       dest.write(orderRecord(3, "DELIVERED", List.of()));
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(3);
-    assertThat(countRows("line_items")).isEqualTo(3);
-    assertThat(countRowsWhere("line_items", "orders_id = 1")).isEqualTo(2);
-    assertThat(countRowsWhere("line_items", "orders_id = 2")).isEqualTo(1);
-    assertThat(countRowsWhere("line_items", "orders_id = 3")).isZero();
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(3);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(3);
+    assertThat(countRowsWhere(TABLE_LINE_ITEMS, "orders_id = 1")).isEqualTo(2);
+    assertThat(countRowsWhere(TABLE_LINE_ITEMS, "orders_id = 2")).isEqualTo(1);
+    assertThat(countRowsWhere(TABLE_LINE_ITEMS, "orders_id = 3")).isZero();
   }
 
   @Test
@@ -264,16 +269,16 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(1);
-    assertThat(countRows("line_items")).isEqualTo(1);
-    assertThat(countRows("attributes")).isEqualTo(2);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(1);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(1);
+    assertThat(countRows(TABLE_ATTRIBUTES)).isEqualTo(2);
 
     // FK chain: attributes.line_items_id must point to line_items.id (501)
-    assertThat(countRowsWhere("attributes", "line_items_id = 501")).isEqualTo(2);
+    assertThat(countRowsWhere(TABLE_ATTRIBUTES, "line_items_id = 501")).isEqualTo(2);
 
     // Grandchild must NOT have orders_id — only immediate parent FK
     try (Statement st = verify.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM attributes LIMIT 1")) {
+        ResultSet rs = st.executeQuery("SELECT name, line_items_id FROM attributes LIMIT 1")) {
       rs.next();
       assertThat(rs.getString("name")).isIn("color", "size");
       assertThat(rs.getInt("line_items_id")).isEqualTo(501);
@@ -284,22 +289,20 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
   void shouldInsert100OrdersWithVariableLineItemCounts() throws SQLException {
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      int totalLineItems = 0;
       for (int i = 1; i <= 100; i++) {
         int itemCount = (i % 5) + 1; // 1 to 5 items per order
         List<Map<String, Object>> items = new ArrayList<>();
         for (int j = 0; j < itemCount; j++) {
           items.add(lineItemRecord(i * 100 + j, "product-" + j, j + 1));
         }
-        dest.write(orderRecord(i, "PENDING", items));
-        totalLineItems += itemCount;
+        dest.write(orderRecord(i, STATUS_PENDING, items));
       }
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(100);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(100);
     // 100 orders × avg 3 items = 300 line items (1+2+3+4+5 repeating = 3 avg)
-    assertThat(countRows("line_items")).isEqualTo(300);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(300);
   }
 
   @Test
@@ -312,9 +315,9 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(1);
-    assertThat(countRows("line_items")).isEqualTo(1);
-    assertThat(countRowsWhere("line_items", "orders_id = 77")).isEqualTo(1);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(1);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(1);
+    assertThat(countRowsWhere(TABLE_LINE_ITEMS, "orders_id = 77")).isEqualTo(1);
   }
 
   @Test
@@ -327,8 +330,8 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush(); // triggers per_job commit
     }
 
-    assertThat(countRows("orders")).isEqualTo(5);
-    assertThat(countRows("line_items")).isEqualTo(5);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(5);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(5);
   }
 
   @Test
@@ -339,8 +342,8 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(countRows("orders")).isEqualTo(1);
-    assertThat(countRows("line_items")).isEqualTo(1);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(1);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(1);
   }
 
   @Test
@@ -353,7 +356,7 @@ class DatabaseDestinationNestedIT extends IntegrationTest {
       // No explicit flush — relies on close()
     }
 
-    assertThat(countRows("orders")).isEqualTo(2);
-    assertThat(countRows("line_items")).isEqualTo(2);
+    assertThat(countRows(TABLE_ORDERS)).isEqualTo(2);
+    assertThat(countRows(TABLE_LINE_ITEMS)).isEqualTo(2);
   }
 }

@@ -43,6 +43,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class JdbcTypeMapperTest {
 
   private static final String HELLO = "hello";
+  private static final String TS_VAL = "2024-06-15T10:30:00Z";
+  private static final String DECIMAL_MAX = "100.0";
+  private static final String DATE_FROM = "2020-01-01";
+  private static final String DATE_TO = "2025-12-31";
 
   @Mock private PreparedStatement ps;
 
@@ -104,7 +108,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindInstantAsTimestamp() throws SQLException {
-      Instant instant = Instant.parse("2024-06-15T10:30:00Z");
+      Instant instant = Instant.parse(TS_VAL);
       JdbcTypeMapper.bind(ps, 1, instant);
 
       verify(ps).setTimestamp(1, Timestamp.from(instant));
@@ -151,7 +155,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindNullDecimalWithCorrectSqlType() throws SQLException {
-      PrimitiveType decType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
+      PrimitiveType decType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX);
       JdbcTypeMapper.bind(ps, 1, null, decType);
 
       verify(ps).setNull(1, Types.DECIMAL);
@@ -175,8 +179,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindNullDateWithCorrectSqlType() throws SQLException {
-      PrimitiveType dateType =
-          new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
+      PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, DATE_FROM, DATE_TO);
       JdbcTypeMapper.bind(ps, 1, null, dateType);
 
       verify(ps).setNull(1, Types.DATE);
@@ -218,7 +221,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindBigDecimalValueForDecimalType() throws SQLException {
-      PrimitiveType decType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
+      PrimitiveType decType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX);
       BigDecimal value = new BigDecimal("9.99");
       JdbcTypeMapper.bind(ps, 1, value, decType);
 
@@ -235,8 +238,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindLocalDateValueForDateType() throws SQLException {
-      PrimitiveType dateType =
-          new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
+      PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, DATE_FROM, DATE_TO);
       LocalDate date = LocalDate.of(2024, 3, 15);
       JdbcTypeMapper.bind(ps, 1, date, dateType);
 
@@ -246,7 +248,7 @@ class JdbcTypeMapperTest {
     @Test
     void shouldBindInstantValueForTimestampType() throws SQLException {
       PrimitiveType tsType = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, null);
-      Instant instant = Instant.parse("2024-06-15T10:30:00Z");
+      Instant instant = Instant.parse(TS_VAL);
       JdbcTypeMapper.bind(ps, 1, instant, tsType);
 
       verify(ps).setTimestamp(1, Timestamp.from(instant));
@@ -273,7 +275,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldCoerceStringToDecimalForDecimalType() throws SQLException {
-      PrimitiveType decType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
+      PrimitiveType decType = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX);
       JdbcTypeMapper.bind(ps, 1, "19.99", decType);
 
       verify(ps).setBigDecimal(1, new BigDecimal("19.99"));
@@ -289,8 +291,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldCoerceStringToDateForDateType() throws SQLException {
-      PrimitiveType dateType =
-          new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
+      PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, DATE_FROM, DATE_TO);
       JdbcTypeMapper.bind(ps, 1, "2024-06-15", dateType);
 
       verify(ps).setDate(1, Date.valueOf(LocalDate.of(2024, 6, 15)));
@@ -299,9 +300,9 @@ class JdbcTypeMapperTest {
     @Test
     void shouldCoerceStringToTimestampForTimestampType() throws SQLException {
       PrimitiveType tsType = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, null);
-      JdbcTypeMapper.bind(ps, 1, "2024-06-15T10:30:00Z", tsType);
+      JdbcTypeMapper.bind(ps, 1, TS_VAL, tsType);
 
-      verify(ps).setTimestamp(1, Timestamp.from(Instant.parse("2024-06-15T10:30:00Z")));
+      verify(ps).setTimestamp(1, Timestamp.from(Instant.parse(TS_VAL)));
     }
 
     // --- Enum and Datafaker type binding ---

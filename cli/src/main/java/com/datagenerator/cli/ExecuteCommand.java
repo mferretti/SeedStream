@@ -130,6 +130,7 @@ public class ExecuteCommand implements Callable<Integer> {
   private static final String CONF_MAX_RETRIES = "max_retries";
   private static final String CONF_RETRY_DELAY_MS = "retry_delay_ms";
   private static final String CONF_TOPIC = "topic";
+  private static final String CONF_BATCH_SIZE = "batch_size";
 
   /**
    * Path to the job configuration YAML file.
@@ -627,8 +628,8 @@ public class ExecuteCommand implements Callable<Integer> {
     if (conf.has("sync")) {
       configBuilder.sync(conf.get("sync").asBoolean());
     }
-    if (conf.has("batch_size")) {
-      configBuilder.batchSize(conf.get("batch_size").asInt());
+    if (conf.has(CONF_BATCH_SIZE)) {
+      configBuilder.batchSize(conf.get(CONF_BATCH_SIZE).asInt());
     }
     if (conf.has("linger_ms")) {
       configBuilder.lingerMs(conf.get("linger_ms").asInt());
@@ -699,8 +700,8 @@ public class ExecuteCommand implements Callable<Integer> {
             .password(password)
             .tableName(tableName);
 
-    if (conf.has("batch_size")) {
-      builder.batchSize(conf.get("batch_size").asInt());
+    if (conf.has(CONF_BATCH_SIZE)) {
+      builder.batchSize(conf.get(CONF_BATCH_SIZE).asInt());
     }
     if (conf.has("pool_size")) {
       builder.poolSize(conf.get("pool_size").asInt());

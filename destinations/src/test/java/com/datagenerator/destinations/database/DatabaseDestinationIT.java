@@ -51,6 +51,17 @@ class DatabaseDestinationIT extends IntegrationTest {
           .withUsername("testuser")
           .withPassword("testpass");
 
+  private static final String FIELD_NUMBER = "number";
+  private static final String FIELD_FIRST_NAME = "first_name";
+  private static final String FIELD_LAST_NAME = "last_name";
+  private static final String FIELD_FULL_NAME = "full_name";
+  private static final String FIELD_NATIONALITY = "nationality";
+  private static final String FIELD_PLACE_OF_BIRTH = "place_of_birth";
+  private static final String FIELD_ISSUE_DATE = "issue_date";
+  private static final String FIELD_EXPIRY_DATE = "expiry_date";
+  private static final String FIELD_AUTHORITY = "authority";
+  private static final String PASSPORT_AB = "AB123456";
+
   private static final String CREATE_PASSPORTS_TABLE =
       """
       CREATE TABLE passports (
@@ -116,19 +127,19 @@ class DatabaseDestinationIT extends IntegrationTest {
       LocalDate expiryDate,
       String authority,
       String sex) {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("number", number);
-    record.put("first_name", firstName);
-    record.put("last_name", lastName);
-    record.put("full_name", fullName);
-    record.put("dob", dob);
-    record.put("nationality", nationality);
-    record.put("place_of_birth", placeOfBirth);
-    record.put("issue_date", issueDate);
-    record.put("expiry_date", expiryDate);
-    record.put("authority", authority);
-    record.put("sex", sex);
-    return record;
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put(FIELD_NUMBER, number);
+    data.put(FIELD_FIRST_NAME, firstName);
+    data.put(FIELD_LAST_NAME, lastName);
+    data.put(FIELD_FULL_NAME, fullName);
+    data.put("dob", dob);
+    data.put(FIELD_NATIONALITY, nationality);
+    data.put(FIELD_PLACE_OF_BIRTH, placeOfBirth);
+    data.put(FIELD_ISSUE_DATE, issueDate);
+    data.put(FIELD_EXPIRY_DATE, expiryDate);
+    data.put(FIELD_AUTHORITY, authority);
+    data.put("sex", sex);
+    return data;
   }
 
   private Map<String, Object> samplePassport(int index) {
@@ -171,9 +182,9 @@ class DatabaseDestinationIT extends IntegrationTest {
 
   @Test
   void shouldPersistCorrectFieldValues() throws SQLException {
-    Map<String, Object> record =
+    Map<String, Object> data =
         passportRecord(
-            "AB123456",
+            PASSPORT_AB,
             "Alice",
             "Smith",
             "Alice Smith",
@@ -187,16 +198,16 @@ class DatabaseDestinationIT extends IntegrationTest {
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      dest.write(record);
+      dest.write(data);
       dest.flush();
     }
 
     try (Statement st = verifyConnection.createStatement();
         ResultSet rs = st.executeQuery("SELECT * FROM passports")) {
       assertThat(rs.next()).isTrue();
-      assertThat(rs.getString("number")).isEqualTo("AB123456");
-      assertThat(rs.getString("first_name")).isEqualTo("Alice");
-      assertThat(rs.getString("last_name")).isEqualTo("Smith");
+      assertThat(rs.getString(FIELD_NUMBER)).isEqualTo(PASSPORT_AB);
+      assertThat(rs.getString(FIELD_FIRST_NAME)).isEqualTo("Alice");
+      assertThat(rs.getString(FIELD_LAST_NAME)).isEqualTo("Smith");
       assertThat(rs.getString("sex")).isEqualTo("F");
     }
   }
@@ -207,7 +218,7 @@ class DatabaseDestinationIT extends IntegrationTest {
     LocalDate issueDate = LocalDate.of(2019, 5, 1);
     LocalDate expiryDate = LocalDate.of(2029, 5, 1);
 
-    Map<String, Object> record =
+    Map<String, Object> data =
         passportRecord(
             "ZX987654",
             "Bob",
@@ -223,7 +234,7 @@ class DatabaseDestinationIT extends IntegrationTest {
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      dest.write(record);
+      dest.write(data);
       dest.flush();
     }
 
@@ -231,8 +242,8 @@ class DatabaseDestinationIT extends IntegrationTest {
         ResultSet rs = st.executeQuery("SELECT dob, issue_date, expiry_date FROM passports")) {
       assertThat(rs.next()).isTrue();
       assertThat(rs.getDate("dob")).isEqualTo(Date.valueOf(dob));
-      assertThat(rs.getDate("issue_date")).isEqualTo(Date.valueOf(issueDate));
-      assertThat(rs.getDate("expiry_date")).isEqualTo(Date.valueOf(expiryDate));
+      assertThat(rs.getDate(FIELD_ISSUE_DATE)).isEqualTo(Date.valueOf(issueDate));
+      assertThat(rs.getDate(FIELD_EXPIRY_DATE)).isEqualTo(Date.valueOf(expiryDate));
     }
   }
 
@@ -335,7 +346,7 @@ class DatabaseDestinationIT extends IntegrationTest {
     // Original passports table must be empty
     assertThat(countRows()).isZero();
 
-    // Alt table must have 1 record
+    // Alt table must have 1 data
     try (Statement st = verifyConnection.createStatement();
         ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM alt_passports")) {
       rs.next();
@@ -359,13 +370,13 @@ class DatabaseDestinationIT extends IntegrationTest {
     address.put("id", 1);
     address.put("city", "Rome");
 
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("number", "AB123456");
-    record.put("address", address);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put(FIELD_NUMBER, PASSPORT_AB);
+    data.put("address", address);
 
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      assertThatCode(() -> dest.write(record)).doesNotThrowAnyException();
+      assertThatCode(() -> dest.write(data)).doesNotThrowAnyException();
       dest.flush();
     }
 
@@ -395,16 +406,16 @@ class DatabaseDestinationIT extends IntegrationTest {
   void shouldCoerceStringToDateWithSchemaAgainstPostgres() throws SQLException {
     // Pass ISO-8601 String for date fields instead of LocalDate — schema triggers coercion
     Map<String, Object> recordWithStringDates = new LinkedHashMap<>();
-    recordWithStringDates.put("number", "ZZ000001");
-    recordWithStringDates.put("first_name", "Test");
-    recordWithStringDates.put("last_name", "User");
-    recordWithStringDates.put("full_name", "Test User");
+    recordWithStringDates.put(FIELD_NUMBER, "ZZ000001");
+    recordWithStringDates.put(FIELD_FIRST_NAME, "Test");
+    recordWithStringDates.put(FIELD_LAST_NAME, "User");
+    recordWithStringDates.put(FIELD_FULL_NAME, "Test User");
     recordWithStringDates.put("dob", "1990-06-15"); // String, not LocalDate
-    recordWithStringDates.put("nationality", "Italy");
-    recordWithStringDates.put("place_of_birth", "Rome");
-    recordWithStringDates.put("issue_date", "2020-03-01"); // String, not LocalDate
-    recordWithStringDates.put("expiry_date", "2030-03-01"); // String, not LocalDate
-    recordWithStringDates.put("authority", "Ministry of Interior");
+    recordWithStringDates.put(FIELD_NATIONALITY, "Italy");
+    recordWithStringDates.put(FIELD_PLACE_OF_BIRTH, "Rome");
+    recordWithStringDates.put(FIELD_ISSUE_DATE, "2020-03-01"); // String, not LocalDate
+    recordWithStringDates.put(FIELD_EXPIRY_DATE, "2030-03-01"); // String, not LocalDate
+    recordWithStringDates.put(FIELD_AUTHORITY, "Ministry of Interior");
     recordWithStringDates.put("sex", "M");
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), passportSchema())) {
@@ -417,7 +428,7 @@ class DatabaseDestinationIT extends IntegrationTest {
         ResultSet rs = st.executeQuery("SELECT dob, issue_date FROM passports")) {
       assertThat(rs.next()).isTrue();
       assertThat(rs.getDate("dob")).isEqualTo(Date.valueOf(LocalDate.of(1990, 6, 15)));
-      assertThat(rs.getDate("issue_date")).isEqualTo(Date.valueOf(LocalDate.of(2020, 3, 1)));
+      assertThat(rs.getDate(FIELD_ISSUE_DATE)).isEqualTo(Date.valueOf(LocalDate.of(2020, 3, 1)));
     }
   }
 
@@ -426,21 +437,21 @@ class DatabaseDestinationIT extends IntegrationTest {
   /**
    * Raw YAML type strings for the passport table columns used in this test class.
    *
-   * <p>Keys use alias names (number, dob, authority) to match the record field names produced by
+   * <p>Keys use alias names (number, dob, authority) to match the data field names produced by
    * {@link #samplePassport(int)} and {@link #passportRecord}, which mirror the DB column names.
    */
   private Map<String, String> passportSchema() {
     return Map.ofEntries(
-        Map.entry("number", "char[8..9]"),
-        Map.entry("first_name", "first_name"),
-        Map.entry("last_name", "last_name"),
-        Map.entry("full_name", "full_name"),
+        Map.entry(FIELD_NUMBER, "char[8..9]"),
+        Map.entry(FIELD_FIRST_NAME, FIELD_FIRST_NAME),
+        Map.entry(FIELD_LAST_NAME, FIELD_LAST_NAME),
+        Map.entry(FIELD_FULL_NAME, FIELD_FULL_NAME),
         Map.entry("dob", "date[1950-01-01..2006-12-31]"),
-        Map.entry("nationality", "country"),
-        Map.entry("place_of_birth", "city"),
-        Map.entry("issue_date", "date[2015-01-01..2024-12-31]"),
-        Map.entry("expiry_date", "date[2025-01-01..2034-12-31]"),
-        Map.entry("authority", "company"),
+        Map.entry(FIELD_NATIONALITY, "country"),
+        Map.entry(FIELD_PLACE_OF_BIRTH, "city"),
+        Map.entry(FIELD_ISSUE_DATE, "date[2015-01-01..2024-12-31]"),
+        Map.entry(FIELD_EXPIRY_DATE, "date[2025-01-01..2034-12-31]"),
+        Map.entry(FIELD_AUTHORITY, "company"),
         Map.entry("sex", "enum[M,F,X]"));
   }
 }

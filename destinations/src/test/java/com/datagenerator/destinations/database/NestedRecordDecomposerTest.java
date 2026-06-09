@@ -35,6 +35,11 @@ class NestedRecordDecomposerTest {
   private static final String TABLE_PARENT = "parent";
   private static final String COL_PARENT_ID = "parent_id";
   private static final String FIELD_CHILDREN = "children";
+  private static final String TABLE_ORDER = "order";
+  private static final String TABLE_LINE_ITEMS = "line_items";
+  private static final String TABLE_ATTRIBUTES = "attributes";
+  private static final String COL_ORDER_ID = "order_id";
+  private static final String FIELD_PRODUCT = "product";
 
   private NestedRecordDecomposer decomposer;
 
@@ -47,12 +52,12 @@ class NestedRecordDecomposerTest {
 
   @Test
   void shouldReturnSingleTableRecordForFlatInput() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", 1);
-    record.put("name", "Alice");
-    record.put("active", true);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", 1);
+    data.put("name", "Alice");
+    data.put("active", true);
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(record, "users", null);
+    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(data, "users", null);
 
     assertThat(result).hasSize(1);
     assertThat(result.get(0).tableName()).isEqualTo("users");
@@ -61,19 +66,19 @@ class NestedRecordDecomposerTest {
 
   @Test
   void shouldInjectParentFkIntoFlatRecord() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", 99);
-    record.put("amount", 19.99);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", 99);
+    data.put("amount", 19.99);
 
-    ParentContext parentCtx = new ParentContext("order", 42);
+    ParentContext parentCtx = new ParentContext(TABLE_ORDER, 42);
     List<NestedRecordDecomposer.TableRecord> result =
-        decomposer.decompose(record, "line_items", parentCtx);
+        decomposer.decompose(data, TABLE_LINE_ITEMS, parentCtx);
 
     assertThat(result).hasSize(1);
     assertThat(result.get(0).fields())
         .containsEntry("id", 99)
         .containsEntry("amount", 19.99)
-        .containsEntry("order_id", 42);
+        .containsEntry(COL_ORDER_ID, 42);
   }
 
   // --- Single nested object (Map field) ---
@@ -113,31 +118,32 @@ class NestedRecordDecomposerTest {
   void shouldDecomposeArrayIntoOneParentAndNChildRecords() {
     Map<String, Object> item1 = new LinkedHashMap<>();
     item1.put("id", 101);
-    item1.put("product", "Widget");
+    item1.put(FIELD_PRODUCT, "Widget");
 
     Map<String, Object> item2 = new LinkedHashMap<>();
     item2.put("id", 102);
-    item2.put("product", "Gadget");
+    item2.put(FIELD_PRODUCT, "Gadget");
 
     Map<String, Object> order = new LinkedHashMap<>();
     order.put("id", 7);
     order.put("status", "PENDING");
-    order.put("line_items", List.of(item1, item2));
+    order.put(TABLE_LINE_ITEMS, List.of(item1, item2));
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(order, "order", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(order, TABLE_ORDER, null);
 
     assertThat(result).hasSize(3);
 
-    assertThat(result.get(0).tableName()).isEqualTo("order");
+    assertThat(result.get(0).tableName()).isEqualTo(TABLE_ORDER);
     assertThat(result.get(0).fields()).containsOnlyKeys("id", "status");
 
-    assertThat(result.get(1).tableName()).isEqualTo("line_items");
+    assertThat(result.get(1).tableName()).isEqualTo(TABLE_LINE_ITEMS);
     assertThat(result.get(1).fields())
         .containsEntry("id", 101)
-        .containsEntry("order_id", 7); // FK from parent
+        .containsEntry(COL_ORDER_ID, 7); // FK from parent
 
-    assertThat(result.get(2).tableName()).isEqualTo("line_items");
-    assertThat(result.get(2).fields()).containsEntry("id", 102).containsEntry("order_id", 7);
+    assertThat(result.get(2).tableName()).isEqualTo(TABLE_LINE_ITEMS);
+    assertThat(result.get(2).fields()).containsEntry("id", 102).containsEntry(COL_ORDER_ID, 7);
   }
 
   // --- Depth-first ordering ---
@@ -149,12 +155,13 @@ class NestedRecordDecomposerTest {
 
     Map<String, Object> order = new LinkedHashMap<>();
     order.put("id", 50);
-    order.put("line_items", List.of(item));
+    order.put(TABLE_LINE_ITEMS, List.of(item));
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(order, "order", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(order, TABLE_ORDER, null);
 
-    assertThat(result.get(0).tableName()).isEqualTo("order"); // parent first
-    assertThat(result.get(1).tableName()).isEqualTo("line_items"); // child after
+    assertThat(result.get(0).tableName()).isEqualTo(TABLE_ORDER); // parent first
+    assertThat(result.get(1).tableName()).isEqualTo(TABLE_LINE_ITEMS); // child after
   }
 
   // --- Multi-level nesting (3 levels) ---
@@ -168,35 +175,36 @@ class NestedRecordDecomposerTest {
 
     Map<String, Object> lineItem = new LinkedHashMap<>();
     lineItem.put("id", 1001);
-    lineItem.put("product", "Widget");
-    lineItem.put("attributes", List.of(attribute));
+    lineItem.put(FIELD_PRODUCT, "Widget");
+    lineItem.put(TABLE_ATTRIBUTES, List.of(attribute));
 
     Map<String, Object> order = new LinkedHashMap<>();
     order.put("id", 42);
     order.put("date", "2024-06-15");
-    order.put("line_items", List.of(lineItem));
+    order.put(TABLE_LINE_ITEMS, List.of(lineItem));
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(order, "order", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(order, TABLE_ORDER, null);
 
     assertThat(result).hasSize(3);
 
     // Level 1: order
-    assertThat(result.get(0).tableName()).isEqualTo("order");
-    assertThat(result.get(0).fields()).doesNotContainKey("order_id");
+    assertThat(result.get(0).tableName()).isEqualTo(TABLE_ORDER);
+    assertThat(result.get(0).fields()).doesNotContainKey(COL_ORDER_ID);
 
     // Level 2: line_items with FK to order
-    assertThat(result.get(1).tableName()).isEqualTo("line_items");
+    assertThat(result.get(1).tableName()).isEqualTo(TABLE_LINE_ITEMS);
     assertThat(result.get(1).fields())
         .containsEntry("id", 1001)
-        .containsEntry("order_id", 42)
-        .doesNotContainKey("attributes");
+        .containsEntry(COL_ORDER_ID, 42)
+        .doesNotContainKey(TABLE_ATTRIBUTES);
 
     // Level 3: attributes with FK to line_items (NOT to order — immediate parent only)
-    assertThat(result.get(2).tableName()).isEqualTo("attributes");
+    assertThat(result.get(2).tableName()).isEqualTo(TABLE_ATTRIBUTES);
     assertThat(result.get(2).fields())
         .containsEntry("id", 9001)
         .containsEntry("line_items_id", 1001) // immediate parent FK
-        .doesNotContainKey("order_id"); // root ID must not bleed through
+        .doesNotContainKey(COL_ORDER_ID); // root ID must not bleed through
   }
 
   // --- FK isolation: immediate parent only ---
@@ -230,13 +238,14 @@ class NestedRecordDecomposerTest {
   void shouldProduceOnlyParentRowWhenArrayIsEmpty() {
     Map<String, Object> order = new LinkedHashMap<>();
     order.put("id", 1);
-    order.put("line_items", List.of()); // empty array
+    order.put(TABLE_LINE_ITEMS, List.of()); // empty array
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(order, "order", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(order, TABLE_ORDER, null);
 
     // Empty array → no children → only parent row
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).tableName()).isEqualTo("order");
+    assertThat(result.get(0).tableName()).isEqualTo(TABLE_ORDER);
     assertThat(result.get(0).fields()).containsOnlyKeys("id"); // line_items excluded
   }
 
@@ -263,11 +272,11 @@ class NestedRecordDecomposerTest {
     child.put("id", 55);
     List<Map<String, Object>> children = List.of(child);
 
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", 1);
-    record.put("items", children);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", 1);
+    data.put("items", children);
 
-    decomposer.decompose(record, TABLE_PARENT, null);
+    decomposer.decompose(data, TABLE_PARENT, null);
 
     // Original child must not have FK injected into it
     assertThat(child).doesNotContainKey(COL_PARENT_ID).containsOnlyKeys("id");
@@ -285,16 +294,17 @@ class NestedRecordDecomposerTest {
 
     Map<String, Object> order = new LinkedHashMap<>();
     order.put("id", 99);
-    order.put("line_items", items);
+    order.put(TABLE_LINE_ITEMS, items);
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(order, "order", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(order, TABLE_ORDER, null);
 
     assertThat(result).hasSize(6); // 1 order + 5 line_items
     assertThat(result.subList(1, 6))
         .allSatisfy(
             r -> {
-              assertThat(r.tableName()).isEqualTo("line_items");
-              assertThat(r.fields()).containsEntry("order_id", 99);
+              assertThat(r.tableName()).isEqualTo(TABLE_LINE_ITEMS);
+              assertThat(r.fields()).containsEntry(COL_ORDER_ID, 99);
             });
   }
 

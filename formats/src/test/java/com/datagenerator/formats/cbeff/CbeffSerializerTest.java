@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 
 class CbeffSerializerTest {
 
+  private static final String SUBJECT_ID = "subject_id";
+  private static final String SUBJ_ID_VAL = "SUBJ-001";
   private static final String FIELD_FORMAT_OWNER = "format_owner";
   private static final String FIELD_FORMAT_TYPE = "format_type";
   private static final String FIELD_PAYLOAD = "payload";
@@ -95,13 +97,13 @@ class CbeffSerializerTest {
   @Test
   void shouldPromoteSubjectIdToEnvelope() throws Exception {
     Map<String, Object> data = new LinkedHashMap<>();
-    data.put("subject_id", "SUBJ-001");
+    data.put(SUBJECT_ID, SUBJ_ID_VAL);
     data.put(FIELD_QUALITY, 90);
     JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
-    assertThat(envelope.get("subject_id").asText()).isEqualTo("SUBJ-001");
+    assertThat(envelope.get(SUBJECT_ID).asText()).isEqualTo(SUBJ_ID_VAL);
     // subject_id also remains in payload
-    assertThat(envelope.get(FIELD_PAYLOAD).get("subject_id").asText()).isEqualTo("SUBJ-001");
+    assertThat(envelope.get(FIELD_PAYLOAD).get(SUBJECT_ID).asText()).isEqualTo(SUBJ_ID_VAL);
   }
 
   @Test
@@ -109,7 +111,7 @@ class CbeffSerializerTest {
     Map<String, Object> data = Map.of("name", "Alice");
     JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
-    assertThat(envelope.has("subject_id")).isFalse();
+    assertThat(envelope.has(SUBJECT_ID)).isFalse();
   }
 
   @Test

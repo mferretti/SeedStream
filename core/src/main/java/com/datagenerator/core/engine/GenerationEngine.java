@@ -101,7 +101,9 @@ public class GenerationEngine {
    *
    * <p>Defaults to a no-op.
    */
-  @Builder.Default private final Runnable workerCleanup = () -> {};
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final Runnable workerCleanup = () -> {};
 
   /**
    * Generate specified number of records.

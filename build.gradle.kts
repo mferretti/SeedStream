@@ -14,30 +14,28 @@ plugins {
 // project gradle.properties, -Psonar.host.url=..., or SONAR_HOST_URL env var).
 // Without it, ./gradlew sonar is intentionally absent — no noise for devs not running
 // a Sonar instance. See docs/QUALITY.md for local setup.
-run {
-    val sonarHost: String? =
-        (project.findProperty("sonar.host.url") as String?)
-            ?: System.getProperty("sonar.host.url")
-            ?: System.getenv("SONAR_HOST_URL")
+val sonarHost: String? =
+    (project.findProperty("sonar.host.url") as String?)
+        ?: System.getProperty("sonar.host.url")
+        ?: System.getenv("SONAR_HOST_URL")
 
-    if (sonarHost != null) {
-        apply(plugin = "org.sonarqube")
-        val sonarToken: String? =
-            (project.findProperty("sonar.token") as String?)
-                ?: System.getProperty("sonar.token")
-                ?: System.getenv("SONAR_TOKEN")
-        val sonarProjectKey =
-            (project.findProperty("sonar.projectKey") as String?) ?: "seedstream"
-        val sonarProjectName =
-            (project.findProperty("sonar.projectName") as String?) ?: "Seedstream"
-        extensions.configure<org.sonarqube.gradle.SonarExtension> {
-            properties {
-                property("sonar.host.url", sonarHost)
-                property("sonar.projectKey", sonarProjectKey)
-                property("sonar.projectName", sonarProjectName)
-                if (sonarToken != null) {
-                    property("sonar.token", sonarToken)
-                }
+if (sonarHost != null) {
+    apply(plugin = "org.sonarqube")
+    val sonarToken: String? =
+        (project.findProperty("sonar.token") as String?)
+            ?: System.getProperty("sonar.token")
+            ?: System.getenv("SONAR_TOKEN")
+    val sonarProjectKey =
+        (project.findProperty("sonar.projectKey") as String?) ?: "seedstream"
+    val sonarProjectName =
+        (project.findProperty("sonar.projectName") as String?) ?: "Seedstream"
+    extensions.configure<org.sonarqube.gradle.SonarExtension> {
+        properties {
+            property("sonar.host.url", sonarHost)
+            property("sonar.projectKey", sonarProjectKey)
+            property("sonar.projectName", sonarProjectName)
+            if (sonarToken != null) {
+                property("sonar.token", sonarToken)
             }
         }
     }
@@ -52,6 +50,10 @@ allprojects {
         mavenCentral()
     }
 }
+
+// Capture catalog refs at root scope (libs is not accessible inside subprojects {})
+val slf4jApiDep = libs.slf4j.api
+val logbackClassicDep = libs.logback.classic
 
 // Custom task to run dependency-check on all subprojects
 // Note: dependencyCheckAggregate doesn't scan Gradle dependencies properly
@@ -89,20 +91,6 @@ subprojects {
         }
     }
 
-    dependencies {
-        // Lombok for reducing boilerplate
-        val lombok = "org.projectlombok:lombok:1.18.46"
-        "compileOnly"(lombok)
-        "annotationProcessor"(lombok)
-        "testCompileOnly"(lombok)
-        "testAnnotationProcessor"(lombok)
-
-        // Force newer versions to address security vulnerabilities
-        constraints {
-            implementation("com.google.protobuf:protobuf-java:4.35.0") // CVE-2024-7254
-        }
-    }
-
     // Force versions across ALL configurations (including those scanned by OWASP).
     // constraints { implementation(...) } only covers implementation-derived configs —
     // compileClasspath and other configs may still resolve older transitive versions,
@@ -119,10 +107,21 @@ subprojects {
     }
 
     dependencies {
+        // Lombok for reducing boilerplate
+        val lombok = "org.projectlombok:lombok:1.18.46"
+        "compileOnly"(lombok)
+        "annotationProcessor"(lombok)
+        "testCompileOnly"(lombok)
+        "testAnnotationProcessor"(lombok)
+
+        // Force newer versions to address security vulnerabilities
+        constraints {
+            implementation("com.google.protobuf:protobuf-java:4.35.0") // CVE-2024-7254
+        }
 
         // Logging
-        implementation("org.slf4j:slf4j-api:2.0.18")
-        runtimeOnly("ch.qos.logback:logback-classic:1.5.34")
+        implementation(slf4jApiDep)
+        runtimeOnly(logbackClassicDep)
 
         // Testing - JUnit 5 (skip for benchmarks module)
         if (project.name != "benchmarks") {
@@ -243,11 +242,11 @@ subprojects {
         analyzers.assemblyEnabled = false
         failBuildOnCVSS = 7.0f
         suppressionFile = "$rootDir/config/dependency-check-suppressions.xml"
-        
+
         // Always enable auto-update to download NVD database on first run
         // With NVD_API_KEY, updates are fast (cache handles efficiency)
         autoUpdate = true
-        
+
         // Optional: Use NVD_API_KEY for faster updates (50 req/30s vs 5 req/30s)
         // Get free key at: https://nvd.nist.gov/developers/request-an-api-key
         nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
