@@ -10,27 +10,23 @@ dependencies {
     implementation(project(":generators"))
     implementation(project(":formats"))
     implementation(project(":destinations"))
-    
     // Fake data generation (for Datafaker benchmarks)
     implementation(libs.datafaker)
-    
     // Kafka (for destination benchmarks)
     implementation(libs.kafka.clients)
-    
     // Jackson (for serialization benchmarks)
     implementation(libs.bundles.jackson)
-    
     // OpenCSV (for CSV serialization benchmarks)
     implementation(libs.opencsv)
 
     // PostgreSQL driver — compileOnly in :destinations, so must be explicit here for JMH runtime
     runtimeOnly(libs.postgresql)
-    
+
     // Test dependencies for memory profiling tests
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.assertj.core)
+    testRuntimeOnly(libs.junit.jupiter.engine)
 }
 
 // Enable test task for memory profiling tests

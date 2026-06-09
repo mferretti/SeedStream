@@ -175,7 +175,6 @@ public class KafkaBenchmark {
 
   // Kafka destination and test data
   private KafkaDestination kafkaDestination;
-  private JsonSerializer jsonSerializer;
   private Map<String, Object> testRecord;
 
   // Kafka connection settings (can be overridden via system properties)
@@ -184,6 +183,7 @@ public class KafkaBenchmark {
   private static final String KAFKA_TOPIC = System.getProperty("kafka.topic", "benchmark-topic");
 
   @Setup(Level.Trial)
+  @SuppressWarnings("java:S106")
   public void setup() {
     // Create realistic test record (passport data)
     testRecord = new LinkedHashMap<>();
@@ -200,7 +200,7 @@ public class KafkaBenchmark {
     testRecord.put("sex", "F");
 
     // Initialize serializer
-    jsonSerializer = new JsonSerializer();
+    JsonSerializer jsonSerializer = new JsonSerializer();
 
     // Build configuration based on parameters
     KafkaDestinationConfig config =
@@ -224,7 +224,7 @@ public class KafkaBenchmark {
   }
 
   @TearDown(Level.Trial)
-  @SuppressWarnings("PMD.AvoidCatchingGenericException")
+  @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S106"})
   public void tearDown() {
     if (kafkaDestination != null) {
       try {
@@ -269,7 +269,7 @@ public class KafkaBenchmark {
       kafkaDestination.write(testRecord);
     } else {
       // Skip if sync=true to avoid duplication with benchmarkKafkaProducer
-      throw new RuntimeException("Skip: This benchmark runs only in async mode");
+      throw new IllegalStateException("Skip: This benchmark runs only in async mode");
     }
   }
 
@@ -286,7 +286,7 @@ public class KafkaBenchmark {
       kafkaDestination.write(testRecord);
     } else {
       // Skip if sync=false to avoid duplication with benchmarkKafkaProducer
-      throw new RuntimeException("Skip: This benchmark runs only in sync mode");
+      throw new IllegalStateException("Skip: This benchmark runs only in sync mode");
     }
   }
 }

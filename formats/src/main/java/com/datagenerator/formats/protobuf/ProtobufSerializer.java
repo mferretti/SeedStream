@@ -90,20 +90,20 @@ public class ProtobufSerializer implements FormatSerializer {
   private final Object schemaLock = new Object();
 
   @Override
-  public String serialize(Map<String, Object> record) {
+  public String serialize(Map<String, Object> data) {
     try {
       // Lazy schema initialization on first record
       if (messageDescriptor == null) {
         synchronized (schemaLock) {
           if (messageDescriptor == null) {
-            messageDescriptor = buildMessageDescriptor(record);
-            log.debug("Generated Protobuf schema from first record with {} fields", record.size());
+            messageDescriptor = buildMessageDescriptor(data);
+            log.debug("Generated Protobuf schema from first record with {} fields", data.size());
           }
         }
       }
 
       // Build dynamic message from record
-      DynamicMessage message = buildDynamicMessage(record, messageDescriptor);
+      DynamicMessage message = buildDynamicMessage(data, messageDescriptor);
 
       // Serialize to binary and encode as base64
       byte[] binary = message.toByteArray();
@@ -132,13 +132,13 @@ public class ProtobufSerializer implements FormatSerializer {
    * @param record sample record to infer schema
    * @return descriptor for dynamic message creation
    */
-  private Descriptor buildMessageDescriptor(Map<String, Object> record)
+  private Descriptor buildMessageDescriptor(Map<String, Object> data)
       throws DescriptorValidationException {
     DescriptorProto.Builder messageBuilder = DescriptorProto.newBuilder();
     messageBuilder.setName("Record");
 
     int fieldNumber = 1;
-    for (Map.Entry<String, Object> entry : record.entrySet()) {
+    for (Map.Entry<String, Object> entry : data.entrySet()) {
       String fieldName = entry.getKey();
       Object value = entry.getValue();
 
@@ -198,11 +198,11 @@ public class ProtobufSerializer implements FormatSerializer {
    * @param descriptor message descriptor
    * @return dynamic protobuf message
    */
-  @SuppressWarnings("PMD.AvoidCatchingGenericException")
-  private DynamicMessage buildDynamicMessage(Map<String, Object> record, Descriptor descriptor) {
+  @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S135"})
+  private DynamicMessage buildDynamicMessage(Map<String, Object> data, Descriptor descriptor) {
     DynamicMessage.Builder builder = DynamicMessage.newBuilder(descriptor);
 
-    for (Map.Entry<String, Object> entry : record.entrySet()) {
+    for (Map.Entry<String, Object> entry : data.entrySet()) {
       String fieldName = entry.getKey();
       Object value = entry.getValue();
 
@@ -243,6 +243,7 @@ public class ProtobufSerializer implements FormatSerializer {
    * @param fieldDescriptor field descriptor
    * @return protobuf-compatible value
    */
+  @SuppressWarnings("java:S3776")
   private Object convertToProtobufValue(Object value, FieldDescriptor fieldDescriptor) {
     switch (fieldDescriptor.getType()) {
       case INT64:

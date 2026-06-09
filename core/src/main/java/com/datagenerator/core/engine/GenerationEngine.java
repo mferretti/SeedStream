@@ -84,13 +84,19 @@ public class GenerationEngine {
   @Builder.Default private final int workerThreads = Runtime.getRuntime().availableProcessors();
 
   /** Batch size for progress logging (default: 10000). */
-  @Builder.Default private final int logBatchSize = 10000;
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final int logBatchSize = 10000;
 
   /** Queue capacity for backpressure (default: 1000). */
-  @Builder.Default private final int queueCapacity = 1000;
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final int queueCapacity = 1000;
 
   /** Threshold for auto-switching to single-threaded mode (default: 1000). */
-  @Builder.Default private final int singleThreadedThreshold = 1000;
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final int singleThreadedThreshold = 1000;
 
   /**
    * Optional cleanup to run on each worker thread after it finishes generating.
@@ -144,8 +150,8 @@ public class GenerationEngine {
     long startTime = System.currentTimeMillis();
 
     for (long i = 0; i < count; i++) {
-      Map<String, Object> record = recordGenerator.generate(random);
-      recordWriter.write(record);
+      Map<String, Object> data = recordGenerator.generate(random);
+      recordWriter.write(data);
 
       // Progress logging
       if ((i + 1) % logBatchSize == 0) {
@@ -169,7 +175,7 @@ public class GenerationEngine {
       justification =
           "Worker Future is intentionally not stored; exceptions are logged in the lambda "
               + "and the writer thread propagates failures via the queue poison-pill shutdown")
-  @SuppressWarnings("PMD.AvoidCatchingGenericException")
+  @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S3776"})
   private void generateMultiThreaded(long count) throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
@@ -178,7 +184,7 @@ public class GenerationEngine {
 
     // Poison pill to signal end of generation
     @SuppressWarnings("unchecked")
-    Map<String, Object> POISON_PILL = Map.of("__POISON_PILL__", true);
+    Map<String, Object> poisonPill = Map.of("__poisonPill__", true);
 
     // Atomic counter for generated records
     AtomicLong generated = new AtomicLong(0);
@@ -191,11 +197,11 @@ public class GenerationEngine {
             () -> {
               try {
                 while (true) {
-                  Map<String, Object> record = recordQueue.take();
-                  if (record == POISON_PILL) {
+                  Map<String, Object> data = recordQueue.take();
+                  if (data == poisonPill) {
                     break;
                   }
-                  recordWriter.write(record);
+                  recordWriter.write(data);
                 }
                 log.debug("Writer thread finished");
               } catch (InterruptedException e) {
@@ -249,7 +255,7 @@ public class GenerationEngine {
     }
 
     // Signal writer to stop
-    recordQueue.put(POISON_PILL);
+    recordQueue.put(poisonPill);
     writerThread.join();
 
     logProgress(count, count, startTime); // Final progress
@@ -285,15 +291,15 @@ public class GenerationEngine {
     long workerGenerated = 0;
     while (workerGenerated < count) {
       // Generate record
-      Map<String, Object> record = recordGenerator.generate(random);
+      Map<String, Object> data = recordGenerator.generate(random);
 
       // TRACE log individual record generation (sampled)
       if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
-        log.trace("Worker {} generated record {}: {}", workerId, workerGenerated + 1, record);
+        log.trace("Worker {} generated record {}: {}", workerId, workerGenerated + 1, data);
       }
 
       // Submit to queue (blocks if queue is full - backpressure)
-      queue.put(record);
+      queue.put(data);
 
       workerGenerated++;
       long totalGenerated = generated.incrementAndGet();
@@ -342,6 +348,6 @@ public class GenerationEngine {
    */
   @FunctionalInterface
   public interface RecordWriter {
-    void write(Map<String, Object> record);
+    void write(Map<String, Object> data);
   }
 }

@@ -80,15 +80,15 @@ class DatafakerComplexStructureTest {
   private static final String F_DATE_OF_BIRTH = "date_of_birth";
   private static final String F_ISSUE_DATE = "issue_date";
   private static final String F_EXPIRY_DATE = "expiry_date";
+  private static final String UUID_HEX_PATTERN = "^[0-9a-f-]+$";
 
   private DataGeneratorFactory factory;
-  private StructureRegistry registry;
 
   @BeforeEach
   void setUp() {
     FakerCache.clear(); // Clear cache to ensure clean state
     // Create registry with mock structure loader
-    registry = new StructureRegistry(this::loadMockStructure);
+    StructureRegistry registry = new StructureRegistry(this::loadMockStructure);
     factory = new DataGeneratorFactory(registry, Paths.get("test"));
   }
 
@@ -279,7 +279,7 @@ class DatafakerComplexStructureTest {
       // Verify each item has correct structure
       for (Map<String, Object> item : items) {
         assertThat(item).containsKeys(F_ITEM_ID, F_PRODUCT_NAME, F_SKU, F_QUANTITY, F_UNIT_PRICE);
-        assertThat(item.get(F_ITEM_ID)).asString().matches("^[0-9a-f-]+$");
+        assertThat(item.get(F_ITEM_ID)).asString().matches(UUID_HEX_PATTERN);
         assertThat(item.get(F_QUANTITY)).isInstanceOf(Integer.class);
         assertThat((Integer) item.get(F_QUANTITY)).isBetween(1, 10);
       }
@@ -336,7 +336,7 @@ class DatafakerComplexStructureTest {
       assertThat(movement).containsKeys(F_OPERATOR, "notes");
 
       // Verify movement ID
-      assertThat(movement.get(F_MOVEMENT_ID)).asString().matches("^[0-9a-f-]+$");
+      assertThat(movement.get(F_MOVEMENT_ID)).asString().matches(UUID_HEX_PATTERN);
 
       // Verify product object
       Map<String, Object> product = (Map<String, Object>) movement.get(F_PRODUCT);
@@ -345,7 +345,7 @@ class DatafakerComplexStructureTest {
       assertThat(product).containsKeys("category", F_UNIT_PRICE, F_BARCODE);
 
       // Verify product details
-      assertThat(product.get(F_PRODUCT_ID)).asString().matches("^[0-9a-f-]+$");
+      assertThat(product.get(F_PRODUCT_ID)).asString().matches(UUID_HEX_PATTERN);
       assertThat(product.get(F_MANUFACTURER)).asString().isNotEmpty();
       assertThat(product.get(F_BARCODE)).asString().matches("^\\d{13}$"); // ISBN-13 format as EAN
 
@@ -371,7 +371,7 @@ class DatafakerComplexStructureTest {
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       // Generate 5 movements with different seeds
       for (int i = 0; i < 5; i++) {
-        Random random = new Random(i * 1000);
+        Random random = new Random((long) i * 1000);
         Map<String, Object> movement =
             (Map<String, Object>) generator.generate(random, movementType);
 

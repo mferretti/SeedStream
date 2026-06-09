@@ -37,6 +37,9 @@ import org.junit.jupiter.api.Test;
  * parsing and generation.
  */
 class DatafakerIntegrationTest {
+  private static final String ITALY = "italy";
+  private static final String FRANCE = "france";
+
   private TypeParser typeParser;
   private DataGeneratorFactory factory;
   private Random random;
@@ -59,7 +62,7 @@ class DatafakerIntegrationTest {
     assertThat(((CustomDatafakerType) nameType).getTypeName()).isEqualTo("name");
 
     // Generate value using DatafakerGenerator
-    try (var ctx = GeneratorContext.enter(factory, "italy")) {
+    try (var ctx = GeneratorContext.enter(factory, ITALY)) {
       DataGenerator generator = factory.create(nameType);
       assertThat(generator).isInstanceOf(DatafakerGenerator.class);
 
@@ -94,7 +97,7 @@ class DatafakerIntegrationTest {
     DataType cityType = typeParser.parse("city");
     DataType phoneType = typeParser.parse("phone_number");
 
-    try (var ctx = GeneratorContext.enter(factory, "italy")) {
+    try (var ctx = GeneratorContext.enter(factory, ITALY)) {
       DataGenerator nameGen = factory.create(nameType);
       DataGenerator emailGen = factory.create(emailType);
       DataGenerator cityGen = factory.create(cityType);
@@ -185,14 +188,14 @@ class DatafakerIntegrationTest {
     Random random2 = new Random(42L);
 
     String name1;
-    try (var ctx = GeneratorContext.enter(factory, "france")) {
+    try (var ctx = GeneratorContext.enter(factory, FRANCE)) {
       name1 = (String) factory.create(nameType).generate(random1, nameType);
     }
 
     FakerCache.clear(); // Clear cache to allow new Random instance
 
     String name2;
-    try (var ctx = GeneratorContext.enter(factory, "france")) {
+    try (var ctx = GeneratorContext.enter(factory, FRANCE)) {
       name2 = (String) factory.create(nameType).generate(random2, nameType);
     }
 
@@ -204,7 +207,7 @@ class DatafakerIntegrationTest {
     DataType nameType = typeParser.parse("name");
     DataType cityType = typeParser.parse("city");
 
-    String[] locales = {"usa", "italy", "germany", "france", "spain", "japan", "china", "brazil"};
+    String[] locales = {"usa", ITALY, "germany", FRANCE, "spain", "japan", "china", "brazil"};
 
     for (String locale : locales) {
       try (var ctx = GeneratorContext.enter(factory, locale)) {

@@ -30,6 +30,7 @@ import java.util.Random;
  *
  * <p>Run this to see deterministic generation in action!
  */
+@SuppressWarnings("java:S106")
 public class GeneratorDemo {
   public static void main(String[] args) {
     // Create RandomProvider with seed for reproducibility

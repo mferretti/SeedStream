@@ -32,11 +32,7 @@ import lombok.Value;
   @JsonSubTypes.Type(value = SeedConfig.EnvSeed.class, name = "env"),
   @JsonSubTypes.Type(value = SeedConfig.RemoteSeed.class, name = "remote")
 })
-public abstract sealed class SeedConfig
-    permits SeedConfig.EmbeddedSeed,
-        SeedConfig.FileSeed,
-        SeedConfig.EnvSeed,
-        SeedConfig.RemoteSeed {
+public abstract sealed class SeedConfig {
   @NotNull private final String type;
 
   @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator / sealed-class pattern

@@ -34,6 +34,9 @@ class StructureRegistryTest {
   private static final String STRUCT_A = "structure_a";
   private static final String STRUCT_B = "structure_b";
   private static final String STRUCT_INVOICE = "invoice";
+  private static final String COMPANY = "company";
+  private static final String CONFIG_STRUCTURES = "config/structures";
+  private static final String SELF_REF = "self_ref";
 
   private StructureRegistry registry;
   private MockStructureLoader loader;
@@ -48,9 +51,9 @@ class StructureRegistryTest {
   void shouldLoadSimpleStructure() {
     Map<String, DataType> companyFields = new HashMap<>();
     companyFields.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "50"));
-    loader.addStructure("company", companyFields);
+    loader.addStructure(COMPANY, companyFields);
 
-    Map<String, DataType> loaded = registry.loadStructure("company", Path.of("config/structures"));
+    Map<String, DataType> loaded = registry.loadStructure(COMPANY, Path.of(CONFIG_STRUCTURES));
 
     assertThat(loaded).hasSize(1);
     assertThat(loaded.get("name")).isInstanceOf(PrimitiveType.class);
@@ -62,8 +65,8 @@ class StructureRegistryTest {
     fields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "999"));
     loader.addStructure("user", fields);
 
-    registry.loadStructure("user", Path.of("config/structures"));
-    registry.loadStructure("user", Path.of("config/structures")); // Second load from cache
+    registry.loadStructure("user", Path.of(CONFIG_STRUCTURES));
+    registry.loadStructure("user", Path.of(CONFIG_STRUCTURES)); // Second load from cache
 
     assertThat(loader.getLoadCount("user")).isEqualTo(1); // Only loaded once
   }
@@ -71,11 +74,11 @@ class StructureRegistryTest {
   @Test
   void shouldDetectDirectCircularReference() {
     Map<String, DataType> selfRefFields = new HashMap<>();
-    selfRefFields.put("next", new ObjectType("self_ref"));
-    loader.addStructure("self_ref", selfRefFields);
+    selfRefFields.put("next", new ObjectType(SELF_REF));
+    loader.addStructure(SELF_REF, selfRefFields);
 
-    var structuresPath = Path.of("config/structures");
-    assertThatThrownBy(() -> registry.loadStructure("self_ref", structuresPath))
+    var structuresPath = Path.of(CONFIG_STRUCTURES);
+    assertThatThrownBy(() -> registry.loadStructure(SELF_REF, structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("self_ref → self_ref");
   }
@@ -91,7 +94,7 @@ class StructureRegistryTest {
     bFields.put("a_ref", new ObjectType(STRUCT_A));
     loader.addStructure(STRUCT_B, bFields);
 
-    var structuresPath = Path.of("config/structures");
+    var structuresPath = Path.of(CONFIG_STRUCTURES);
     assertThatThrownBy(() -> registry.loadStructure(STRUCT_A, structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("Circular reference detected")
@@ -105,7 +108,7 @@ class StructureRegistryTest {
     fields.put("children", new ArrayType(new ObjectType("node"), 0, 10));
     loader.addStructure("node", fields);
 
-    var structuresPath = Path.of("config/structures");
+    var structuresPath = Path.of(CONFIG_STRUCTURES);
     assertThatThrownBy(() -> registry.loadStructure("node", structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("node → node");
@@ -116,18 +119,18 @@ class StructureRegistryTest {
     // Invoice references company twice (issuer, recipient) - should be OK
     Map<String, DataType> companyFields = new HashMap<>();
     companyFields.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "50"));
-    loader.addStructure("company", companyFields);
+    loader.addStructure(COMPANY, companyFields);
 
     Map<String, DataType> invoiceFields = new HashMap<>();
-    invoiceFields.put("issuer", new ObjectType("company"));
-    invoiceFields.put("recipient", new ObjectType("company"));
+    invoiceFields.put("issuer", new ObjectType(COMPANY));
+    invoiceFields.put("recipient", new ObjectType(COMPANY));
     loader.addStructure(STRUCT_INVOICE, invoiceFields);
 
     Map<String, DataType> loaded =
-        registry.loadStructure(STRUCT_INVOICE, Path.of("config/structures"));
+        registry.loadStructure(STRUCT_INVOICE, Path.of(CONFIG_STRUCTURES));
 
     assertThat(loaded).hasSize(2);
-    assertThat(loader.getLoadCount("company")).isEqualTo(1); // Company loaded once, reused
+    assertThat(loader.getLoadCount(COMPANY)).isEqualTo(1); // Company loaded once, reused
   }
 
   @Test
@@ -141,9 +144,9 @@ class StructureRegistryTest {
     loader.addStructure(STRUCT_INVOICE, invoiceFields);
 
     Map<String, DataType> loaded =
-        registry.loadStructure(STRUCT_INVOICE, Path.of("config/structures"));
+        registry.loadStructure(STRUCT_INVOICE, Path.of(CONFIG_STRUCTURES));
 
-    registry.validateReferences(loaded, Path.of("config/structures"));
+    registry.validateReferences(loaded, Path.of(CONFIG_STRUCTURES));
     // Should complete without exception
   }
 

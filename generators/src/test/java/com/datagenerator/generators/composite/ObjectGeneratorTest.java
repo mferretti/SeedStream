@@ -42,18 +42,19 @@ class ObjectGeneratorTest {
   private static final String V_ACTIVE = "ACTIVE";
   private static final String F_VALUE = "value";
   private static final String F_NESTED = "nested";
+  private static final String F_ACTIVE = "active";
+  private static final String STRUCT_ENTITY = "entity";
+  private static final String STRUCT_ADDRESS = "address";
 
   private MockStructureLoader loader;
-  private StructureRegistry registry;
   private ObjectGenerator generator;
-  private Path structuresPath;
   private DataGeneratorFactory factory;
 
   @BeforeEach
   void setUp() {
     loader = new MockStructureLoader();
-    registry = new StructureRegistry(loader);
-    structuresPath = Paths.get("test-structures");
+    StructureRegistry registry = new StructureRegistry(loader);
+    Path structuresPath = Paths.get("test-structures");
     generator = new ObjectGenerator(registry, structuresPath);
     factory = new DataGeneratorFactory(registry, structuresPath);
   }
@@ -80,7 +81,6 @@ class ObjectGeneratorTest {
 
   @Test
   void shouldGenerateSimpleObjectWithPrimitiveFields() {
-    // Define simple structure: {name: char[3..10], age: int[18..65]}
     Map<String, DataType> userFields = new LinkedHashMap<>();
     userFields.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "10"));
     userFields.put("age", new PrimitiveType(PrimitiveType.Kind.INT, "18", "65"));
@@ -104,10 +104,10 @@ class ObjectGeneratorTest {
     Map<String, DataType> fields = new LinkedHashMap<>();
     fields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000"));
     fields.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "15"));
-    fields.put("active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
-    loader.addStructure("entity", fields);
+    fields.put(F_ACTIVE, new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
+    loader.addStructure(STRUCT_ENTITY, fields);
 
-    ObjectType objectType = new ObjectType("entity");
+    ObjectType objectType = new ObjectType(STRUCT_ENTITY);
 
     @SuppressWarnings("unchecked")
     Map<String, Object> obj1 =
@@ -121,16 +121,14 @@ class ObjectGeneratorTest {
 
   @Test
   void shouldGenerateNestedObjects() {
-    // Define address: {city: char[3..20], zip: int[10000..99999]}
     Map<String, DataType> addressFields = new LinkedHashMap<>();
     addressFields.put("city", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "20"));
     addressFields.put("zip", new PrimitiveType(PrimitiveType.Kind.INT, "10000", "99999"));
-    loader.addStructure("address", addressFields);
+    loader.addStructure(STRUCT_ADDRESS, addressFields);
 
-    // Define user: {name: char[3..10], address: object[address]}
     Map<String, DataType> userFields = new LinkedHashMap<>();
     userFields.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "10"));
-    userFields.put("address", new ObjectType("address"));
+    userFields.put(STRUCT_ADDRESS, new ObjectType(STRUCT_ADDRESS));
     loader.addStructure("user", userFields);
 
     ObjectType objectType = new ObjectType("user");
@@ -139,11 +137,11 @@ class ObjectGeneratorTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> result = (Map<String, Object>) generateWithContext(objectType, random);
 
-    assertThat(result).containsOnlyKeys("name", "address");
-    assertThat(result.get("address")).isInstanceOf(Map.class);
+    assertThat(result).containsOnlyKeys("name", STRUCT_ADDRESS);
+    assertThat(result.get(STRUCT_ADDRESS)).isInstanceOf(Map.class);
 
     @SuppressWarnings("unchecked")
-    Map<String, Object> addressResult = (Map<String, Object>) result.get("address");
+    Map<String, Object> addressResult = (Map<String, Object>) result.get(STRUCT_ADDRESS);
     assertThat(addressResult).containsOnlyKeys("city", "zip");
     assertThat(addressResult.get("city")).isInstanceOf(String.class);
     assertThat(addressResult.get("zip")).isInstanceOf(Integer.class);
@@ -151,12 +149,10 @@ class ObjectGeneratorTest {
 
   @Test
   void shouldGenerateObjectWithArrayFields() {
-    // Define item: {price: int[1..100]}
     Map<String, DataType> itemFields = new LinkedHashMap<>();
     itemFields.put("price", new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"));
     loader.addStructure("item", itemFields);
 
-    // Define order: {items: array[object[item], 1..5]}
     Map<String, DataType> orderFields = new LinkedHashMap<>();
     orderFields.put("items", new ArrayType(new ObjectType("item"), 1, 5));
     loader.addStructure("order", orderFields);
@@ -181,9 +177,9 @@ class ObjectGeneratorTest {
     Map<String, DataType> fields = new LinkedHashMap<>();
     fields.put(F_STATUS, new EnumType(java.util.List.of(V_ACTIVE, "INACTIVE", "PENDING")));
     fields.put("code", new PrimitiveType(PrimitiveType.Kind.INT, "100", "999"));
-    loader.addStructure("entity", fields);
+    loader.addStructure(STRUCT_ENTITY, fields);
 
-    ObjectType objectType = new ObjectType("entity");
+    ObjectType objectType = new ObjectType(STRUCT_ENTITY);
     Random random = new Random(42);
 
     @SuppressWarnings("unchecked")
@@ -279,7 +275,7 @@ class ObjectGeneratorTest {
     fields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000"));
     fields.put("name", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "20"));
     fields.put("balance", new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "1000.0"));
-    fields.put("active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
+    fields.put(F_ACTIVE, new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
     fields.put("created", new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31"));
     fields.put(
         "updated",
@@ -299,7 +295,7 @@ class ObjectGeneratorTest {
     assertThat(result.get("id")).isInstanceOf(Integer.class);
     assertThat(result.get("name")).isInstanceOf(String.class);
     assertThat(result.get("balance")).isInstanceOf(java.math.BigDecimal.class);
-    assertThat(result.get("active")).isInstanceOf(Boolean.class);
+    assertThat(result.get(F_ACTIVE)).isInstanceOf(Boolean.class);
     assertThat(result.get("created")).isInstanceOf(java.time.LocalDate.class);
     assertThat(result.get("updated")).isInstanceOf(java.time.Instant.class);
     assertThat(result.get(F_STATUS)).isIn("NEW", V_ACTIVE, "CLOSED");

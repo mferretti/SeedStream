@@ -111,9 +111,9 @@ class RandomProviderTest {
           });
     }
 
-    latch.await(5, TimeUnit.SECONDS);
+    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
     executor.shutdown();
-    executor.awaitTermination(5, TimeUnit.SECONDS);
+    assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
     assertThat(workerSequences).hasSize(3);
     List<List<Integer>> sequences = new ArrayList<>(workerSequences.values());

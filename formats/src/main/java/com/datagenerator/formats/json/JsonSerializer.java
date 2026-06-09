@@ -80,11 +80,11 @@ public class JsonSerializer implements FormatSerializer {
   }
 
   @Override
-  public String serialize(Map<String, Object> record) {
+  public String serialize(Map<String, Object> data) {
     try {
-      return mapper.writeValueAsString(record);
+      return mapper.writeValueAsString(data);
     } catch (JsonProcessingException e) {
-      log.error("Failed to serialize record to JSON: {}", record, e);
+      log.error("Failed to serialize record to JSON: {}", data, e);
       throw new SerializationException("JSON serialization failed", e);
     }
   }

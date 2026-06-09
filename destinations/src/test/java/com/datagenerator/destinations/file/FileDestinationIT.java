@@ -36,6 +36,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class FileDestinationIT extends IntegrationTest {
 
+  private static final String ALICE = "Alice";
+  private static final String CHARLIE = "Charlie";
+
   @TempDir Path tempDir;
 
   private FileDestination destination;
@@ -59,9 +62,9 @@ class FileDestinationIT extends IntegrationTest {
     destination.open();
 
     // When: Write 3 records
-    Map<String, Object> record1 = Map.of("id", 1, "name", "Alice");
+    Map<String, Object> record1 = Map.of("id", 1, "name", ALICE);
     Map<String, Object> record2 = Map.of("id", 2, "name", "Bob");
-    Map<String, Object> record3 = Map.of("id", 3, "name", "Charlie");
+    Map<String, Object> record3 = Map.of("id", 3, "name", CHARLIE);
 
     destination.write(record1);
     destination.write(record2);
@@ -89,9 +92,9 @@ class FileDestinationIT extends IntegrationTest {
     destination.open();
 
     // When: Write records
-    Map<String, Object> record1 = Map.of("id", 1, "name", "Alice", "age", 30);
+    Map<String, Object> record1 = Map.of("id", 1, "name", ALICE, "age", 30);
     Map<String, Object> record2 = Map.of("id", 2, "name", "Bob", "age", 25);
-    Map<String, Object> record3 = Map.of("id", 3, "name", "Charlie", "age", 35);
+    Map<String, Object> record3 = Map.of("id", 3, "name", CHARLIE, "age", 35);
 
     destination.write(record1);
     destination.write(record2);
@@ -110,7 +113,7 @@ class FileDestinationIT extends IntegrationTest {
 
     // Verify data rows (CSV format with quotes)
     String allContent = String.join("\n", lines);
-    assertThat(allContent).contains("Alice", "Bob", "Charlie");
+    assertThat(allContent).contains(ALICE, "Bob", CHARLIE);
   }
 
   @Test
@@ -185,8 +188,8 @@ class FileDestinationIT extends IntegrationTest {
     // When: Write 10,000 records
     int recordCount = 10_000;
     for (int i = 0; i < recordCount; i++) {
-      Map<String, Object> record = Map.of("id", i, "value", "Record-" + i);
-      destination.write(record);
+      Map<String, Object> data = Map.of("id", i, "value", "Record-" + i);
+      destination.write(data);
     }
     destination.close();
     destination = null;
@@ -218,7 +221,7 @@ class FileDestinationIT extends IntegrationTest {
 
     // Compressed file should be significantly smaller than raw JSON
     long compressedSize = Files.size(outputFile);
-    long estimatedUncompressedSize = 100 * 120; // ~120 bytes per record
+    long estimatedUncompressedSize = 100L * 120; // ~120 bytes per record
     assertThat(compressedSize).isLessThan(estimatedUncompressedSize / 2);
   }
 }

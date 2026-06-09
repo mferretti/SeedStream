@@ -41,6 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class FileDestinationTest {
   private static final String ALICE = "Alice";
+  private static final String OUTPUT_JSON = "output.json";
 
   @TempDir Path tempDir;
 
@@ -53,7 +54,7 @@ class FileDestinationTest {
 
   @Test
   void shouldWriteJsonRecordsToFile() throws Exception {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
     Map<String, Object> record1 = Map.of("name", "John", "age", 42);
@@ -102,7 +103,7 @@ class FileDestinationTest {
 
   @Test
   void shouldCompressOutputWithGzip() throws Exception {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).compress(true).build();
 
     Map<String, Object> data = Map.of("name", "John", "age", 42);
@@ -127,7 +128,7 @@ class FileDestinationTest {
 
   @Test
   void shouldAppendToExistingFile() throws Exception {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
 
     // Write first data
     FileDestinationConfig config1 = configBuilder.filePath(outputFile).build();
@@ -151,7 +152,7 @@ class FileDestinationTest {
 
   @Test
   void shouldOverwriteFileByDefault() throws Exception {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
 
     // Write first data
     FileDestinationConfig config1 = configBuilder.filePath(outputFile).build();
@@ -188,7 +189,7 @@ class FileDestinationTest {
 
   @Test
   void shouldFlushWrites() throws Exception {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
     try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
@@ -204,7 +205,7 @@ class FileDestinationTest {
 
   @Test
   void shouldThrowExceptionWhenWritingBeforeOpen() {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
     FileDestination destination = new FileDestination(config, new JsonSerializer());
 
@@ -216,7 +217,7 @@ class FileDestinationTest {
 
   @Test
   void shouldHandleEmptyRecords() throws Exception {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
     try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
@@ -288,7 +289,7 @@ class FileDestinationTest {
 
   @Test
   void shouldReturnCorrectDestinationType() {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
     FileDestination destination = new FileDestination(config, new JsonSerializer());
 
@@ -297,7 +298,7 @@ class FileDestinationTest {
 
   @Test
   void shouldHandleMultipleOpenCallsGracefully() {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
     try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
@@ -311,7 +312,7 @@ class FileDestinationTest {
 
   @Test
   void shouldHandleMultipleCloseCallsGracefully() {
-    Path outputFile = tempDir.resolve("output.json");
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
     FileDestination destination = new FileDestination(config, new JsonSerializer());

@@ -42,6 +42,7 @@ class JsonSerializerTest {
   private static final String FIELD_PRICE = "price";
   private static final String FIELD_QUANTITY = "quantity";
   private static final String FIELD_ADDRESS = "address";
+  private static final String FIELD_LINE_ITEMS = "lineItems";
   private static final String NAME_MARCO = "Marco";
   private static final String CITY_MILANO = "Milano";
   private static final String THREAD_1 = "Thread1";
@@ -162,7 +163,7 @@ class JsonSerializerTest {
             LocalDate.of(2024, 3, 15),
             "company",
             company,
-            "lineItems",
+            FIELD_LINE_ITEMS,
             List.of(lineItem1, lineItem2));
 
     String json = serializer.serialize(invoice);
@@ -170,8 +171,8 @@ class JsonSerializerTest {
     JsonNode node = mapper.readTree(json);
     assertThat(node.get("invoiceNumber").asText()).isEqualTo("INV-001");
     assertThat(node.get("company").get("name").asText()).isEqualTo("ACME Corp");
-    assertThat(node.get("lineItems")).hasSize(2);
-    assertThat(node.get("lineItems").get(0).get(FIELD_PRODUCT).asText()).isEqualTo("Widget");
+    assertThat(node.get(FIELD_LINE_ITEMS)).hasSize(2);
+    assertThat(node.get(FIELD_LINE_ITEMS).get(0).get(FIELD_PRODUCT).asText()).isEqualTo("Widget");
   }
 
   @Test

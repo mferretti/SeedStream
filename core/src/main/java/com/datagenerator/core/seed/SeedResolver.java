@@ -171,7 +171,10 @@ public class SeedResolver {
       return seed;
     } catch (NumberFormatException e) {
       throw new SeedResolutionException("Invalid seed value from remote API: " + url, e);
-    } catch (IOException | InterruptedException e) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SeedResolutionException("Failed to fetch seed from remote API: " + url, e);
+    } catch (IOException e) {
       throw new SeedResolutionException("Failed to fetch seed from remote API: " + url, e);
     }
   }

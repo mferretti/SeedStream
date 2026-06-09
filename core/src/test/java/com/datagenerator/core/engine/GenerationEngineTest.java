@@ -34,7 +34,7 @@ class GenerationEngineTest {
     // Given: Record generator that returns sequential IDs
     AtomicInteger idCounter = new AtomicInteger(0);
     GenerationEngine.RecordGenerator recordGenerator =
-        (random) -> Map.of("id", idCounter.incrementAndGet());
+        random -> Map.of("id", idCounter.incrementAndGet());
 
     // Capture written records
     List<Map<String, Object>> writtenRecords = new ArrayList<>();
@@ -59,14 +59,14 @@ class GenerationEngineTest {
     // Given: Record generator that creates unique records
     AtomicInteger idCounter = new AtomicInteger(0);
     GenerationEngine.RecordGenerator recordGenerator =
-        (random) -> Map.of("id", idCounter.incrementAndGet());
+        random -> Map.of("id", idCounter.incrementAndGet());
 
     // Thread-safe record storage
     List<Map<String, Object>> writtenRecords = new ArrayList<>();
     GenerationEngine.RecordWriter recordWriter =
-        record -> {
+        data -> {
           synchronized (writtenRecords) {
-            writtenRecords.add(record);
+            writtenRecords.add(data);
           }
         };
 
@@ -89,7 +89,7 @@ class GenerationEngineTest {
   @Test
   void shouldHandleZeroRecordCount() throws InterruptedException {
     // Given: Record generator
-    GenerationEngine.RecordGenerator recordGenerator = (random) -> Map.of("id", 1);
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("id", 1);
 
     List<Map<String, Object>> writtenRecords = new ArrayList<>();
 
@@ -111,7 +111,7 @@ class GenerationEngineTest {
   void shouldUseDeterministicSeedForReproducibility() throws InterruptedException {
     // Given: Real generator with deterministic behavior
     GenerationEngine.RecordGenerator recordGenerator =
-        (random) -> {
+        random -> {
           int value = random.nextInt(1000);
           return Map.of("value", value);
         };
@@ -147,14 +147,14 @@ class GenerationEngineTest {
     // Given: Record generator
     AtomicInteger idCounter = new AtomicInteger(0);
     GenerationEngine.RecordGenerator recordGenerator =
-        (random) -> Map.of("id", idCounter.incrementAndGet());
+        random -> Map.of("id", idCounter.incrementAndGet());
 
     // Thread-safe record storage
     List<Map<String, Object>> writtenRecords = new ArrayList<>();
     GenerationEngine.RecordWriter recordWriter =
-        record -> {
+        data -> {
           synchronized (writtenRecords) {
-            writtenRecords.add(record);
+            writtenRecords.add(data);
           }
         };
 
@@ -179,12 +179,12 @@ class GenerationEngineTest {
     // Given: Slow writer that simulates backpressure
     AtomicInteger writeCount = new AtomicInteger(0);
     GenerationEngine.RecordWriter slowWriter =
-        record -> {
+        data -> {
           writeCount.incrementAndGet();
           LockSupport.parkNanos(1_000_000L);
         };
 
-    GenerationEngine.RecordGenerator recordGenerator = (random) -> Map.of("id", 1);
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("id", 1);
 
     // When: Generate with small queue capacity
     GenerationEngine engine =
@@ -227,7 +227,7 @@ class GenerationEngineTest {
     Map<Long, Integer> threadCounts = new ConcurrentHashMap<>();
 
     GenerationEngine.RecordGenerator recordGenerator =
-        (random) -> {
+        random -> {
           long threadId = Thread.currentThread().threadId();
           threadCounts.merge(threadId, 1, Integer::sum);
           return Map.of("thread", threadId);
@@ -235,9 +235,9 @@ class GenerationEngineTest {
 
     List<Map<String, Object>> writtenRecords = new ArrayList<>();
     GenerationEngine.RecordWriter recordWriter =
-        record -> {
+        data -> {
           synchronized (writtenRecords) {
-            writtenRecords.add(record);
+            writtenRecords.add(data);
           }
         };
 

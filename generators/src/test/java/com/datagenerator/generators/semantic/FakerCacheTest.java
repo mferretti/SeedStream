@@ -88,9 +88,9 @@ class FakerCacheTest {
           });
     }
 
-    latch.await(5, TimeUnit.SECONDS);
+    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
     executor.shutdown();
-    executor.awaitTermination(5, TimeUnit.SECONDS);
+    assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
     // Each thread should get its own Faker instance
     assertThat(fakers).hasSize(3);
@@ -186,9 +186,9 @@ class FakerCacheTest {
           });
     }
 
-    latch.await(10, TimeUnit.SECONDS);
+    assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
     executor.shutdown();
-    executor.awaitTermination(10, TimeUnit.SECONDS);
+    assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
 
     // Verify: Each thread generated different values (different seeds)
     assertThat(resultsByThread).hasSize(numThreads);
@@ -228,9 +228,9 @@ class FakerCacheTest {
           });
     }
 
-    latch2.await(10, TimeUnit.SECONDS);
+    assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
     executor2.shutdown();
-    executor2.awaitTermination(10, TimeUnit.SECONDS);
+    assertThat(executor2.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
 
     // CRITICAL: Same seeds should produce IDENTICAL data (reproducibility)
     assertThat(resultsByThread)

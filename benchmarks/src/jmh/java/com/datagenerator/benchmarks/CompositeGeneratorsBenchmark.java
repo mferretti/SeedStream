@@ -63,7 +63,6 @@ public class CompositeGeneratorsBenchmark {
   private ArrayGenerator arrayGenerator;
   private ObjectGenerator objectGenerator;
   private DataGeneratorFactory factory;
-  private StructureRegistry registry;
 
   private ArrayType smallArrayType;
   private ArrayType largeArrayType;
@@ -81,7 +80,7 @@ public class CompositeGeneratorsBenchmark {
     simpleStructure.put("active", new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null));
 
     // Create registry with mock loader that returns our simple structure
-    registry = new StructureRegistry((name, path, reg) -> simpleStructure);
+    StructureRegistry registry = new StructureRegistry((name, path, reg) -> simpleStructure);
     factory = new DataGeneratorFactory(registry, null);
 
     objectGenerator = new ObjectGenerator(registry, null);

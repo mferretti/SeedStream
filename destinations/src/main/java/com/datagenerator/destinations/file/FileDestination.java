@@ -160,17 +160,17 @@ public class FileDestination extends AbstractDestination {
   }
 
   @Override
-  public void write(Map<String, Object> record) {
+  public void write(Map<String, Object> data) {
     requireOpen("File");
 
     if (isAvro) {
-      writeAvro(record);
+      writeAvro(data);
       return;
     }
 
     try {
       if (!headerWritten && serializer instanceof com.datagenerator.formats.csv.CsvSerializer csv) {
-        String header = csv.serializeHeader(record);
+        String header = csv.serializeHeader(data);
         if (!header.isEmpty()) {
           outputStream.write(header.getBytes(StandardCharsets.UTF_8));
           outputStream.write('\n');
@@ -179,7 +179,7 @@ public class FileDestination extends AbstractDestination {
         headerWritten = true;
       }
 
-      streamWriter.writeRecord(record);
+      streamWriter.writeRecord(data);
 
     } catch (IOException e) {
       throw new DestinationException("Failed to write record to file", e);

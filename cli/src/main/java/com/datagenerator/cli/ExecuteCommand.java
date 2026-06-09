@@ -453,13 +453,13 @@ public class ExecuteCommand implements Callable<Integer> {
     GenerationEngine engine =
         GenerationEngine.builder()
             .recordGenerator(
-                (random) -> {
+                random -> {
                   // Each worker thread needs its own GeneratorContext
                   try (var ctx = GeneratorContext.enter(factory, geolocation, count)) {
                     @SuppressWarnings("unchecked")
-                    Map<String, Object> record =
+                    Map<String, Object> data =
                         (Map<String, Object>) generator.generate(random, objectType);
-                    return record;
+                    return data;
                   }
                 })
             .recordWriter(destination::write)

@@ -112,7 +112,7 @@ class KafkaDestinationIT extends IntegrationTest {
         .pollInterval(Duration.ofMillis(100))
         .until(
             () -> {
-              consumer.poll(Duration.ofMillis(100)).forEach(record -> messages.add(record.value()));
+              consumer.poll(Duration.ofMillis(100)).forEach(cr -> messages.add(cr.value()));
               return messages.size() >= 3;
             });
 
@@ -141,8 +141,8 @@ class KafkaDestinationIT extends IntegrationTest {
     // When: Write 1000 records
     int recordCount = 1000;
     for (int i = 0; i < recordCount; i++) {
-      Map<String, Object> record = Map.of("id", i, "value", "Record-" + i);
-      destination.write(record);
+      Map<String, Object> data = Map.of("id", i, "value", "Record-" + i);
+      destination.write(data);
     }
     destination.flush();
 
@@ -178,12 +178,12 @@ class KafkaDestinationIT extends IntegrationTest {
     consumer.subscribe(Collections.singletonList(topic));
 
     // When: Write record in sync mode
-    Map<String, Object> record = new HashMap<>();
-    record.put("userId", "user-123");
-    record.put("name", "Alice");
-    record.put("email", "alice@example.com");
+    Map<String, Object> data = new HashMap<>();
+    data.put("userId", "user-123");
+    data.put("name", "Alice");
+    data.put("email", "alice@example.com");
 
-    destination.write(record);
+    destination.write(data);
     destination.flush();
 
     // Then: Verify record received
@@ -224,8 +224,8 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with compression
     for (int i = 0; i < 50; i++) {
-      Map<String, Object> record = Map.of("id", i, "data", "x".repeat(100)); // Compressible data
-      destination.write(record);
+      Map<String, Object> data = Map.of("id", i, "data", "x".repeat(100)); // Compressible data
+      destination.write(data);
     }
     destination.flush();
 
@@ -262,9 +262,9 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with Snappy compression
     for (int i = 0; i < 20; i++) {
-      Map<String, Object> record =
+      Map<String, Object> data =
           Map.of("id", i, "data", "Snappy compression test data: " + "x".repeat(50));
-      destination.write(record);
+      destination.write(data);
     }
     destination.flush();
 
@@ -301,9 +301,9 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with LZ4 compression
     for (int i = 0; i < 20; i++) {
-      Map<String, Object> record =
+      Map<String, Object> data =
           Map.of("id", i, "data", "LZ4 compression test data: " + "y".repeat(50));
-      destination.write(record);
+      destination.write(data);
     }
     destination.flush();
 
@@ -340,9 +340,9 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with Zstandard compression
     for (int i = 0; i < 20; i++) {
-      Map<String, Object> record =
+      Map<String, Object> data =
           Map.of("id", i, "data", "Zstandard compression test data: " + "z".repeat(50));
-      destination.write(record);
+      destination.write(data);
     }
     destination.flush();
 
@@ -379,8 +379,8 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with no compression
     for (int i = 0; i < 15; i++) {
-      Map<String, Object> record = Map.of("id", i, "data", "No compression data: " + i);
-      destination.write(record);
+      Map<String, Object> data = Map.of("id", i, "data", "No compression data: " + i);
+      destination.write(data);
     }
     destination.flush();
 
@@ -417,8 +417,8 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with custom batching
     for (int i = 0; i < 30; i++) {
-      Map<String, Object> record = Map.of("id", i, "data", "Batch test data " + i);
-      destination.write(record);
+      Map<String, Object> data = Map.of("id", i, "data", "Batch test data " + i);
+      destination.write(data);
     }
     destination.flush();
 
@@ -455,8 +455,8 @@ class KafkaDestinationIT extends IntegrationTest {
 
     // When: Write records with all acks
     for (int i = 0; i < 10; i++) {
-      Map<String, Object> record = Map.of("id", i, "data", "Acks test " + i);
-      destination.write(record);
+      Map<String, Object> data = Map.of("id", i, "data", "Acks test " + i);
+      destination.write(data);
     }
     destination.flush();
 
@@ -542,10 +542,10 @@ class KafkaDestinationIT extends IntegrationTest {
     destination.close(); // Close the destination
 
     // When: Try to write after closing
-    Map<String, Object> record = Map.of("id", 1, "data", "test");
+    Map<String, Object> data = Map.of("id", 1, "data", "test");
 
     // Then: Should throw exception
-    assertThatThrownBy(() -> destination.write(record))
+    assertThatThrownBy(() -> destination.write(data))
         .isInstanceOf(Exception.class)
         .hasMessageContaining("not open");
   }
@@ -566,13 +566,13 @@ class KafkaDestinationIT extends IntegrationTest {
     consumer.subscribe(Collections.singletonList(topic));
 
     // When: Write record with special characters that JSON can handle
-    Map<String, Object> record =
+    Map<String, Object> data =
         Map.of(
             "id", 1,
             "data", "Special chars: \n\t\r\"'\\",
             "unicode", "日本語 中文 한국어 العربية");
 
-    destination.write(record);
+    destination.write(data);
     destination.flush();
 
     // Then: Record should be serialized and published successfully

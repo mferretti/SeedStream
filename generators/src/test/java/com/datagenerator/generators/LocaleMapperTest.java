@@ -23,12 +23,14 @@ import org.junit.jupiter.api.Test;
 
 class LocaleMapperTest {
 
+  private static final String BRAZIL = "brazil";
+
   @Test
   void shouldMapCommonLocales() {
     assertThat(LocaleMapper.map("italy")).isEqualTo(Locale.ITALY);
     assertThat(LocaleMapper.map("it")).isEqualTo(Locale.ITALY);
     assertThat(LocaleMapper.map("japan")).isEqualTo(Locale.JAPAN);
-    assertThat(LocaleMapper.map("brazil")).isEqualTo(Locale.of("pt", "BR"));
+    assertThat(LocaleMapper.map(BRAZIL)).isEqualTo(Locale.of("pt", "BR"));
     assertThat(LocaleMapper.map("france")).isEqualTo(Locale.FRANCE);
     assertThat(LocaleMapper.map("germany")).isEqualTo(Locale.GERMANY);
   }
@@ -88,7 +90,7 @@ class LocaleMapperTest {
 
   @Test
   void shouldMapAmericasLocales() {
-    assertThat(LocaleMapper.map("brazil")).isEqualTo(Locale.of("pt", "BR"));
+    assertThat(LocaleMapper.map(BRAZIL)).isEqualTo(Locale.of("pt", "BR"));
     assertThat(LocaleMapper.map("brazilian")).isEqualTo(Locale.of("pt", "BR"));
     assertThat(LocaleMapper.map("mexico")).isEqualTo(Locale.of("es", "MX"));
     assertThat(LocaleMapper.map("mexican")).isEqualTo(Locale.of("es", "MX"));
@@ -155,7 +157,7 @@ class LocaleMapperTest {
   void shouldMapPortugueseVariants() {
     assertThat(LocaleMapper.map("portugal")).isEqualTo(Locale.of("pt", "PT"));
     assertThat(LocaleMapper.map("portuguese")).isEqualTo(Locale.of("pt", "PT"));
-    assertThat(LocaleMapper.map("brazil")).isEqualTo(Locale.of("pt", "BR"));
+    assertThat(LocaleMapper.map(BRAZIL)).isEqualTo(Locale.of("pt", "BR"));
     assertThat(LocaleMapper.map("pt-br")).isEqualTo(Locale.of("pt", "BR"));
   }
 

@@ -29,6 +29,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ProtobufSerializerTest {
+  private static final String FIELD_ACTIVE = "active";
+
   private ProtobufSerializer serializer;
 
   @BeforeEach
@@ -43,12 +45,12 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldSerializeSimpleRecord() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "John");
-    record.put("age", 42);
-    record.put("active", true);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("age", 42);
+    data.put(FIELD_ACTIVE, true);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     // Result should be valid base64
     assertThat(result).isNotBlank().matches("^[A-Za-z0-9+/]+=*$");
@@ -59,11 +61,11 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldSerializeWithFieldAliases() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("nome", "Marco");
-    record.put("citta", "Milano");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("nome", "Marco");
+    data.put("citta", "Milano");
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -72,11 +74,11 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldSerializeBigDecimalAsDouble() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("price", new BigDecimal("99.95"));
-    record.put("quantity", 5);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("price", new BigDecimal("99.95"));
+    data.put("quantity", 5);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -86,10 +88,10 @@ class ProtobufSerializerTest {
   @Test
   void shouldSerializeLocalDateAsIso8601String() {
     LocalDate date = LocalDate.of(2024, 3, 15);
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("birthDate", date);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("birthDate", date);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     // Decode and verify it's valid protobuf
@@ -100,10 +102,10 @@ class ProtobufSerializerTest {
   @Test
   void shouldSerializeInstantAsIso8601String() {
     Instant timestamp = Instant.parse("2024-03-15T14:30:00Z");
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("createdAt", timestamp);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("createdAt", timestamp);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -116,11 +118,11 @@ class ProtobufSerializerTest {
     address.put("street", "Via Roma");
     address.put("city", "Milano");
 
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Marco");
-    record.put("address", address);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Marco");
+    data.put("address", address);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -129,11 +131,11 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldSerializeArraysAsRepeatedFields() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Order");
-    record.put("items", List.of("item1", "item2", "item3"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Order");
+    data.put("items", List.of("item1", "item2", "item3"));
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -142,12 +144,12 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldHandleNullValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "John");
-    record.put("email", null);
-    record.put("age", 42);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("email", null);
+    data.put("age", 42);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -156,9 +158,9 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldHandleEmptyRecord() {
-    Map<String, Object> record = new LinkedHashMap<>();
+    Map<String, Object> data = new LinkedHashMap<>();
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     // Empty protobuf message serializes to empty byte array
     // which base64-encodes to empty string
@@ -193,14 +195,14 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldHandleVariousNumericTypes() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("intValue", 42);
-    record.put("longValue", 123456789L);
-    record.put("doubleValue", 3.14159);
-    record.put("floatValue", 2.71828f);
-    record.put("bigDecimalValue", new BigDecimal("999.99"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("intValue", 42);
+    data.put("longValue", 123456789L);
+    data.put("doubleValue", 3.14159);
+    data.put("floatValue", 2.71828f);
+    data.put("bigDecimalValue", new BigDecimal("999.99"));
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -209,11 +211,11 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldHandleBooleanValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("active", true);
-    record.put("deleted", false);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put(FIELD_ACTIVE, true);
+    data.put("deleted", false);
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);
@@ -223,14 +225,14 @@ class ProtobufSerializerTest {
   @Test
   void shouldProduceSmallerOutputThanJson() {
     // Protobuf should be more compact than JSON for structured data
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("firstName", "Christopher");
-    record.put("lastName", "Montgomery");
-    record.put("age", 42);
-    record.put("active", true);
-    record.put("balance", new BigDecimal("12345.67"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("firstName", "Christopher");
+    data.put("lastName", "Montgomery");
+    data.put("age", 42);
+    data.put(FIELD_ACTIVE, true);
+    data.put("balance", new BigDecimal("12345.67"));
 
-    String protobufResult = serializer.serialize(record);
+    String protobufResult = serializer.serialize(data);
     byte[] protobufBinary = Base64.getDecoder().decode(protobufResult);
 
     // JSON equivalent (approximate)
@@ -246,16 +248,16 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldSerializeComplexRecord() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", 12345L);
-    record.put("name", "Test Product");
-    record.put("price", new BigDecimal("99.99"));
-    record.put("inStock", true);
-    record.put("tags", List.of("electronics", "gadgets"));
-    record.put("createdAt", Instant.parse("2024-03-15T10:30:00Z"));
-    record.put("releaseDate", LocalDate.of(2024, 6, 1));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", 12345L);
+    data.put("name", "Test Product");
+    data.put("price", new BigDecimal("99.99"));
+    data.put("inStock", true);
+    data.put("tags", List.of("electronics", "gadgets"));
+    data.put("createdAt", Instant.parse("2024-03-15T10:30:00Z"));
+    data.put("releaseDate", LocalDate.of(2024, 6, 1));
 
-    String result = serializer.serialize(record);
+    String result = serializer.serialize(data);
 
     assertThat(result).isNotBlank();
     byte[] binary = Base64.getDecoder().decode(result);

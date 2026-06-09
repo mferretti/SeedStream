@@ -49,6 +49,7 @@ public class DataGeneratorCli implements Runnable {
   }
 
   @Override
+  @SuppressWarnings("java:S106")
   public void run() {
     // Show help when no subcommand is specified
     CommandLine.usage(this, System.out);

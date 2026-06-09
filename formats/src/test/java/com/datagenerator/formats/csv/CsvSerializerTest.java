@@ -33,6 +33,9 @@ import org.junit.jupiter.api.Test;
 
 class CsvSerializerTest {
   private static final String MARCO = "Marco";
+  private static final String MILANO = "Milano";
+  private static final String FIELD_PRICE = "price";
+  private static final String FIELD_QUANTITY = "quantity";
 
   private CsvSerializer serializer;
 
@@ -43,24 +46,24 @@ class CsvSerializerTest {
 
   @Test
   void shouldSerializeHeader() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "John");
-    record.put("age", 42);
-    record.put("city", "NYC");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("age", 42);
+    data.put("city", "NYC");
 
-    String header = serializer.serializeHeader(record);
+    String header = serializer.serializeHeader(data);
 
     assertThat(header).isEqualTo("\"name\",\"age\",\"city\"");
   }
 
   @Test
   void shouldSerializeSimpleRow() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "John");
-    record.put("age", 42);
-    record.put("city", "NYC");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("age", 42);
+    data.put("city", "NYC");
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     assertThat(csv).isEqualTo("\"John\",\"42\",\"NYC\"");
   }
@@ -68,12 +71,12 @@ class CsvSerializerTest {
   @Test
   void shouldSerializeWithFieldAliases() {
     // Simulate generator output with aliases
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("nome", MARCO);
-    record.put("citta", "Milano");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("nome", MARCO);
+    data.put("citta", MILANO);
 
-    String header = serializer.serializeHeader(record);
-    String csv = serializer.serialize(record);
+    String header = serializer.serializeHeader(data);
+    String csv = serializer.serialize(data);
 
     assertThat(header).isEqualTo("\"nome\",\"citta\"");
     assertThat(csv).isEqualTo("\"Marco\",\"Milano\"");
@@ -81,10 +84,10 @@ class CsvSerializerTest {
 
   @Test
   void shouldEscapeQuotesInValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("description", "Product \"Premium\" Edition");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("description", "Product \"Premium\" Edition");
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // OpenCSV doubles quotes for escaping
     assertThat(csv).contains("\"Product \"\"Premium\"\" Edition\"");
@@ -92,10 +95,10 @@ class CsvSerializerTest {
 
   @Test
   void shouldEscapeCommasInValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("address", "123 Main St, Apt 4B");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("address", "123 Main St, Apt 4B");
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // Values with commas should be quoted
     assertThat(csv).isEqualTo("\"123 Main St, Apt 4B\"");
@@ -103,10 +106,10 @@ class CsvSerializerTest {
 
   @Test
   void shouldEscapeNewlinesInValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("notes", "Line 1\nLine 2\nLine 3");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("notes", "Line 1\nLine 2\nLine 3");
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // Newlines should be preserved within quotes
     assertThat(csv).contains("Line 1\nLine 2\nLine 3");
@@ -114,11 +117,11 @@ class CsvSerializerTest {
 
   @Test
   void shouldSerializeBigDecimal() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("price", new BigDecimal("99.95"));
-    record.put("quantity", 5);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put(FIELD_PRICE, new BigDecimal("99.95"));
+    data.put(FIELD_QUANTITY, 5);
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     assertThat(csv).isEqualTo("\"99.95\",\"5\"");
   }
@@ -126,10 +129,10 @@ class CsvSerializerTest {
   @Test
   void shouldSerializeLocalDateAsIso8601() {
     LocalDate date = LocalDate.of(2024, 3, 15);
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("birthDate", date);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("birthDate", date);
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     assertThat(csv).isEqualTo("\"2024-03-15\"");
   }
@@ -137,10 +140,10 @@ class CsvSerializerTest {
   @Test
   void shouldSerializeInstantAsIso8601() {
     Instant timestamp = Instant.parse("2024-03-15T14:30:00Z");
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("createdAt", timestamp);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("createdAt", timestamp);
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     assertThat(csv).isEqualTo("\"2024-03-15T14:30:00Z\"");
   }
@@ -149,30 +152,30 @@ class CsvSerializerTest {
   void shouldSerializeNestedObjectAsJson() {
     Map<String, Object> address = new LinkedHashMap<>();
     address.put("street", "Via Roma");
-    address.put("city", "Milano");
+    address.put("city", MILANO);
 
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", MARCO);
-    record.put("address", address);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", MARCO);
+    data.put("address", address);
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // Nested object should be JSON-serialized and quoted (CSV escapes inner quotes by doubling)
     // The JSON structure is preserved but quotes are escaped
     assertThat(csv)
         .contains(MARCO)
         .contains("Via Roma")
-        .contains("Milano")
+        .contains(MILANO)
         .matches(".*\\{.*street.*Via Roma.*city.*Milano.*\\}.*");
   }
 
   @Test
   void shouldSerializeArrayAsJson() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Order");
-    record.put("items", List.of("item1", "item2", "item3"));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Order");
+    data.put("items", List.of("item1", "item2", "item3"));
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // Array structure is preserved
     assertThat(csv)
@@ -186,15 +189,17 @@ class CsvSerializerTest {
 
   @Test
   void shouldSerializeComplexNestedStructure() {
-    Map<String, Object> lineItem1 = Map.of("product", "Widget", "quantity", 5, "price", 10.50);
-    Map<String, Object> lineItem2 = Map.of("product", "Gadget", "quantity", 2, "price", 25.00);
+    Map<String, Object> lineItem1 =
+        Map.of("product", "Widget", FIELD_QUANTITY, 5, FIELD_PRICE, 10.50);
+    Map<String, Object> lineItem2 =
+        Map.of("product", "Gadget", FIELD_QUANTITY, 2, FIELD_PRICE, 25.00);
 
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("invoiceNumber", "INV-001");
-    record.put("date", LocalDate.of(2024, 3, 15));
-    record.put("lineItems", List.of(lineItem1, lineItem2));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("invoiceNumber", "INV-001");
+    data.put("date", LocalDate.of(2024, 3, 15));
+    data.put("lineItems", List.of(lineItem1, lineItem2));
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // Nested array should be JSON-serialized
     assertThat(csv)
@@ -206,12 +211,12 @@ class CsvSerializerTest {
 
   @Test
   void shouldHandleNullValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "John");
-    record.put("middleName", null);
-    record.put("age", 42);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("middleName", null);
+    data.put("age", 42);
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     // Null should be empty string
     assertThat(csv).isEqualTo("\"John\",\"\",\"42\"");
@@ -219,10 +224,10 @@ class CsvSerializerTest {
 
   @Test
   void shouldHandleEmptyRecord() {
-    Map<String, Object> record = Map.of();
+    Map<String, Object> data = Map.of();
 
-    String header = serializer.serializeHeader(record);
-    String csv = serializer.serialize(record);
+    String header = serializer.serializeHeader(data);
+    String csv = serializer.serialize(data);
 
     assertThat(header).isEmpty();
     assertThat(csv).isEmpty();
@@ -230,13 +235,13 @@ class CsvSerializerTest {
 
   @Test
   void shouldPreserveFieldOrder() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("field1", "A");
-    record.put("field2", "B");
-    record.put("field3", "C");
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("field1", "A");
+    data.put("field2", "B");
+    data.put("field3", "C");
 
-    String header = serializer.serializeHeader(record);
-    String csv = serializer.serialize(record);
+    String header = serializer.serializeHeader(data);
+    String csv = serializer.serialize(data);
 
     assertThat(header).isEqualTo("\"field1\",\"field2\",\"field3\"");
     assertThat(csv).isEqualTo("\"A\",\"B\",\"C\"");
@@ -244,11 +249,11 @@ class CsvSerializerTest {
 
   @Test
   void shouldHandleBooleanValues() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("active", true);
-    record.put("verified", false);
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("active", true);
+    data.put("verified", false);
 
-    String csv = serializer.serialize(record);
+    String csv = serializer.serialize(data);
 
     assertThat(csv).isEqualTo("\"true\",\"false\"");
   }

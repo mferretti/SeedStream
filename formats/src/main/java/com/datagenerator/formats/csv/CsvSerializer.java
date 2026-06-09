@@ -86,17 +86,17 @@ public class CsvSerializer implements FormatSerializer {
    * @param record sample record to extract column names (uses key order from LinkedHashMap)
    * @return CSV header row
    */
-  public String serializeHeader(Map<String, Object> record) {
-    if (record.isEmpty()) return "";
-    return writeCsv(record.keySet().toArray(new String[0]));
+  public String serializeHeader(Map<String, Object> data) {
+    if (data.isEmpty()) return "";
+    return writeCsv(data.keySet().toArray(new String[0]));
   }
 
   @Override
-  public String serialize(Map<String, Object> record) {
-    if (record.isEmpty()) return "";
-    String[] values = new String[record.size()];
+  public String serialize(Map<String, Object> data) {
+    if (data.isEmpty()) return "";
+    String[] values = new String[data.size()];
     int i = 0;
-    for (Object value : record.values()) {
+    for (Object value : data.values()) {
       values[i++] = convertToString(value);
     }
     return writeCsv(values);

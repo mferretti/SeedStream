@@ -92,22 +92,22 @@ class DataGeneratorIntegrationTest {
     PrimitiveType intType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000");
     DataGenerator intGen = factory.create(intType);
 
-    int value1_1 = (int) intGen.generate(random1, intType);
-    int value1_2 = (int) intGen.generate(random1, intType);
-    int value1_3 = (int) intGen.generate(random1, intType);
+    int val11 = (int) intGen.generate(random1, intType);
+    int val12 = (int) intGen.generate(random1, intType);
+    int val13 = (int) intGen.generate(random1, intType);
 
     // Run 2 with same seed
     RandomProvider provider2 = new RandomProvider(999L);
     Random random2 = provider2.getRandom();
 
-    int value2_1 = (int) intGen.generate(random2, intType);
-    int value2_2 = (int) intGen.generate(random2, intType);
-    int value2_3 = (int) intGen.generate(random2, intType);
+    int val21 = (int) intGen.generate(random2, intType);
+    int val22 = (int) intGen.generate(random2, intType);
+    int val23 = (int) intGen.generate(random2, intType);
 
     // Same seed → same sequence
-    assertThat(value1_1).isEqualTo(value2_1);
-    assertThat(value1_2).isEqualTo(value2_2);
-    assertThat(value1_3).isEqualTo(value2_3);
+    assertThat(val11).isEqualTo(val21);
+    assertThat(val12).isEqualTo(val22);
+    assertThat(val13).isEqualTo(val23);
   }
 
   @Test

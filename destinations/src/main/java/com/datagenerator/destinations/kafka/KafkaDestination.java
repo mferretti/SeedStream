@@ -180,11 +180,11 @@ public class KafkaDestination extends AbstractDestination {
 
   @Override
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
-  public void write(Map<String, Object> record) {
+  public void write(Map<String, Object> data) {
     requireOpen("Kafka");
 
     try {
-      byte[] recordBytes = serializer.serializeToBytes(record);
+      byte[] recordBytes = serializer.serializeToBytes(data);
 
       // Create producer record (null key, uses default partitioning)
       ProducerRecord<String, byte[]> producerRecord =

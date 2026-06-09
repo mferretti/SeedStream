@@ -34,6 +34,7 @@ import org.junit.jupiter.api.io.TempDir;
 class SeedResolverTest {
   private static final String TYPE_REMOTE = "remote";
   private static final String REMOTE_URL = "https://api.example.com/seed";
+  private static final String API_KEY_HEADER = "X-API-Key";
   private static final String ENV_SEED_KEY = "SEEDSTREAM_TEST_ENV_SEED_42";
 
   private SeedResolver resolver;
@@ -180,7 +181,7 @@ class SeedResolverTest {
     SeedResolver customResolver = new SeedResolver(mockClient);
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig(
-            "api_key", null, null, null, "X-API-Key", "my-key-123");
+            "api_key", null, null, null, API_KEY_HEADER, "my-key-123");
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     long seed = customResolver.resolve(config);
@@ -188,7 +189,8 @@ class SeedResolverTest {
     assertThat(seed).isEqualTo(66666L);
     verify(mockClient)
         .send(
-            argThat(req -> req.headers().firstValue("X-API-Key").orElse("").equals("my-key-123")),
+            argThat(
+                req -> req.headers().firstValue(API_KEY_HEADER).orElse("").equals("my-key-123")),
             any());
   }
 
@@ -272,7 +274,7 @@ class SeedResolverTest {
   @Test
   void shouldFailWhenApiKeyMissing() {
     SeedConfig.RemoteSeed.AuthConfig auth =
-        new SeedConfig.RemoteSeed.AuthConfig("api_key", null, null, null, "X-API-Key", null);
+        new SeedConfig.RemoteSeed.AuthConfig("api_key", null, null, null, API_KEY_HEADER, null);
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     assertThatThrownBy(() -> resolver.resolve(config))

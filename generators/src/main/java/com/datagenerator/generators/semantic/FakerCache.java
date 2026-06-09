@@ -52,6 +52,8 @@ import net.datafaker.Faker;
 @Slf4j
 public class FakerCache {
 
+  private FakerCache() {}
+
   // Thread-local cache: Locale -> Faker instance
   private static final ThreadLocal<Map<Locale, Faker>> CACHE =
       ThreadLocal.withInitial(ConcurrentHashMap::new);

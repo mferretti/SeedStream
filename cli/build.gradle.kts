@@ -8,17 +8,15 @@ dependencies {
     implementation(project(":generators"))
     implementation(project(":formats"))
     implementation(project(":destinations"))
-    
     // Jackson for JSON processing
     implementation(libs.jackson.databind)
-    
     // CLI framework
     implementation(libs.picocli)
-    annotationProcessor(libs.picocli.codegen)
-    
     // Logback for programmatic log level control
     implementation(libs.logback.classic)
-    
+
+    annotationProcessor(libs.picocli.codegen)
+
     // Runtime dependencies for destinations
     runtimeOnly(libs.kafka.clients)
     // JDBC drivers are NOT bundled — users drop them into extras/ at runtime
@@ -36,6 +34,8 @@ tasks.jar {
 }
 
 tasks.register<Jar>("fatJar") {
+    group = "build"
+    description = "Assembles a self-contained fat JAR with all runtime dependencies bundled."
     archiveBaseName.set("seedstream")
     archiveClassifier.set("")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

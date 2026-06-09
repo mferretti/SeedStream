@@ -56,8 +56,7 @@ import java.util.regex.Pattern;
  */
 public class TimestampGenerator implements DataGenerator {
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
-  private static final Pattern RELATIVE_PATTERN =
-      Pattern.compile("now([+-])(\\d+)([dhms])"); // now±N{d|h|m|s}
+  private static final Pattern RELATIVE_PATTERN = Pattern.compile("now([+-])(\\d+)([dhms])");
 
   @Override
   public Object generate(Random random, DataType dataType) {

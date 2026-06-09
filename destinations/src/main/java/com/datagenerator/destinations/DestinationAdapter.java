@@ -50,7 +50,7 @@ public interface DestinationAdapter extends AutoCloseable {
    * @param record the generated record
    * @throws DestinationException if write fails
    */
-  void write(Map<String, Object> record);
+  void write(Map<String, Object> data);
 
   /**
    * Flush any buffered records to destination.

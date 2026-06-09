@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 
-def main():
+def main():  # NOSONAR
     # Locate results file
     results_file = Path('benchmarks/build/reports/jmh/results.json')
     

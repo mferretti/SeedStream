@@ -34,6 +34,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class DatafakerGeneratorTest {
+  private static final String ITALY = "italy";
+
   private DatafakerGenerator generator;
   private DataGeneratorFactory factory;
   private Random random;
@@ -82,7 +84,7 @@ class DatafakerGeneratorTest {
     Random random2 = new Random(12345L);
     CustomDatafakerType nameType = new CustomDatafakerType("name");
 
-    try (var ctx = GeneratorContext.enter(factory, "italy")) {
+    try (var ctx = GeneratorContext.enter(factory, ITALY)) {
       String name1 = (String) generator.generate(random1, nameType);
       FakerCache.clear(); // Clear cache to allow new Random instance
       String name2 = (String) generator.generate(random2, nameType);
@@ -94,7 +96,7 @@ class DatafakerGeneratorTest {
   @Test
   void shouldGenerateNameForItalianLocale() {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("italy", nameType);
+    String name = (String) generateWithContext(ITALY, nameType);
 
     assertThat(name)
         .isNotNull()
@@ -229,7 +231,7 @@ class DatafakerGeneratorTest {
     Random random1 = new Random(12345L);
     Random random2 = new Random(99999L);
 
-    try (var ctx = GeneratorContext.enter(factory, "italy")) {
+    try (var ctx = GeneratorContext.enter(factory, ITALY)) {
       String name1 = (String) generator.generate(random1, nameType);
       String name2 = (String) generator.generate(random2, nameType);
 
@@ -242,7 +244,7 @@ class DatafakerGeneratorTest {
   void shouldHandleMultipleLocales() {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
 
-    try (var ctx = GeneratorContext.enter(factory, "italy")) {
+    try (var ctx = GeneratorContext.enter(factory, ITALY)) {
       String italianName = (String) generator.generate(random, nameType);
       assertThat(italianName).isNotNull();
     }

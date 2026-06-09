@@ -87,9 +87,9 @@ class KafkaDestinationTest {
         KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(TOPIC).build();
 
     try (KafkaDestination destination = new KafkaDestination(config, new JsonSerializer())) {
-      Map<String, Object> record = Map.of("name", "John", "age", 42);
+      Map<String, Object> data = Map.of("name", "John", "age", 42);
 
-      assertThatThrownBy(() -> destination.write(record))
+      assertThatThrownBy(() -> destination.write(data))
           .isInstanceOf(DestinationException.class)
           .hasMessageContaining("not open");
     }

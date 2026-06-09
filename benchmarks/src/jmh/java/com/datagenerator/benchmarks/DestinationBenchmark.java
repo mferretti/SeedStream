@@ -77,12 +77,12 @@ public class DestinationBenchmark {
   private Path tempFile;
   private BufferedWriter rawWriter;
   private FileDestination fileDestination;
-  private JsonSerializer jsonSerializer;
 
   private Map<String, Object> complexRecord;
   private String preSerializedJson;
 
   @Setup(Level.Iteration)
+  @SuppressWarnings("java:S5443")
   public void setup() throws IOException {
     // Create temp file for benchmarks
     tempFile = Files.createTempFile("benchmark-", ".json");
@@ -100,7 +100,7 @@ public class DestinationBenchmark {
     complexRecord.put("createdAt", Instant.parse("2024-03-15T10:30:00Z"));
 
     // Pre-serialize for raw write benchmark
-    jsonSerializer = new JsonSerializer();
+    JsonSerializer jsonSerializer = new JsonSerializer();
     preSerializedJson = jsonSerializer.serialize(complexRecord) + "\n";
 
     // Setup raw writer
