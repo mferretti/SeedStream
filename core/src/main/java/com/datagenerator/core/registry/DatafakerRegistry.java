@@ -54,6 +54,13 @@ public class DatafakerRegistry {
   // Map aliases to canonical type names
   private static final ConcurrentHashMap<String, String> aliasMap = new ConcurrentHashMap<>();
 
+  private static final String TYPE_POSTAL_CODE = "postal_code";
+  private static final String TYPE_LONGITUDE = "longitude";
+  private static final String TYPE_PHONE_NUMBER = "phone_number";
+  private static final String TYPE_STOCK_MARKET = "stock_market";
+  private static final String TYPE_PRODUCT_NAME = "product_name";
+  private static final String TYPE_PROMOTION_CODE = "promotion_code";
+
   /** Functional interface for Datafaker type generators. */
   @FunctionalInterface
   public interface DatafakerFunction {
@@ -102,17 +109,17 @@ public class DatafakerRegistry {
     registerAlias("streetnumber", "street_number");
     register("city", (faker, random) -> faker.address().city());
     register("state", (faker, random) -> faker.address().state());
-    register("postal_code", (faker, random) -> faker.address().zipCode());
-    registerAlias("postalcode", "postal_code");
-    registerAlias("zipcode", "postal_code");
-    registerAlias("zip", "postal_code");
+    register(TYPE_POSTAL_CODE, (faker, random) -> faker.address().zipCode());
+    registerAlias("postalcode", TYPE_POSTAL_CODE);
+    registerAlias("zipcode", TYPE_POSTAL_CODE);
+    registerAlias("zip", TYPE_POSTAL_CODE);
     register("country", (faker, random) -> faker.address().country());
     register("latitude", (faker, random) -> faker.address().latitude());
     registerAlias("lat", "latitude");
-    register("longitude", (faker, random) -> faker.address().longitude());
-    registerAlias("lon", "longitude");
-    registerAlias("lng", "longitude");
-    registerAlias("long", "longitude");
+    register(TYPE_LONGITUDE, (faker, random) -> faker.address().longitude());
+    registerAlias("lon", TYPE_LONGITUDE);
+    registerAlias("lng", TYPE_LONGITUDE);
+    registerAlias("long", TYPE_LONGITUDE);
     register("country_code", (faker, random) -> faker.address().countryCode());
     registerAlias("countrycode", "country_code");
     register("time_zone", (faker, random) -> faker.address().timeZone());
@@ -120,9 +127,9 @@ public class DatafakerRegistry {
 
     // Contact types
     register("email", (faker, random) -> faker.internet().emailAddress());
-    register("phone_number", (faker, random) -> faker.phoneNumber().phoneNumber());
-    registerAlias("phonenumber", "phone_number");
-    registerAlias("phone", "phone_number");
+    register(TYPE_PHONE_NUMBER, (faker, random) -> faker.phoneNumber().phoneNumber());
+    registerAlias("phonenumber", TYPE_PHONE_NUMBER);
+    registerAlias("phone", TYPE_PHONE_NUMBER);
 
     // Finance types
     register("company", (faker, random) -> faker.company().name());
@@ -137,10 +144,10 @@ public class DatafakerRegistry {
     registerAlias("cvc", "cvv");
     register("credit_card_type", (faker, random) -> faker.finance().creditCard().split(" ")[0]);
     registerAlias("creditcardtype", "credit_card_type");
-    register("stock_market", (faker, random) -> faker.stock().nsdqSymbol());
-    registerAlias("stockmarket", "stock_market");
-    registerAlias("stock", "stock_market");
-    registerAlias("ticker", "stock_market");
+    register(TYPE_STOCK_MARKET, (faker, random) -> faker.stock().nsdqSymbol());
+    registerAlias("stockmarket", TYPE_STOCK_MARKET);
+    registerAlias("stock", TYPE_STOCK_MARKET);
+    registerAlias("ticker", TYPE_STOCK_MARKET);
 
     // Internet types
     register("domain", (faker, random) -> faker.internet().domainName());
@@ -151,16 +158,16 @@ public class DatafakerRegistry {
     registerAlias("macaddress", "mac_address");
 
     // Commerce types
-    register("product_name", (faker, random) -> faker.commerce().productName());
-    registerAlias("productname", "product_name");
-    registerAlias("product", "product_name");
+    register(TYPE_PRODUCT_NAME, (faker, random) -> faker.commerce().productName());
+    registerAlias("productname", TYPE_PRODUCT_NAME);
+    registerAlias("product", TYPE_PRODUCT_NAME);
     register("department", (faker, random) -> faker.commerce().department());
     register("color", (faker, random) -> faker.color().name());
     register("material", (faker, random) -> faker.commerce().material());
-    register("promotion_code", (faker, random) -> faker.commerce().promotionCode());
-    registerAlias("promotioncode", "promotion_code");
-    registerAlias("promo", "promotion_code");
-    registerAlias("coupon", "promotion_code");
+    register(TYPE_PROMOTION_CODE, (faker, random) -> faker.commerce().promotionCode());
+    registerAlias("promotioncode", TYPE_PROMOTION_CODE);
+    registerAlias("promo", TYPE_PROMOTION_CODE);
+    registerAlias("coupon", TYPE_PROMOTION_CODE);
 
     // Text/Lorem types
     register("lorem_word", (faker, random) -> faker.lorem().word());

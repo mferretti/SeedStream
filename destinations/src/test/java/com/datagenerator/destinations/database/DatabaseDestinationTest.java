@@ -57,6 +57,8 @@ class DatabaseDestinationTest {
   private static final String FIELD_ACTIVE = "active";
   private static final String NAME_ALICE = "Alice";
   private static final String NAME_CAROL = "Carol";
+  private static final String TABLE_USERS = "users";
+  private static final String USER_PREFIX = "User ";
 
   private Connection h2Connection;
 
@@ -87,24 +89,24 @@ class DatabaseDestinationTest {
         .jdbcUrl(JDBC_URL)
         .username(USERNAME)
         .password(PASSWORD)
-        .tableName("users")
+        .tableName(TABLE_USERS)
         .batchSize(10)
         .build();
   }
 
-  private Map<String, Object> record(int id, String name, boolean active) {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", id);
-    record.put("name", name);
-    record.put(FIELD_ACTIVE, active);
-    return record;
+  private Map<String, Object> buildRecord(int id, String name, boolean active) {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", id);
+    data.put("name", name);
+    data.put(FIELD_ACTIVE, active);
+    return data;
   }
 
   @Test
   void shouldInsertSingleRecord() throws SQLException {
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      dest.write(record(1, NAME_ALICE, true));
+      dest.write(buildRecord(1, NAME_ALICE, true));
       dest.flush();
     }
 
@@ -117,7 +119,7 @@ class DatabaseDestinationTest {
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
       for (int i = 1; i <= 25; i++) {
-        dest.write(record(i, "User " + i, i % 2 == 0));
+        dest.write(buildRecord(i, USER_PREFIX + i, i % 2 == 0));
       }
       dest.flush();
     }
@@ -130,9 +132,9 @@ class DatabaseDestinationTest {
     // batchSize=10 but only 3 records written — must flush on close
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
-      dest.write(record(1, NAME_ALICE, true));
-      dest.write(record(2, "Bob", false));
-      dest.write(record(3, NAME_CAROL, true));
+      dest.write(buildRecord(1, NAME_ALICE, true));
+      dest.write(buildRecord(2, "Bob", false));
+      dest.write(buildRecord(3, NAME_CAROL, true));
       // close() without explicit flush() — should still persist all 3
     }
 
@@ -144,7 +146,7 @@ class DatabaseDestinationTest {
     try (DatabaseDestination dest = new DatabaseDestination(config())) {
       dest.open();
       for (int i = 1; i <= 10; i++) { // exactly batchSize
-        dest.write(record(i, "User " + i, true));
+        dest.write(buildRecord(i, USER_PREFIX + i, true));
       }
       dest.flush();
     }
@@ -197,7 +199,7 @@ class DatabaseDestinationTest {
   void shouldThrowWhenWritingBeforeOpen() {
     DatabaseDestination dest = new DatabaseDestination(config());
 
-    var rec = record(1, NAME_ALICE, true);
+    var rec = buildRecord(1, NAME_ALICE, true);
     assertThatThrownBy(() -> dest.write(rec))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("not open");
@@ -212,7 +214,7 @@ class DatabaseDestinationTest {
             .jdbcUrl(JDBC_URL)
             .username(USERNAME)
             .password(PASSWORD)
-            .tableName("users")
+            .tableName(TABLE_USERS)
             .transactionStrategy("invalid_strategy")
             .build();
 
@@ -231,7 +233,7 @@ class DatabaseDestinationTest {
             .jdbcUrl(JDBC_URL)
             .username(USERNAME)
             .password(PASSWORD)
-            .tableName("users")
+            .tableName(TABLE_USERS)
             .batchSize(10)
             .transactionStrategy("per_job")
             .build();
@@ -239,7 +241,7 @@ class DatabaseDestinationTest {
     try (DatabaseDestination dest = new DatabaseDestination(perJobConfig)) {
       dest.open();
       for (int i = 1; i <= 15; i++) {
-        dest.write(record(i, "User " + i, true));
+        dest.write(buildRecord(i, USER_PREFIX + i, true));
       }
       dest.flush(); // triggers per_job commit
     }
@@ -254,7 +256,7 @@ class DatabaseDestinationTest {
             .jdbcUrl(JDBC_URL)
             .username(USERNAME)
             .password(PASSWORD)
-            .tableName("users")
+            .tableName(TABLE_USERS)
             .batchSize(10)
             .transactionStrategy("auto_commit")
             .build();
@@ -262,7 +264,7 @@ class DatabaseDestinationTest {
     try (DatabaseDestination dest = new DatabaseDestination(autoCommitConfig)) {
       dest.open();
       for (int i = 1; i <= 5; i++) {
-        dest.write(record(i, "User " + i, true));
+        dest.write(buildRecord(i, USER_PREFIX + i, true));
       }
       dest.flush();
     }
@@ -280,7 +282,7 @@ class DatabaseDestinationTest {
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
       dest.open();
-      dest.write(record(1, NAME_ALICE, true));
+      dest.write(buildRecord(1, NAME_ALICE, true));
       dest.flush();
     }
 
@@ -341,7 +343,7 @@ class DatabaseDestinationTest {
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), partialSchema)) {
       dest.open();
-      dest.write(record(3, NAME_CAROL, true));
+      dest.write(buildRecord(3, NAME_CAROL, true));
       dest.flush();
     }
 

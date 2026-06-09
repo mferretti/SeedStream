@@ -44,6 +44,43 @@ import org.junit.jupiter.api.Test;
  * dependency on the schema module.
  */
 class DatafakerComplexStructureTest {
+  private static final String F_FIRST_NAME = "first_name";
+  private static final String F_LAST_NAME = "last_name";
+  private static final String F_FULL_NAME = "full_name";
+  private static final String F_EMAIL = "email";
+  private static final String F_TRANSACTION_ID = "transaction_id";
+  private static final String F_NATIONALITY = "nationality";
+  private static final String F_COUNTRY = "country";
+  private static final String F_PRICE = "price";
+  private static final String F_CUSTOMER_ID = "customer_id";
+  private static final String F_CUSTOMER = "customer";
+  private static final String F_ITEMS = "items";
+  private static final String F_PRODUCT_NAME = "product_name";
+  private static final String F_PRODUCT_ID = "product_id";
+  private static final String F_PRODUCT = "product";
+  private static final String F_MANUFACTURER = "manufacturer";
+  private static final String F_FROM_WAREHOUSE = "from_warehouse";
+  private static final String F_TO_WAREHOUSE = "to_warehouse";
+  private static final String F_MOVEMENT_ID = "movement_id";
+  private static final String F_TIMESTAMP = "timestamp";
+  private static final String F_SKU = "sku";
+  private static final String F_ITEM_ID = "item_id";
+  private static final String F_UNIT_PRICE = "unit_price";
+  private static final String F_BARCODE = "barcode";
+  private static final String F_OPERATOR = "operator";
+  private static final String F_PLACE_OF_BIRTH = "place_of_birth";
+  private static final String F_PAYMENT_METHOD = "payment_method";
+  private static final String F_CURRENCY = "currency";
+  private static final String F_QUANTITY = "quantity";
+  private static final String F_SHOP_TRANSACTION = "shop_transaction";
+  private static final String F_STORE_MOVEMENT = "store_movement";
+  private static final String F_PASSPORT = "passport";
+  private static final String F_CITY = "city";
+  private static final String F_UUID = "uuid";
+  private static final String F_DATE_OF_BIRTH = "date_of_birth";
+  private static final String F_ISSUE_DATE = "issue_date";
+  private static final String F_EXPIRY_DATE = "expiry_date";
+
   private DataGeneratorFactory factory;
   private StructureRegistry registry;
 
@@ -64,81 +101,81 @@ class DatafakerComplexStructureTest {
     Map<String, DataType> fields = new HashMap<>();
 
     switch (name) {
-      case "passport" -> {
+      case F_PASSPORT -> {
         fields.put("passport_number", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "9"));
-        fields.put("first_name", new CustomDatafakerType("first_name"));
-        fields.put("last_name", new CustomDatafakerType("last_name"));
-        fields.put("full_name", new CustomDatafakerType("full_name"));
+        fields.put(F_FIRST_NAME, new CustomDatafakerType(F_FIRST_NAME));
+        fields.put(F_LAST_NAME, new CustomDatafakerType(F_LAST_NAME));
+        fields.put(F_FULL_NAME, new CustomDatafakerType(F_FULL_NAME));
         fields.put(
-            "date_of_birth",
+            F_DATE_OF_BIRTH,
             new PrimitiveType(PrimitiveType.Kind.DATE, "1950-01-01", "2006-12-31"));
-        fields.put("nationality", new CustomDatafakerType("country"));
-        fields.put("place_of_birth", new CustomDatafakerType("city"));
+        fields.put(F_NATIONALITY, new CustomDatafakerType(F_COUNTRY));
+        fields.put(F_PLACE_OF_BIRTH, new CustomDatafakerType(F_CITY));
         fields.put(
-            "issue_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2015-01-01", "2024-12-31"));
+            F_ISSUE_DATE, new PrimitiveType(PrimitiveType.Kind.DATE, "2015-01-01", "2024-12-31"));
         fields.put(
-            "expiry_date", new PrimitiveType(PrimitiveType.Kind.DATE, "2025-01-01", "2034-12-31"));
+            F_EXPIRY_DATE, new PrimitiveType(PrimitiveType.Kind.DATE, "2025-01-01", "2034-12-31"));
         fields.put("issuing_authority", new CustomDatafakerType("company"));
         fields.put("sex", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "1"));
       }
-      case "customer" -> {
-        fields.put("customer_id", new CustomDatafakerType("uuid"));
-        fields.put("first_name", new CustomDatafakerType("first_name"));
-        fields.put("last_name", new CustomDatafakerType("last_name"));
-        fields.put("email", new CustomDatafakerType("email"));
+      case F_CUSTOMER -> {
+        fields.put(F_CUSTOMER_ID, new CustomDatafakerType(F_UUID));
+        fields.put(F_FIRST_NAME, new CustomDatafakerType(F_FIRST_NAME));
+        fields.put(F_LAST_NAME, new CustomDatafakerType(F_LAST_NAME));
+        fields.put(F_EMAIL, new CustomDatafakerType(F_EMAIL));
         fields.put("phone", new CustomDatafakerType("phone_number"));
         fields.put("billing_address", new CustomDatafakerType("address"));
-        fields.put("city", new CustomDatafakerType("city"));
+        fields.put(F_CITY, new CustomDatafakerType(F_CITY));
         fields.put("state", new CustomDatafakerType("state"));
         fields.put("postal_code", new CustomDatafakerType("postal_code"));
-        fields.put("country", new CustomDatafakerType("country"));
+        fields.put(F_COUNTRY, new CustomDatafakerType(F_COUNTRY));
       }
       case "transaction_item" -> {
-        fields.put("item_id", new CustomDatafakerType("uuid"));
-        fields.put("product_name", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "50"));
-        fields.put("sku", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "12"));
-        fields.put("quantity", new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"));
-        fields.put("unit_price", new CustomDatafakerType("price"));
-        fields.put("line_total", new CustomDatafakerType("price"));
+        fields.put(F_ITEM_ID, new CustomDatafakerType(F_UUID));
+        fields.put(F_PRODUCT_NAME, new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "50"));
+        fields.put(F_SKU, new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "12"));
+        fields.put(F_QUANTITY, new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"));
+        fields.put(F_UNIT_PRICE, new CustomDatafakerType(F_PRICE));
+        fields.put("line_total", new CustomDatafakerType(F_PRICE));
       }
-      case "shop_transaction" -> {
-        fields.put("transaction_id", new CustomDatafakerType("uuid"));
+      case F_SHOP_TRANSACTION -> {
+        fields.put(F_TRANSACTION_ID, new CustomDatafakerType(F_UUID));
         fields.put(
-            "timestamp",
+            F_TIMESTAMP,
             new PrimitiveType(
                 PrimitiveType.Kind.TIMESTAMP, "2024-01-01T00:00:00", "2024-12-31T23:59:59"));
-        fields.put("customer", new ObjectType("customer"));
+        fields.put(F_CUSTOMER, new ObjectType(F_CUSTOMER));
         fields.put(
-            "items",
+            F_ITEMS,
             new ArrayType(new ObjectType("transaction_item"), 1, 15)); // Min 1 item, max 15 items
-        fields.put("subtotal", new CustomDatafakerType("price"));
-        fields.put("tax", new CustomDatafakerType("price"));
-        fields.put("total", new CustomDatafakerType("price"));
-        fields.put("payment_method", new CustomDatafakerType("credit_card"));
-        fields.put("currency", new CustomDatafakerType("currency"));
+        fields.put("subtotal", new CustomDatafakerType(F_PRICE));
+        fields.put("tax", new CustomDatafakerType(F_PRICE));
+        fields.put("total", new CustomDatafakerType(F_PRICE));
+        fields.put(F_PAYMENT_METHOD, new CustomDatafakerType("credit_card"));
+        fields.put(F_CURRENCY, new CustomDatafakerType(F_CURRENCY));
       }
-      case "product" -> {
-        fields.put("product_id", new CustomDatafakerType("uuid"));
-        fields.put("sku", new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "12"));
-        fields.put("product_name", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "50"));
-        fields.put("manufacturer", new CustomDatafakerType("company"));
+      case F_PRODUCT -> {
+        fields.put(F_PRODUCT_ID, new CustomDatafakerType(F_UUID));
+        fields.put(F_SKU, new PrimitiveType(PrimitiveType.Kind.CHAR, "8", "12"));
+        fields.put(F_PRODUCT_NAME, new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "50"));
+        fields.put(F_MANUFACTURER, new CustomDatafakerType("company"));
         fields.put("category", new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "30"));
-        fields.put("unit_price", new CustomDatafakerType("price"));
-        fields.put("barcode", new CustomDatafakerType("isbn"));
+        fields.put(F_UNIT_PRICE, new CustomDatafakerType(F_PRICE));
+        fields.put(F_BARCODE, new CustomDatafakerType("isbn"));
       }
-      case "store_movement" -> {
-        fields.put("movement_id", new CustomDatafakerType("uuid"));
+      case F_STORE_MOVEMENT -> {
+        fields.put(F_MOVEMENT_ID, new CustomDatafakerType(F_UUID));
         fields.put(
-            "timestamp",
+            F_TIMESTAMP,
             new PrimitiveType(
                 PrimitiveType.Kind.TIMESTAMP, "2024-01-01T00:00:00", "2024-12-31T23:59:59"));
-        fields.put("product", new ObjectType("product"));
+        fields.put(F_PRODUCT, new ObjectType(F_PRODUCT));
         fields.put("movement_type", new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "10"));
-        fields.put("quantity", new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000"));
+        fields.put(F_QUANTITY, new PrimitiveType(PrimitiveType.Kind.INT, "1", "1000"));
         fields.put("warehouse_location", new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "10"));
-        fields.put("from_warehouse", new CustomDatafakerType("city"));
-        fields.put("to_warehouse", new CustomDatafakerType("city"));
-        fields.put("operator", new CustomDatafakerType("full_name"));
+        fields.put(F_FROM_WAREHOUSE, new CustomDatafakerType(F_CITY));
+        fields.put(F_TO_WAREHOUSE, new CustomDatafakerType(F_CITY));
+        fields.put(F_OPERATOR, new CustomDatafakerType(F_FULL_NAME));
         fields.put("notes", new PrimitiveType(PrimitiveType.Kind.CHAR, "0", "100"));
       }
       case null -> throw new IllegalArgumentException("Structure name cannot be null");
@@ -155,7 +192,7 @@ class DatafakerComplexStructureTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldGeneratePassportWithAllFields() {
-    ObjectType passportType = new ObjectType("passport");
+    ObjectType passportType = new ObjectType(F_PASSPORT);
     DataGenerator generator = factory.create(passportType);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
@@ -163,28 +200,28 @@ class DatafakerComplexStructureTest {
       Map<String, Object> passport = (Map<String, Object>) generator.generate(random, passportType);
 
       // Verify all passport fields are present
-      assertThat(passport).containsKeys("passport_number", "first_name", "last_name", "full_name");
-      assertThat(passport).containsKeys("date_of_birth", "nationality", "place_of_birth");
-      assertThat(passport).containsKeys("issue_date", "expiry_date", "issuing_authority", "sex");
+      assertThat(passport).containsKeys("passport_number", F_FIRST_NAME, F_LAST_NAME, F_FULL_NAME);
+      assertThat(passport).containsKeys(F_DATE_OF_BIRTH, F_NATIONALITY, F_PLACE_OF_BIRTH);
+      assertThat(passport).containsKeys(F_ISSUE_DATE, F_EXPIRY_DATE, "issuing_authority", "sex");
 
       // Verify semantic types
-      assertThat(passport.get("first_name")).isInstanceOf(String.class);
-      assertThat(passport.get("last_name")).isInstanceOf(String.class);
-      assertThat(passport.get("full_name")).asString().isNotEmpty();
-      assertThat(passport.get("nationality")).asString().isNotEmpty();
-      assertThat(passport.get("place_of_birth")).asString().isNotEmpty();
+      assertThat(passport.get(F_FIRST_NAME)).isInstanceOf(String.class);
+      assertThat(passport.get(F_LAST_NAME)).isInstanceOf(String.class);
+      assertThat(passport.get(F_FULL_NAME)).asString().isNotEmpty();
+      assertThat(passport.get(F_NATIONALITY)).asString().isNotEmpty();
+      assertThat(passport.get(F_PLACE_OF_BIRTH)).asString().isNotEmpty();
 
       // Verify dates are present
-      assertThat(passport.get("date_of_birth")).isNotNull();
-      assertThat(passport.get("issue_date")).isNotNull();
-      assertThat(passport.get("expiry_date")).isNotNull();
+      assertThat(passport.get(F_DATE_OF_BIRTH)).isNotNull();
+      assertThat(passport.get(F_ISSUE_DATE)).isNotNull();
+      assertThat(passport.get(F_EXPIRY_DATE)).isNotNull();
     }
   }
 
   @Test
   @SuppressWarnings("unchecked")
   void shouldGeneratePassportsWithDifferentNationalities() {
-    ObjectType passportType = new ObjectType("passport");
+    ObjectType passportType = new ObjectType(F_PASSPORT);
     DataGenerator generator = factory.create(passportType);
 
     // Generate passports for different countries
@@ -197,8 +234,8 @@ class DatafakerComplexStructureTest {
             (Map<String, Object>) generator.generate(random, passportType);
 
         assertThat(passport).as("Passport for " + country).isNotNull();
-        assertThat(passport.get("first_name")).as("First name for " + country).isNotNull();
-        assertThat(passport.get("nationality")).as("Nationality for " + country).isNotNull();
+        assertThat(passport.get(F_FIRST_NAME)).as("First name for " + country).isNotNull();
+        assertThat(passport.get(F_NATIONALITY)).as("Nationality for " + country).isNotNull();
       }
     }
   }
@@ -210,7 +247,7 @@ class DatafakerComplexStructureTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldGenerateShopTransactionWithCustomerAndItems() {
-    ObjectType transactionType = new ObjectType("shop_transaction");
+    ObjectType transactionType = new ObjectType(F_SHOP_TRANSACTION);
     DataGenerator generator = factory.create(transactionType);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
@@ -219,46 +256,46 @@ class DatafakerComplexStructureTest {
           (Map<String, Object>) generator.generate(random, transactionType);
 
       // Verify transaction fields
-      assertThat(transaction).containsKeys("transaction_id", "timestamp", "customer", "items");
+      assertThat(transaction).containsKeys(F_TRANSACTION_ID, F_TIMESTAMP, F_CUSTOMER, F_ITEMS);
       assertThat(transaction)
-          .containsKeys("subtotal", "tax", "total", "payment_method", "currency");
+          .containsKeys("subtotal", "tax", "total", F_PAYMENT_METHOD, F_CURRENCY);
 
       // Verify transaction ID is UUID
-      assertThat(transaction.get("transaction_id"))
+      assertThat(transaction.get(F_TRANSACTION_ID))
           .asString()
           .matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
       // Verify customer object
-      Map<String, Object> customer = (Map<String, Object>) transaction.get("customer");
+      Map<String, Object> customer = (Map<String, Object>) transaction.get(F_CUSTOMER);
       assertThat(customer).isNotNull();
-      assertThat(customer).containsKeys("customer_id", "first_name", "last_name", "email", "phone");
-      assertThat(customer.get("email")).asString().contains("@");
+      assertThat(customer).containsKeys(F_CUSTOMER_ID, F_FIRST_NAME, F_LAST_NAME, F_EMAIL, "phone");
+      assertThat(customer.get(F_EMAIL)).asString().contains("@");
 
       // Verify items array
-      List<Map<String, Object>> items = (List<Map<String, Object>>) transaction.get("items");
+      List<Map<String, Object>> items = (List<Map<String, Object>>) transaction.get(F_ITEMS);
       assertThat(items).isNotNull();
       assertThat(items).hasSizeGreaterThanOrEqualTo(1).hasSizeLessThanOrEqualTo(15);
 
       // Verify each item has correct structure
       for (Map<String, Object> item : items) {
-        assertThat(item).containsKeys("item_id", "product_name", "sku", "quantity", "unit_price");
-        assertThat(item.get("item_id")).asString().matches("^[0-9a-f-]+$");
-        assertThat(item.get("quantity")).isInstanceOf(Integer.class);
-        assertThat((Integer) item.get("quantity")).isBetween(1, 10);
+        assertThat(item).containsKeys(F_ITEM_ID, F_PRODUCT_NAME, F_SKU, F_QUANTITY, F_UNIT_PRICE);
+        assertThat(item.get(F_ITEM_ID)).asString().matches("^[0-9a-f-]+$");
+        assertThat(item.get(F_QUANTITY)).isInstanceOf(Integer.class);
+        assertThat((Integer) item.get(F_QUANTITY)).isBetween(1, 10);
       }
 
       // Verify payment method (credit card)
-      assertThat(transaction.get("payment_method")).asString().isNotEmpty();
+      assertThat(transaction.get(F_PAYMENT_METHOD)).asString().isNotEmpty();
 
       // Verify currency code
-      assertThat(transaction.get("currency")).asString().matches("^[A-Z]{3}$");
+      assertThat(transaction.get(F_CURRENCY)).asString().matches("^[A-Z]{3}$");
     }
   }
 
   @Test
   @SuppressWarnings("unchecked")
   void shouldGenerateMultipleTransactionsWithDifferentCustomers() {
-    ObjectType transactionType = new ObjectType("shop_transaction");
+    ObjectType transactionType = new ObjectType(F_SHOP_TRANSACTION);
     DataGenerator generator = factory.create(transactionType);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
@@ -268,11 +305,11 @@ class DatafakerComplexStructureTest {
         Map<String, Object> transaction =
             (Map<String, Object>) generator.generate(random, transactionType);
 
-        Map<String, Object> customer = (Map<String, Object>) transaction.get("customer");
-        assertThat(customer.get("first_name")).isNotNull();
-        assertThat(customer.get("email")).asString().contains("@");
+        Map<String, Object> customer = (Map<String, Object>) transaction.get(F_CUSTOMER);
+        assertThat(customer.get(F_FIRST_NAME)).isNotNull();
+        assertThat(customer.get(F_EMAIL)).asString().contains("@");
 
-        List<Map<String, Object>> items = (List<Map<String, Object>>) transaction.get("items");
+        List<Map<String, Object>> items = (List<Map<String, Object>>) transaction.get(F_ITEMS);
         assertThat(items).isNotEmpty();
       }
     }
@@ -285,7 +322,7 @@ class DatafakerComplexStructureTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldGenerateStoreMovementWithProduct() {
-    ObjectType movementType = new ObjectType("store_movement");
+    ObjectType movementType = new ObjectType(F_STORE_MOVEMENT);
     DataGenerator generator = factory.create(movementType);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
@@ -293,42 +330,42 @@ class DatafakerComplexStructureTest {
       Map<String, Object> movement = (Map<String, Object>) generator.generate(random, movementType);
 
       // Verify movement fields
-      assertThat(movement).containsKeys("movement_id", "timestamp", "product", "movement_type");
+      assertThat(movement).containsKeys(F_MOVEMENT_ID, F_TIMESTAMP, F_PRODUCT, "movement_type");
       assertThat(movement)
-          .containsKeys("quantity", "warehouse_location", "from_warehouse", "to_warehouse");
-      assertThat(movement).containsKeys("operator", "notes");
+          .containsKeys(F_QUANTITY, "warehouse_location", F_FROM_WAREHOUSE, F_TO_WAREHOUSE);
+      assertThat(movement).containsKeys(F_OPERATOR, "notes");
 
       // Verify movement ID
-      assertThat(movement.get("movement_id")).asString().matches("^[0-9a-f-]+$");
+      assertThat(movement.get(F_MOVEMENT_ID)).asString().matches("^[0-9a-f-]+$");
 
       // Verify product object
-      Map<String, Object> product = (Map<String, Object>) movement.get("product");
+      Map<String, Object> product = (Map<String, Object>) movement.get(F_PRODUCT);
       assertThat(product).isNotNull();
-      assertThat(product).containsKeys("product_id", "sku", "product_name", "manufacturer");
-      assertThat(product).containsKeys("category", "unit_price", "barcode");
+      assertThat(product).containsKeys(F_PRODUCT_ID, F_SKU, F_PRODUCT_NAME, F_MANUFACTURER);
+      assertThat(product).containsKeys("category", F_UNIT_PRICE, F_BARCODE);
 
       // Verify product details
-      assertThat(product.get("product_id")).asString().matches("^[0-9a-f-]+$");
-      assertThat(product.get("manufacturer")).asString().isNotEmpty();
-      assertThat(product.get("barcode")).asString().matches("^\\d{13}$"); // ISBN-13 format as EAN
+      assertThat(product.get(F_PRODUCT_ID)).asString().matches("^[0-9a-f-]+$");
+      assertThat(product.get(F_MANUFACTURER)).asString().isNotEmpty();
+      assertThat(product.get(F_BARCODE)).asString().matches("^\\d{13}$"); // ISBN-13 format as EAN
 
       // Verify quantity
-      assertThat(movement.get("quantity")).isInstanceOf(Integer.class);
-      assertThat((Integer) movement.get("quantity")).isBetween(1, 1000);
+      assertThat(movement.get(F_QUANTITY)).isInstanceOf(Integer.class);
+      assertThat((Integer) movement.get(F_QUANTITY)).isBetween(1, 1000);
 
       // Verify warehouse locations
-      assertThat(movement.get("from_warehouse")).asString().isNotEmpty();
-      assertThat(movement.get("to_warehouse")).asString().isNotEmpty();
+      assertThat(movement.get(F_FROM_WAREHOUSE)).asString().isNotEmpty();
+      assertThat(movement.get(F_TO_WAREHOUSE)).asString().isNotEmpty();
 
       // Verify operator name
-      assertThat(movement.get("operator")).asString().isNotEmpty();
+      assertThat(movement.get(F_OPERATOR)).asString().isNotEmpty();
     }
   }
 
   @Test
   @SuppressWarnings("unchecked")
   void shouldGenerateStoreMovementsWithDifferentProducts() {
-    ObjectType movementType = new ObjectType("store_movement");
+    ObjectType movementType = new ObjectType(F_STORE_MOVEMENT);
     DataGenerator generator = factory.create(movementType);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
@@ -338,13 +375,13 @@ class DatafakerComplexStructureTest {
         Map<String, Object> movement =
             (Map<String, Object>) generator.generate(random, movementType);
 
-        Map<String, Object> product = (Map<String, Object>) movement.get("product");
-        assertThat(product.get("product_name")).isNotNull();
-        assertThat(product.get("sku")).asString().hasSizeBetween(8, 12);
-        assertThat(product.get("manufacturer")).asString().isNotEmpty();
+        Map<String, Object> product = (Map<String, Object>) movement.get(F_PRODUCT);
+        assertThat(product.get(F_PRODUCT_NAME)).isNotNull();
+        assertThat(product.get(F_SKU)).asString().hasSizeBetween(8, 12);
+        assertThat(product.get(F_MANUFACTURER)).asString().isNotEmpty();
 
-        assertThat(movement.get("from_warehouse")).isNotNull();
-        assertThat(movement.get("to_warehouse")).isNotNull();
+        assertThat(movement.get(F_FROM_WAREHOUSE)).isNotNull();
+        assertThat(movement.get(F_TO_WAREHOUSE)).isNotNull();
       }
     }
   }
@@ -356,7 +393,7 @@ class DatafakerComplexStructureTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldGenerateDeterministicComplexStructures() {
-    ObjectType transactionType = new ObjectType("shop_transaction");
+    ObjectType transactionType = new ObjectType(F_SHOP_TRANSACTION);
     DataGenerator generator = factory.create(transactionType);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
@@ -372,17 +409,17 @@ class DatafakerComplexStructureTest {
           (Map<String, Object>) generator.generate(random2, transactionType);
 
       // Verify same transaction ID
-      assertThat(transaction1).containsEntry("transaction_id", transaction2.get("transaction_id"));
+      assertThat(transaction1).containsEntry(F_TRANSACTION_ID, transaction2.get(F_TRANSACTION_ID));
 
       // Verify same customer details
-      Map<String, Object> customer1 = (Map<String, Object>) transaction1.get("customer");
-      Map<String, Object> customer2 = (Map<String, Object>) transaction2.get("customer");
-      assertThat(customer1).containsEntry("customer_id", customer2.get("customer_id"));
-      assertThat(customer1).containsEntry("email", customer2.get("email"));
+      Map<String, Object> customer1 = (Map<String, Object>) transaction1.get(F_CUSTOMER);
+      Map<String, Object> customer2 = (Map<String, Object>) transaction2.get(F_CUSTOMER);
+      assertThat(customer1).containsEntry(F_CUSTOMER_ID, customer2.get(F_CUSTOMER_ID));
+      assertThat(customer1).containsEntry(F_EMAIL, customer2.get(F_EMAIL));
 
       // Verify same number of items
-      List<Map<String, Object>> items1 = (List<Map<String, Object>>) transaction1.get("items");
-      List<Map<String, Object>> items2 = (List<Map<String, Object>>) transaction2.get("items");
+      List<Map<String, Object>> items1 = (List<Map<String, Object>>) transaction1.get(F_ITEMS);
+      List<Map<String, Object>> items2 = (List<Map<String, Object>>) transaction2.get(F_ITEMS);
       assertThat(items1).hasSameSizeAs(items2);
     }
   }
@@ -394,7 +431,7 @@ class DatafakerComplexStructureTest {
   @Test
   @SuppressWarnings("unchecked")
   void shouldGenerateTransactionsInMultipleLocales() {
-    ObjectType transactionType = new ObjectType("shop_transaction");
+    ObjectType transactionType = new ObjectType(F_SHOP_TRANSACTION);
     DataGenerator generator = factory.create(transactionType);
 
     String[] locales = {"usa", "italy", "germany", "france", "japan"};
@@ -405,17 +442,17 @@ class DatafakerComplexStructureTest {
         Map<String, Object> transaction =
             (Map<String, Object>) generator.generate(random, transactionType);
 
-        Map<String, Object> customer = (Map<String, Object>) transaction.get("customer");
+        Map<String, Object> customer = (Map<String, Object>) transaction.get(F_CUSTOMER);
 
         // Verify customer has locale-appropriate name
-        assertThat(customer.get("first_name")).as("Customer first name in " + locale).isNotNull();
-        assertThat(customer.get("email"))
+        assertThat(customer.get(F_FIRST_NAME)).as("Customer first name in " + locale).isNotNull();
+        assertThat(customer.get(F_EMAIL))
             .as("Customer email in " + locale)
             .asString()
             .contains("@");
 
         // All locales should generate valid transactions
-        assertThat(transaction.get("transaction_id")).as("Transaction ID in " + locale).isNotNull();
+        assertThat(transaction.get(F_TRANSACTION_ID)).as("Transaction ID in " + locale).isNotNull();
       }
     }
   }

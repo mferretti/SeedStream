@@ -61,6 +61,7 @@ class DatabaseDestinationIT extends IntegrationTest {
   private static final String FIELD_EXPIRY_DATE = "expiry_date";
   private static final String FIELD_AUTHORITY = "authority";
   private static final String PASSPORT_AB = "AB123456";
+  private static final String TABLE_PASSPORTS = "passports";
 
   private static final String CREATE_PASSPORTS_TABLE =
       """
@@ -110,11 +111,12 @@ class DatabaseDestinationIT extends IntegrationTest {
         .jdbcUrl(postgres.getJdbcUrl())
         .username(postgres.getUsername())
         .password(postgres.getPassword())
-        .tableName("passports")
+        .tableName(TABLE_PASSPORTS)
         .batchSize(batchSize)
         .build();
   }
 
+  @SuppressWarnings("java:S107")
   private Map<String, Object> passportRecord(
       String number,
       String firstName,
@@ -154,7 +156,7 @@ class DatabaseDestinationIT extends IntegrationTest {
         LocalDate.of(2020, 1, 15),
         LocalDate.of(2030, 1, 15),
         "US Department of State",
-        index % 3 == 0 ? "M" : index % 3 == 1 ? "F" : "X");
+        sexFor(index));
   }
 
   private int countRows() throws SQLException {
@@ -163,6 +165,12 @@ class DatabaseDestinationIT extends IntegrationTest {
       rs.next();
       return rs.getInt(1);
     }
+  }
+
+  private String sexFor(int index) {
+    if (index % 3 == 0) return "M";
+    if (index % 3 == 1) return "F";
+    return "X";
   }
 
   // --- Tests ---
@@ -203,7 +211,8 @@ class DatabaseDestinationIT extends IntegrationTest {
     }
 
     try (Statement st = verifyConnection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM passports")) {
+        ResultSet rs =
+            st.executeQuery("SELECT number, first_name, last_name, sex FROM passports")) {
       assertThat(rs.next()).isTrue();
       assertThat(rs.getString(FIELD_NUMBER)).isEqualTo(PASSPORT_AB);
       assertThat(rs.getString(FIELD_FIRST_NAME)).isEqualTo("Alice");
@@ -282,7 +291,7 @@ class DatabaseDestinationIT extends IntegrationTest {
             .jdbcUrl(postgres.getJdbcUrl())
             .username(postgres.getUsername())
             .password(postgres.getPassword())
-            .tableName("passports")
+            .tableName(TABLE_PASSPORTS)
             .batchSize(5)
             .transactionStrategy("per_job")
             .build();
@@ -305,7 +314,7 @@ class DatabaseDestinationIT extends IntegrationTest {
             .jdbcUrl(postgres.getJdbcUrl())
             .username(postgres.getUsername())
             .password(postgres.getPassword())
-            .tableName("passports")
+            .tableName(TABLE_PASSPORTS)
             .batchSize(5)
             .transactionStrategy("auto_commit")
             .build();
@@ -325,7 +334,7 @@ class DatabaseDestinationIT extends IntegrationTest {
   void shouldRespectTableNameOverride() throws SQLException {
     // Create an alternate table
     try (Statement st = verifyConnection.createStatement()) {
-      st.execute(CREATE_PASSPORTS_TABLE.replace("passports", "alt_passports"));
+      st.execute(CREATE_PASSPORTS_TABLE.replace(TABLE_PASSPORTS, "alt_passports"));
     }
 
     DatabaseDestinationConfig altConfig =
