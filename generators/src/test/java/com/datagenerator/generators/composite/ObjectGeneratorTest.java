@@ -45,6 +45,8 @@ class ObjectGeneratorTest {
   private static final String F_ACTIVE = "active";
   private static final String STRUCT_ENTITY = "entity";
   private static final String STRUCT_ADDRESS = "address";
+  private static final String STRUCT_CACHED = "cached";
+  private static final String F_ITEMS = "items";
 
   private MockStructureLoader loader;
   private ObjectGenerator generator;
@@ -154,7 +156,7 @@ class ObjectGeneratorTest {
     loader.addStructure("item", itemFields);
 
     Map<String, DataType> orderFields = new LinkedHashMap<>();
-    orderFields.put("items", new ArrayType(new ObjectType("item"), 1, 5));
+    orderFields.put(F_ITEMS, new ArrayType(new ObjectType("item"), 1, 5));
     loader.addStructure("order", orderFields);
 
     ObjectType objectType = new ObjectType("order");
@@ -163,12 +165,12 @@ class ObjectGeneratorTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> result = (Map<String, Object>) generateWithContext(objectType, random);
 
-    assertThat(result).containsOnlyKeys("items");
-    assertThat(result.get("items")).isInstanceOf(java.util.List.class);
+    assertThat(result).containsOnlyKeys(F_ITEMS);
+    assertThat(result.get(F_ITEMS)).isInstanceOf(java.util.List.class);
 
     @SuppressWarnings("unchecked")
     java.util.List<Map<String, Object>> items =
-        (java.util.List<Map<String, Object>>) result.get("items");
+        (java.util.List<Map<String, Object>>) result.get(F_ITEMS);
     assertThat(items).hasSizeBetween(1, 5).allMatch(item -> item.containsKey("price"));
   }
 
@@ -246,16 +248,16 @@ class ObjectGeneratorTest {
 
     var dummyType = new ObjectType("dummy");
     assertThatThrownBy(() -> generateWithContext(dummyType, random))
-        .isInstanceOf(RuntimeException.class); // Structure not found
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
   void shouldCacheLoadedStructures() {
     Map<String, DataType> fields = new LinkedHashMap<>();
     fields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"));
-    loader.addStructure("cached", fields);
+    loader.addStructure(STRUCT_CACHED, fields);
 
-    ObjectType objectType = new ObjectType("cached");
+    ObjectType objectType = new ObjectType(STRUCT_CACHED);
     Random random = new Random(42);
 
     // Generate twice
@@ -265,7 +267,7 @@ class ObjectGeneratorTest {
     }
 
     // Should only load once (cached)
-    assertThat(loader.getLoadCount("cached")).isEqualTo(1);
+    assertThat(loader.getLoadCount(STRUCT_CACHED)).isEqualTo(1);
   }
 
   @Test
@@ -347,7 +349,7 @@ class ObjectGeneratorTest {
 
       Map<String, DataType> fields = structures.get(structureName);
       if (fields == null) {
-        throw new RuntimeException("Structure not found: " + structureName);
+        throw new IllegalStateException("Structure not found: " + structureName);
       }
 
       // Trigger nested loading for ObjectType fields (simulates real behavior)
