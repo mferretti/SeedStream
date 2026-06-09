@@ -120,8 +120,6 @@ public class DatafakerRegexpBenchmark {
   }
 
   // ── Fresh Faker per invocation ────────────────────────────────────────────
-  // Key scenario: 2.6.0-SNAPSHOT static L1 cache avoids regex recompilation;
-  // 2.5.4 recompiles on every new Faker instance.
 
   @Benchmark
   public String regexifyFreshShort() {
@@ -149,41 +147,41 @@ public class DatafakerRegexpBenchmark {
   }
 
   // ── Full JSON pipeline with complex datafaker fields ──────────────────────
-  // End-to-end: generate a realistic record with mixed fields (primitives +
+  // End-to-end: generate a realistic data with mixed fields (primitives +
   // datafaker names/emails + regexify codes), then serialize to JSON.
 
   @Benchmark
   public String jsonComplexWithRegexpWarmFaker() {
-    Map<String, Object> record = buildComplexRecord(warmFaker);
-    return jsonSerializer.serialize(record);
+    Map<String, Object> data = buildComplexRecord(warmFaker);
+    return jsonSerializer.serialize(data);
   }
 
   @Benchmark
   public String jsonComplexWithRegexpFreshFaker() {
     Faker fresh = new Faker(Locale.ENGLISH, new Random(42L));
-    Map<String, Object> record = buildComplexRecord(fresh);
-    return jsonSerializer.serialize(record);
+    Map<String, Object> data = buildComplexRecord(fresh);
+    return jsonSerializer.serialize(data);
   }
 
   private Map<String, Object> buildComplexRecord(Faker faker) {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("id", random.nextInt(1_000_000));
-    record.put("firstName", faker.name().firstName());
-    record.put("lastName", faker.name().lastName());
-    record.put("email", faker.internet().emailAddress());
-    record.put("phone", faker.phoneNumber().phoneNumber());
-    record.put("address", faker.address().fullAddress());
-    record.put("company", faker.company().name());
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("id", random.nextInt(1_000_000));
+    data.put("firstName", faker.name().firstName());
+    data.put("lastName", faker.name().lastName());
+    data.put("email", faker.internet().emailAddress());
+    data.put("phone", faker.phoneNumber().phoneNumber());
+    data.put("address", faker.address().fullAddress());
+    data.put("company", faker.company().name());
     // Regexify fields: product codes, reference numbers
-    record.put("productCode", faker.regexify(PATTERN_SHORT));
-    record.put("orderId", faker.regexify(PATTERN_MEDIUM));
-    record.put("trackingId", faker.regexify(PATTERN_UUID_LIKE));
-    record.put(
+    data.put("productCode", faker.regexify(PATTERN_SHORT));
+    data.put("orderId", faker.regexify(PATTERN_MEDIUM));
+    data.put("trackingId", faker.regexify(PATTERN_UUID_LIKE));
+    data.put(
         "birthDate",
         LocalDate.of(1980 + random.nextInt(40), 1 + random.nextInt(12), 1 + random.nextInt(28)));
-    record.put("registeredAt", Instant.now());
-    record.put("balance", new BigDecimal(String.valueOf(random.nextDouble() * 100_000)));
-    record.put("active", random.nextBoolean());
-    return record;
+    data.put("registeredAt", Instant.now());
+    data.put("balance", new BigDecimal(String.valueOf(random.nextDouble() * 100_000)));
+    data.put("active", random.nextBoolean());
+    return data;
   }
 }

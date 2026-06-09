@@ -27,8 +27,12 @@ import com.datagenerator.schema.exception.SecretResolutionException;
  * <p>Falls back to {@link System#getProperty} when the environment variable is not set — this
  * allows test code to inject values without needing OS-level env var manipulation.
  */
-public enum EnvSecretResolver implements SecretResolver {
-  INSTANCE;
+@SuppressWarnings("java:S6548")
+public final class EnvSecretResolver implements SecretResolver {
+
+  public static final EnvSecretResolver INSTANCE = new EnvSecretResolver();
+
+  private EnvSecretResolver() {}
 
   @Override
   public String resolve(String varName) {

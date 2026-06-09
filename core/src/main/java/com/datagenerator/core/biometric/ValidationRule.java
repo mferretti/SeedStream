@@ -20,10 +20,10 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * A single validation rule applied to a biometric record.
+ * A single validation rule applied to a biometric data.
  *
- * <p>Implementations check one aspect of a biometric record and return an error message if the
- * check fails, or an empty Optional if the record passes.
+ * <p>Implementations check one aspect of a biometric data and return an error message if the check
+ * fails, or an empty Optional if the data passes.
  *
  * @since 1.0
  */
@@ -31,10 +31,10 @@ import java.util.Optional;
 public interface ValidationRule {
 
   /**
-   * Checks a biometric record against this rule.
+   * Checks a biometric data against this rule.
    *
-   * @param record the parsed JSON record as a map of field names to values
-   * @return an Optional containing the violation message, or empty if the record is valid
+   * @param data the parsed JSON data as a map of field names to values
+   * @return an Optional containing the violation message, or empty if the data is valid
    */
-  Optional<String> check(Map<String, Object> record);
+  Optional<String> check(Map<String, Object> data);
 }

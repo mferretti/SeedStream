@@ -27,6 +27,13 @@ import org.junit.jupiter.api.Test;
 
 class CbeffSerializerTest {
 
+  private static final String FIELD_FORMAT_OWNER = "format_owner";
+  private static final String FIELD_FORMAT_TYPE = "format_type";
+  private static final String FIELD_PAYLOAD = "payload";
+  private static final String FIELD_QUALITY = "quality";
+  private static final String FIELD_VALUE = "value";
+  private static final String KEY_FIELD = "field";
+
   private CbeffSerializer serializer;
   private ObjectMapper mapper;
 
@@ -43,80 +50,81 @@ class CbeffSerializerTest {
 
   @Test
   void shouldIncludeRequiredEnvelopeFields() throws Exception {
-    Map<String, Object> record = Map.of("name", "Alice");
-    JsonNode envelope = mapper.readTree(serializer.serialize(record));
+    Map<String, Object> data = Map.of("name", "Alice");
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
     assertThat(envelope.has("cbeff_version")).isTrue();
-    assertThat(envelope.has("format_owner")).isTrue();
-    assertThat(envelope.has("format_type")).isTrue();
+    assertThat(envelope.has(FIELD_FORMAT_OWNER)).isTrue();
+    assertThat(envelope.has(FIELD_FORMAT_TYPE)).isTrue();
     assertThat(envelope.has("creation_date")).isTrue();
-    assertThat(envelope.has("payload")).isTrue();
+    assertThat(envelope.has(FIELD_PAYLOAD)).isTrue();
   }
 
   @Test
   void shouldUseDefaultFormatOwnerAndType() throws Exception {
-    Map<String, Object> record = Map.of("field", "value");
-    JsonNode envelope = mapper.readTree(serializer.serialize(record));
+    Map<String, Object> data = Map.of(KEY_FIELD, FIELD_VALUE);
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
-    assertThat(envelope.get("format_owner").asText())
+    assertThat(envelope.get(FIELD_FORMAT_OWNER).asText())
         .isEqualTo(CbeffSerializer.DEFAULT_FORMAT_OWNER);
-    assertThat(envelope.get("format_type").asText()).isEqualTo(CbeffSerializer.DEFAULT_FORMAT_TYPE);
+    assertThat(envelope.get(FIELD_FORMAT_TYPE).asText())
+        .isEqualTo(CbeffSerializer.DEFAULT_FORMAT_TYPE);
     assertThat(envelope.get("cbeff_version").asText()).isEqualTo(CbeffSerializer.CBEFF_VERSION);
   }
 
   @Test
   void shouldApplyCustomFormatOwnerAndType() throws Exception {
     CbeffSerializer custom = new CbeffSerializer("ACME-Corp", "19794-2-json");
-    Map<String, Object> record = Map.of("field", "value");
-    JsonNode envelope = mapper.readTree(custom.serialize(record));
+    Map<String, Object> data = Map.of(KEY_FIELD, FIELD_VALUE);
+    JsonNode envelope = mapper.readTree(custom.serialize(data));
 
-    assertThat(envelope.get("format_owner").asText()).isEqualTo("ACME-Corp");
-    assertThat(envelope.get("format_type").asText()).isEqualTo("19794-2-json");
+    assertThat(envelope.get(FIELD_FORMAT_OWNER).asText()).isEqualTo("ACME-Corp");
+    assertThat(envelope.get(FIELD_FORMAT_TYPE).asText()).isEqualTo("19794-2-json");
   }
 
   @Test
   void shouldContainOriginalRecordUnderPayload() throws Exception {
-    Map<String, Object> record = Map.of("finger_position", "right_index", "quality", 85);
-    JsonNode envelope = mapper.readTree(serializer.serialize(record));
+    Map<String, Object> data = Map.of("finger_position", "right_index", FIELD_QUALITY, 85);
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
-    JsonNode payload = envelope.get("payload");
+    JsonNode payload = envelope.get(FIELD_PAYLOAD);
     assertThat(payload.get("finger_position").asText()).isEqualTo("right_index");
-    assertThat(payload.get("quality").asInt()).isEqualTo(85);
+    assertThat(payload.get(FIELD_QUALITY).asInt()).isEqualTo(85);
   }
 
   @Test
   void shouldPromoteSubjectIdToEnvelope() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("subject_id", "SUBJ-001");
-    record.put("quality", 90);
-    JsonNode envelope = mapper.readTree(serializer.serialize(record));
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("subject_id", "SUBJ-001");
+    data.put(FIELD_QUALITY, 90);
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
     assertThat(envelope.get("subject_id").asText()).isEqualTo("SUBJ-001");
     // subject_id also remains in payload
-    assertThat(envelope.get("payload").get("subject_id").asText()).isEqualTo("SUBJ-001");
+    assertThat(envelope.get(FIELD_PAYLOAD).get("subject_id").asText()).isEqualTo("SUBJ-001");
   }
 
   @Test
   void shouldNotIncludeSubjectIdInEnvelopeWhenAbsentFromRecord() throws Exception {
-    Map<String, Object> record = Map.of("name", "Alice");
-    JsonNode envelope = mapper.readTree(serializer.serialize(record));
+    Map<String, Object> data = Map.of("name", "Alice");
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
     assertThat(envelope.has("subject_id")).isFalse();
   }
 
   @Test
   void shouldProduceValidJsonForEmptyRecord() throws Exception {
-    Map<String, Object> record = Map.of();
-    String output = serializer.serialize(record);
+    Map<String, Object> data = Map.of();
+    String output = serializer.serialize(data);
 
     JsonNode envelope = mapper.readTree(output);
-    assertThat(envelope.get("payload").isEmpty()).isTrue();
+    assertThat(envelope.get(FIELD_PAYLOAD).isEmpty()).isTrue();
   }
 
   @Test
   void shouldIncludeValidIso8601CreationDate() throws Exception {
-    Map<String, Object> record = Map.of("field", "value");
-    JsonNode envelope = mapper.readTree(serializer.serialize(record));
+    Map<String, Object> data = Map.of(KEY_FIELD, FIELD_VALUE);
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
 
     String creationDate = envelope.get("creation_date").asText();
     // ISO-8601 instant ends with Z
@@ -127,12 +135,12 @@ class CbeffSerializerTest {
 
   @Test
   void shouldProduceValidJsonRoundTrip() throws Exception {
-    Map<String, Object> record = Map.of("x", 100, "y", 200, "type", "ending");
-    String output = serializer.serialize(record);
+    Map<String, Object> data = Map.of("x", 100, "y", 200, "type", "ending");
+    String output = serializer.serialize(data);
 
     // Must parse without error
     JsonNode envelope = mapper.readTree(output);
     assertThat(envelope.isObject()).isTrue();
-    assertThat(envelope.get("payload").get("x").asInt()).isEqualTo(100);
+    assertThat(envelope.get(FIELD_PAYLOAD).get("x").asInt()).isEqualTo(100);
   }
 }

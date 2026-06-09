@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Serializes generated records to a CBEFF-like JSON envelope format.
  *
- * <p>Wraps any generated record in a Common Biometric Exchange Formats Framework (CBEFF) inspired
+ * <p>Wraps any generated data in a Common Biometric Exchange Formats Framework (CBEFF) inspired
  * JSON envelope, enabling testing of biometric exchange pipelines that expect a {@code
  * format_owner} / {@code format_type} metadata wrapper around the payload.
  *
@@ -44,11 +44,11 @@ import lombok.extern.slf4j.Slf4j;
  *   "format_type": "biometric-json",
  *   "creation_date": "2026-03-15T10:00:00Z",
  *   "subject_id": "<promoted from payload if present>",
- *   "payload": { ...original record... }
+ *   "payload": { ...original data... }
  * }
  * }</pre>
  *
- * <p><b>Thread Safety:</b> Stateless — {@code Instant.now()} is called per record. ObjectMapper is
+ * <p><b>Thread Safety:</b> Stateless — {@code Instant.now()} is called per data. ObjectMapper is
  * thread-safe after configuration.
  */
 @Slf4j
@@ -88,24 +88,24 @@ public class CbeffSerializer implements FormatSerializer {
   }
 
   @Override
-  public String serialize(Map<String, Object> record) {
+  public String serialize(Map<String, Object> data) {
     Map<String, Object> envelope = new LinkedHashMap<>();
     envelope.put("cbeff_version", CBEFF_VERSION);
     envelope.put("format_owner", formatOwner);
     envelope.put("format_type", formatType);
     envelope.put("creation_date", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 
-    Object subjectId = record.get("subject_id");
+    Object subjectId = data.get("subject_id");
     if (subjectId != null) {
       envelope.put("subject_id", subjectId);
     }
 
-    envelope.put("payload", record);
+    envelope.put("payload", data);
 
     try {
       return mapper.writeValueAsString(envelope);
     } catch (JsonProcessingException e) {
-      log.error("Failed to serialize record to CBEFF JSON: {}", record, e);
+      log.error("Failed to serialize data to CBEFF JSON: {}", data, e);
       throw new SerializationException("CBEFF serialization failed", e);
     }
   }

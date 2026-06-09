@@ -32,6 +32,9 @@ import java.util.Set;
  */
 public final class FingerprintMinutiaeRules {
 
+  private static final String FIELD_MINUTIAE = "minutiae";
+  private static final String MINUTIA_PREFIX = "minutia[";
+
   private static final Set<String> REQUIRED_FIELDS =
       Set.of(
           "record_format",
@@ -44,7 +47,7 @@ public final class FingerprintMinutiaeRules {
           "image_height",
           "resolution_dpi",
           "quality",
-          "minutiae");
+          FIELD_MINUTIAE);
 
   private static final Set<String> VALID_MINUTIA_TYPES = Set.of("ending", "bifurcation");
 
@@ -67,13 +70,13 @@ public final class FingerprintMinutiaeRules {
   }
 
   // Rule 1: all required fields are present
-  private static Optional<String> checkRequiredFields(Map<String, Object> record) {
-    return BiometricValidationUtils.checkRequiredFields(REQUIRED_FIELDS, record);
+  private static Optional<String> checkRequiredFields(Map<String, Object> data) {
+    return BiometricValidationUtils.checkRequiredFields(REQUIRED_FIELDS, data);
   }
 
   // Rule 2: minutiae is a non-empty List
-  private static Optional<String> checkMinutiaeNonEmpty(Map<String, Object> record) {
-    Object minutiae = record.get("minutiae");
+  private static Optional<String> checkMinutiaeNonEmpty(Map<String, Object> data) {
+    Object minutiae = data.get(FIELD_MINUTIAE);
     if (!(minutiae instanceof List<?> list) || list.isEmpty()) {
       return Optional.of("'minutiae' must be a non-empty list");
     }
@@ -81,8 +84,8 @@ public final class FingerprintMinutiaeRules {
   }
 
   // Rule 3: minutiae count between 30 and 80
-  private static Optional<String> checkMinutiaeCount(Map<String, Object> record) {
-    Object minutiae = record.get("minutiae");
+  private static Optional<String> checkMinutiaeCount(Map<String, Object> data) {
+    Object minutiae = data.get(FIELD_MINUTIAE);
     if (!(minutiae instanceof List<?> list)) {
       return Optional.empty(); // covered by rule 2
     }
@@ -95,13 +98,13 @@ public final class FingerprintMinutiaeRules {
 
   // Rule 4: each minutia x < image_width and y < image_height
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkMinutiaeCoordinates(Map<String, Object> record) {
-    Object minutiae = record.get("minutiae");
+  private static Optional<String> checkMinutiaeCoordinates(Map<String, Object> data) {
+    Object minutiae = data.get(FIELD_MINUTIAE);
     if (!(minutiae instanceof List<?> list)) {
       return Optional.empty();
     }
-    Object widthObj = record.get("image_width");
-    Object heightObj = record.get("image_height");
+    Object widthObj = data.get("image_width");
+    Object heightObj = data.get("image_height");
     if (!(widthObj instanceof Number) || !(heightObj instanceof Number)) {
       return Optional.empty();
     }
@@ -117,10 +120,11 @@ public final class FingerprintMinutiaeRules {
       Object xObj = minutia.get("x");
       Object yObj = minutia.get("y");
       if (xObj instanceof Number xNum && xNum.intValue() >= imageWidth) {
-        errors.add("minutia[" + i + "].x=" + xNum.intValue() + " >= image_width=" + imageWidth);
+        errors.add(MINUTIA_PREFIX + i + "].x=" + xNum.intValue() + " >= image_width=" + imageWidth);
       }
       if (yObj instanceof Number yNum && yNum.intValue() >= imageHeight) {
-        errors.add("minutia[" + i + "].y=" + yNum.intValue() + " >= image_height=" + imageHeight);
+        errors.add(
+            MINUTIA_PREFIX + i + "].y=" + yNum.intValue() + " >= image_height=" + imageHeight);
       }
     }
     return errors.isEmpty() ? Optional.empty() : Optional.of(String.join("; ", errors));
@@ -128,8 +132,8 @@ public final class FingerprintMinutiaeRules {
 
   // Rule 5: each minutia angle_deg in [0.0, 360.0)
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkMinutiaeAngles(Map<String, Object> record) {
-    Object minutiae = record.get("minutiae");
+  private static Optional<String> checkMinutiaeAngles(Map<String, Object> data) {
+    Object minutiae = data.get(FIELD_MINUTIAE);
     if (!(minutiae instanceof List<?> list)) {
       return Optional.empty();
     }
@@ -144,7 +148,7 @@ public final class FingerprintMinutiaeRules {
         double angle = angleNum.doubleValue();
         if (angle < 0.0 || angle >= 360.0) {
           errors.add(
-              "minutia["
+              MINUTIA_PREFIX
                   + i
                   + "].angle_deg="
                   + angle
@@ -157,8 +161,8 @@ public final class FingerprintMinutiaeRules {
 
   // Rule 6: each minutia type is "ending" or "bifurcation"
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkMinutiaeTypes(Map<String, Object> record) {
-    Object minutiae = record.get("minutiae");
+  private static Optional<String> checkMinutiaeTypes(Map<String, Object> data) {
+    Object minutiae = data.get(FIELD_MINUTIAE);
     if (!(minutiae instanceof List<?> list)) {
       return Optional.empty();
     }
@@ -170,15 +174,15 @@ public final class FingerprintMinutiaeRules {
       Map<String, Object> minutia = (Map<String, Object>) rawMinutia;
       Object typeObj = minutia.get("type");
       if (typeObj instanceof String type && !VALID_MINUTIA_TYPES.contains(type)) {
-        errors.add("minutia[" + i + "].type='" + type + "' is not 'ending' or 'bifurcation'");
+        errors.add(MINUTIA_PREFIX + i + "].type='" + type + "' is not 'ending' or 'bifurcation'");
       }
     }
     return errors.isEmpty() ? Optional.empty() : Optional.of(String.join("; ", errors));
   }
 
   // Rule 7: quality in [0, 100]
-  private static Optional<String> checkQuality(Map<String, Object> record) {
-    Object qualityObj = record.get("quality");
+  private static Optional<String> checkQuality(Map<String, Object> data) {
+    Object qualityObj = data.get("quality");
     if (!(qualityObj instanceof Number qualityNum)) {
       return Optional.empty();
     }

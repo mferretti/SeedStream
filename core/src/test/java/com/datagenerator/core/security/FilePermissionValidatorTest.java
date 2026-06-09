@@ -109,8 +109,6 @@ class FilePermissionValidatorTest {
 
   private Path createFileWithPermissions(String name, String posixString) throws IOException {
     Set<PosixFilePermission> perms = PosixFilePermissions.fromString(posixString);
-    Path file =
-        Files.createFile(tempDir.resolve(name), PosixFilePermissions.asFileAttribute(perms));
-    return file;
+    return Files.createFile(tempDir.resolve(name), PosixFilePermissions.asFileAttribute(perms));
   }
 }

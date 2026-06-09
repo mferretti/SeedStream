@@ -285,7 +285,7 @@ class ObjectGeneratorTest {
         "updated",
         new PrimitiveType(
             PrimitiveType.Kind.TIMESTAMP, "2020-01-01T00:00:00Z", "2025-12-31T23:59:59Z"));
-    fields.put("status", new EnumType(java.util.List.of("NEW", "ACTIVE", "CLOSED")));
+    fields.put(F_STATUS, new EnumType(java.util.List.of("NEW", V_ACTIVE, "CLOSED")));
     fields.put("tags", new ArrayType(new PrimitiveType(PrimitiveType.Kind.CHAR, "3", "10"), 0, 5));
     loader.addStructure("complex", fields);
 
@@ -302,7 +302,7 @@ class ObjectGeneratorTest {
     assertThat(result.get("active")).isInstanceOf(Boolean.class);
     assertThat(result.get("created")).isInstanceOf(java.time.LocalDate.class);
     assertThat(result.get("updated")).isInstanceOf(java.time.Instant.class);
-    assertThat(result.get("status")).isIn("NEW", "ACTIVE", "CLOSED");
+    assertThat(result.get(F_STATUS)).isIn("NEW", V_ACTIVE, "CLOSED");
     assertThat(result.get("tags")).isInstanceOf(java.util.List.class);
   }
 

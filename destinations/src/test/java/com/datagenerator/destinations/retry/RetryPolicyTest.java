@@ -43,7 +43,7 @@ class RetryPolicyTest {
     policy.execute(
         "op",
         () -> {
-          if (calls.incrementAndGet() < 3) throw new RuntimeException("transient");
+          if (calls.incrementAndGet() < 3) throw new IllegalStateException("transient");
         });
 
     assertThat(calls.get()).isEqualTo(3);

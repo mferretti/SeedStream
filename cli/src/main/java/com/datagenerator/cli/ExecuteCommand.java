@@ -129,6 +129,7 @@ public class ExecuteCommand implements Callable<Integer> {
 
   private static final String CONF_MAX_RETRIES = "max_retries";
   private static final String CONF_RETRY_DELAY_MS = "retry_delay_ms";
+  private static final String CONF_TOPIC = "topic";
 
   /**
    * Path to the job configuration YAML file.
@@ -551,7 +552,8 @@ public class ExecuteCommand implements Callable<Integer> {
             conf != null && conf.has("schema_registry_url")
                 ? conf.get("schema_registry_url").asText()
                 : null;
-        String topic = conf != null && conf.has("topic") ? conf.get("topic").asText() : "record";
+        String topic =
+            conf != null && conf.has(CONF_TOPIC) ? conf.get(CONF_TOPIC).asText() : "record";
         String subject =
             conf != null && conf.has("schema_registry_subject")
                 ? conf.get("schema_registry_subject").asText()
@@ -616,7 +618,7 @@ public class ExecuteCommand implements Callable<Integer> {
   private KafkaDestination createKafkaDestination(
       JsonNode conf, FormatSerializer serializer, SecretResolver secretResolver) {
     String bootstrap = conf.get("bootstrap").asText();
-    String topic = conf.get("topic").asText();
+    String topic = conf.get(CONF_TOPIC).asText();
 
     KafkaDestinationConfig.KafkaDestinationConfigBuilder configBuilder =
         KafkaDestinationConfig.builder().bootstrap(bootstrap).topic(topic);

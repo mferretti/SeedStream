@@ -141,8 +141,8 @@ class DatafakerComplexStructureTest {
         fields.put("operator", new CustomDatafakerType("full_name"));
         fields.put("notes", new PrimitiveType(PrimitiveType.Kind.CHAR, "0", "100"));
       }
-      case null -> throw new RuntimeException("Structure name cannot be null");
-      default -> throw new RuntimeException("Unknown structure: " + name);
+      case null -> throw new IllegalArgumentException("Structure name cannot be null");
+      default -> throw new IllegalArgumentException("Unknown structure: " + name);
     }
 
     return fields;

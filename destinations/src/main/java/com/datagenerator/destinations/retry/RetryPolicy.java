@@ -38,6 +38,7 @@ public final class RetryPolicy {
 
   /** A runnable that may throw any checked or unchecked exception. */
   @FunctionalInterface
+  @SuppressWarnings("java:S112")
   public interface CheckedRunnable {
     void run() throws Exception;
   }

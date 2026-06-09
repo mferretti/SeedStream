@@ -38,6 +38,11 @@ import org.junit.jupiter.api.Test;
 
 class JsonSerializerTest {
   private static final String FIELD_ITEMS = "items";
+  private static final String FIELD_PRICE = "price";
+  private static final String FIELD_QUANTITY = "quantity";
+  private static final String FIELD_ADDRESS = "address";
+  private static final String NAME_MARCO = "Marco";
+  private static final String CITY_MILANO = "Milano";
   private static final String THREAD_1 = "Thread1";
   private static final String THREAD_2 = "Thread2";
 
@@ -66,26 +71,26 @@ class JsonSerializerTest {
   @Test
   void shouldSerializeWithFieldAliases() throws Exception {
     // Simulate generator output with aliases
-    Map<String, Object> data = Map.of("nome", "Marco", "citta", "Milano");
+    Map<String, Object> data = Map.of("nome", NAME_MARCO, "citta", CITY_MILANO);
 
     String json = serializer.serialize(data);
 
     JsonNode node = mapper.readTree(json);
-    assertThat(node.get("nome").asText()).isEqualTo("Marco");
-    assertThat(node.get("citta").asText()).isEqualTo("Milano");
+    assertThat(node.get("nome").asText()).isEqualTo(NAME_MARCO);
+    assertThat(node.get("citta").asText()).isEqualTo(CITY_MILANO);
   }
 
   @Test
   void shouldSerializeBigDecimalAsNumber() throws Exception {
-    Map<String, Object> data = Map.of("price", new BigDecimal("99.95"), "quantity", 5);
+    Map<String, Object> data = Map.of(FIELD_PRICE, new BigDecimal("99.95"), FIELD_QUANTITY, 5);
 
     String json = serializer.serialize(data);
 
     assertThat(json).contains("\"price\":99.95"); // Not "99.95" (string)
     // Note: When parsing JSON, numbers may be deserialized as Double by default
     JsonNode node = mapper.readTree(json);
-    assertThat(node.get("price").isNumber()).isTrue();
-    assertThat(node.get("price").decimalValue()).isEqualByComparingTo("99.95");
+    assertThat(node.get(FIELD_PRICE).isNumber()).isTrue();
+    assertThat(node.get(FIELD_PRICE).decimalValue()).isEqualByComparingTo("99.95");
   }
 
   @Test
@@ -114,16 +119,16 @@ class JsonSerializerTest {
 
   @Test
   void shouldSerializeNestedObjects() throws Exception {
-    Map<String, Object> address = Map.of("street", "Via Roma", "city", "Milano");
-    Map<String, Object> data = Map.of("name", "Marco", "address", address);
+    Map<String, Object> address = Map.of("street", "Via Roma", "city", CITY_MILANO);
+    Map<String, Object> data = Map.of("name", NAME_MARCO, FIELD_ADDRESS, address);
 
     String json = serializer.serialize(data);
 
     JsonNode node = mapper.readTree(json);
-    assertThat(node.get("name").asText()).isEqualTo("Marco");
-    assertThat(node.get("address").isObject()).isTrue();
-    assertThat(node.get("address").get("street").asText()).isEqualTo("Via Roma");
-    assertThat(node.get("address").get("city").asText()).isEqualTo("Milano");
+    assertThat(node.get("name").asText()).isEqualTo(NAME_MARCO);
+    assertThat(node.get(FIELD_ADDRESS).isObject()).isTrue();
+    assertThat(node.get(FIELD_ADDRESS).get("street").asText()).isEqualTo("Via Roma");
+    assertThat(node.get(FIELD_ADDRESS).get("city").asText()).isEqualTo(CITY_MILANO);
   }
 
   @Test
@@ -141,8 +146,10 @@ class JsonSerializerTest {
 
   @Test
   void shouldSerializeComplexNestedStructure() throws Exception {
-    Map<String, Object> lineItem1 = Map.of("product", "Widget", "quantity", 5, "price", 10.50);
-    Map<String, Object> lineItem2 = Map.of("product", "Gadget", "quantity", 2, "price", 25.00);
+    Map<String, Object> lineItem1 =
+        Map.of("product", "Widget", FIELD_QUANTITY, 5, FIELD_PRICE, 10.50);
+    Map<String, Object> lineItem2 =
+        Map.of("product", "Gadget", FIELD_QUANTITY, 2, FIELD_PRICE, 25.00);
 
     Map<String, Object> company = Map.of("name", "ACME Corp", "taxId", "12345678");
 

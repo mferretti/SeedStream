@@ -32,6 +32,9 @@ import java.util.Set;
  */
 public final class FaceImageRules {
 
+  private static final String FIELD_WIDTH = "width";
+  private static final String FIELD_HEIGHT = "height";
+
   private static final Set<String> REQUIRED_FIELDS =
       Set.of(
           "record_format",
@@ -39,13 +42,13 @@ public final class FaceImageRules {
           "subject_id",
           "sample_id",
           "image_type",
-          "width",
-          "height",
+          FIELD_WIDTH,
+          FIELD_HEIGHT,
           "color_space",
           "compression",
           "image_file");
 
-  private static final Set<String> FACE_BOX_KEYS = Set.of("x", "y", "width", "height");
+  private static final Set<String> FACE_BOX_KEYS = Set.of("x", "y", FIELD_WIDTH, FIELD_HEIGHT);
   private static final Set<String> LANDMARK_KEYS =
       Set.of("left_eye", "right_eye", "nose_tip", "mouth_left", "mouth_right");
 
@@ -68,13 +71,13 @@ public final class FaceImageRules {
   }
 
   // Rule 1: all required fields are present
-  private static Optional<String> checkRequiredFields(Map<String, Object> record) {
-    return BiometricValidationUtils.checkRequiredFields(REQUIRED_FIELDS, record);
+  private static Optional<String> checkRequiredFields(Map<String, Object> data) {
+    return BiometricValidationUtils.checkRequiredFields(REQUIRED_FIELDS, data);
   }
 
   // Rule 2: face_box is a Map with keys x, y, width, height
-  private static Optional<String> checkFaceBox(Map<String, Object> record) {
-    Object faceBoxObj = record.get("face_box");
+  private static Optional<String> checkFaceBox(Map<String, Object> data) {
+    Object faceBoxObj = data.get("face_box");
     if (!(faceBoxObj instanceof Map<?, ?> faceBox)) {
       return Optional.of("'face_box' must be a map with keys: x, y, width, height");
     }
@@ -92,14 +95,14 @@ public final class FaceImageRules {
 
   // Rule 3: face_box fits within image dimensions
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkFaceBoxFitsImage(Map<String, Object> record) {
-    Object faceBoxObj = record.get("face_box");
+  private static Optional<String> checkFaceBoxFitsImage(Map<String, Object> data) {
+    Object faceBoxObj = data.get("face_box");
     if (!(faceBoxObj instanceof Map<?, ?> rawFaceBox)) {
       return Optional.empty(); // covered by rule 2
     }
     Map<String, Object> faceBox = (Map<String, Object>) rawFaceBox;
-    Object imageWidthObj = record.get("width");
-    Object imageHeightObj = record.get("height");
+    Object imageWidthObj = data.get(FIELD_WIDTH);
+    Object imageHeightObj = data.get(FIELD_HEIGHT);
     if (!(imageWidthObj instanceof Number) || !(imageHeightObj instanceof Number)) {
       return Optional.empty();
     }
@@ -109,7 +112,7 @@ public final class FaceImageRules {
     List<String> errors = new ArrayList<>();
 
     Object boxXObj = faceBox.get("x");
-    Object boxWidthObj = faceBox.get("width");
+    Object boxWidthObj = faceBox.get(FIELD_WIDTH);
     if (boxXObj instanceof Number boxX && boxWidthObj instanceof Number boxWidth) {
       int right = boxX.intValue() + boxWidth.intValue();
       if (right > imageWidth) {
@@ -126,7 +129,7 @@ public final class FaceImageRules {
     }
 
     Object boxYObj = faceBox.get("y");
-    Object boxHeightObj = faceBox.get("height");
+    Object boxHeightObj = faceBox.get(FIELD_HEIGHT);
     if (boxYObj instanceof Number boxY && boxHeightObj instanceof Number boxHeight) {
       int bottom = boxY.intValue() + boxHeight.intValue();
       if (bottom > imageHeight) {
@@ -145,8 +148,8 @@ public final class FaceImageRules {
   }
 
   // Rule 4: landmarks is a Map with all five keys
-  private static Optional<String> checkLandmarksPresent(Map<String, Object> record) {
-    Object landmarksObj = record.get("landmarks");
+  private static Optional<String> checkLandmarksPresent(Map<String, Object> data) {
+    Object landmarksObj = data.get("landmarks");
     if (!(landmarksObj instanceof Map<?, ?> landmarks)) {
       return Optional.of(
           "'landmarks' must be a map with keys: " + String.join(", ", LANDMARK_KEYS));
@@ -165,14 +168,14 @@ public final class FaceImageRules {
 
   // Rule 5: all landmark x/y values are within image bounds
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkLandmarkBounds(Map<String, Object> record) {
-    Object landmarksObj = record.get("landmarks");
+  private static Optional<String> checkLandmarkBounds(Map<String, Object> data) {
+    Object landmarksObj = data.get("landmarks");
     if (!(landmarksObj instanceof Map<?, ?> rawLandmarks)) {
       return Optional.empty();
     }
     Map<String, Object> landmarks = (Map<String, Object>) rawLandmarks;
-    Object imageWidthObj = record.get("width");
-    Object imageHeightObj = record.get("height");
+    Object imageWidthObj = data.get(FIELD_WIDTH);
+    Object imageHeightObj = data.get(FIELD_HEIGHT);
     if (!(imageWidthObj instanceof Number) || !(imageHeightObj instanceof Number)) {
       return Optional.empty();
     }
@@ -212,8 +215,8 @@ public final class FaceImageRules {
 
   // Rule 6: pose values within allowed ranges if present
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkPose(Map<String, Object> record) {
-    Object poseObj = record.get("pose");
+  private static Optional<String> checkPose(Map<String, Object> data) {
+    Object poseObj = data.get("pose");
     if (!(poseObj instanceof Map<?, ?> rawPose)) {
       return Optional.empty(); // pose is optional
     }
@@ -246,8 +249,8 @@ public final class FaceImageRules {
 
   // Rule 7: quality values in [0, 100] if present
   @SuppressWarnings("unchecked")
-  private static Optional<String> checkQuality(Map<String, Object> record) {
-    Object qualityObj = record.get("quality");
+  private static Optional<String> checkQuality(Map<String, Object> data) {
+    Object qualityObj = data.get("quality");
     if (!(qualityObj instanceof Map<?, ?> rawQuality)) {
       return Optional.empty(); // quality is optional
     }

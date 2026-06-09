@@ -37,7 +37,7 @@ import picocli.CommandLine.Parameters;
 /**
  * Validates a NDJSON file containing biometric records against ISO/IEC 19794 rules.
  *
- * <p>The modality is auto-detected from the {@code record_format} field of each record:
+ * <p>The modality is auto-detected from the {@code record_format} field of each data:
  *
  * <ul>
  *   <li>{@code "FMR"} — fingerprint minutiae (ISO/IEC 19794-2)
@@ -77,6 +77,7 @@ public class ValidateCommand implements Callable<Integer> {
   private Path inputFile;
 
   @Override
+  @SuppressWarnings("java:S106")
   public Integer call() {
     log.info("Validating biometric records in: {}", inputFile);
 
@@ -89,32 +90,11 @@ public class ValidateCommand implements Callable<Integer> {
 
     try (var lines = Files.lines(inputFile)) {
       for (var it = lines.iterator(); it.hasNext(); ) {
-        String line = it.next();
+        String trimmed = it.next().trim();
         int lineNumber = lineCounter.incrementAndGet();
-        String trimmed = line.trim();
-        if (trimmed.isEmpty()) {
-          continue;
-        }
+        if (trimmed.isEmpty()) continue;
         totalRecords++;
-
-        Map<String, Object> parsed;
-        try {
-          parsed = mapper.readValue(trimmed, MAP_TYPE);
-        } catch (IOException e) {
-          log.warn("Line {}: failed to parse JSON — {}", lineNumber, e.getMessage());
-          allViolations.add(
-              new RecordViolation(
-                  lineNumber, "UNKNOWN", List.of("JSON parse error: " + e.getMessage())));
-          continue;
-        }
-
-        // CBEFF envelope unwrapping: extract "payload" if present
-        Map<String, Object> record = unwrapCbeff(parsed);
-
-        RecordViolation violation = validator.validateSingle(record, lineNumber);
-        if (!violation.messages().isEmpty()) {
-          allViolations.add(violation);
-        }
+        processLine(mapper, validator, trimmed, lineNumber, allViolations);
       }
     } catch (IOException e) {
       log.error("Failed to read file: {}", inputFile, e);
@@ -130,18 +110,39 @@ public class ValidateCommand implements Callable<Integer> {
     ValidationReport report =
         new ValidationReport(totalRecords, validRecords, List.copyOf(allViolations));
 
-    // Print summary
     System.out.printf(
         "Validated %d records: %d valid, %d violations%n",
         report.totalRecords(), report.validRecords(), report.violations().size());
 
-    // Print each violation
     for (RecordViolation v : report.violations()) {
       String messages = String.join("; ", v.messages());
       System.out.printf("  Line %d [%s]: %s%n", v.lineNumber(), v.recordFormat(), messages);
     }
 
     return report.isFullyValid() ? 0 : 1;
+  }
+
+  private void processLine(
+      ObjectMapper mapper,
+      BiometricValidator validator,
+      String trimmed,
+      int lineNumber,
+      List<RecordViolation> allViolations) {
+    Map<String, Object> parsed;
+    try {
+      parsed = mapper.readValue(trimmed, MAP_TYPE);
+    } catch (IOException e) {
+      log.warn("Line {}: failed to parse JSON — {}", lineNumber, e.getMessage());
+      allViolations.add(
+          new RecordViolation(
+              lineNumber, "UNKNOWN", List.of("JSON parse error: " + e.getMessage())));
+      return;
+    }
+    Map<String, Object> data = unwrapCbeff(parsed);
+    RecordViolation violation = validator.validateSingle(data, lineNumber);
+    if (!violation.messages().isEmpty()) {
+      allViolations.add(violation);
+    }
   }
 
   /**
