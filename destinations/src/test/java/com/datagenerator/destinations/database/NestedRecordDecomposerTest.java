@@ -32,6 +32,9 @@ import org.junit.jupiter.api.Test;
  */
 class NestedRecordDecomposerTest {
 
+  private static final String TABLE_PARENT = "parent";
+  private static final String COL_PARENT_ID = "parent_id";
+
   private NestedRecordDecomposer decomposer;
 
   @BeforeEach
@@ -245,11 +248,12 @@ class NestedRecordDecomposerTest {
     parent.put("title", "no-id-parent"); // no "id" field
     parent.put("children", List.of(child));
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(parent, "parent", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(parent, TABLE_PARENT, null);
 
     assertThat(result).hasSize(2);
     // Child has no FK injected because parent has no "id"
-    assertThat(result.get(1).fields()).doesNotContainKey("parent_id");
+    assertThat(result.get(1).fields()).doesNotContainKey(COL_PARENT_ID);
   }
 
   @Test
@@ -262,10 +266,10 @@ class NestedRecordDecomposerTest {
     record.put("id", 1);
     record.put("items", children);
 
-    decomposer.decompose(record, "parent", null);
+    decomposer.decompose(record, TABLE_PARENT, null);
 
     // Original child must not have FK injected into it
-    assertThat(child).doesNotContainKey("parent_id").containsOnlyKeys("id");
+    assertThat(child).doesNotContainKey(COL_PARENT_ID).containsOnlyKeys("id");
   }
 
   @Test
@@ -328,10 +332,11 @@ class NestedRecordDecomposerTest {
     parent.put("id", 1);
     parent.put("children", List.of(child));
 
-    List<NestedRecordDecomposer.TableRecord> result = noInject.decompose(parent, "parent", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        noInject.decompose(parent, TABLE_PARENT, null);
 
     assertThat(result).hasSize(2);
-    assertThat(result.get(1).fields()).doesNotContainKey("parent_id");
+    assertThat(result.get(1).fields()).doesNotContainKey(COL_PARENT_ID);
   }
 
   @Test
@@ -344,9 +349,10 @@ class NestedRecordDecomposerTest {
     parent.put("id", 7);
     parent.put("child", child);
 
-    List<NestedRecordDecomposer.TableRecord> result = decomposer.decompose(parent, "parent", null);
+    List<NestedRecordDecomposer.TableRecord> result =
+        decomposer.decompose(parent, TABLE_PARENT, null);
 
     assertThat(result).hasSize(2);
-    assertThat(result.get(1).fields()).containsEntry("parent_id", 7);
+    assertThat(result.get(1).fields()).containsEntry(COL_PARENT_ID, 7);
   }
 }

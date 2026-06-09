@@ -41,6 +41,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Comprehensive tests for DatafakerGenerator covering multiple geolocations and all semantic types.
  */
 class DatafakerGeolocationTest {
+  private static final String TYPE_PREFIX = "Type: ";
+  private static final String STYPE_EMAIL = "email";
+  private static final String STYPE_MAC_ADDRESS = "mac_address";
+
   private DatafakerGenerator generator;
   private DataGeneratorFactory factory;
 
@@ -132,9 +136,7 @@ class DatafakerGeolocationTest {
 
     // Verify all generated values
     results.forEach(
-        (kind, value) -> {
-          assertThat(value).as("Type: " + kind).isNotNull().isNotEmpty();
-        });
+        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
   }
 
   @Test
@@ -162,9 +164,7 @@ class DatafakerGeolocationTest {
     }
 
     results.forEach(
-        (kind, value) -> {
-          assertThat(value).as("Type: " + kind).isNotNull().isNotEmpty();
-        });
+        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
   }
 
   @Test
@@ -174,19 +174,18 @@ class DatafakerGeolocationTest {
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       Random random = new Random(12345L);
 
-      results.put("email", (String) generator.generate(random, new CustomDatafakerType("email")));
+      results.put(
+          STYPE_EMAIL, (String) generator.generate(random, new CustomDatafakerType(STYPE_EMAIL)));
       results.put(
           "phone_number",
           (String) generator.generate(random, new CustomDatafakerType("phone_number")));
     }
 
     results.forEach(
-        (kind, value) -> {
-          assertThat(value).as("Type: " + kind).isNotNull().isNotEmpty();
-        });
+        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
 
     // Verify email format
-    assertThat(results.get("email")).contains("@");
+    assertThat(results.get(STYPE_EMAIL)).contains("@");
   }
 
   @Test
@@ -208,9 +207,7 @@ class DatafakerGeolocationTest {
     }
 
     results.forEach(
-        (kind, value) -> {
-          assertThat(value).as("Type: " + kind).isNotNull().isNotEmpty();
-        });
+        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
   }
 
   @Test
@@ -225,14 +222,12 @@ class DatafakerGeolocationTest {
       results.put("ipv4", (String) generator.generate(random, new CustomDatafakerType("ipv4")));
       results.put("ipv6", (String) generator.generate(random, new CustomDatafakerType("ipv6")));
       results.put(
-          "mac_address",
-          (String) generator.generate(random, new CustomDatafakerType("mac_address")));
+          STYPE_MAC_ADDRESS,
+          (String) generator.generate(random, new CustomDatafakerType(STYPE_MAC_ADDRESS)));
     }
 
     results.forEach(
-        (kind, value) -> {
-          assertThat(value).as("Type: " + kind).isNotNull().isNotEmpty();
-        });
+        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
 
     // Verify URL format
     assertThat(results.get("url")).matches("^https?://.*");
@@ -241,7 +236,7 @@ class DatafakerGeolocationTest {
     assertThat(results.get("ipv4")).matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
 
     // Verify MAC address format
-    assertThat(results.get("mac_address")).matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$");
+    assertThat(results.get(STYPE_MAC_ADDRESS)).matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$");
   }
 
   @Test
@@ -256,9 +251,7 @@ class DatafakerGeolocationTest {
     }
 
     results.forEach(
-        (kind, value) -> {
-          assertThat(value).as("Type: " + kind).isNotNull().isNotEmpty();
-        });
+        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
 
     // Verify ISBN format (ISBN-13)
     assertThat(results.get("isbn")).matches("^\\d{13}$");
@@ -295,7 +288,7 @@ class DatafakerGeolocationTest {
 
   @Test
   void shouldGenerateDifferentValuesForDifferentSeedsInSameLocale() {
-    CustomDatafakerType emailType = new CustomDatafakerType("email");
+    CustomDatafakerType emailType = new CustomDatafakerType(STYPE_EMAIL);
     List<String> emails = new ArrayList<>();
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {

@@ -42,6 +42,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class JdbcTypeMapperTest {
 
+  private static final String HELLO = "hello";
+
   @Mock private PreparedStatement ps;
 
   @BeforeEach
@@ -110,9 +112,9 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindStringAsString() throws SQLException {
-      JdbcTypeMapper.bind(ps, 1, "hello");
+      JdbcTypeMapper.bind(ps, 1, HELLO);
 
-      verify(ps).setString(1, "hello");
+      verify(ps).setString(1, HELLO);
     }
 
     @Test
@@ -332,9 +334,9 @@ class JdbcTypeMapperTest {
     @Test
     void shouldBindCharValueAsString() throws SQLException {
       PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "50");
-      JdbcTypeMapper.bind(ps, 1, "hello", charType);
+      JdbcTypeMapper.bind(ps, 1, HELLO, charType);
 
-      verify(ps).setString(1, "hello");
+      verify(ps).setString(1, HELLO);
     }
 
     // --- ReferenceType binding ---

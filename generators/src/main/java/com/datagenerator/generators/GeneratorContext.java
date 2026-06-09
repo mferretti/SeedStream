@@ -121,13 +121,13 @@ public class GeneratorContext implements AutoCloseable {
    *
    * @param record the partial record being built at this nesting level
    */
-  public static void pushParentRecord(java.util.Map<String, Object> record) {
+  public static void pushParentRecord(java.util.Map<String, Object> partial) {
     java.util.Deque<java.util.Map<String, Object>> stack = PARENT_RECORD_STACK.get();
     if (stack == null) {
       throw new IllegalStateException(
           "No GeneratorContext active. Call GeneratorContext.enter() before generating.");
     }
-    stack.push(record);
+    stack.push(partial);
   }
 
   /** Pop the top entry from the parent-record stack after a nested field has been generated. */

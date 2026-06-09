@@ -34,6 +34,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class HttpSchemaRegistryClientTest {
 
+  private static final String HEADER_AUTHORIZATION = "Authorization";
+
   @Mock private HttpClient httpClient;
 
   @SuppressWarnings("unchecked")

@@ -34,6 +34,10 @@ import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
 class ExecuteCommandTest {
+  private static final String OPT_JOB = "--job";
+  private static final String OPT_COUNT = "--count";
+  private static final String OPT_FORMAT = "--format";
+  private static final String OUTPUT_JSON = "output.json";
 
   @TempDir Path tempDir;
 
@@ -103,10 +107,10 @@ class ExecuteCommandTest {
   @Test
   void executeJsonToFileSucceeds() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--count", "5");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "5");
 
     assertThat(code).isZero();
-    Path output = outDir.resolve("output.json");
+    Path output = outDir.resolve(OUTPUT_JSON);
     assertThat(output).exists();
     List<String> lines = Files.readAllLines(output);
     assertThat(lines).hasSize(5);
@@ -121,10 +125,10 @@ class ExecuteCommandTest {
   @Test
   void defaultCountIs100() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString());
+    int code = execute(OPT_JOB, jobFile.toString());
 
     assertThat(code).isZero();
-    List<String> lines = Files.readAllLines(outDir.resolve("output.json"));
+    List<String> lines = Files.readAllLines(outDir.resolve(OUTPUT_JSON));
     assertThat(lines).hasSize(100);
   }
 
@@ -133,7 +137,7 @@ class ExecuteCommandTest {
   @Test
   void executeCsvFormatWritesHeaderAndData() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--format", "csv", "--count", "3");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "csv", OPT_COUNT, "3");
 
     assertThat(code).isZero();
     Path output = outDir.resolve("output.csv");
@@ -149,7 +153,7 @@ class ExecuteCommandTest {
   @Test
   void executeProtobufFormatSucceeds() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--format", "protobuf", "--count", "5");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "protobuf", OPT_COUNT, "5");
 
     assertThat(code).isZero();
     assertThat(outDir.resolve("output.protobuf")).exists();
@@ -160,7 +164,7 @@ class ExecuteCommandTest {
   @Test
   void executeAvroFormatSucceeds() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--format", "avro", "--count", "5");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro", OPT_COUNT, "5");
 
     assertThat(code).isZero();
     assertThat(outDir.resolve("output.avro")).exists();
@@ -172,13 +176,13 @@ class ExecuteCommandTest {
   void seedOverrideProducesReproducibleOutput() throws Exception {
     Path jobFile = writeJobFile();
 
-    execute("--job", jobFile.toString(), "--count", "10", "--seed", "999");
-    String first = Files.readString(outDir.resolve("output.json"));
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "999");
+    String first = Files.readString(outDir.resolve(OUTPUT_JSON));
 
-    Files.delete(outDir.resolve("output.json"));
+    Files.delete(outDir.resolve(OUTPUT_JSON));
 
-    execute("--job", jobFile.toString(), "--count", "10", "--seed", "999");
-    String second = Files.readString(outDir.resolve("output.json"));
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "999");
+    String second = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     assertThat(first).isEqualTo(second);
   }
@@ -187,13 +191,13 @@ class ExecuteCommandTest {
   void differentSeedsProduceDifferentOutput() throws Exception {
     Path jobFile = writeJobFile();
 
-    execute("--job", jobFile.toString(), "--count", "10", "--seed", "1");
-    String first = Files.readString(outDir.resolve("output.json"));
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "1");
+    String first = Files.readString(outDir.resolve(OUTPUT_JSON));
 
-    Files.delete(outDir.resolve("output.json"));
+    Files.delete(outDir.resolve(OUTPUT_JSON));
 
-    execute("--job", jobFile.toString(), "--count", "10", "--seed", "2");
-    String second = Files.readString(outDir.resolve("output.json"));
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--seed", "2");
+    String second = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     assertThat(first).isNotEqualTo(second);
   }
@@ -203,14 +207,14 @@ class ExecuteCommandTest {
     Path jobFile = writeJobFile();
 
     // Run with embedded seed (42 from job YAML) via normal execution
-    execute("--job", jobFile.toString(), "--count", "5");
-    String withJobSeed = Files.readString(outDir.resolve("output.json"));
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "5");
+    String withJobSeed = Files.readString(outDir.resolve(OUTPUT_JSON));
 
-    Files.delete(outDir.resolve("output.json"));
+    Files.delete(outDir.resolve(OUTPUT_JSON));
 
     // Run with a different seed override
-    execute("--job", jobFile.toString(), "--count", "5", "--seed", "99999");
-    String withOverride = Files.readString(outDir.resolve("output.json"));
+    execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "5", "--seed", "99999");
+    String withOverride = Files.readString(outDir.resolve(OUTPUT_JSON));
 
     assertThat(withJobSeed).isNotEqualTo(withOverride);
   }
@@ -220,7 +224,7 @@ class ExecuteCommandTest {
   @Test
   void debugFlagSucceeds() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--count", "2", "--debug");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "2", "--debug");
 
     assertThat(code).isZero();
   }
@@ -228,7 +232,7 @@ class ExecuteCommandTest {
   @Test
   void verboseFlagSucceeds() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--count", "2", "--verbose");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "2", "--verbose");
 
     assertThat(code).isZero();
   }
@@ -238,7 +242,7 @@ class ExecuteCommandTest {
     Path jobFile = writeJobFile();
     // 0 should be clamped to 1; 200 should be clamped to 100 — both should succeed
     int code =
-        execute("--job", jobFile.toString(), "--count", "2", "--debug", "--trace-sample", "0");
+        execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "2", "--debug", "--trace-sample", "0");
 
     assertThat(code).isZero();
   }
@@ -248,30 +252,30 @@ class ExecuteCommandTest {
   @Test
   void threadsOptionSucceeds() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--count", "10", "--threads", "2");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "10", "--threads", "2");
 
     assertThat(code).isZero();
-    assertThat(outDir.resolve("output.json")).exists();
+    assertThat(outDir.resolve(OUTPUT_JSON)).exists();
   }
 
   // ── Error cases ──────────────────────────────────────────────────────────────
 
   @Test
   void missingJobOptionReturnsUsageError() {
-    int code = execute("--count", "5");
+    int code = execute(OPT_COUNT, "5");
     assertThat(code).isNotZero();
   }
 
   @Test
   void nonexistentJobFileReturnsError() {
-    int code = execute("--job", tempDir.resolve("nonexistent.yaml").toString(), "--count", "1");
+    int code = execute(OPT_JOB, tempDir.resolve("nonexistent.yaml").toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero();
   }
 
   @Test
   void unsupportedFormatReturnsError() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute("--job", jobFile.toString(), "--format", "parquet");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "parquet");
     assertThat(code).isNotZero();
   }
 
@@ -294,7 +298,7 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero();
   }
 
@@ -317,7 +321,7 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero();
   }
 
@@ -345,7 +349,7 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "3");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     assertThat(code).isZero();
   }
 
@@ -366,9 +370,9 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "3");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     assertThat(code).isZero();
-    assertThat(outDir.resolve("output.json")).exists();
+    assertThat(outDir.resolve(OUTPUT_JSON)).exists();
   }
 
   @Test
@@ -389,9 +393,9 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "3");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     assertThat(code).isZero(); // falls back to seed 0
-    assertThat(outDir.resolve("output.json")).exists();
+    assertThat(outDir.resolve(OUTPUT_JSON)).exists();
   }
 
   @Test
@@ -416,7 +420,7 @@ class ExecuteCommandTest {
             .formatted(
                 structDir.toAbsolutePath(), seedFile.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "3");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     // Seed file permission check runs; result depends on OS file permissions
     assertThat(code).isIn(0, 1);
   }
@@ -442,7 +446,7 @@ class ExecuteCommandTest {
         """
             .formatted(outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero(); // config/structures/simple.yaml not present in CWD
   }
 
@@ -468,7 +472,7 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--format", "cbeff", "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "cbeff", OPT_COUNT, "1");
     assertThat(code).isBetween(0, 2);
   }
 
@@ -496,7 +500,7 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
     // createSerializer() is covered; fails at serialization time (no registry)
-    int code = execute("--job", jobFile.toString(), "--format", "avro-registry", "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro-registry", OPT_COUNT, "1");
     assertThat(code).isNotZero();
   }
 
@@ -524,7 +528,7 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath()));
 
     // createDatabaseDestination() runs to completion; fails at open time (no JDBC driver)
-    int code = execute("--job", jobFile.toString(), "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero();
   }
 
@@ -555,7 +559,7 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath()));
 
     // All optional DB config branches exercised; fails at open time (no JDBC driver)
-    int code = execute("--job", jobFile.toString(), "--count", "1");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero();
   }
 
@@ -587,8 +591,8 @@ class ExecuteCommandTest {
         """
             .formatted(outDir.toAbsolutePath()));
 
-    int code = execute("--job", jobFile.toString(), "--count", "3");
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     assertThat(code).isZero();
-    assertThat(outDir.resolve("output.json")).exists();
+    assertThat(outDir.resolve(OUTPUT_JSON)).exists();
   }
 }

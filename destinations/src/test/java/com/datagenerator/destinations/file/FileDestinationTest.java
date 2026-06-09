@@ -40,6 +40,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class FileDestinationTest {
+  private static final String ALICE = "Alice";
+
   @TempDir Path tempDir;
 
   private FileDestinationConfig.FileDestinationConfigBuilder configBuilder;
@@ -233,7 +235,7 @@ class FileDestinationTest {
     FileDestinationConfig config = configBuilder.filePath(outputFile).build();
 
     Map<String, Object> record1 = new LinkedHashMap<>();
-    record1.put("name", "Alice");
+    record1.put("name", ALICE);
     record1.put("age", 30);
 
     Map<String, Object> record2 = new LinkedHashMap<>();
@@ -253,7 +255,7 @@ class FileDestinationTest {
       reader.forEach(records::add);
     }
     assertThat(records).hasSize(2);
-    assertThat(records.get(0).get("name")).hasToString("Alice");
+    assertThat(records.get(0).get("name")).hasToString(ALICE);
     assertThat(records.get(0).get("age")).isEqualTo(30);
     assertThat(records.get(1).get("name")).hasToString("Bob");
     assertThat(records.get(1).get("age")).isEqualTo(25);
@@ -265,7 +267,7 @@ class FileDestinationTest {
     FileDestinationConfig config = configBuilder.filePath(outputFile).compress(true).build();
 
     Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Alice");
+    record.put("name", ALICE);
     record.put("age", 30);
 
     try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
@@ -281,7 +283,7 @@ class FileDestinationTest {
       reader.forEach(records::add);
     }
     assertThat(records).hasSize(1);
-    assertThat(records.get(0).get("name")).hasToString("Alice");
+    assertThat(records.get(0).get("name")).hasToString(ALICE);
   }
 
   @Test

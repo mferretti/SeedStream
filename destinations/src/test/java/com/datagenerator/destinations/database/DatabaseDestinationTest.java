@@ -50,6 +50,10 @@ class DatabaseDestinationTest {
 
   private static final String USERNAME = "sa";
   private static final String PASSWORD = ""; // H2 default: no password required
+  private static final String TYPE_INT = "int[1..9999]";
+  private static final String TYPE_CHAR = "char[1..255]";
+  private static final String TYPE_BOOL = "boolean";
+  private static final String COL_STATUS = "status";
 
   private Connection h2Connection;
 
@@ -268,8 +272,7 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldInsertWithSchemaUsingTypedBinding() throws SQLException {
-    Map<String, String> schema =
-        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
+    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, "active", TYPE_BOOL);
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
       dest.open();
@@ -284,8 +287,7 @@ class DatabaseDestinationTest {
   @Test
   void shouldCoerceStringValueToIntWhenSchemaDeclaresIntType() throws SQLException {
     // Simulates a Datafaker numeric type returning a String (e.g. age, quantity)
-    Map<String, String> schema =
-        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
+    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, "active", TYPE_BOOL);
 
     Map<String, Object> recordWithStringId = new LinkedHashMap<>();
     recordWithStringId.put("id", "7"); // String instead of Integer — coercion expected
@@ -308,8 +310,7 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldHandleNullWithTypedSchemaForCorrectSqlType() throws SQLException {
-    Map<String, String> schema =
-        Map.of("id", "int[1..9999]", "name", "char[1..255]", "active", "boolean");
+    Map<String, String> schema = Map.of("id", TYPE_INT, "name", TYPE_CHAR, "active", TYPE_BOOL);
 
     Map<String, Object> recordWithNull = new LinkedHashMap<>();
     recordWithNull.put("id", 5);
@@ -332,7 +333,7 @@ class DatabaseDestinationTest {
   @Test
   void shouldFallBackToOptionAForFieldsNotInSchema() throws SQLException {
     // Schema only covers 'id' — 'name' and 'active' fall back to Option A instanceof binding
-    Map<String, String> partialSchema = Map.of("id", "int[1..9999]");
+    Map<String, String> partialSchema = Map.of("id", TYPE_INT);
 
     try (DatabaseDestination dest = new DatabaseDestination(config(), partialSchema)) {
       dest.open();
@@ -361,11 +362,11 @@ class DatabaseDestinationTest {
             .build();
 
     Map<String, String> schema =
-        Map.of("id", "int[1..9999]", "status", "enum[ACTIVE,INACTIVE,PENDING]");
+        Map.of("id", TYPE_INT, COL_STATUS, "enum[ACTIVE,INACTIVE,PENDING]");
 
     Map<String, Object> statusRecord = new LinkedHashMap<>();
     statusRecord.put("id", 1);
-    statusRecord.put("status", "ACTIVE");
+    statusRecord.put(COL_STATUS, "ACTIVE");
 
     try (DatabaseDestination dest = new DatabaseDestination(statusConfig, schema)) {
       dest.open();
@@ -376,7 +377,7 @@ class DatabaseDestinationTest {
     try (Statement st = h2Connection.createStatement();
         ResultSet rs = st.executeQuery("SELECT status FROM statuses WHERE id = 1")) {
       assertThat(rs.next()).isTrue();
-      assertThat(rs.getString("status")).isEqualTo("ACTIVE");
+      assertThat(rs.getString(COL_STATUS)).isEqualTo("ACTIVE");
     }
 
     try (Statement st = h2Connection.createStatement()) {

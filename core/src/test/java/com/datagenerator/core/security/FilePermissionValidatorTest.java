@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -35,14 +34,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class FilePermissionValidatorTest {
 
+  private static final String SEED_FILE = "seed.txt";
+
   @TempDir Path tempDir;
-
-  private FilePermissionValidator validator;
-
-  @BeforeEach
-  void setUp() {
-    validator = new FilePermissionValidator();
-  }
 
   // ── Config file tests (Unix only) ────────────────────────────────────────
 
@@ -50,12 +44,14 @@ class FilePermissionValidatorTest {
   @DisabledOnOs(OS.WINDOWS)
   @ValueSource(strings = {"rw-------", "rw-r-----", "rw-r--r--"})
   void shouldNotThrowForConfigFileWithAnyReadPermission(String perms) throws IOException {
+    FilePermissionValidator validator = new FilePermissionValidator();
     Path file = createFileWithPermissions("config.yaml", perms);
     assertThatNoException().isThrownBy(() -> validator.validateConfigFile(file));
   }
 
   @Test
   void shouldSilentlySkipConfigFileWhenItDoesNotExist() {
+    FilePermissionValidator validator = new FilePermissionValidator();
     Path missing = tempDir.resolve("nonexistent.yaml");
     assertThatNoException().isThrownBy(() -> validator.validateConfigFile(missing));
   }
@@ -65,14 +61,16 @@ class FilePermissionValidatorTest {
   @Test
   @DisabledOnOs(OS.WINDOWS)
   void shouldPassWhenSeedFileIsOwnerOnly() throws IOException {
-    Path file = createFileWithPermissions("seed.txt", "rw-------");
+    FilePermissionValidator validator = new FilePermissionValidator();
+    Path file = createFileWithPermissions(SEED_FILE, "rw-------");
     assertThatNoException().isThrownBy(() -> validator.validateSeedFile(file));
   }
 
   @Test
   @DisabledOnOs(OS.WINDOWS)
   void shouldFailWhenSeedFileIsGroupReadable() throws IOException {
-    Path file = createFileWithPermissions("seed.txt", "rw-r-----");
+    FilePermissionValidator validator = new FilePermissionValidator();
+    Path file = createFileWithPermissions(SEED_FILE, "rw-r-----");
     assertThatThrownBy(() -> validator.validateSeedFile(file))
         .isInstanceOf(SecurityException.class)
         .hasMessageContaining("insecure permissions")
@@ -82,7 +80,8 @@ class FilePermissionValidatorTest {
   @Test
   @DisabledOnOs(OS.WINDOWS)
   void shouldFailWhenSeedFileIsWorldReadable() throws IOException {
-    Path file = createFileWithPermissions("seed.txt", "rw-r--r--");
+    FilePermissionValidator validator = new FilePermissionValidator();
+    Path file = createFileWithPermissions(SEED_FILE, "rw-r--r--");
     assertThatThrownBy(() -> validator.validateSeedFile(file))
         .isInstanceOf(SecurityException.class)
         .hasMessageContaining("insecure permissions");
@@ -90,6 +89,7 @@ class FilePermissionValidatorTest {
 
   @Test
   void shouldSilentlySkipSeedFileWhenItDoesNotExist() {
+    FilePermissionValidator validator = new FilePermissionValidator();
     Path missing = tempDir.resolve("nonexistent.seed");
     assertThatNoException().isThrownBy(() -> validator.validateSeedFile(missing));
   }
@@ -99,6 +99,7 @@ class FilePermissionValidatorTest {
   @Test
   @EnabledOnOs(OS.WINDOWS)
   void shouldSkipAllChecksOnWindows() throws IOException {
+    FilePermissionValidator validator = new FilePermissionValidator();
     Path file = Files.createTempFile(tempDir, "test", ".yaml");
     assertThatNoException().isThrownBy(() -> validator.validateConfigFile(file));
     assertThatNoException().isThrownBy(() -> validator.validateSeedFile(file));

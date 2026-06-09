@@ -25,6 +25,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class TypeParserTest {
+
+  private static final String TYPE_LONGITUDE = "longitude";
+  private static final String TYPE_STOCK_MARKET = "stock_market";
+  private static final String TYPE_PROMOTION_CODE = "promotion_code";
+
   private TypeParser parser;
 
   @BeforeEach
@@ -312,19 +317,20 @@ class TypeParserTest {
 
   @Test
   void shouldParseLongitudeAliases() {
-    assertThat(((CustomDatafakerType) parser.parse("lon")).getTypeName()).isEqualTo("longitude");
-    assertThat(((CustomDatafakerType) parser.parse("lng")).getTypeName()).isEqualTo("longitude");
-    assertThat(((CustomDatafakerType) parser.parse("long")).getTypeName()).isEqualTo("longitude");
+    assertThat(((CustomDatafakerType) parser.parse("lon")).getTypeName()).isEqualTo(TYPE_LONGITUDE);
+    assertThat(((CustomDatafakerType) parser.parse("lng")).getTypeName()).isEqualTo(TYPE_LONGITUDE);
+    assertThat(((CustomDatafakerType) parser.parse("long")).getTypeName())
+        .isEqualTo(TYPE_LONGITUDE);
   }
 
   @Test
   void shouldParseStockMarketAliases() {
     assertThat(((CustomDatafakerType) parser.parse("stockmarket")).getTypeName())
-        .isEqualTo("stock_market");
+        .isEqualTo(TYPE_STOCK_MARKET);
     assertThat(((CustomDatafakerType) parser.parse("stock")).getTypeName())
-        .isEqualTo("stock_market");
+        .isEqualTo(TYPE_STOCK_MARKET);
     assertThat(((CustomDatafakerType) parser.parse("ticker")).getTypeName())
-        .isEqualTo("stock_market");
+        .isEqualTo(TYPE_STOCK_MARKET);
   }
 
   @Test
@@ -338,10 +344,10 @@ class TypeParserTest {
   @Test
   void shouldParsePromotionCodeAliases() {
     assertThat(((CustomDatafakerType) parser.parse("promotioncode")).getTypeName())
-        .isEqualTo("promotion_code");
+        .isEqualTo(TYPE_PROMOTION_CODE);
     assertThat(((CustomDatafakerType) parser.parse("promo")).getTypeName())
-        .isEqualTo("promotion_code");
+        .isEqualTo(TYPE_PROMOTION_CODE);
     assertThat(((CustomDatafakerType) parser.parse("coupon")).getTypeName())
-        .isEqualTo("promotion_code");
+        .isEqualTo(TYPE_PROMOTION_CODE);
   }
 }

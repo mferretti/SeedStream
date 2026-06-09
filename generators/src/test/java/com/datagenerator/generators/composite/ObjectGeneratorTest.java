@@ -38,6 +38,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ObjectGeneratorTest {
+  private static final String F_STATUS = "status";
+  private static final String V_ACTIVE = "ACTIVE";
+  private static final String F_VALUE = "value";
+  private static final String F_NESTED = "nested";
+
   private MockStructureLoader loader;
   private StructureRegistry registry;
   private ObjectGenerator generator;
@@ -174,7 +179,7 @@ class ObjectGeneratorTest {
   @Test
   void shouldGenerateObjectWithEnumField() {
     Map<String, DataType> fields = new LinkedHashMap<>();
-    fields.put("status", new EnumType(java.util.List.of("ACTIVE", "INACTIVE", "PENDING")));
+    fields.put(F_STATUS, new EnumType(java.util.List.of(V_ACTIVE, "INACTIVE", "PENDING")));
     fields.put("code", new PrimitiveType(PrimitiveType.Kind.INT, "100", "999"));
     loader.addStructure("entity", fields);
 

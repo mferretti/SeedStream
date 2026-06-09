@@ -31,10 +31,10 @@ final class BiometricValidationUtils {
    * Returns a violation message if any field in {@code required} is absent from {@code record}, or
    * {@link Optional#empty()} when all are present.
    */
-  static Optional<String> checkRequiredFields(Set<String> required, Map<String, Object> record) {
+  static Optional<String> checkRequiredFields(Set<String> required, Map<String, Object> data) {
     List<String> missing = new ArrayList<>();
     for (String field : required) {
-      if (!record.containsKey(field)) {
+      if (!data.containsKey(field)) {
         missing.add(field);
       }
     }

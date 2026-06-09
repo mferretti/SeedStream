@@ -44,18 +44,19 @@ class VaultSecretResolverTest {
 
   private static final String VAULT_ADDR = "http://vault:8200";
   private static final String TEST_TOKEN = "test-vault-token";
+  private static final String VAULT_TOKEN_KEY = "VAULT_TOKEN";
 
   @Mock HttpClient mockClient;
   @Mock HttpResponse<String> mockResponse;
 
   @BeforeEach
   void setUp() {
-    System.setProperty("VAULT_TOKEN", TEST_TOKEN);
+    System.setProperty(VAULT_TOKEN_KEY, TEST_TOKEN);
   }
 
   @AfterEach
   void tearDown() {
-    System.clearProperty("VAULT_TOKEN");
+    System.clearProperty(VAULT_TOKEN_KEY);
   }
 
   static Stream<Arguments> vaultResolveScenarios() {
@@ -150,12 +151,12 @@ class VaultSecretResolverTest {
 
   @Test
   void shouldThrowWhenVaultTokenNotSet() {
-    System.clearProperty("VAULT_TOKEN");
+    System.clearProperty(VAULT_TOKEN_KEY);
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
     assertThatThrownBy(() -> resolver.resolve("secret/data/app#key"))
         .isInstanceOf(SecretResolutionException.class)
-        .hasMessageContaining("VAULT_TOKEN");
+        .hasMessageContaining(VAULT_TOKEN_KEY);
   }
 
   @Test

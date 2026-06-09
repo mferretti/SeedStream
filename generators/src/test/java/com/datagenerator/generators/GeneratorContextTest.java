@@ -130,9 +130,9 @@ class GeneratorContextTest {
   @Test
   void shouldPeekPushedParentRecord() {
     try (var ctx = GeneratorContext.enter(newFactory(), null)) {
-      Map<String, Object> record = Map.of("id", 1);
-      GeneratorContext.pushParentRecord(record);
-      assertThat(GeneratorContext.peekParentRecord()).isSameAs(record);
+      Map<String, Object> data = Map.of("id", 1);
+      GeneratorContext.pushParentRecord(data);
+      assertThat(GeneratorContext.peekParentRecord()).isSameAs(data);
       GeneratorContext.popParentRecord();
     }
   }
@@ -155,10 +155,10 @@ class GeneratorContextTest {
 
   @Test
   void shouldClearParentStackOnContextClose() {
-    Map<String, Object> record = Map.of("id", 99);
+    Map<String, Object> data = Map.of("id", 99);
 
     try (var ctx = GeneratorContext.enter(newFactory(), null)) {
-      GeneratorContext.pushParentRecord(record);
+      GeneratorContext.pushParentRecord(data);
     }
 
     // Fresh context should start with an empty stack

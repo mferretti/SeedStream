@@ -37,6 +37,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonSerializerTest {
+  private static final String THREAD_1 = "Thread1";
+  private static final String THREAD_2 = "Thread2";
+
   private JsonSerializer serializer;
   private ObjectMapper mapper; // For parsing output to verify structure
 
@@ -373,15 +376,15 @@ class JsonSerializerTest {
   @Test
   void shouldBeThreadSafe() {
     // ObjectMapper is thread-safe, verify concurrent use
-    Map<String, Object> record1 = Map.of("id", 1, "name", "Thread1");
-    Map<String, Object> record2 = Map.of("id", 2, "name", "Thread2");
+    Map<String, Object> record1 = Map.of("id", 1, "name", THREAD_1);
+    Map<String, Object> record2 = Map.of("id", 2, "name", THREAD_2);
 
     String json1 = serializer.serialize(record1);
     String json2 = serializer.serialize(record2);
 
-    assertThat(json1).contains("Thread1");
-    assertThat(json2).contains("Thread2");
-    assertThat(json1).doesNotContain("Thread2");
-    assertThat(json2).doesNotContain("Thread1");
+    assertThat(json1).contains(THREAD_1);
+    assertThat(json2).contains(THREAD_2);
+    assertThat(json1).doesNotContain(THREAD_2);
+    assertThat(json2).doesNotContain(THREAD_1);
   }
 }

@@ -34,6 +34,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AzureKeyVaultResolverTest {
 
+  private static final String SECRET_NAME = "my-secret";
+
   @Mock private SecretClient client;
 
   private AzureKeyVaultResolver resolver;
@@ -114,9 +116,9 @@ class AzureKeyVaultResolverTest {
   @Test
   void shouldPreserveCauseOnResourceNotFound() {
     ResourceNotFoundException cause = new ResourceNotFoundException("not found", null);
-    when(client.getSecret("my-secret")).thenThrow(cause);
+    when(client.getSecret(SECRET_NAME)).thenThrow(cause);
 
-    assertThatThrownBy(() -> resolver.resolve("my-secret"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_NAME))
         .isInstanceOf(SecretResolutionException.class)
         .hasCause(cause);
   }
@@ -155,11 +157,11 @@ class AzureKeyVaultResolverTest {
   @Test
   void shouldThrowSecretResolutionExceptionOnAuthenticationError() {
     AzureException authError = new AzureException("Authentication failed: invalid client secret");
-    when(client.getSecret("my-secret")).thenThrow(authError);
+    when(client.getSecret(SECRET_NAME)).thenThrow(authError);
 
-    assertThatThrownBy(() -> resolver.resolve("my-secret"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_NAME))
         .isInstanceOf(SecretResolutionException.class)
-        .hasMessageContaining("my-secret")
+        .hasMessageContaining(SECRET_NAME)
         .hasCause(authError);
   }
 

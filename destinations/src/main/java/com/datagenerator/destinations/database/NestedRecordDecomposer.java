@@ -90,50 +90,19 @@ public class NestedRecordDecomposer {
     Map<String, List<Map<String, Object>>> childrenByField = new LinkedHashMap<>();
 
     for (Map.Entry<String, Object> entry : record.entrySet()) {
-      String key = entry.getKey();
-      Object value = entry.getValue();
-
-      if (value instanceof Map<?, ?>) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> child = (Map<String, Object>) value;
-        childrenByField.put(key, List.of(new LinkedHashMap<>(child)));
-      } else if (value instanceof List<?> list) {
-        if (list.isEmpty()) {
-          // Empty list — skip entirely. Cannot determine element type, and a Java List
-          // cannot be bound as a JDBC parameter. No child inserts are produced.
-        } else if (list.get(0) instanceof Map) {
-          // Non-empty list of Maps → child table records
-          @SuppressWarnings("unchecked")
-          List<Map<String, Object>> children = (List<Map<String, Object>>) list;
-          // Defensive copy so FK injection doesn't mutate the original record
-          List<Map<String, Object>> copies = new ArrayList<>(children.size());
-          for (Map<String, Object> child : children) {
-            copies.add(new LinkedHashMap<>(child));
-          }
-          childrenByField.put(key, copies);
-        } else {
-          // List of scalars — treat as a regular scalar value (e.g. array[char[]])
-          flat.put(key, value);
-        }
-      } else {
-        flat.put(key, value);
-      }
+      classifyEntry(entry.getKey(), entry.getValue(), flat, childrenByField);
     }
 
-    // Inject parent FK into the flat portion of this record
     if (injectParentFk && parentCtx != null) {
       flat.put(parentCtx.fkColumnName(), parentCtx.parentId());
     }
 
-    // This record's flat portion goes first (parent before children)
     result.add(new TableRecord(tableName, flat));
 
-    // Build this level's parent context for its own children
     Object myId = flat.get("id");
     ParentContext myCtx =
         (injectParentFk && myId != null) ? new ParentContext(tableName, myId) : null;
 
-    // Recurse depth-first: field key = child table name
     for (Map.Entry<String, List<Map<String, Object>>> childEntry : childrenByField.entrySet()) {
       String childTable = childEntry.getKey();
       for (Map<String, Object> child : childEntry.getValue()) {
@@ -142,5 +111,45 @@ public class NestedRecordDecomposer {
     }
 
     return result;
+  }
+
+  private void classifyEntry(
+      String key,
+      Object value,
+      Map<String, Object> flat,
+      Map<String, List<Map<String, Object>>> childrenByField) {
+    if (value instanceof Map<?, ?>) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> child = (Map<String, Object>) value;
+      childrenByField.put(key, List.of(new LinkedHashMap<>(child)));
+    } else if (value instanceof List<?> list) {
+      classifyList(key, list, flat, childrenByField);
+    } else {
+      flat.put(key, value);
+    }
+  }
+
+  private void classifyList(
+      String key,
+      List<?> list,
+      Map<String, Object> flat,
+      Map<String, List<Map<String, Object>>> childrenByField) {
+    if (list.isEmpty()) {
+      // Empty list — skip entirely. Cannot determine element type, and a Java List
+      // cannot be bound as a JDBC parameter. No child inserts are produced.
+    } else if (list.get(0) instanceof Map) {
+      // Non-empty list of Maps → child table records
+      @SuppressWarnings("unchecked")
+      List<Map<String, Object>> children = (List<Map<String, Object>>) list;
+      // Defensive copy so FK injection doesn't mutate the original record
+      List<Map<String, Object>> copies = new ArrayList<>(children.size());
+      for (Map<String, Object> child : children) {
+        copies.add(new LinkedHashMap<>(child));
+      }
+      childrenByField.put(key, copies);
+    } else {
+      // List of scalars — treat as a regular scalar value (e.g. array[char[]])
+      flat.put(key, list);
+    }
   }
 }

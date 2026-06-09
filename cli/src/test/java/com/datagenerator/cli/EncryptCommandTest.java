@@ -31,6 +31,7 @@ import picocli.CommandLine;
 class EncryptCommandTest {
 
   private static final String VALID_KEY_HEX = "0".repeat(64);
+  private static final String SECRET_NAME = "my-secret";
 
   private CommandLine cmd() {
     return new CommandLine(new EncryptCommand());
@@ -43,20 +44,20 @@ class EncryptCommandTest {
     Path keyFile = tempDir.resolve("key.hex");
     Files.writeString(keyFile, VALID_KEY_HEX);
 
-    int code = cmd().execute("--key-file", keyFile.toString(), "my-secret");
+    int code = cmd().execute("--key-file", keyFile.toString(), SECRET_NAME);
     assertThat(code).isZero();
   }
 
   @Test
   void exitCode1WhenKeyEnvNotSet() {
     // use a non-existent env var name
-    int code = cmd().execute("--key-env", "NONEXISTENT_TEST_KEY_XYZ_12345", "my-secret");
+    int code = cmd().execute("--key-env", "NONEXISTENT_TEST_KEY_XYZ_12345", SECRET_NAME);
     assertThat(code).isEqualTo(1);
   }
 
   @Test
   void exitCode1WhenKeyFileNotFound() {
-    int code = cmd().execute("--key-file", "/nonexistent/path/key.hex", "my-secret");
+    int code = cmd().execute("--key-file", "/nonexistent/path/key.hex", SECRET_NAME);
     assertThat(code).isEqualTo(1);
   }
 
@@ -68,7 +69,7 @@ class EncryptCommandTest {
 
     CommandLine cli = new CommandLine(command);
     cli.setOut(new PrintWriter(out));
-    int code = cli.execute("my-secret");
+    int code = cli.execute(SECRET_NAME);
 
     assertThat(code).isZero();
     assertThat(out.toString().trim()).startsWith(AesGcmCrypto.PREFIX);
@@ -79,7 +80,7 @@ class EncryptCommandTest {
     Path keyFile = tempDir.resolve("key.hex");
     Files.writeString(keyFile, VALID_KEY_HEX + "\n");
 
-    int code = cmd().execute("--key-file", keyFile.toString(), "my-secret");
+    int code = cmd().execute("--key-file", keyFile.toString(), SECRET_NAME);
     assertThat(code).isZero();
   }
 
@@ -93,7 +94,7 @@ class EncryptCommandTest {
     StringWriter out = new StringWriter();
     CommandLine cli = cmd();
     cli.setOut(new PrintWriter(out));
-    cli.execute("--key-file", keyFile.toString(), "my-secret");
+    cli.execute("--key-file", keyFile.toString(), SECRET_NAME);
 
     assertThat(out.toString().trim()).startsWith(AesGcmCrypto.PREFIX);
   }
@@ -126,7 +127,7 @@ class EncryptCommandTest {
     StringWriter err = new StringWriter();
     CommandLine cli = new CommandLine(command);
     cli.setErr(new PrintWriter(err));
-    int code = cli.execute("my-secret");
+    int code = cli.execute(SECRET_NAME);
 
     assertThat(code).isEqualTo(1);
     assertThat(err.toString()).contains("Encryption failed");

@@ -30,6 +30,11 @@ import org.junit.jupiter.api.Test;
 
 /** Test suite for 20 new high-priority Datafaker types added in Phase 1. */
 class DatafakerNewTypesTest {
+
+  private static final String TYPE_PASSWORD = "password";
+  private static final String TYPE_PRODUCT_NAME = "product_name";
+  private static final String TYPE_COLOR = "color";
+
   private DatafakerGenerator generator;
   private DataGeneratorFactory factory;
   private Random random;
@@ -68,7 +73,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGeneratePassword() {
-    String password = (String) generateWithContext("usa", "password");
+    String password = (String) generateWithContext("usa", TYPE_PASSWORD);
     // Password should contain alphanumeric characters
     assertThat(password)
         .isNotNull()
@@ -150,7 +155,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateProductName() {
-    String productName = (String) generateWithContext("usa", "product_name");
+    String productName = (String) generateWithContext("usa", TYPE_PRODUCT_NAME);
     // Product names like "Ergonomic Steel Chair"
     assertThat(productName).isNotNull().isNotEmpty().hasSizeGreaterThan(5);
   }
@@ -164,7 +169,7 @@ class DatafakerNewTypesTest {
 
   @Test
   void shouldGenerateColor() {
-    String color = (String) generateWithContext("usa", "color");
+    String color = (String) generateWithContext("usa", TYPE_COLOR);
     // Color names like "red", "blue", "sky blue"
     assertThat(color).isNotNull().isNotEmpty().matches("^[a-z\\s]+$");
   }
@@ -219,9 +224,9 @@ class DatafakerNewTypesTest {
     Random r2 = new Random(12345L);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      String pass1 = (String) generator.generate(r1, new CustomDatafakerType("password"));
+      String pass1 = (String) generator.generate(r1, new CustomDatafakerType(TYPE_PASSWORD));
       FakerCache.clear();
-      String pass2 = (String) generator.generate(r2, new CustomDatafakerType("password"));
+      String pass2 = (String) generator.generate(r2, new CustomDatafakerType(TYPE_PASSWORD));
       assertThat(pass1).isEqualTo(pass2);
     }
   }
@@ -232,9 +237,9 @@ class DatafakerNewTypesTest {
     Random r2 = new Random(99999L);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      String product1 = (String) generator.generate(r1, new CustomDatafakerType("product_name"));
+      String product1 = (String) generator.generate(r1, new CustomDatafakerType(TYPE_PRODUCT_NAME));
       FakerCache.clear();
-      String product2 = (String) generator.generate(r2, new CustomDatafakerType("product_name"));
+      String product2 = (String) generator.generate(r2, new CustomDatafakerType(TYPE_PRODUCT_NAME));
       assertThat(product1).isEqualTo(product2);
     }
   }
@@ -245,8 +250,8 @@ class DatafakerNewTypesTest {
     Random r2 = new Random(22222L);
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      String color1 = (String) generator.generate(r1, new CustomDatafakerType("color"));
-      String color2 = (String) generator.generate(r2, new CustomDatafakerType("color"));
+      String color1 = (String) generator.generate(r1, new CustomDatafakerType(TYPE_COLOR));
+      String color2 = (String) generator.generate(r2, new CustomDatafakerType(TYPE_COLOR));
       // Different seeds should produce different colors (with high probability)
       assertThat(color1).isNotEqualTo(color2);
     }
@@ -258,7 +263,7 @@ class DatafakerNewTypesTest {
   void shouldSupportAllNewSemanticTypes() {
     assertThat(generator.supports(new CustomDatafakerType("prefix"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("suffix"))).isTrue();
-    assertThat(generator.supports(new CustomDatafakerType("password"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType(TYPE_PASSWORD))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("ssn"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("latitude"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("longitude"))).isTrue();
@@ -268,9 +273,9 @@ class DatafakerNewTypesTest {
     assertThat(generator.supports(new CustomDatafakerType("cvv"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("credit_card_type"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("stock_market"))).isTrue();
-    assertThat(generator.supports(new CustomDatafakerType("product_name"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType(TYPE_PRODUCT_NAME))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("department"))).isTrue();
-    assertThat(generator.supports(new CustomDatafakerType("color"))).isTrue();
+    assertThat(generator.supports(new CustomDatafakerType(TYPE_COLOR))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("material"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("promotion_code"))).isTrue();
     assertThat(generator.supports(new CustomDatafakerType("lorem_word"))).isTrue();

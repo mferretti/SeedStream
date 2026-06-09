@@ -65,17 +65,22 @@ public class TypeParser {
     String trimmed = typeString.trim();
     if ("boolean".equals(trimmed)) return new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null);
 
-    Matcher m;
-    if ((m = PRIMITIVE_PATTERN.matcher(trimmed)).matches()) return parsePrimitive(m);
-    if ((m = ENUM_PATTERN.matcher(trimmed)).matches()) return parseEnum(m, typeString);
-    if ((m = OBJECT_PATTERN.matcher(trimmed)).matches()) return new ObjectType(m.group(1));
-    if ((m = PARENT_REF_PATTERN.matcher(trimmed)).matches())
-      return new ParentReferenceType(m.group(1));
-    if ((m = REF_COUNT_PATTERN.matcher(trimmed)).matches()) return parseRefCount(m);
-    if ((m = REF_RANGE_PATTERN.matcher(trimmed)).matches()) return parseRefRange(m, typeString);
-    if ((m = REF_PATTERN.matcher(trimmed)).matches())
-      return new ReferenceType(m.group(1), m.group(2), null, null, false);
-    if ((m = ARRAY_PATTERN.matcher(trimmed)).matches()) return parseArray(m, typeString);
+    Matcher m = PRIMITIVE_PATTERN.matcher(trimmed);
+    if (m.matches()) return parsePrimitive(m);
+    m = ENUM_PATTERN.matcher(trimmed);
+    if (m.matches()) return parseEnum(m, typeString);
+    m = OBJECT_PATTERN.matcher(trimmed);
+    if (m.matches()) return new ObjectType(m.group(1));
+    m = PARENT_REF_PATTERN.matcher(trimmed);
+    if (m.matches()) return new ParentReferenceType(m.group(1));
+    m = REF_COUNT_PATTERN.matcher(trimmed);
+    if (m.matches()) return parseRefCount(m);
+    m = REF_RANGE_PATTERN.matcher(trimmed);
+    if (m.matches()) return parseRefRange(m, typeString);
+    m = REF_PATTERN.matcher(trimmed);
+    if (m.matches()) return new ReferenceType(m.group(1), m.group(2), null, null, false);
+    m = ARRAY_PATTERN.matcher(trimmed);
+    if (m.matches()) return parseArray(m, typeString);
 
     if (DatafakerRegistry.isRegistered(trimmed)) {
       return new CustomDatafakerType(DatafakerRegistry.getCanonicalName(trimmed));

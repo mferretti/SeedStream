@@ -32,6 +32,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class SeedResolverTest {
+  private static final String TYPE_REMOTE = "remote";
+  private static final String REMOTE_URL = "https://api.example.com/seed";
+
   private SeedResolver resolver;
 
   @TempDir Path tempDir;
@@ -124,8 +127,7 @@ class SeedResolverTest {
     SeedResolver customResolver = new SeedResolver(mockClient);
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig("bearer", "secret-token", null, null, null, null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     long seed = customResolver.resolve(config);
 
@@ -153,8 +155,7 @@ class SeedResolverTest {
     SeedResolver customResolver = new SeedResolver(mockClient);
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig("basic", null, "user", "pass", null, null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     long seed = customResolver.resolve(config);
 
@@ -179,8 +180,7 @@ class SeedResolverTest {
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig(
             "api_key", null, null, null, "X-API-Key", "my-key-123");
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     long seed = customResolver.resolve(config);
 
@@ -201,8 +201,7 @@ class SeedResolverTest {
         .thenReturn(mockResponse);
 
     SeedResolver customResolver = new SeedResolver(mockClient);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", null);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, null);
 
     assertThatThrownBy(() -> customResolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -219,8 +218,7 @@ class SeedResolverTest {
         .thenReturn(mockResponse);
 
     SeedResolver customResolver = new SeedResolver(mockClient);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", null);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, null);
 
     assertThatThrownBy(() -> customResolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -234,8 +232,7 @@ class SeedResolverTest {
         .thenThrow(new IOException("Network error"));
 
     SeedResolver customResolver = new SeedResolver(mockClient);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", null);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, null);
 
     assertThatThrownBy(() -> customResolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -253,8 +250,7 @@ class SeedResolverTest {
   void shouldFailWhenBearerTokenMissing() {
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig("bearer", null, null, null, null, null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -265,8 +261,7 @@ class SeedResolverTest {
   void shouldFailWhenBasicAuthCredentialsMissing() {
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig("basic", null, "user", null, null, null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -277,8 +272,7 @@ class SeedResolverTest {
   void shouldFailWhenApiKeyMissing() {
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig("api_key", null, null, null, "X-API-Key", null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -289,8 +283,7 @@ class SeedResolverTest {
   void shouldFailWhenAuthTypeIsNull() {
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig(null, null, null, null, null, null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
@@ -301,8 +294,7 @@ class SeedResolverTest {
   void shouldFailWhenAuthTypeIsUnsupported() {
     SeedConfig.RemoteSeed.AuthConfig auth =
         new SeedConfig.RemoteSeed.AuthConfig("oauth", null, null, null, null, null);
-    SeedConfig.RemoteSeed config =
-        new SeedConfig.RemoteSeed("remote", "https://api.example.com/seed", auth);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)

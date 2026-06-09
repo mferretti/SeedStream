@@ -250,6 +250,9 @@ class AvroSerializerTest {
                   errors.incrementAndGet();
                 }
               }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              errors.incrementAndGet();
             } catch (Exception e) {
               errors.incrementAndGet();
             }

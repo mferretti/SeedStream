@@ -65,6 +65,7 @@ class LibraryForeignKeyIT extends IntegrationTest {
   private static final int BOOKS_PER_AUTHOR_MIN = 1;
   private static final int BOOKS_PER_AUTHOR_MAX = 5;
   private static final long SEED = 42L;
+  private static final String TABLE_BOOKS = "books";
 
   private static final String DDL_AUTHORS =
       """
@@ -136,7 +137,7 @@ class LibraryForeignKeyIT extends IntegrationTest {
     generate(AUTHOR_COUNT, SEED);
 
     assertThat(countRows("lib_authors")).isEqualTo(AUTHOR_COUNT);
-    assertThat(countRows("books"))
+    assertThat(countRows(TABLE_BOOKS))
         .isGreaterThanOrEqualTo(AUTHOR_COUNT * BOOKS_PER_AUTHOR_MIN)
         .isLessThanOrEqualTo(AUTHOR_COUNT * BOOKS_PER_AUTHOR_MAX);
   }
@@ -172,14 +173,14 @@ class LibraryForeignKeyIT extends IntegrationTest {
   void shouldGenerateDeterministicBookCountWithSameSeed()
       throws InterruptedException, SQLException {
     generate(AUTHOR_COUNT, SEED);
-    int bookCount1 = countRows("books");
+    int bookCount1 = countRows(TABLE_BOOKS);
 
     try (Statement st = verify.createStatement()) {
       st.execute("TRUNCATE lib_authors, books");
     }
 
     generate(AUTHOR_COUNT, SEED);
-    int bookCount2 = countRows("books");
+    int bookCount2 = countRows(TABLE_BOOKS);
 
     assertThat(bookCount1).isEqualTo(bookCount2);
   }
@@ -215,12 +216,12 @@ class LibraryForeignKeyIT extends IntegrationTest {
       GenerationEngine engine =
           GenerationEngine.builder()
               .recordGenerator(
-                  (random) -> {
+                  random -> {
                     try (var ctx = GeneratorContext.enter(factory, null, count)) {
                       @SuppressWarnings("unchecked")
-                      Map<String, Object> record =
+                      Map<String, Object> data =
                           (Map<String, Object>) generator.generate(random, objectType);
-                      return record;
+                      return data;
                     }
                   })
               .recordWriter(dest::write)

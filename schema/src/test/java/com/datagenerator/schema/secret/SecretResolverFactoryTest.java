@@ -31,6 +31,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class SecretResolverFactoryTest {
 
+  private static final String TYPE_VAULT = "vault";
+  private static final String TYPE_AZURE = "azure_keyvault";
+  private static final String TYPE_ENCRYPTED = "encrypted_file";
+
   @Test
   void shouldReturnEnvResolverWhenConfigIsNull() {
     assertThat(SecretResolverFactory.create(null)).isSameAs(EnvSecretResolver.INSTANCE);
@@ -62,7 +66,7 @@ class SecretResolverFactoryTest {
 
   @Test
   void shouldThrowWhenVaultAddrMissingForVaultType() {
-    SecretsConfig config = new SecretsConfig("vault", null, null, null, null, null, null, null);
+    SecretsConfig config = new SecretsConfig(TYPE_VAULT, null, null, null, null, null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("vault_addr");
@@ -70,7 +74,7 @@ class SecretResolverFactoryTest {
 
   @Test
   void shouldThrowWhenVaultAddrBlankForVaultType() {
-    SecretsConfig config = new SecretsConfig("vault", "   ", null, null, null, null, null, null);
+    SecretsConfig config = new SecretsConfig(TYPE_VAULT, "   ", null, null, null, null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("vault_addr");
@@ -88,21 +92,13 @@ class SecretResolverFactoryTest {
   void shouldReturnAzureKeyVaultResolverForAzureType() {
     SecretsConfig config =
         new SecretsConfig(
-            "azure_keyvault",
-            null,
-            null,
-            null,
-            "https://myvault.vault.azure.net",
-            null,
-            null,
-            null);
+            TYPE_AZURE, null, null, null, "https://myvault.vault.azure.net", null, null, null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(AzureKeyVaultResolver.class);
   }
 
   @Test
   void shouldThrowWhenVaultUriMissingForAzureType() {
-    SecretsConfig config =
-        new SecretsConfig("azure_keyvault", null, null, null, null, null, null, null);
+    SecretsConfig config = new SecretsConfig(TYPE_AZURE, null, null, null, null, null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("vault_uri");
@@ -110,8 +106,7 @@ class SecretResolverFactoryTest {
 
   @Test
   void shouldThrowWhenVaultUriBlankForAzureType() {
-    SecretsConfig config =
-        new SecretsConfig("azure_keyvault", null, null, null, "   ", null, null, null);
+    SecretsConfig config = new SecretsConfig(TYPE_AZURE, null, null, null, "   ", null, null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("vault_uri");
@@ -143,7 +138,7 @@ class SecretResolverFactoryTest {
     Files.writeString(keyFile, keyHex);
 
     SecretsConfig config =
-        new SecretsConfig("encrypted_file", null, null, null, null, null, keyFile.toString(), null);
+        new SecretsConfig(TYPE_ENCRYPTED, null, null, null, null, null, keyFile.toString(), null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(EncryptedFileResolver.class);
   }
 
@@ -151,7 +146,7 @@ class SecretResolverFactoryTest {
   void shouldThrowWhenEncryptedFileKeyEnvNotSet() {
     SecretsConfig config =
         new SecretsConfig(
-            "encrypted_file", null, null, null, null, "NONEXISTENT_ENC_KEY_XYZ_12345", null, null);
+            TYPE_ENCRYPTED, null, null, null, null, "NONEXISTENT_ENC_KEY_XYZ_12345", null, null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("NONEXISTENT_ENC_KEY_XYZ_12345");
@@ -161,7 +156,7 @@ class SecretResolverFactoryTest {
   void shouldThrowWhenEncryptedFileKeyFileNotFound() {
     SecretsConfig config =
         new SecretsConfig(
-            "encrypted_file", null, null, null, null, null, "/nonexistent/enc/key.hex", null);
+            TYPE_ENCRYPTED, null, null, null, null, null, "/nonexistent/enc/key.hex", null);
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("/nonexistent/enc/key.hex");
@@ -179,7 +174,7 @@ class SecretResolverFactoryTest {
         EncryptedFileResolver.ENC_PREFIX + ciphertext.substring(AesGcmCrypto.PREFIX.length());
 
     SecretsConfig config =
-        new SecretsConfig("encrypted_file", null, null, null, null, null, keyFile.toString(), null);
+        new SecretsConfig(TYPE_ENCRYPTED, null, null, null, null, null, keyFile.toString(), null);
     SecretResolver resolver = SecretResolverFactory.create(config);
 
     assertThat(resolver.resolve(encPath)).isEqualTo(plaintext);
@@ -192,6 +187,6 @@ class SecretResolverFactoryTest {
     assertThatThrownBy(() -> SecretResolverFactory.create(config))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("unknown_backend")
-        .hasMessageContaining("encrypted_file");
+        .hasMessageContaining(TYPE_ENCRYPTED);
   }
 }

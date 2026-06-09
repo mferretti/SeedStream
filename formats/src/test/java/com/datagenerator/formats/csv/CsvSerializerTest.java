@@ -32,6 +32,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class CsvSerializerTest {
+  private static final String MARCO = "Marco";
+
   private CsvSerializer serializer;
 
   @BeforeEach
@@ -67,7 +69,7 @@ class CsvSerializerTest {
   void shouldSerializeWithFieldAliases() {
     // Simulate generator output with aliases
     Map<String, Object> record = new LinkedHashMap<>();
-    record.put("nome", "Marco");
+    record.put("nome", MARCO);
     record.put("citta", "Milano");
 
     String header = serializer.serializeHeader(record);
@@ -150,7 +152,7 @@ class CsvSerializerTest {
     address.put("city", "Milano");
 
     Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Marco");
+    record.put("name", MARCO);
     record.put("address", address);
 
     String csv = serializer.serialize(record);
@@ -158,7 +160,7 @@ class CsvSerializerTest {
     // Nested object should be JSON-serialized and quoted (CSV escapes inner quotes by doubling)
     // The JSON structure is preserved but quotes are escaped
     assertThat(csv)
-        .contains("Marco")
+        .contains(MARCO)
         .contains("Via Roma")
         .contains("Milano")
         .matches(".*\\{.*street.*Via Roma.*city.*Milano.*\\}.*");
@@ -260,27 +262,27 @@ class CsvSerializerTest {
 
   @Test
   void serializeToBytesDefaultReturnsUtf8Encoding() {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("name", "Marco");
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("name", MARCO);
 
-    byte[] bytes = serializer.serializeToBytes(record);
-    String expected = serializer.serialize(record);
+    byte[] bytes = serializer.serializeToBytes(row);
+    String expected = serializer.serialize(row);
 
     assertThat(bytes).isEqualTo(expected.getBytes(StandardCharsets.UTF_8));
   }
 
   @Test
   void createStreamWriterDefaultWritesRecordWithNewline() throws Exception {
-    Map<String, Object> record = new LinkedHashMap<>();
-    record.put("city", "Rome");
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("city", "Rome");
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     try (FormatSerializer.StreamWriter writer = serializer.createStreamWriter(out)) {
-      writer.writeRecord(record);
+      writer.writeRecord(row);
     }
 
     String output = out.toString(StandardCharsets.UTF_8);
-    assertThat(output).startsWith(serializer.serialize(record)).endsWith("\n");
+    assertThat(output).startsWith(serializer.serialize(row)).endsWith("\n");
   }
 
   @Test

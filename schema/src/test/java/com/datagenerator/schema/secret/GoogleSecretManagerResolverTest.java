@@ -40,6 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GoogleSecretManagerResolverTest {
 
   private static final String PROJECT_ID = "my-test-project";
+  private static final String SECRET_NAME = "my-secret";
 
   @Mock SecretManagerServiceClient mockClient;
   @Mock ApiException mockApiException;
@@ -57,7 +58,7 @@ class GoogleSecretManagerResolverTest {
         .thenReturn(responseWith("my-plain-token"));
 
     GoogleSecretManagerResolver resolver = new GoogleSecretManagerResolver(mockClient, PROJECT_ID);
-    assertThat(resolver.resolve("my-secret")).isEqualTo("my-plain-token");
+    assertThat(resolver.resolve(SECRET_NAME)).isEqualTo("my-plain-token");
   }
 
   @Test
@@ -76,7 +77,7 @@ class GoogleSecretManagerResolverTest {
 
     ArgumentCaptor<SecretVersionName> captor = ArgumentCaptor.forClass(SecretVersionName.class);
     GoogleSecretManagerResolver resolver = new GoogleSecretManagerResolver(mockClient, PROJECT_ID);
-    resolver.resolve("my-secret");
+    resolver.resolve(SECRET_NAME);
 
     verify(mockClient).accessSecretVersion(captor.capture());
     assertThat(captor.getValue().getSecretVersion()).isEqualTo("latest");
@@ -93,7 +94,7 @@ class GoogleSecretManagerResolverTest {
 
     verify(mockClient).accessSecretVersion(captor.capture());
     assertThat(captor.getValue().getSecretVersion()).isEqualTo("5");
-    assertThat(captor.getValue().getSecret()).isEqualTo("my-secret");
+    assertThat(captor.getValue().getSecret()).isEqualTo(SECRET_NAME);
   }
 
   @Test
@@ -125,7 +126,7 @@ class GoogleSecretManagerResolverTest {
     when(mockClient.accessSecretVersion(any(SecretVersionName.class))).thenThrow(mockApiException);
 
     GoogleSecretManagerResolver resolver = new GoogleSecretManagerResolver(mockClient, PROJECT_ID);
-    assertThatThrownBy(() -> resolver.resolve("my-secret"))
+    assertThatThrownBy(() -> resolver.resolve(SECRET_NAME))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("GCP Secret Manager error");
   }
@@ -170,7 +171,7 @@ class GoogleSecretManagerResolverTest {
         .thenReturn(responseWith(json));
 
     GoogleSecretManagerResolver resolver = new GoogleSecretManagerResolver(mockClient, PROJECT_ID);
-    assertThat(resolver.resolve("my-secret")).isEqualTo(json);
+    assertThat(resolver.resolve(SECRET_NAME)).isEqualTo(json);
   }
 
   @Test
@@ -180,7 +181,7 @@ class GoogleSecretManagerResolverTest {
 
     ArgumentCaptor<SecretVersionName> captor = ArgumentCaptor.forClass(SecretVersionName.class);
     GoogleSecretManagerResolver resolver = new GoogleSecretManagerResolver(mockClient, PROJECT_ID);
-    resolver.resolve("my-secret");
+    resolver.resolve(SECRET_NAME);
 
     verify(mockClient).accessSecretVersion(captor.capture());
     assertThat(captor.getValue().getProject()).isEqualTo(PROJECT_ID);

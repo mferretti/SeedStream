@@ -26,15 +26,17 @@ import org.junit.jupiter.api.Test;
 
 class TimestampGeneratorTest {
 
+  private static final Random RANDOM = new Random(42L);
+  private static final String TS_MIN = "2020-01-01T00:00:00";
+  private static final String TS_MAX = "2025-12-31T23:59:59";
+
   private final TimestampGenerator generator = new TimestampGenerator();
 
   // ── ISO-8601 ────────────────────────────────────────────────────────────────
 
   @Test
   void shouldGenerateTimestampWithinIsoRange() {
-    PrimitiveType type =
-        new PrimitiveType(
-            PrimitiveType.Kind.TIMESTAMP, "2020-01-01T00:00:00", "2025-12-31T23:59:59");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, TS_MIN, TS_MAX);
     Instant min = Instant.parse("2020-01-01T00:00:00Z");
     Instant max = Instant.parse("2025-12-31T23:59:59Z");
     Random random = new Random(42L);
@@ -47,9 +49,7 @@ class TimestampGeneratorTest {
 
   @Test
   void shouldBeDeterministicWithSameSeed() {
-    PrimitiveType type =
-        new PrimitiveType(
-            PrimitiveType.Kind.TIMESTAMP, "2020-01-01T00:00:00", "2025-12-31T23:59:59");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, TS_MIN, TS_MAX);
     Random r1 = new Random(77L);
     Random r2 = new Random(77L);
 
@@ -131,10 +131,9 @@ class TimestampGeneratorTest {
 
   @Test
   void shouldThrowWhenMinValueIsNull() {
-    PrimitiveType type =
-        new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, "2025-12-31T23:59:59");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, TS_MAX);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
@@ -142,10 +141,9 @@ class TimestampGeneratorTest {
 
   @Test
   void shouldThrowWhenMaxValueIsNull() {
-    PrimitiveType type =
-        new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "2020-01-01T00:00:00", null);
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, TS_MIN, null);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("maxValue");
@@ -153,10 +151,9 @@ class TimestampGeneratorTest {
 
   @Test
   void shouldThrowWhenMinValueHasInvalidFormat() {
-    PrimitiveType type =
-        new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "not-a-timestamp", "2025-12-31T23:59:59");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "not-a-timestamp", TS_MAX);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
@@ -164,11 +161,9 @@ class TimestampGeneratorTest {
 
   @Test
   void shouldThrowWhenMinGreaterThanMax() {
-    PrimitiveType type =
-        new PrimitiveType(
-            PrimitiveType.Kind.TIMESTAMP, "2025-12-31T23:59:59", "2020-01-01T00:00:00");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, TS_MAX, TS_MIN);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("timestamp range");
@@ -178,7 +173,7 @@ class TimestampGeneratorTest {
   void shouldThrowWhenWrongKind() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "2020-01-01", "2025-12-31");
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("TimestampGenerator");
@@ -186,10 +181,7 @@ class TimestampGeneratorTest {
 
   @Test
   void shouldSupportTimestampKindOnly() {
-    assertThat(
-            generator.supports(
-                new PrimitiveType(
-                    PrimitiveType.Kind.TIMESTAMP, "2020-01-01T00:00:00", "2025-12-31T23:59:59")))
+    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, TS_MIN, TS_MAX)))
         .isTrue();
     assertThat(
             generator.supports(

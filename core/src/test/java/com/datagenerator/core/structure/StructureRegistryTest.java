@@ -30,6 +30,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class StructureRegistryTest {
+
+  private static final String STRUCT_A = "structure_a";
+  private static final String STRUCT_B = "structure_b";
+  private static final String STRUCT_INVOICE = "invoice";
+
   private StructureRegistry registry;
   private MockStructureLoader loader;
 
@@ -79,19 +84,19 @@ class StructureRegistryTest {
   void shouldDetectIndirectCircularReference() {
     // A → B → A cycle
     Map<String, DataType> aFields = new HashMap<>();
-    aFields.put("b_ref", new ObjectType("structure_b"));
-    loader.addStructure("structure_a", aFields);
+    aFields.put("b_ref", new ObjectType(STRUCT_B));
+    loader.addStructure(STRUCT_A, aFields);
 
     Map<String, DataType> bFields = new HashMap<>();
-    bFields.put("a_ref", new ObjectType("structure_a"));
-    loader.addStructure("structure_b", bFields);
+    bFields.put("a_ref", new ObjectType(STRUCT_A));
+    loader.addStructure(STRUCT_B, bFields);
 
     var structuresPath = Path.of("config/structures");
-    assertThatThrownBy(() -> registry.loadStructure("structure_a", structuresPath))
+    assertThatThrownBy(() -> registry.loadStructure(STRUCT_A, structuresPath))
         .isInstanceOf(CircularReferenceException.class)
         .hasMessageContaining("Circular reference detected")
-        .hasMessageContaining("structure_a")
-        .hasMessageContaining("structure_b");
+        .hasMessageContaining(STRUCT_A)
+        .hasMessageContaining(STRUCT_B);
   }
 
   @Test
@@ -116,9 +121,10 @@ class StructureRegistryTest {
     Map<String, DataType> invoiceFields = new HashMap<>();
     invoiceFields.put("issuer", new ObjectType("company"));
     invoiceFields.put("recipient", new ObjectType("company"));
-    loader.addStructure("invoice", invoiceFields);
+    loader.addStructure(STRUCT_INVOICE, invoiceFields);
 
-    Map<String, DataType> loaded = registry.loadStructure("invoice", Path.of("config/structures"));
+    Map<String, DataType> loaded =
+        registry.loadStructure(STRUCT_INVOICE, Path.of("config/structures"));
 
     assertThat(loaded).hasSize(2);
     assertThat(loader.getLoadCount("company")).isEqualTo(1); // Company loaded once, reused
@@ -132,9 +138,10 @@ class StructureRegistryTest {
 
     Map<String, DataType> invoiceFields = new HashMap<>();
     invoiceFields.put("items", new ArrayType(new ObjectType("line_item"), 1, 20));
-    loader.addStructure("invoice", invoiceFields);
+    loader.addStructure(STRUCT_INVOICE, invoiceFields);
 
-    Map<String, DataType> loaded = registry.loadStructure("invoice", Path.of("config/structures"));
+    Map<String, DataType> loaded =
+        registry.loadStructure(STRUCT_INVOICE, Path.of("config/structures"));
 
     registry.validateReferences(loaded, Path.of("config/structures"));
     // Should complete without exception
@@ -160,7 +167,7 @@ class StructureRegistryTest {
 
       Map<String, DataType> fields = structures.get(structureName);
       if (fields == null) {
-        throw new RuntimeException("Structure not found: " + structureName);
+        throw new IllegalStateException("Structure not found: " + structureName);
       }
 
       // Trigger nested loading for ObjectType fields (simulates real behavior)

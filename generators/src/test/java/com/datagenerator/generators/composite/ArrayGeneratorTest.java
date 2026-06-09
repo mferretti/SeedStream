@@ -35,6 +35,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ArrayGeneratorTest {
+  private static final Random RANDOM = new Random(42L);
+
   private ArrayGenerator generator;
   private DataGeneratorFactory factory;
 
@@ -147,10 +149,9 @@ class ArrayGeneratorTest {
     // array[int[1..100], 5..5] - always length 5
     ArrayType arrayType =
         new ArrayType(new PrimitiveType(PrimitiveType.Kind.INT, "1", "100"), 5, 5);
-    Random random = new Random();
 
     @SuppressWarnings("unchecked")
-    List<Integer> array = (List<Integer>) generateWithContext(arrayType, random);
+    List<Integer> array = (List<Integer>) generateWithContext(arrayType, RANDOM);
 
     assertThat(array).hasSize(5);
   }
@@ -176,9 +177,8 @@ class ArrayGeneratorTest {
   void shouldThrowExceptionForNegativeMinLength() {
     ArrayType arrayType =
         new ArrayType(new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"), -1, 5);
-    Random random = new Random();
 
-    assertThatThrownBy(() -> generateWithContext(arrayType, random))
+    assertThatThrownBy(() -> generateWithContext(arrayType, RANDOM))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Array length must be non-negative");
   }
@@ -187,9 +187,8 @@ class ArrayGeneratorTest {
   void shouldThrowExceptionWhenMinGreaterThanMax() {
     ArrayType arrayType =
         new ArrayType(new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"), 10, 5);
-    Random random = new Random();
 
-    assertThatThrownBy(() -> generateWithContext(arrayType, random))
+    assertThatThrownBy(() -> generateWithContext(arrayType, RANDOM))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Invalid array length range");
   }

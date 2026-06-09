@@ -34,11 +34,13 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
 
 class KafkaDestinationTest {
+  private static final String BOOTSTRAP = "localhost:9092";
+  private static final String TOPIC = "test-topic";
 
   @Test
   void shouldThrowExceptionWhenBootstrapMissing() {
     KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder().bootstrap(null).topic("test-topic").build();
+        KafkaDestinationConfig.builder().bootstrap(null).topic(TOPIC).build();
 
     var serializer = new JsonSerializer();
     assertThatThrownBy(() -> new KafkaDestination(config, serializer))
@@ -49,7 +51,7 @@ class KafkaDestinationTest {
   @Test
   void shouldThrowExceptionWhenBootstrapBlank() {
     KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder().bootstrap("   ").topic("test-topic").build();
+        KafkaDestinationConfig.builder().bootstrap("   ").topic(TOPIC).build();
 
     var serializer = new JsonSerializer();
     assertThatThrownBy(() -> new KafkaDestination(config, serializer))
@@ -60,7 +62,7 @@ class KafkaDestinationTest {
   @Test
   void shouldThrowExceptionWhenTopicMissing() {
     KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder().bootstrap("localhost:9092").topic(null).build();
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(null).build();
 
     var serializer = new JsonSerializer();
     assertThatThrownBy(() -> new KafkaDestination(config, serializer))
@@ -71,7 +73,7 @@ class KafkaDestinationTest {
   @Test
   void shouldThrowExceptionWhenTopicBlank() {
     KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder().bootstrap("localhost:9092").topic("").build();
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic("").build();
 
     var serializer = new JsonSerializer();
     assertThatThrownBy(() -> new KafkaDestination(config, serializer))
@@ -82,7 +84,7 @@ class KafkaDestinationTest {
   @Test
   void shouldThrowExceptionWhenWritingBeforeOpen() {
     KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder().bootstrap("localhost:9092").topic("test-topic").build();
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(TOPIC).build();
 
     try (KafkaDestination destination = new KafkaDestination(config, new JsonSerializer())) {
       Map<String, Object> record = Map.of("name", "John", "age", 42);
@@ -96,7 +98,7 @@ class KafkaDestinationTest {
   @Test
   void shouldReturnCorrectDestinationType() {
     KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder().bootstrap("localhost:9092").topic("test-topic").build();
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(TOPIC).build();
 
     try (KafkaDestination destination = new KafkaDestination(config, new JsonSerializer())) {
       assertThat(destination.getDestinationType()).isEqualTo("kafka");
@@ -107,8 +109,8 @@ class KafkaDestinationTest {
   void shouldAllowValidConfiguration() {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder()
-            .bootstrap("localhost:9092")
-            .topic("test-topic")
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
             .sync(true)
             .batchSize(32768)
             .lingerMs(50)
@@ -127,8 +129,8 @@ class KafkaDestinationTest {
   void shouldAllowConfigurationWithSaslAuth() {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder()
-            .bootstrap("localhost:9092")
-            .topic("test-topic")
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
             .securityProtocol("SASL_SSL")
             .saslMechanism("SCRAM-SHA-512")
             .saslJaasConfig(
@@ -145,8 +147,8 @@ class KafkaDestinationTest {
   void shouldAllowConfigurationWithSslAuth() {
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder()
-            .bootstrap("localhost:9092")
-            .topic("test-topic")
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
             .securityProtocol("SSL")
             .sslTruststoreLocation("/path/to/truststore.jks")
             .sslTruststorePassword("truststore-password")
@@ -174,8 +176,8 @@ class KafkaDestinationTest {
 
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder()
-            .bootstrap("localhost:9092")
-            .topic("test-topic")
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
             .sync(true)
             .maxRetries(3)
             .retryDelayMs(0)
@@ -199,8 +201,8 @@ class KafkaDestinationTest {
 
     KafkaDestinationConfig config =
         KafkaDestinationConfig.builder()
-            .bootstrap("localhost:9092")
-            .topic("test-topic")
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
             .sync(true)
             .maxRetries(2)
             .retryDelayMs(0)

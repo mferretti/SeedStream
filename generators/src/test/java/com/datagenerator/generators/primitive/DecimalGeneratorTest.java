@@ -26,23 +26,25 @@ import org.junit.jupiter.api.Test;
 
 class DecimalGeneratorTest {
 
+  private static final String DECIMAL_MAX = "100.0";
+  private static final Random RANDOM = new Random(42L);
+
   private final DecimalGenerator generator = new DecimalGenerator();
-  private final Random sharedRandom = new Random(42L);
 
   @Test
   void shouldGenerateDecimalWithinRange() {
-    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX);
     Random random = new Random(42L);
 
     for (int i = 0; i < 100; i++) {
       BigDecimal value = (BigDecimal) generator.generate(random, type);
-      assertThat(value).isBetween(BigDecimal.ZERO, new BigDecimal("100.0"));
+      assertThat(value).isBetween(BigDecimal.ZERO, new BigDecimal(DECIMAL_MAX));
     }
   }
 
   @Test
   void shouldBeDeterministicWithSameSeed() {
-    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX);
     Random r1 = new Random(55L);
     Random r2 = new Random(55L);
 
@@ -74,15 +76,15 @@ class DecimalGeneratorTest {
   void shouldHandleSingleValueRange() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "42.5", "42.5");
 
-    BigDecimal value = (BigDecimal) generator.generate(sharedRandom, type);
+    BigDecimal value = (BigDecimal) generator.generate(RANDOM, type);
     assertThat(value).isEqualByComparingTo(new BigDecimal("42.5"));
   }
 
   @Test
   void shouldThrowWhenMinValueIsNull() {
-    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, null, "100.0");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, null, DECIMAL_MAX);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
@@ -92,7 +94,7 @@ class DecimalGeneratorTest {
   void shouldThrowWhenMaxValueIsNull() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", null);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("maxValue");
@@ -100,9 +102,9 @@ class DecimalGeneratorTest {
 
   @Test
   void shouldThrowWhenMinValueIsInvalidFormat() {
-    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "not-a-number", "100.0");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "not-a-number", DECIMAL_MAX);
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("minValue");
@@ -112,7 +114,7 @@ class DecimalGeneratorTest {
   void shouldThrowWhenMaxValueIsInvalidFormat() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "abc");
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("maxValue");
@@ -120,9 +122,9 @@ class DecimalGeneratorTest {
 
   @Test
   void shouldThrowWhenMinGreaterThanMax() {
-    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "100.0", "0.0");
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, DECIMAL_MAX, "0.0");
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("decimal range");
@@ -132,7 +134,7 @@ class DecimalGeneratorTest {
   void shouldThrowWhenWrongKind() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "0", "100");
 
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("DecimalGenerator");
@@ -140,7 +142,8 @@ class DecimalGeneratorTest {
 
   @Test
   void shouldSupportDecimalKindOnly() {
-    assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "100.0")))
+    assertThat(
+            generator.supports(new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX)))
         .isTrue();
     assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.INT, "0", "100"))).isFalse();
     assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "5"))).isFalse();

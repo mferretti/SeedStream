@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 
 class BooleanGeneratorTest {
 
+  private static final Random RANDOM = new Random(42L);
+
   private final BooleanGenerator generator = new BooleanGenerator();
   private final PrimitiveType boolType = new PrimitiveType(PrimitiveType.Kind.BOOLEAN, null, null);
 
@@ -56,7 +58,7 @@ class BooleanGeneratorTest {
   @Test
   void shouldThrowWhenWrongType() {
     PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "5");
-    var rnd = new Random();
+    var rnd = RANDOM;
     assertThatThrownBy(() -> generator.generate(rnd, charType))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("BooleanGenerator");
