@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 class CharGeneratorTest {
   private final CharGenerator generator = new CharGenerator();
-  private final Random random = new Random(42L);
+  private static final Random RANDOM = new Random(42L);
 
   @Test
   void shouldGenerateStringWithinLengthRange() {
@@ -69,21 +69,21 @@ class CharGeneratorTest {
   @Test
   void shouldHandleMinimumLength() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "1");
-    String value = (String) generator.generate(random, type);
+    String value = (String) generator.generate(RANDOM, type);
     assertThat(value).hasSize(1);
   }
 
   @Test
   void shouldHandleZeroLength() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "0", "0");
-    String value = (String) generator.generate(random, type);
+    String value = (String) generator.generate(RANDOM, type);
     assertThat(value).isEmpty();
   }
 
   @Test
   void shouldThrowExceptionWhenMinGreaterThanMax() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "10", "5");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Invalid char range");
   }
@@ -91,7 +91,7 @@ class CharGeneratorTest {
   @Test
   void shouldThrowExceptionForMissingMinValue() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, null, "10");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Missing required field: minValue");
   }
@@ -99,7 +99,7 @@ class CharGeneratorTest {
   @Test
   void shouldThrowExceptionForInvalidLengthFormat() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "abc", "10");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Invalid minValue");
   }
@@ -107,7 +107,7 @@ class CharGeneratorTest {
   @Test
   void shouldThrowExceptionForNegativeLength() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "-5", "10");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("must be >= 0");
   }

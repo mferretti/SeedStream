@@ -28,12 +28,12 @@ import org.junit.jupiter.api.Test;
 
 class EnumGeneratorTest {
   private final EnumGenerator generator = new EnumGenerator();
-  private final Random random = new Random(42L);
+  private static final Random RANDOM = new Random(42L);
 
   @Test
   void shouldGenerateValueFromEnumList() {
     EnumType type = new EnumType(List.of("ACTIVE", "INACTIVE", "PENDING"));
-    String value = (String) generator.generate(random, type);
+    String value = (String) generator.generate(RANDOM, type);
     assertThat(value).isIn("ACTIVE", "INACTIVE", "PENDING");
   }
 
@@ -66,14 +66,14 @@ class EnumGeneratorTest {
   @Test
   void shouldHandleSingleValueEnum() {
     EnumType type = new EnumType(List.of("ONLY_VALUE"));
-    String value = (String) generator.generate(random, type);
+    String value = (String) generator.generate(RANDOM, type);
     assertThat(value).isEqualTo("ONLY_VALUE");
   }
 
   @Test
   void shouldThrowExceptionForEmptyEnum() {
     EnumType type = new EnumType(List.of());
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("EnumType has no values");
   }

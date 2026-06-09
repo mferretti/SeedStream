@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 class IntegerGeneratorTest {
   private final IntegerGenerator generator = new IntegerGenerator();
-  private final Random random = new Random(42L);
+  private static final Random RANDOM = new Random(42L);
 
   @Test
   void shouldGenerateIntegerWithinRange() {
@@ -69,7 +69,7 @@ class IntegerGeneratorTest {
   @Test
   void shouldHandleSingleValueRange() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "42", "42");
-    int value = (int) generator.generate(random, type);
+    int value = (int) generator.generate(RANDOM, type);
     assertThat(value).isEqualTo(42);
   }
 
@@ -98,7 +98,7 @@ class IntegerGeneratorTest {
   @Test
   void shouldThrowExceptionWhenMinGreaterThanMax() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "100", "50");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Invalid int range");
   }
@@ -106,7 +106,7 @@ class IntegerGeneratorTest {
   @Test
   void shouldThrowExceptionForMissingMinValue() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, null, "100");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Missing required field: minValue");
   }
@@ -114,7 +114,7 @@ class IntegerGeneratorTest {
   @Test
   void shouldThrowExceptionForInvalidNumberFormat() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "abc", "100");
-    assertThatThrownBy(() -> generator.generate(random, type))
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("Invalid minValue");
   }

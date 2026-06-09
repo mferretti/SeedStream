@@ -66,7 +66,8 @@ public final class AwsSecretsManagerResolver implements SecretResolver {
     }
 
     var builder =
-        SecretsManagerClient.builder().credentialsProvider(DefaultCredentialsProvider.create());
+        SecretsManagerClient.builder()
+            .credentialsProvider(DefaultCredentialsProvider.builder().build());
     if (region != null && !region.isBlank()) {
       builder.region(Region.of(region));
     }

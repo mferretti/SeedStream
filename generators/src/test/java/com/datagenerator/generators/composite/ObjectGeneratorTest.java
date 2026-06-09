@@ -211,17 +211,14 @@ class ObjectGeneratorTest {
 
   @Test
   void shouldGenerateDeeplyNestedObjects() {
-    // level3: {value: int[1..10]}
     Map<String, DataType> level3 = new LinkedHashMap<>();
     level3.put(F_VALUE, new PrimitiveType(PrimitiveType.Kind.INT, "1", "10"));
     loader.addStructure("level3", level3);
 
-    // level2: {nested: object[level3]}
     Map<String, DataType> level2 = new LinkedHashMap<>();
     level2.put(F_NESTED, new ObjectType("level3"));
     loader.addStructure("level2", level2);
 
-    // level1: {nested: object[level2]}
     Map<String, DataType> level1 = new LinkedHashMap<>();
     level1.put(F_NESTED, new ObjectType("level2"));
     loader.addStructure("level1", level1);
