@@ -260,4 +260,68 @@ class GenerationEngineTest {
     // Verify roughly even distribution (each worker gets ~250 records)
     threadCounts.values().forEach(count -> assertThat(count).isBetween(200, 300));
   }
+
+  @Test
+  void shouldUseSerializedPipelineSingleThreadedWhenSerializerProvided()
+      throws InterruptedException {
+    // Given: a serializer that runs on the producer side and a byte writer on the writer side
+    AtomicInteger idCounter = new AtomicInteger(0);
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", idCounter.incrementAndGet());
+    AtomicInteger serializeCalls = new AtomicInteger(0);
+    List<byte[]> writtenBytes = new ArrayList<>();
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(recordGenerator)
+            .recordSerializer(
+                data -> {
+                  serializeCalls.incrementAndGet();
+                  return ("id=" + data.get("id")).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                })
+            .serializedWriter(writtenBytes::add)
+            .masterSeed(12345L)
+            .singleThreadedThreshold(1000) // 100 < 1000 → single-threaded
+            .build();
+
+    engine.generate(100);
+
+    // Then: every record was serialized and the bytes (not Maps) reached the writer
+    assertThat(serializeCalls.get()).isEqualTo(100);
+    assertThat(writtenBytes).hasSize(100);
+    assertThat(new String(writtenBytes.get(0), java.nio.charset.StandardCharsets.UTF_8))
+        .startsWith("id=");
+  }
+
+  @Test
+  void shouldUseSerializedPipelineMultiThreadedWhenSerializerProvided()
+      throws InterruptedException {
+    // Given: serialized pipeline above the multi-thread threshold
+    AtomicInteger idCounter = new AtomicInteger(0);
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", idCounter.incrementAndGet());
+    List<byte[]> writtenBytes = new ArrayList<>();
+    GenerationEngine.SerializedWriter writer =
+        bytes -> {
+          synchronized (writtenBytes) {
+            writtenBytes.add(bytes);
+          }
+        };
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(recordGenerator)
+            .recordSerializer(
+                data -> ("id=" + data.get("id")).getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .serializedWriter(writer)
+            .masterSeed(12345L)
+            .workerThreads(4)
+            .singleThreadedThreshold(1000)
+            .build();
+
+    engine.generate(5000);
+
+    // Then: all records flowed through the byte pipeline
+    assertThat(writtenBytes).hasSize(5000);
+  }
 }

@@ -179,13 +179,27 @@ public class KafkaDestination extends AbstractDestination {
   }
 
   @Override
-  @SuppressWarnings("PMD.AvoidCatchingGenericException")
+  public boolean supportsSerializedWrite() {
+    // Each Kafka message is an independently-encoded payload, so serialization can run on the
+    // worker threads; the producer send still happens on the single writer thread.
+    return true;
+  }
+
+  @Override
+  public void writeSerialized(byte[] payload) {
+    requireOpen("Kafka");
+    sendBytes(payload);
+  }
+
+  @Override
   public void write(Map<String, Object> data) {
     requireOpen("Kafka");
+    sendBytes(serializer.serializeToBytes(data));
+  }
 
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
+  private void sendBytes(byte[] recordBytes) {
     try {
-      byte[] recordBytes = serializer.serializeToBytes(data);
-
       // Create producer record (null key, uses default partitioning)
       ProducerRecord<String, byte[]> producerRecord =
           new ProducerRecord<>(config.getTopic(), null, recordBytes);

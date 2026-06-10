@@ -53,6 +53,32 @@ public interface DestinationAdapter extends AutoCloseable {
   void write(Map<String, Object> data);
 
   /**
+   * Whether this destination can accept records that have already been serialized to bytes by a
+   * worker thread via {@link #writeSerialized}. Defaults to {@code false}; destinations that can
+   * append an independently-encoded record payload (e.g. newline-delimited file formats, Kafka
+   * messages) override this to return {@code true}. Container formats that must serialize on the
+   * writer thread (e.g. Avro OCF) must leave it {@code false}.
+   *
+   * @return true if {@link #writeSerialized} is supported
+   */
+  default boolean supportsSerializedWrite() {
+    return false;
+  }
+
+  /**
+   * Write a record that a worker thread already serialized to its raw payload bytes. The
+   * destination applies its own framing (e.g. a trailing newline for newline-delimited file
+   * formats). Called only on the single writer thread, so implementations need not be thread-safe.
+   *
+   * @param payload raw serialized record bytes (no framing)
+   * @throws DestinationException if write fails
+   */
+  default void writeSerialized(byte[] payload) {
+    throw new UnsupportedOperationException(
+        getDestinationType() + " does not support serialized writes");
+  }
+
+  /**
    * Flush any buffered records to destination.
    *
    * @throws DestinationException if flush fails
