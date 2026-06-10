@@ -170,4 +170,20 @@
         <cve>CVE-2026-33871</cve>
     </suppress>
 
+    <!-- ── Netty 4.1.135 — CVE-2026-42582 ────────────────────────────────────
+         Netty 4.1.135.Final — transitive from software.amazon.awssdk:netty-nio-client
+         (pulled by aws-secretsmanager 2.46.5); also upgrades the Azure-sourced
+         4.1.131/132 jars via Gradle conflict resolution.
+         4.1.135 is the latest 4.1.x release as of June 2026; no fixed version exists.
+         Netty 4.2.x is not adopted: AWS SDK and Azure SDK are both built against 4.1,
+         and forcing 4.2 across the tree carries untested-compat risk.
+         Outbound HTTP only (secret resolution at startup); no server socket exposed.
+         Next review: check for Netty 4.1.136+ or SDK releases that bundle a fixed Netty.
+    -->
+    <suppress until="2026-07-05">
+        <notes>Transitive from AWS SDK netty-nio-client 2.46.5; 4.1.135 is latest 4.1.x (June 2026), no fix released; outbound-only startup secret resolution. Review: upgrade when Netty 4.1.136+ or patched SDK ships.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@4\.1\.135\.Final.*$</packageUrl>
+        <cve>CVE-2026-42582</cve>
+    </suppress>
+
 </suppressions>
