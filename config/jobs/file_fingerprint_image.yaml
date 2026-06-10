@@ -4,4 +4,4 @@ seed:
   type: embedded
   value: 42
 conf:
-  path: output/fingerprint_image
+  path: build/run-output/fingerprint_image

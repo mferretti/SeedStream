@@ -4,6 +4,6 @@ seed:
   type: embedded
   value: 98765
 conf:
-  path: cli/output/customers
+  path: build/run-output/customers
   compress: false
   append: false

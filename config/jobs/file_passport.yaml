@@ -4,4 +4,4 @@ seed:
   type: embedded
   value: 12345
 conf:
-  path: output/passports
+  path: build/run-output/passports

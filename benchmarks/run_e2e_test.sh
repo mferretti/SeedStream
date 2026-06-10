@@ -57,7 +57,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_FILE="${PROJECT_ROOT}/benchmarks/e2e_results.csv"
 GC_LOG_DIR="${PROJECT_ROOT}/benchmarks/build/gc_logs"
 JFR_OUTPUT_DIR="${PROJECT_ROOT}/benchmarks/build/jfr"
-OUTPUT_DIR="${PROJECT_ROOT}/benchmarks/output"
+OUTPUT_DIR="${PROJECT_ROOT}/build/run-output"
 CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/cli/bin/cli"
 
 # Test matrix

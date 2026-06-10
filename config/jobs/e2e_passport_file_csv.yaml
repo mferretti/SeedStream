@@ -7,4 +7,4 @@ seed:
   type: embedded
   value: 42
 conf:
-  path: benchmarks/output/e2e_passport_file_csv
+  path: build/run-output/e2e_passport_file_csv

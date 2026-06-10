@@ -9,9 +9,9 @@
 # - dependencyCheckAll (non-blocking, like continue-on-error in CI)
 #
 # Usage:
-#   ./utils/run-local-ci.sh
-#   ./utils/run-local-ci.sh --skip-dependency-check
-#   ./utils/run-local-ci.sh --strict-dependency-check
+#   ./scripts/run-local-ci.sh
+#   ./scripts/run-local-ci.sh --skip-dependency-check
+#   ./scripts/run-local-ci.sh --strict-dependency-check
 
 set -euo pipefail
 

@@ -4,6 +4,6 @@ seed:
   type: embedded
   value: 54321
 conf:
-  path: output/orders
+  path: build/run-output/orders
   compress: true
   append: false

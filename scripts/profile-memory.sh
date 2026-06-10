@@ -24,7 +24,8 @@ THREADS="${3:-4}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RECORDING_FILE="memory-profile-${TIMESTAMP}.jfr"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-OUTPUT_DIR="$SCRIPT_DIR/profiling-output"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+OUTPUT_DIR="$PROJECT_ROOT/build/run-output/profiling"
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"

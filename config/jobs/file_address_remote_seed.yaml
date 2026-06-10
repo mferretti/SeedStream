@@ -7,4 +7,4 @@ seed:
     type: bearer
     token: ${SEED_API_TOKEN}
 conf:
-  path: output/addresses_dynamic
+  path: build/run-output/addresses_dynamic
