@@ -16,6 +16,8 @@
 
 package com.datagenerator.generators.composite;
 
+import com.datagenerator.core.record.FieldRecord;
+import com.datagenerator.core.record.RecordSchema;
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
@@ -26,9 +28,11 @@ import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -69,6 +73,13 @@ public class ObjectGenerator implements DataGenerator {
   private final StructureRegistry structureRegistry;
   private final Path structuresPath;
 
+  /**
+   * Interned record layout per structure name. Built once (scalars-first, then nested — the order
+   * {@link #generate} populates fields) and shared by every record of that structure so generation
+   * allocates only a value array per record.
+   */
+  private final Map<String, RecordSchema> schemaCache = new ConcurrentHashMap<>();
+
   @SuppressFBWarnings(
       value = "EI_EXPOSE_REP2",
       justification =
@@ -99,8 +110,10 @@ public class ObjectGenerator implements DataGenerator {
     // Two-pass generation: scalars first so that all primitive fields are present in the partial
     // record before any nested (array/object) field is processed. This guarantees that
     // ref[parent.*] generators in child structures can access scalar fields (e.g. id) regardless
-    // of the iteration order returned by the StructureLoader.
-    Map<String, Object> result = new LinkedHashMap<>();
+    // of the iteration order returned by the StructureLoader. The flyweight record's field order
+    // matches this two-pass order, preserving the previous LinkedHashMap serialization order.
+    RecordSchema schema = schemaCache.computeIfAbsent(structureName, k -> buildSchema(fields));
+    Map<String, Object> result = new FieldRecord(schema);
 
     // Pass 1: generate all non-nested fields
     for (Map.Entry<String, DataType> entry : fields.entrySet()) {
@@ -137,5 +150,30 @@ public class ObjectGenerator implements DataGenerator {
     }
 
     return result;
+  }
+
+  /**
+   * Build the interned field layout for a structure in the same order {@link #generate} populates
+   * it: all scalar fields (in declaration order) first, then all nested array/object fields. This
+   * keeps the record's serialization order identical to the previous {@code LinkedHashMap}.
+   *
+   * @param fields structure field definitions
+   * @return interned record schema
+   */
+  private static RecordSchema buildSchema(Map<String, DataType> fields) {
+    List<String> ordered = new ArrayList<>(fields.size());
+    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
+      DataType fieldType = entry.getValue();
+      if (!(fieldType instanceof ArrayType || fieldType instanceof ObjectType)) {
+        ordered.add(entry.getKey());
+      }
+    }
+    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
+      DataType fieldType = entry.getValue();
+      if (fieldType instanceof ArrayType || fieldType instanceof ObjectType) {
+        ordered.add(entry.getKey());
+      }
+    }
+    return new RecordSchema(ordered.toArray(new String[0]));
   }
 }
