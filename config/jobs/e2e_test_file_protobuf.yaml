@@ -1,1 +1,10 @@
-e2e_invoice_file_protobuf.yaml
+# End-to-End Benchmark: Invoice → File → Protobuf
+# Used for E2E performance testing with nested object structure
+
+source: invoice.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: build/run-output/e2e_invoice_file_protobuf

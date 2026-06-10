@@ -4,6 +4,6 @@ seed:
   type: file
   path: /secrets/user-seed.txt
 conf:
-  path: output/users
+  path: build/run-output/users
   compress: false
   append: false

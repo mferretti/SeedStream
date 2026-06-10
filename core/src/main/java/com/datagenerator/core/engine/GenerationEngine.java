@@ -19,6 +19,8 @@ package com.datagenerator.core.engine;
 import com.datagenerator.core.seed.RandomProvider;
 import com.datagenerator.core.util.LogUtils;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -27,6 +29,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,12 +48,15 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Progress logging
  * </ul>
  *
- * <p><b>Architecture:</b>
+ * <p><b>Architecture:</b> workers generate records and batch them into chunks; a single writer
+ * thread drains chunks and performs serialization + ordered I/O on the destination. Serialization
+ * lives on the writer side because destinations (single output stream, Avro OCF container, Kafka
+ * record counter) are ordered/stateful, not because generation is serial.
  *
  * <pre>
- * Worker Thread 0 (seed derived) → Generate → Serialize →\
- * Worker Thread 1 (seed derived) → Generate → Serialize → } → Queue → Writer Thread → Destination
- * Worker Thread N (seed derived) → Generate → Serialize →/
+ * Worker Thread 0 (seed derived) → Generate → chunk →\
+ * Worker Thread 1 (seed derived) → Generate → chunk → } → Queue → Writer Thread → Serialize → Destination
+ * Worker Thread N (seed derived) → Generate → chunk →/
  * </pre>
  *
  * <p><b>Example Usage:</b>
@@ -77,6 +84,18 @@ public class GenerationEngine {
   /** Writer for records (typically destination::write). */
   private final RecordWriter recordWriter;
 
+  /**
+   * Optional: serializes a record to bytes. When set (together with {@link #serializedWriter}),
+   * serialization runs on the worker threads instead of the single writer thread, parallelizing the
+   * heaviest CPU stage. Leave unset to flow the raw {@code Map} through and let the destination
+   * serialize. Only safe for formats whose records are independently encodable (e.g. NDJSON, Kafka
+   * payloads) — not Avro OCF, which the writer must serialize into its ordered container.
+   */
+  private final RecordSerializer recordSerializer;
+
+  /** Optional: writes pre-serialized bytes; required when {@link #recordSerializer} is set. */
+  private final SerializedWriter serializedWriter;
+
   /** Master seed for deterministic generation. */
   private final long masterSeed;
 
@@ -88,10 +107,20 @@ public class GenerationEngine {
   @Builder.Default
   private final int logBatchSize = 10000;
 
-  /** Queue capacity for backpressure (default: 1000). */
+  /** Queue capacity for backpressure, expressed in records (default: 1000). */
   @SuppressWarnings("java:S1170")
   @Builder.Default
   private final int queueCapacity = 1000;
+
+  /**
+   * Number of records batched into a single queue hand-off (default: 256).
+   *
+   * <p>Workers accumulate records into a chunk and enqueue the whole chunk at once, amortizing the
+   * per-record {@code put}/{@code take} lock + signal cost on the hot path by ~chunkSize.
+   */
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final int chunkSize = 256;
 
   /** Threshold for auto-switching to single-threaded mode (default: 1000). */
   @SuppressWarnings("java:S1170")
@@ -126,32 +155,47 @@ public class GenerationEngine {
       return;
     }
 
-    // For small jobs, use single thread (avoid overhead)
-    if (count < singleThreadedThreshold) {
-      log.info("Small job ({} records), using single thread", count);
-      generateSingleThreaded(count);
-      return;
+    // Choose the payload pipeline. When a record serializer is configured, serialization is folded
+    // into the worker (producer) side so it runs in parallel; the single writer thread then only
+    // performs ordered I/O. Otherwise the raw Map flows through and the destination serializes.
+    if (recordSerializer != null && serializedWriter != null) {
+      runPipeline(
+          count,
+          random -> recordSerializer.serialize(recordGenerator.generate(random)),
+          serializedWriter::write);
+    } else {
+      runPipeline(count, recordGenerator::generate, recordWriter::write);
     }
-
-    // For large jobs, use multi-threaded approach
-    log.info("Starting parallel generation: {} records using {} workers", count, workerThreads);
-    generateMultiThreaded(count);
   }
 
   /**
-   * Single-threaded generation for small jobs.
+   * Dispatch to single- or multi-threaded execution based on job size.
    *
-   * @param count Number of records to generate
+   * @param <P> payload type carried worker → writer (raw {@code Map} or serialized {@code byte[]})
+   * @param count number of records to generate
+   * @param produce builds one payload from a thread-local {@link Random} (runs on workers)
+   * @param consume writes one payload (runs on the single writer thread)
    */
-  private void generateSingleThreaded(long count) {
+  private <P> void runPipeline(long count, Function<Random, P> produce, Consumer<P> consume)
+      throws InterruptedException {
+    if (count < singleThreadedThreshold) {
+      log.info("Small job ({} records), using single thread", count);
+      runSingleThreaded(count, produce, consume);
+    } else {
+      log.info("Starting parallel generation: {} records using {} workers", count, workerThreads);
+      runMultiThreaded(count, produce, consume);
+    }
+  }
+
+  /** Single-threaded generation for small jobs. */
+  private <P> void runSingleThreaded(long count, Function<Random, P> produce, Consumer<P> consume) {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
     Random random = randomProvider.getRandom();
 
     long startTime = System.currentTimeMillis();
 
     for (long i = 0; i < count; i++) {
-      Map<String, Object> data = recordGenerator.generate(random);
-      recordWriter.write(data);
+      consume.accept(produce.apply(random));
 
       // Progress logging
       if ((i + 1) % logBatchSize == 0) {
@@ -176,15 +220,18 @@ public class GenerationEngine {
           "Worker Future is intentionally not stored; exceptions are logged in the lambda "
               + "and the writer thread propagates failures via the queue poison-pill shutdown")
   @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S3776"})
-  private void generateMultiThreaded(long count) throws InterruptedException {
+  private <P> void runMultiThreaded(long count, Function<Random, P> produce, Consumer<P> consume)
+      throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
-    // Create bounded queue for backpressure
-    BlockingQueue<Map<String, Object>> recordQueue = new ArrayBlockingQueue<>(queueCapacity);
+    // Bounded queue of record chunks for backpressure. queueCapacity is expressed in records, but
+    // the queue carries chunks, so derive a chunk-granular capacity that buffers a similar number
+    // of records in flight.
+    int chunkQueueCapacity = Math.max(1, queueCapacity / chunkSize);
+    BlockingQueue<List<P>> recordQueue = new ArrayBlockingQueue<>(chunkQueueCapacity);
 
-    // Poison pill to signal end of generation
-    @SuppressWarnings("unchecked")
-    Map<String, Object> poisonPill = Map.of("__poisonPill__", true);
+    // Poison pill (identity-compared) to signal end of generation
+    final List<P> poisonPill = new ArrayList<>(0);
 
     // Atomic counter for generated records
     AtomicLong generated = new AtomicLong(0);
@@ -197,11 +244,13 @@ public class GenerationEngine {
             () -> {
               try {
                 while (true) {
-                  Map<String, Object> data = recordQueue.take();
-                  if (data == poisonPill) {
+                  List<P> chunk = recordQueue.take();
+                  if (chunk == poisonPill) {
                     break;
                   }
-                  recordWriter.write(data);
+                  for (P item : chunk) {
+                    consume.accept(item);
+                  }
                 }
                 log.debug("Writer thread finished");
               } catch (InterruptedException e) {
@@ -233,6 +282,7 @@ public class GenerationEngine {
                   finalWorkerId,
                   workerCount,
                   randomProvider,
+                  produce,
                   recordQueue,
                   generated,
                   count,
@@ -266,20 +316,23 @@ public class GenerationEngine {
   /**
    * Generate records for a single worker.
    *
+   * @param <P> payload type carried worker → writer
    * @param workerId Worker ID (0-based)
    * @param count Number of records this worker should generate
    * @param randomProvider RandomProvider for getting thread-local Random
-   * @param queue Queue for submitting generated records
+   * @param produce builds (and optionally serializes) one payload from a Random
+   * @param queue Queue for submitting generated record chunks
    * @param generated Atomic counter for total generated records
    * @param totalCount Total record count (for progress logging)
    * @param startTime Start time for throughput calculation
    * @throws InterruptedException if interrupted
    */
-  private void generateWorkerRecords(
+  private <P> void generateWorkerRecords(
       int workerId,
       long count,
       RandomProvider randomProvider,
-      BlockingQueue<Map<String, Object>> queue,
+      Function<Random, P> produce,
+      BlockingQueue<List<P>> queue,
       AtomicLong generated,
       long totalCount,
       long startTime)
@@ -289,17 +342,22 @@ public class GenerationEngine {
     Random random = randomProvider.getRandom();
 
     long workerGenerated = 0;
+    List<P> chunk = new ArrayList<>(chunkSize);
     while (workerGenerated < count) {
-      // Generate record
-      Map<String, Object> data = recordGenerator.generate(random);
+      // Generate (and, on the serialized pipeline, serialize) one payload
+      P item = produce.apply(random);
 
       // TRACE log individual record generation (sampled)
       if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
-        log.trace("Worker {} generated record {}: {}", workerId, workerGenerated + 1, data);
+        log.trace("Worker {} generated record {}", workerId, workerGenerated + 1);
       }
 
-      // Submit to queue (blocks if queue is full - backpressure)
-      queue.put(data);
+      // Accumulate into a chunk; hand off the whole chunk to amortize queue lock/signal overhead
+      chunk.add(item);
+      if (chunk.size() >= chunkSize) {
+        queue.put(chunk); // blocks if queue is full - backpressure
+        chunk = new ArrayList<>(chunkSize);
+      }
 
       workerGenerated++;
       long totalGenerated = generated.incrementAndGet();
@@ -308,6 +366,11 @@ public class GenerationEngine {
       if (totalGenerated % logBatchSize == 0) {
         logProgress(totalGenerated, totalCount, startTime);
       }
+    }
+
+    // Flush any trailing partial chunk
+    if (!chunk.isEmpty()) {
+      queue.put(chunk);
     }
 
     log.debug("Worker {} completed: generated {} records", workerId, workerGenerated);
@@ -327,8 +390,8 @@ public class GenerationEngine {
     double recordsPerSec = (elapsed > 0) ? current / (elapsed / 1000.0) : 0;
 
     log.info(
-        "Progress: {} / {} ({:.1f}%) - {:.0f} records/sec",
-        current, total, progress, recordsPerSec);
+        "Progress: {} / {} ({}%) - {} records/sec",
+        current, total, String.format("%.1f", progress), String.format("%.0f", recordsPerSec));
   }
 
   /**
@@ -349,5 +412,27 @@ public class GenerationEngine {
   @FunctionalInterface
   public interface RecordWriter {
     void write(Map<String, Object> data);
+  }
+
+  /**
+   * Functional interface for serializing a record to bytes on the worker thread.
+   *
+   * <p>Typically implemented as {@code serializer::serializeToBytes}. Supplying one to the engine
+   * moves serialization off the single writer thread and onto the parallel workers.
+   */
+  @FunctionalInterface
+  public interface RecordSerializer {
+    byte[] serialize(Map<String, Object> data);
+  }
+
+  /**
+   * Functional interface for writing pre-serialized record bytes.
+   *
+   * <p>Typically implemented by {@code destination::writeSerialized}. Runs on the single writer
+   * thread, preserving ordered/stateful destination semantics.
+   */
+  @FunctionalInterface
+  public interface SerializedWriter {
+    void write(byte[] payload);
   }
 }

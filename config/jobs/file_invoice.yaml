@@ -5,5 +5,5 @@ seed:
   type: embedded
   value: 42
 conf:
-  path: output/invoices
+  path: build/run-output/invoices
   format: json

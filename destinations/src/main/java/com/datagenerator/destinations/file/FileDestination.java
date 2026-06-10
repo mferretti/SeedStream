@@ -186,6 +186,25 @@ public class FileDestination extends AbstractDestination {
     }
   }
 
+  @Override
+  public boolean supportsSerializedWrite() {
+    // Avro OCF must be serialized on the writer thread (ordered container). CSV needs the record's
+    // keys to emit its header row, which the raw-bytes path does not carry. Everything else (JSON
+    // NDJSON, etc.) appends an independently-encoded record + newline.
+    return !isAvro && !(serializer instanceof com.datagenerator.formats.csv.CsvSerializer);
+  }
+
+  @Override
+  public void writeSerialized(byte[] payload) {
+    requireOpen("File");
+    try {
+      outputStream.write(payload);
+      outputStream.write('\n');
+    } catch (IOException e) {
+      throw new DestinationException("Failed to write serialized record to file", e);
+    }
+  }
+
   private void writeAvro(Map<String, Object> data) {
     try {
       AvroSerializer avroSer = (AvroSerializer) serializer;

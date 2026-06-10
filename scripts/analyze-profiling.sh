@@ -8,8 +8,8 @@ if [ $# -lt 1 ]; then
 fi
 
 TIMESTAMP=$1
-JFR_FILE="profiling-output/memory-profile-${TIMESTAMP}.jfr"
-GC_LOG="profiling-output/gc-${TIMESTAMP}.log"
+JFR_FILE="build/run-output/profiling/memory-profile-${TIMESTAMP}.jfr"
+GC_LOG="build/run-output/profiling/gc-${TIMESTAMP}.log"
 
 echo "=== Profiling Analysis for $TIMESTAMP ==="
 echo ""

@@ -450,7 +450,7 @@ public class ExecuteCommand implements Callable<Integer> {
 
     // Create generation engine with context-aware record generator
     String geolocation = dataStructure.getGeolocation();
-    GenerationEngine engine =
+    var engineBuilder =
         GenerationEngine.builder()
             .recordGenerator(
                 random -> {
@@ -462,11 +462,26 @@ public class ExecuteCommand implements Callable<Integer> {
                     return data;
                   }
                 })
-            .recordWriter(destination::write)
             .masterSeed(seed)
             .workerThreads(workerThreads)
-            .workerCleanup(FakerCache::clear)
-            .build();
+            .workerCleanup(FakerCache::clear);
+
+    // When the destination can append independently-encoded records, serialize on the worker
+    // threads (parallel) and leave the single writer thread to perform ordered I/O only. Otherwise
+    // serialize on the writer thread via destination::write (e.g. Avro OCF, CSV header handling).
+    if (destination.supportsSerializedWrite()) {
+      log.info(
+          "Parallel serialization enabled for {}/{}",
+          destination.getDestinationType(),
+          serializer.getFormatName());
+      engineBuilder
+          .recordSerializer(serializer::serializeToBytes)
+          .serializedWriter(destination::writeSerialized);
+    } else {
+      engineBuilder.recordWriter(destination::write);
+    }
+
+    GenerationEngine engine = engineBuilder.build();
 
     log.info("Generating {} records...", count);
     long startTime = System.currentTimeMillis();

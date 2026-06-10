@@ -1,1 +1,16 @@
-e2e_invoice_kafka_protobuf.yaml
+# End-to-End Benchmark: Invoice → Kafka → Protobuf
+# Used for E2E performance testing with nested object structure
+
+source: invoice.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 42
+conf:
+  bootstrap: localhost:9092
+  topic: benchmark-topic
+  sync: false
+  acks: "1"
+  batch_size: 65536
+  linger_ms: 20
+  compression: snappy
