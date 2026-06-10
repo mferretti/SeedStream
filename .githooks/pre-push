@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Per-developer SonarQube quality gate.
+# Per-developer SonarQube quality gate (local pre-CI sanity check).
 # Enable: git config core.hooksPath .githooks
-# Requires: SONAR_HOST_URL (or sonar.host.url in ~/.gradle/gradle.properties),
-#           SONAR_TOKEN, and sonar-scanner on PATH (or at ~/.local/bin/sonar-scanner).
+# Requires: SONAR_HOST_URL (or sonar.host.url in ~/.gradle/gradle.properties)
+#           and SONAR_TOKEN. Analysis runs via ./gradlew sonar.
+#
+# SonarQube Community Edition analyses only the main branch, so this gate runs
+# ONLY on the main branch. On any other branch it is skipped — running it would
+# upload feature-branch numbers as the main project's analysis and clobber it.
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 GRADLE_PROPS="$HOME/.gradle/gradle.properties"
+MAIN_BRANCH="main"
+
+CURRENT_BRANCH="$(git -C "$REPO_DIR" symbolic-ref --short -q HEAD || echo "")"
+if [[ "$CURRENT_BRANCH" != "$MAIN_BRANCH" ]]; then
+    echo "[sonar] skipped — on branch '${CURRENT_BRANCH:-detached}', gate runs only on '$MAIN_BRANCH' (Community Edition is single-branch)"
+    exit 0
+fi
 
 SONAR_URL="${SONAR_HOST_URL:-$(grep -E '^sonar\.host\.url=' "$GRADLE_PROPS" 2>/dev/null | cut -d= -f2- | tr -d ' ' || true)}"
 SONAR_TOKEN="${SONAR_TOKEN:-$(grep -E '^sonar\.token=' "$GRADLE_PROPS" 2>/dev/null | cut -d= -f2- | tr -d ' ' || true)}"
@@ -38,49 +49,83 @@ echo "[sonar] Running SonarQube analysis against $SONAR_URL ..."
     -Dsonar.token="$SONAR_TOKEN" \
     2>&1 | tee /tmp/sonar-push.log
 
-echo "[sonar] Waiting for quality gate result..."
+# The Gradle plugin writes the Compute Engine task id here. We must wait for THAT
+# task to finish before reading the gate — otherwise we read the previous analysis's
+# status (stale read) and may block or pass on the wrong result.
+REPORT_TASK="$REPO_DIR/build/sonar/report-task.txt"
+if [[ ! -f "$REPORT_TASK" ]]; then
+    echo "[sonar] report-task.txt not found ($REPORT_TASK) — cannot verify gate; push allowed"
+    exit 0
+fi
+CE_TASK_ID="$(grep -E '^ceTaskId=' "$REPORT_TASK" | cut -d= -f2-)"
+
+echo "[sonar] Waiting for analysis to be processed (task $CE_TASK_ID)..."
 elapsed=0
-while [[ $elapsed -lt $TIMEOUT ]]; do
-    response=$(SONAR_URL="$SONAR_URL" SONAR_TOKEN="$SONAR_TOKEN" PROJECT_KEY="$PROJECT_KEY" python3 -c "
-import os, urllib.request, base64, json
-url = os.environ['SONAR_URL']
-token = os.environ['SONAR_TOKEN']
-key = os.environ['PROJECT_KEY']
+status="$(SONAR_URL="$SONAR_URL" SONAR_TOKEN="$SONAR_TOKEN" CE_TASK_ID="$CE_TASK_ID" TIMEOUT="$TIMEOUT" python3 -c "
+import os, time, urllib.request, base64, json
+url, token = os.environ['SONAR_URL'], os.environ['SONAR_TOKEN']
+ce_id, timeout = os.environ['CE_TASK_ID'], int(os.environ['TIMEOUT'])
 auth = base64.b64encode((token + ':').encode()).decode()
-req = urllib.request.Request(f'{url}/api/qualitygates/project_status?projectKey={key}')
-req.add_header('Authorization', 'Basic ' + auth)
-try:
+
+def api(path):
+    req = urllib.request.Request(f'{url}{path}')
+    req.add_header('Authorization', 'Basic ' + auth)
     with urllib.request.urlopen(req, timeout=10) as r:
-        d = json.loads(r.read().decode())
-        print(d['projectStatus']['status'])
+        return json.loads(r.read().decode())
+
+# 1) Poll the CE task until it finishes, capturing the produced analysisId.
+analysis_id, deadline = None, time.time() + timeout
+while time.time() < deadline:
+    try:
+        task = api(f'/api/ce/task?id={ce_id}')['task']
+    except Exception:
+        time.sleep(5); continue
+    st = task['status']
+    if st == 'SUCCESS':
+        analysis_id = task.get('analysisId'); break
+    if st in ('FAILED', 'CANCELED'):
+        print('CE_' + st); raise SystemExit
+    time.sleep(5)
+if analysis_id is None:
+    print('TIMEOUT'); raise SystemExit
+
+# 2) Read the gate for THAT exact analysis — no staleness.
+try:
+    d = api(f'/api/qualitygates/project_status?analysisId={analysis_id}')
+    print(d['projectStatus']['status'])
 except Exception:
-    print('PENDING')
-" 2>/dev/null)
+    print('UNKNOWN')
+" 2>/dev/null)"
 
-    case "$response" in
-        OK)
-            echo "[sonar] Quality gate PASSED"
-            exit 0
-            ;;
-        ERROR)
-            echo "[sonar] Quality gate FAILED — push blocked"
-            echo "[sonar] Details: ${SONAR_URL}/dashboard?id=${PROJECT_KEY}"
-            exit 1
-            ;;
-        WARN)
-            echo "[sonar] Quality gate WARN — push allowed"
-            exit 0
-            ;;
-        NONE)
-            echo "[sonar] No quality gate configured — push allowed"
-            exit 0
-            ;;
-        *)
-            sleep 5
-            elapsed=$((elapsed + 5))
-            ;;
-    esac
-done
-
-echo "[sonar] Timeout waiting for quality gate — push allowed (check $SONAR_URL/dashboard?id=$PROJECT_KEY)"
-exit 0
+case "$status" in
+    OK)
+        echo "[sonar] Quality gate PASSED"
+        exit 0
+        ;;
+    ERROR)
+        echo "[sonar] Quality gate FAILED — push blocked"
+        echo "[sonar] Details: ${SONAR_URL}/dashboard?id=${PROJECT_KEY}"
+        exit 1
+        ;;
+    WARN)
+        echo "[sonar] Quality gate WARN — push allowed"
+        exit 0
+        ;;
+    NONE)
+        echo "[sonar] No quality gate configured — push allowed"
+        exit 0
+        ;;
+    CE_FAILED|CE_CANCELED)
+        echo "[sonar] Analysis processing ${status#CE_} on server — push blocked"
+        echo "[sonar] Details: ${SONAR_URL}/dashboard?id=${PROJECT_KEY}"
+        exit 1
+        ;;
+    TIMEOUT)
+        echo "[sonar] Timeout (${TIMEOUT}s) waiting for analysis — push allowed (check $SONAR_URL/dashboard?id=$PROJECT_KEY)"
+        exit 0
+        ;;
+    *)
+        echo "[sonar] Could not determine gate status — push allowed (check $SONAR_URL/dashboard?id=$PROJECT_KEY)"
+        exit 0
+        ;;
+esac
