@@ -251,4 +251,22 @@ subprojects {
         // Get free key at: https://nvd.nist.gov/developers/request-an-api-key
         nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
     }
+
+    // SonarQube: explicitly categorise production vs test sources per module.
+    // Without an explicit sonar.tests the scanner treats every src/test/java file as
+    // production code with zero coverage, which sinks new-code coverage. Mapping each
+    // module's main sourceSet to sonar.sources and test sourceSet to sonar.tests keeps
+    // coverage measured against production code only. Modules with no production Java
+    // (e.g. benchmarks: JMH-only) contribute no sources and are excluded from coverage.
+    if (sonarHost != null) {
+        apply(plugin = "org.sonarqube")
+        extensions.configure<org.sonarqube.gradle.SonarExtension> {
+            properties {
+                val mainDirs = sourceSets["main"].allSource.srcDirs.filter { it.exists() }
+                val testDirs = sourceSets["test"].allSource.srcDirs.filter { it.exists() }
+                property("sonar.sources", mainDirs.joinToString(",") { it.absolutePath })
+                property("sonar.tests", testDirs.joinToString(",") { it.absolutePath })
+            }
+        }
+    }
 }
