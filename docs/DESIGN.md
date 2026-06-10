@@ -299,17 +299,19 @@ graph LR
 1. **Worker Threads** (fixed thread pool):
    - Each worker gets logical ID (0, 1, 2, ...)
    - Each gets thread-local Random from RandomProvider
-   - Generate records → submit to queue
-   
+   - Generate records → batch into chunks (default 256) → submit chunk to queue
+
 2. **Bounded Queue** (ArrayBlockingQueue):
-   - Default capacity: 1000 records
+   - Default capacity: 1000 records (chunk-granular: `queueCapacity / chunkSize` chunks in flight)
    - Provides backpressure (workers block when full)
    - Prevents memory overflow
-   
+   - Carries chunks, not single records, so the `put`/`take` lock+signal cost is amortized ~chunkSize
+
 3. **Writer Thread** (single thread):
-   - Consumes queue → writes to destination
-   - Single thread ensures ordered writes
-   - No contention on destination
+   - Consumes chunks → serializes each record → writes to destination
+   - Serialization runs here (not on workers) because destinations are ordered/stateful:
+     a single output stream, the Avro OCF container, or the Kafka record counter
+   - Single thread ensures ordered writes and no contention on destination
 
 **Termination**: Poison pill pattern. Workers submit sentinel value when done, writer stops after consuming all records + sentinel.
 

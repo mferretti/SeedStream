@@ -19,6 +19,8 @@ package com.datagenerator.core.engine;
 import com.datagenerator.core.seed.RandomProvider;
 import com.datagenerator.core.util.LogUtils;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -44,12 +46,15 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Progress logging
  * </ul>
  *
- * <p><b>Architecture:</b>
+ * <p><b>Architecture:</b> workers generate records and batch them into chunks; a single writer
+ * thread drains chunks and performs serialization + ordered I/O on the destination. Serialization
+ * lives on the writer side because destinations (single output stream, Avro OCF container, Kafka
+ * record counter) are ordered/stateful, not because generation is serial.
  *
  * <pre>
- * Worker Thread 0 (seed derived) → Generate → Serialize →\
- * Worker Thread 1 (seed derived) → Generate → Serialize → } → Queue → Writer Thread → Destination
- * Worker Thread N (seed derived) → Generate → Serialize →/
+ * Worker Thread 0 (seed derived) → Generate → chunk →\
+ * Worker Thread 1 (seed derived) → Generate → chunk → } → Queue → Writer Thread → Serialize → Destination
+ * Worker Thread N (seed derived) → Generate → chunk →/
  * </pre>
  *
  * <p><b>Example Usage:</b>
@@ -88,10 +93,20 @@ public class GenerationEngine {
   @Builder.Default
   private final int logBatchSize = 10000;
 
-  /** Queue capacity for backpressure (default: 1000). */
+  /** Queue capacity for backpressure, expressed in records (default: 1000). */
   @SuppressWarnings("java:S1170")
   @Builder.Default
   private final int queueCapacity = 1000;
+
+  /**
+   * Number of records batched into a single queue hand-off (default: 256).
+   *
+   * <p>Workers accumulate records into a chunk and enqueue the whole chunk at once, amortizing the
+   * per-record {@code put}/{@code take} lock + signal cost on the hot path by ~chunkSize.
+   */
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final int chunkSize = 256;
 
   /** Threshold for auto-switching to single-threaded mode (default: 1000). */
   @SuppressWarnings("java:S1170")
@@ -179,12 +194,15 @@ public class GenerationEngine {
   private void generateMultiThreaded(long count) throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
-    // Create bounded queue for backpressure
-    BlockingQueue<Map<String, Object>> recordQueue = new ArrayBlockingQueue<>(queueCapacity);
+    // Bounded queue of record chunks for backpressure. queueCapacity is expressed in records, but
+    // the queue carries chunks, so derive a chunk-granular capacity that buffers a similar number
+    // of records in flight.
+    int chunkQueueCapacity = Math.max(1, queueCapacity / chunkSize);
+    BlockingQueue<List<Map<String, Object>>> recordQueue =
+        new ArrayBlockingQueue<>(chunkQueueCapacity);
 
-    // Poison pill to signal end of generation
-    @SuppressWarnings("unchecked")
-    Map<String, Object> poisonPill = Map.of("__poisonPill__", true);
+    // Poison pill (identity-compared) to signal end of generation
+    final List<Map<String, Object>> poisonPill = new ArrayList<>(0);
 
     // Atomic counter for generated records
     AtomicLong generated = new AtomicLong(0);
@@ -197,11 +215,13 @@ public class GenerationEngine {
             () -> {
               try {
                 while (true) {
-                  Map<String, Object> data = recordQueue.take();
-                  if (data == poisonPill) {
+                  List<Map<String, Object>> chunk = recordQueue.take();
+                  if (chunk == poisonPill) {
                     break;
                   }
-                  recordWriter.write(data);
+                  for (Map<String, Object> data : chunk) {
+                    recordWriter.write(data);
+                  }
                 }
                 log.debug("Writer thread finished");
               } catch (InterruptedException e) {
@@ -279,7 +299,7 @@ public class GenerationEngine {
       int workerId,
       long count,
       RandomProvider randomProvider,
-      BlockingQueue<Map<String, Object>> queue,
+      BlockingQueue<List<Map<String, Object>>> queue,
       AtomicLong generated,
       long totalCount,
       long startTime)
@@ -289,6 +309,7 @@ public class GenerationEngine {
     Random random = randomProvider.getRandom();
 
     long workerGenerated = 0;
+    List<Map<String, Object>> chunk = new ArrayList<>(chunkSize);
     while (workerGenerated < count) {
       // Generate record
       Map<String, Object> data = recordGenerator.generate(random);
@@ -298,8 +319,12 @@ public class GenerationEngine {
         log.trace("Worker {} generated record {}: {}", workerId, workerGenerated + 1, data);
       }
 
-      // Submit to queue (blocks if queue is full - backpressure)
-      queue.put(data);
+      // Accumulate into a chunk; hand off the whole chunk to amortize queue lock/signal overhead
+      chunk.add(data);
+      if (chunk.size() >= chunkSize) {
+        queue.put(chunk); // blocks if queue is full - backpressure
+        chunk = new ArrayList<>(chunkSize);
+      }
 
       workerGenerated++;
       long totalGenerated = generated.incrementAndGet();
@@ -308,6 +333,11 @@ public class GenerationEngine {
       if (totalGenerated % logBatchSize == 0) {
         logProgress(totalGenerated, totalCount, startTime);
       }
+    }
+
+    // Flush any trailing partial chunk
+    if (!chunk.isEmpty()) {
+      queue.put(chunk);
     }
 
     log.debug("Worker {} completed: generated {} records", workerId, workerGenerated);
@@ -327,8 +357,8 @@ public class GenerationEngine {
     double recordsPerSec = (elapsed > 0) ? current / (elapsed / 1000.0) : 0;
 
     log.info(
-        "Progress: {} / {} ({:.1f}%) - {:.0f} records/sec",
-        current, total, progress, recordsPerSec);
+        "Progress: {} / {} ({}%) - {} records/sec",
+        current, total, String.format("%.1f", progress), String.format("%.0f", recordsPerSec));
   }
 
   /**
