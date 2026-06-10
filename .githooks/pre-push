@@ -21,12 +21,6 @@ if [[ -z "${SONAR_TOKEN:-}" ]]; then
     exit 0
 fi
 
-SONAR_SCANNER="$(command -v sonar-scanner || echo "${HOME}/.local/bin/sonar-scanner")"
-if [[ ! -x "$SONAR_SCANNER" ]]; then
-    echo "[sonar] skipped — sonar-scanner not found on PATH or at ~/.local/bin/sonar-scanner"
-    exit 0
-fi
-
 PROJECT_KEY="seedstream"
 TIMEOUT=120
 
@@ -35,17 +29,13 @@ cd "$REPO_DIR"
 ./gradlew test jacocoTestReport --rerun
 
 echo "[sonar] Running SonarQube analysis against $SONAR_URL ..."
-JACOCO_PATHS=$(find . -path '*/build/reports/jacoco/test/jacocoTestReport.xml' | paste -sd ',' -)
-
-"$SONAR_SCANNER" \
-    -Dsonar.projectKey="$PROJECT_KEY" \
-    -Dsonar.projectName="Seedstream" \
-    -Dsonar.sources=. \
-    -Dsonar.java.binaries=. \
+# Use the Gradle SonarQube plugin so analysis honours the per-module sonar.sources /
+# sonar.tests wiring in build.gradle.kts (single source of truth). The standalone
+# sonar-scanner CLI cannot read Gradle sourceSets and mis-classifies every test file
+# as production code, which sinks new-code coverage.
+./gradlew sonar \
     -Dsonar.host.url="$SONAR_URL" \
     -Dsonar.token="$SONAR_TOKEN" \
-    -Dsonar.coverage.jacoco.xmlReportPaths="$JACOCO_PATHS" \
-    -Dsonar.exclusions="**/build/**,**/generated/**,**/.gradle/**" \
     2>&1 | tee /tmp/sonar-push.log
 
 echo "[sonar] Waiting for quality gate result..."
