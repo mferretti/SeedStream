@@ -1,17 +1,20 @@
-# datagenerator inspect — v1 Spec (OpenAPI only)
+# datagenerator inspect — v1 Spec
 
-Status: draft. Scope: v1 = OpenAPI → SeedStream structure YAML. DDL deferred to v2.
+Status: implemented. Scope: OpenAPI **and** SQL DDL → SeedStream structure YAML.
 Supersedes the open questions in [INSPECT.md](INSPECT.md) with locked decisions.
 
 ## 1. Scope
 
-- **In**: OpenAPI 3.x specs (`.yaml` / `.json`). Object schemas under `components.schemas`.
-- **Out (v2)**: SQL DDL, foreign keys (`ref[...]`), `alias` emission, nullable/required hints.
+- **In**: OpenAPI 3.x specs (`.yaml` / `.json`, object schemas under `components.schemas`) and
+  SQL DDL (`.sql`, `CREATE TABLE` statements incl. foreign keys → `ref[...]`).
+- **Out**: `alias` emission, nullable/required hints, geolocation/locale, primary-key handling.
 - One `inspect` subcommand on the existing `datagenerator` CLI. No separate binary.
+- Format auto-detected from extension (`.sql` → DDL, `.yaml`/`.yml`/`.json` → OpenAPI);
+  `--format openapi|ddl` overrides.
 
 ```bash
-datagenerator inspect api.yaml --output config/structures/
-datagenerator inspect api.json --output config/structures/ --force
+datagenerator inspect api.yaml   --output config/structures/
+datagenerator inspect schema.sql --output config/structures/ --force
 ```
 
 Flags:
@@ -94,8 +97,8 @@ Finite set for v1. Extend later; no open-ended "etc."
 
 | # | question | decision |
 |---|---|---|
-| 1 | scope | OpenAPI only in v1; DDL is v2 |
-| 2 | unknown type | warn + `char[1..50]` fallback + `# inferred` comment. Never hard-fail, never silent skip |
+| 1 | scope | OpenAPI **and** DDL (DDL pulled forward from v2) |
+| 2 | unknown type | warn + `char[1..50]` fallback, flagged inferred in the CLI summary. Never hard-fail, never silent skip |
 | 3 | granularity | one YAML file per schema object. Matches `{entity}.yaml` + `object[...]` auto-load |
 | 4 | `$ref` | emit `object[ref_name]` + separate file, recurse. Lean on existing circular-ref detection |
 | 5 | required/optional | ignore in v1 (no nullable concept in type system yet). Follow-up if needed |
@@ -105,12 +108,20 @@ Finite set for v1. Extend later; no open-ended "etc."
 - Existing target file → **skip + warn** unless `--force`.
 - Filename = snake_case of schema object name + `.yaml` (e.g. `LineItem` → `line_item.yaml`),
   matching `object[line_item]` lookup.
-- Print summary: files written, skipped, fields inferred (count of `# inferred`).
+- Print summary: files written, skipped, inferred-field count.
 
-## 8. Out of scope for v1 (tracked follow-ups)
+## 7a. DDL specifics
 
-- DDL input + `FOREIGN KEY` → `ref[other.field]` (strong DDL value-add).
+- Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](INSPECT.md).
+- Type names arrive inline (e.g. `VARCHAR (255)`); base name + args are parsed off that string.
+- Foreign keys → `ref[table.column]`: table-level `FOREIGN KEY` constraints (reliable) and inline
+  column `REFERENCES table(col)` (best-effort token scan).
+- String columns run through the same `NameHints` before falling back to `char[1..n]`.
+
+## 8. Out of scope (tracked follow-ups)
+
+- Inline `# inferred` YAML comments (currently surfaced in the CLI summary, not in the file).
 - `alias` auto-emission when source name ≠ idiomatic.
-- `geolocation`/locale selection (v1 emits Datafaker hints with no locale; default applies).
-- Primary-key / uniqueness handling.
-- nullable/required mapping.
+- `geolocation`/locale selection (emits Datafaker hints with no locale; default applies).
+- Primary-key / uniqueness handling; nullable/required mapping.
+- DDL: `CHARACTER VARYING` / multi-word and vendor-specific types (fall back to `char[1..50]`).

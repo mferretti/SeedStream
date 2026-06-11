@@ -19,9 +19,11 @@ package com.datagenerator.cli;
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.StructureYamlWriter;
+import com.datagenerator.inspector.ddl.DdlInspector;
 import com.datagenerator.inspector.openapi.OpenApiInspector;
 import com.datagenerator.schema.model.DataStructure;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -31,13 +33,16 @@ import picocli.CommandLine.Parameters;
 /**
  * Reads an existing schema and emits ready-to-use SeedStream structure YAML files.
  *
- * <p>v1 supports OpenAPI 3.x specs (JSON/YAML). See {@code docs/INSPECT-V1-SPEC.md}.
+ * <p>Supports OpenAPI 3.x specs (JSON/YAML) and SQL DDL ({@code .sql}). Format is auto-detected
+ * from the file extension and can be overridden with {@code --format}. See {@code
+ * docs/INSPECT-V1-SPEC.md}.
  *
  * <p><b>Usage:</b>
  *
  * <pre>
  * datagenerator inspect api.yaml --output config/structures/
- * datagenerator inspect api.json --output config/structures/ --force
+ * datagenerator inspect schema.sql --output config/structures/ --force
+ * datagenerator inspect spec.yaml --format ddl
  * </pre>
  *
  * <p><b>Exit codes:</b>
@@ -50,11 +55,11 @@ import picocli.CommandLine.Parameters;
 @Slf4j
 @Command(
     name = "inspect",
-    description = "Generate SeedStream structure YAML from an OpenAPI spec",
+    description = "Generate SeedStream structure YAML from an OpenAPI spec or SQL DDL",
     mixinStandardHelpOptions = true)
 public class InspectCommand implements Callable<Integer> {
 
-  @Parameters(index = "0", description = "Schema file to inspect (OpenAPI 3.x JSON/YAML)")
+  @Parameters(index = "0", description = "Schema file to inspect (OpenAPI 3.x JSON/YAML or .sql)")
   private Path inputFile;
 
   @Option(
@@ -69,19 +74,22 @@ public class InspectCommand implements Callable<Integer> {
 
   @Option(
       names = {"--format"},
-      description = "Input format: openapi (default). Reserved for future DDL support.")
-  private String format = "openapi";
+      description = "Input format: openapi | ddl. Default: auto-detect from file extension.")
+  private String format = "auto";
 
   @Override
   @SuppressWarnings("java:S106")
   public Integer call() {
-    if (!"openapi".equalsIgnoreCase(format)) {
-      log.error("Unsupported --format '{}'. v1 supports: openapi", format);
+    String resolved = resolveFormat();
+    if (resolved == null) {
       return 2;
     }
 
     try {
-      Inspection inspection = new OpenApiInspector().inspect(inputFile);
+      Inspection inspection =
+          "ddl".equals(resolved)
+              ? new DdlInspector().inspect(inputFile)
+              : new OpenApiInspector().inspect(inputFile);
       StructureYamlWriter writer = new StructureYamlWriter();
 
       int written = 0;
@@ -115,5 +123,32 @@ public class InspectCommand implements Callable<Integer> {
       log.error("inspect failed: {}", e.getMessage());
       return 2;
     }
+  }
+
+  /** Resolves the effective format, auto-detecting from extension. Returns null on error. */
+  private String resolveFormat() {
+    String requested = format.toLowerCase(Locale.ROOT);
+    return switch (requested) {
+      case "openapi", "ddl" -> requested;
+      case "auto" -> detectFormat();
+      default -> {
+        log.error("Unsupported --format '{}'. Supported: openapi, ddl", format);
+        yield null;
+      }
+    };
+  }
+
+  private String detectFormat() {
+    Path name = inputFile.getFileName();
+    String fileName = name == null ? "" : name.toString().toLowerCase(Locale.ROOT);
+    if (fileName.endsWith(".sql")) {
+      return "ddl";
+    }
+    if (fileName.endsWith(".yaml") || fileName.endsWith(".yml") || fileName.endsWith(".json")) {
+      return "openapi";
+    }
+    log.error(
+        "Cannot auto-detect format for '{}'. Use --format openapi|ddl", inputFile.getFileName());
+    return null;
   }
 }

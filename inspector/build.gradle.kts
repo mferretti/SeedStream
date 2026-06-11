@@ -6,4 +6,7 @@ dependencies {
     // runtime generation chain (cli -> destinations -> ... -> core).
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
+
+    // SQL DDL parsing (CREATE TABLE -> columns, types, foreign keys)
+    implementation(libs.jsqlparser)
 }

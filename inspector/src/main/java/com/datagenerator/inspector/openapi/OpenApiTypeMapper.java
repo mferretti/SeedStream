@@ -16,6 +16,7 @@
 
 package com.datagenerator.inspector.openapi;
 
+import com.datagenerator.inspector.Defaults;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.NameHints;
 import com.datagenerator.inspector.Names;
@@ -29,17 +30,6 @@ import java.util.StringJoiner;
  */
 public final class OpenApiTypeMapper {
 
-  // Default ranges (§4) — used when the source carries no explicit bound. Constants for v1.
-  static final long DEFAULT_INT_MIN = 1L;
-  static final long DEFAULT_INT_MAX = 999_999L;
-  static final String DEFAULT_DECIMAL_MIN = "0.0";
-  static final String DEFAULT_DECIMAL_MAX = "9999.99";
-  static final String DEFAULT_DATE = "date[2020-01-01..2030-12-31]";
-  static final String DEFAULT_TIMESTAMP = "timestamp[now-1y..now]";
-  static final String DEFAULT_STRING = "char[1..50]";
-  static final int DEFAULT_ARRAY_MIN = 1;
-  static final int DEFAULT_ARRAY_MAX = 10;
-
   public MappedType map(String fieldName, JsonNode schema) {
     if (schema.hasNonNull("$ref")) {
       return MappedType.explicit("object[" + refName(schema.get("$ref").asText()) + "]");
@@ -52,7 +42,7 @@ public final class OpenApiTypeMapper {
       case "number" -> mapNumber(schema);
       case "boolean" -> MappedType.explicit("boolean");
       case "array" -> mapArray(fieldName, schema);
-      default -> MappedType.inferred(DEFAULT_STRING); // unknown / missing type — see §6 Q2
+      default -> MappedType.inferred(Defaults.STRING); // unknown / missing type — see §6 Q2
     };
   }
 
@@ -64,9 +54,9 @@ public final class OpenApiTypeMapper {
       case "uuid":
         return MappedType.explicit("datafaker[internet.uuid]");
       case "date":
-        return MappedType.explicit(DEFAULT_DATE);
+        return MappedType.explicit(Defaults.DATE);
       case "date-time":
-        return MappedType.explicit(DEFAULT_TIMESTAMP);
+        return MappedType.explicit(Defaults.TIMESTAMP);
       default:
         // fall through to enum / length / name-hint handling
     }
@@ -79,21 +69,21 @@ public final class OpenApiTypeMapper {
     }
     return NameHints.forFieldName(fieldName)
         .map(MappedType::explicit)
-        .orElseGet(() -> MappedType.inferred(DEFAULT_STRING));
+        .orElseGet(() -> MappedType.inferred(Defaults.STRING));
   }
 
   private MappedType mapInteger(JsonNode schema) {
     boolean bounded = schema.has("minimum") || schema.has("maximum");
-    long min = schema.has("minimum") ? schema.get("minimum").asLong() : DEFAULT_INT_MIN;
-    long max = schema.has("maximum") ? schema.get("maximum").asLong() : DEFAULT_INT_MAX;
+    long min = schema.has("minimum") ? schema.get("minimum").asLong() : Defaults.INT_MIN;
+    long max = schema.has("maximum") ? schema.get("maximum").asLong() : Defaults.INT_MAX;
     String datatype = "int[" + min + ".." + max + "]";
     return bounded ? MappedType.explicit(datatype) : MappedType.inferred(datatype);
   }
 
   private MappedType mapNumber(JsonNode schema) {
     boolean bounded = schema.has("minimum") || schema.has("maximum");
-    String min = schema.has("minimum") ? schema.get("minimum").asText() : DEFAULT_DECIMAL_MIN;
-    String max = schema.has("maximum") ? schema.get("maximum").asText() : DEFAULT_DECIMAL_MAX;
+    String min = schema.has("minimum") ? schema.get("minimum").asText() : Defaults.DECIMAL_MIN;
+    String max = schema.has("maximum") ? schema.get("maximum").asText() : Defaults.DECIMAL_MAX;
     String datatype = "decimal[" + min + ".." + max + "]";
     return bounded ? MappedType.explicit(datatype) : MappedType.inferred(datatype);
   }
@@ -101,10 +91,10 @@ public final class OpenApiTypeMapper {
   private MappedType mapArray(String fieldName, JsonNode schema) {
     JsonNode items = schema.path("items");
     MappedType inner =
-        items.isMissingNode() ? MappedType.inferred(DEFAULT_STRING) : map(fieldName, items);
+        items.isMissingNode() ? MappedType.inferred(Defaults.STRING) : map(fieldName, items);
     boolean bounded = schema.has("minItems") || schema.has("maxItems");
-    int min = schema.has("minItems") ? schema.get("minItems").asInt() : DEFAULT_ARRAY_MIN;
-    int max = schema.has("maxItems") ? schema.get("maxItems").asInt() : DEFAULT_ARRAY_MAX;
+    int min = schema.has("minItems") ? schema.get("minItems").asInt() : Defaults.ARRAY_MIN;
+    int max = schema.has("maxItems") ? schema.get("maxItems").asInt() : Defaults.ARRAY_MAX;
     String datatype = "array[" + inner.datatype() + ", " + min + ".." + max + "]";
     return new MappedType(datatype, inner.inferred() || !bounded);
   }
