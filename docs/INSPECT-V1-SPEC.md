@@ -1,7 +1,7 @@
 # datagenerator inspect — v1 Spec
 
 Status: implemented. Scope: OpenAPI **and** SQL DDL → SeedStream structure YAML.
-Supersedes the open questions in [INSPECT.md](INSPECT.md) with locked decisions.
+Supersedes the open questions in [INSPECT.md](internal/INSPECT-design-notes.md) with locked decisions.
 
 ## 1. Scope
 
@@ -158,7 +158,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
 
 ## 7c. DDL specifics
 
-- Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](INSPECT.md).
+- Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](internal/INSPECT-design-notes.md).
 - Type names arrive inline (e.g. `VARCHAR (255)`); base name + args are parsed off that string.
 - Foreign keys → `ref[table.column]`: table-level `FOREIGN KEY` constraints (reliable) and inline
   column `REFERENCES table(col)` (best-effort token scan).
@@ -170,3 +170,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
 - `geolocation`/locale selection (emits Datafaker hints with no locale; default applies).
 - Primary-key / uniqueness handling; nullable/required mapping.
 - DDL: `CHARACTER VARYING` / multi-word and vendor-specific types (fall back to `char[1..50]`).
+- **FK-inversion nesting.** Foreign keys map to flat `ref[parent.column]` only (child → parent). The
+  inspector does not invert a `1:n` FK into a nested `array[object[child], min..max]` on the parent,
+  i.e. it never produces embedded documents. Tracked follow-up: see
+  [INSPECT-NESTING-PLAN.md](INSPECT-NESTING-PLAN.md).

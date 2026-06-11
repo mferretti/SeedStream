@@ -1,7 +1,10 @@
 # datagenerator inspect — Design Notes
 
-Status note: this document captures the original design exploration.
-For implemented behavior and current decisions, use `docs/INSPECT-V1-SPEC.md` as the source of truth.
+> **⚠️ FROZEN ARCHIVE — not maintained.**
+> Original design exploration for the `inspect` subcommand, kept for provenance (the "why" and
+> discarded alternatives). **Superseded by** [`../INSPECT-V1-SPEC.md`](../INSPECT-V1-SPEC.md) (the
+> single source of truth for implemented behavior) and the test suite. Not kept in sync with the
+> code — do not rely on it as current.
 
 ## Problem
 
