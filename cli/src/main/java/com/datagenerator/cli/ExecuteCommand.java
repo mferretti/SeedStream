@@ -47,6 +47,7 @@ import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.semantic.FakerCache;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.JobConfig;
+import com.datagenerator.schema.parser.CustomTypeConfigLoader;
 import com.datagenerator.schema.parser.DataStructureParser;
 import com.datagenerator.schema.parser.JobConfigParser;
 import com.datagenerator.schema.secret.ConfigSubstitutor;
@@ -342,6 +343,13 @@ public class ExecuteCommand implements Callable<Integer> {
       description = "Number of worker threads (default: # of CPU cores)")
   private Integer threads;
 
+  @Option(
+      names = {"--faker-types"},
+      description =
+          "YAML config of custom Datafaker types to register before generation. Must match the "
+              + "config used at inspect time so referenced types resolve.")
+  private Path fakerTypes;
+
   /**
    * Executes the data generation job.
    *
@@ -382,6 +390,11 @@ public class ExecuteCommand implements Callable<Integer> {
   public Integer call() throws Exception {
     // Configure logging level based on flags
     configureLoggingLevel();
+
+    // Register any custom Datafaker types before generation so referenced types resolve.
+    if (fakerTypes != null) {
+      new CustomTypeConfigLoader().load(fakerTypes);
+    }
 
     log.info("Starting data generation job");
     log.info("Job file: {}", jobFile);

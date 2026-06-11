@@ -17,7 +17,11 @@
 package com.datagenerator.core.registry;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -206,6 +210,57 @@ public class DatafakerRegistry {
     } else {
       log.debug("Registered new type: {}", normalized);
     }
+  }
+
+  /**
+   * Register a custom type from a Datafaker method-path expression (e.g. {@code "beer.style"} maps
+   * to {@code faker.beer().style()}). Each dot-separated segment is a no-arg method: the first is
+   * invoked on the {@link Faker} instance, each subsequent on the previous result, and the final
+   * value is rendered via {@code String.valueOf}. The method chain is resolved and validated once
+   * at registration so a malformed expression fails fast.
+   *
+   * @param typeName the SeedStream type key (e.g. {@code beer_style})
+   * @param expression dot-separated Datafaker method path (e.g. {@code beer.style})
+   * @throws IllegalArgumentException if the expression is blank or names an unknown no-arg method
+   */
+  public static void registerExpression(String typeName, String expression) {
+    if (expression == null || expression.isBlank()) {
+      throw new IllegalArgumentException("Datafaker expression cannot be null or empty");
+    }
+    List<Method> chain = resolveChain(expression.trim());
+    register(typeName, (faker, random) -> invokeChain(chain, faker, expression));
+  }
+
+  private static List<Method> resolveChain(String expression) {
+    List<Method> chain = new ArrayList<>();
+    Class<?> current = Faker.class;
+    for (String segment : expression.split("\\.")) {
+      String methodName = segment.trim();
+      if (methodName.isEmpty()) {
+        throw new IllegalArgumentException("Invalid Datafaker expression: " + expression);
+      }
+      try {
+        Method method = current.getMethod(methodName);
+        chain.add(method);
+        current = method.getReturnType();
+      } catch (NoSuchMethodException e) {
+        throw new IllegalArgumentException(
+            "Unknown Datafaker method '" + methodName + "' in expression '" + expression + "'", e);
+      }
+    }
+    return chain;
+  }
+
+  private static String invokeChain(List<Method> chain, Faker faker, String expression) {
+    Object target = faker;
+    try {
+      for (Method method : chain) {
+        target = method.invoke(target);
+      }
+    } catch (IllegalAccessException | InvocationTargetException e) {
+      throw new IllegalStateException("Failed to evaluate Datafaker expression: " + expression, e);
+    }
+    return String.valueOf(target);
   }
 
   /**

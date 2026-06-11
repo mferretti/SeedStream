@@ -21,7 +21,9 @@ import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.StructureYamlWriter;
 import com.datagenerator.inspector.ddl.DdlInspector;
 import com.datagenerator.inspector.openapi.OpenApiInspector;
+import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
+import com.datagenerator.schema.parser.CustomTypeConfigLoader;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.Callable;
@@ -77,11 +79,21 @@ public class InspectCommand implements Callable<Integer> {
       description = "Input format: openapi | ddl. Default: auto-detect from file extension.")
   private String format = "auto";
 
+  @Option(
+      names = {"--faker-types"},
+      description =
+          "YAML config of custom Datafaker types to register before inspection, so name hints "
+              + "can target them (see docs/INSPECT-V1-SPEC.md).")
+  private Path fakerTypes;
+
   @Override
   @SuppressWarnings("java:S106")
   public Integer call() {
     String resolved = resolveFormat();
     if (resolved == null) {
+      return 2;
+    }
+    if (!loadCustomTypes()) {
       return 2;
     }
 
@@ -122,6 +134,20 @@ public class InspectCommand implements Callable<Integer> {
     } catch (InspectorException e) {
       log.error("inspect failed: {}", e.getMessage());
       return 2;
+    }
+  }
+
+  /** Loads the optional custom Datafaker types config. Returns false on failure. */
+  private boolean loadCustomTypes() {
+    if (fakerTypes == null) {
+      return true;
+    }
+    try {
+      new CustomTypeConfigLoader().load(fakerTypes);
+      return true;
+    } catch (SchemaParseException e) {
+      log.error("inspect failed: {}", e.getMessage());
+      return false;
     }
   }
 

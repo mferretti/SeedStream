@@ -71,6 +71,7 @@ public final class OpenApiTypeMapper {
     }
     return NameHints.forFieldName(fieldName)
         .flatMap(FakerTypes::canonical)
+        .or(() -> FakerTypes.canonical(Names.toSnakeCase(fieldName)))
         .map(MappedType::explicit)
         .orElseGet(() -> MappedType.inferred(Defaults.STRING));
   }

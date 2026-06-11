@@ -1,0 +1,22 @@
+# Custom Datafaker types for SeedStream.
+#
+# Datafaker exposes far more providers than SeedStream pre-registers. Map a SeedStream type key to
+# a Datafaker method path (each dot-separated segment is a no-arg method, invoked left to right
+# starting on the Faker instance). The chain is validated at load time, so a typo fails fast.
+#
+# Use with:  datagenerator inspect schema.sql --faker-types config/datafaker-types.example.yaml
+#       and: datagenerator execute --job ... --faker-types config/datafaker-types.example.yaml
+#
+# Once registered, a structure can reference the key directly, e.g.  datatype: beer_style
+# The inspector also auto-targets a custom type when a column name matches its key.
+
+types:
+  beer_style: beer.style                 # faker.beer().style()
+  beer_name: beer.name                   # faker.beer().name()
+  pokemon: pokemon.name                  # faker.pokemon().name()
+  full_address: address.fullAddress      # faker.address().fullAddress()
+  job_title: job.title                   # faker.job().title()
+  company_industry: company.industry     # faker.company().industry()
+
+aliases:
+  beerstyle: beer_style

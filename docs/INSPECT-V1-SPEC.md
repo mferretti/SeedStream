@@ -110,6 +110,34 @@ Finite set for v1. Extend later; no open-ended "etc."
   matching `object[line_item]` lookup.
 - Print summary: files written, skipped, inferred-field count.
 
+## 7b. Datafaker types & custom types
+
+- Emitted datafaker datatypes are **bare registry keys** (`email`, `city`, `uuid`), the only form
+  `core/type/TypeParser` accepts. There is no `datafaker[...]` bracket syntax in the engine.
+- Every candidate key is validated against `DatafakerRegistry` before emission
+  (`FakerTypes.canonical`); an unregistered key falls back to a primitive, so the inspector can
+  never emit an unparseable structure.
+- **Custom types**: Datafaker exposes far more providers than the built-ins. Define extras in a
+  YAML config mapping a key to a Datafaker method path, and pass it to both commands:
+
+  ```yaml
+  # config/datafaker-types.example.yaml
+  types:
+    beer_style: beer.style      # faker.beer().style()
+    pokemon:    pokemon.name
+  aliases:
+    beerstyle:  beer_style
+  ```
+  ```bash
+  datagenerator inspect schema.sql --faker-types config/datafaker-types.example.yaml
+  datagenerator execute --job ...  --faker-types config/datafaker-types.example.yaml
+  ```
+  - The chain is resolved + validated at load (`DatafakerRegistry.registerExpression`), so a typo
+    fails fast.
+  - The inspector auto-targets a custom type when a **column name matches its key**
+    (e.g. column `beer_style` → `beer_style`).
+  - The same config must be passed to `execute` so the referenced types resolve at generation time.
+
 ## 7a. DDL specifics
 
 - Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](INSPECT.md).
