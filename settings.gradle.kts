@@ -6,6 +6,7 @@ include(
     "generators",
     "formats",
     "destinations",
+    "inspector",
     "cli",
     "benchmarks"
 )

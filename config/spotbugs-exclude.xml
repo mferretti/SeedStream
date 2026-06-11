@@ -12,6 +12,15 @@
     </Match>
 
     <!--
+      Inspector DTO carrier (record): Inspection holds result lists. Same immutable
+      data-holder pattern as schema.model — defensive copies would add noise without value.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Class name="com.datagenerator.inspector.Inspection"/>
+    </Match>
+
+    <!--
       Test and integration test classes: suppress low-signal patterns that are
       standard JUnit idioms or safe-by-design in test contexts.
 

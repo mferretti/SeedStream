@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":generators"))
     implementation(project(":formats"))
     implementation(project(":destinations"))
+    implementation(project(":inspector"))
     // Jackson for JSON processing
     implementation(libs.jackson.databind)
     // CLI framework

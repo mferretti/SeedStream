@@ -40,7 +40,12 @@ import picocli.CommandLine.IVersionProvider;
     mixinStandardHelpOptions = true,
     versionProvider = DataGeneratorCli.ManifestVersionProvider.class,
     description = "High-performance test data generator",
-    subcommands = {ExecuteCommand.class, ValidateCommand.class, EncryptCommand.class})
+    subcommands = {
+      ExecuteCommand.class,
+      ValidateCommand.class,
+      EncryptCommand.class,
+      InspectCommand.class
+    })
 public class DataGeneratorCli implements Runnable {
 
   public static void main(String[] args) {
