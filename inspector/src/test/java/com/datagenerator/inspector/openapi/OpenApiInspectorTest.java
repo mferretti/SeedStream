@@ -89,9 +89,9 @@ class OpenApiInspectorTest {
 
     Map<String, String> customer = datatypesOf(inspection, "customer");
     assertThat(customer)
-        .containsEntry("id", "datafaker[internet.uuid]")
-        .containsEntry("userEmail", "datafaker[internet.emailAddress]")
-        .containsEntry("firstName", "datafaker[name.firstName]")
+        .containsEntry("id", "uuid")
+        .containsEntry("userEmail", "email")
+        .containsEntry("firstName", "first_name")
         .containsEntry("age", "int[18..120]")
         .containsEntry("status", "enum[ACTIVE,CLOSED]")
         .containsEntry("nickname", "char[1..30]")

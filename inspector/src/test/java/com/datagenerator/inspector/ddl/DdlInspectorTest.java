@@ -58,7 +58,7 @@ class DdlInspectorTest {
     Map<String, String> customer = datatypesOf(inspect(dir), "customers");
 
     assertThat(customer)
-        .containsEntry("email", "datafaker[internet.emailAddress]")
+        .containsEntry("email", "email")
         .containsEntry("nickname", "char[1..40]")
         .containsEntry("is_active", "boolean")
         .containsEntry("signup_date", "date[2020-01-01..2030-12-31]")

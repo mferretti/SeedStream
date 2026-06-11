@@ -1,4 +1,5 @@
 dependencies {
+    implementation(project(":core"))
     implementation(project(":schema"))
 
     // Schema parsing: OpenAPI specs are JSON/YAML, read with Jackson.

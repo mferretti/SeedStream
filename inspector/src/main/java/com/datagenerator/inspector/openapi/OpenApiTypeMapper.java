@@ -17,11 +17,13 @@
 package com.datagenerator.inspector.openapi;
 
 import com.datagenerator.inspector.Defaults;
+import com.datagenerator.inspector.FakerTypes;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.NameHints;
 import com.datagenerator.inspector.Names;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.StringJoiner;
+import java.util.function.Supplier;
 
 /**
  * Maps a single OpenAPI property schema to a SeedStream datatype string. Resolution order matches
@@ -50,9 +52,9 @@ public final class OpenApiTypeMapper {
     String format = schema.path("format").asText("");
     switch (format) {
       case "email":
-        return MappedType.explicit("datafaker[internet.emailAddress]");
+        return fakerOr("email", () -> MappedType.explicit("char[1..50]"));
       case "uuid":
-        return MappedType.explicit("datafaker[internet.uuid]");
+        return fakerOr("uuid", () -> MappedType.explicit("char[36..36]"));
       case "date":
         return MappedType.explicit(Defaults.DATE);
       case "date-time":
@@ -68,8 +70,14 @@ public final class OpenApiTypeMapper {
       return MappedType.explicit("char[1.." + schema.get("maxLength").asInt() + "]");
     }
     return NameHints.forFieldName(fieldName)
+        .flatMap(FakerTypes::canonical)
         .map(MappedType::explicit)
         .orElseGet(() -> MappedType.inferred(Defaults.STRING));
+  }
+
+  /** Emits the datafaker key if registered, otherwise the supplied primitive fallback. */
+  private MappedType fakerOr(String key, Supplier<MappedType> fallback) {
+    return FakerTypes.canonical(key).map(MappedType::explicit).orElseGet(fallback);
   }
 
   private MappedType mapInteger(JsonNode schema) {

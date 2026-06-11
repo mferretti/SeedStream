@@ -17,6 +17,7 @@
 package com.datagenerator.inspector.ddl;
 
 import com.datagenerator.inspector.Defaults;
+import com.datagenerator.inspector.FakerTypes;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.NameHints;
 import java.util.List;
@@ -59,7 +60,7 @@ public final class DdlTypeMapper {
   }
 
   private MappedType mapString(String columnName, int maxLength, boolean lengthInferred) {
-    Optional<String> hint = NameHints.forFieldName(columnName);
+    Optional<String> hint = NameHints.forFieldName(columnName).flatMap(FakerTypes::canonical);
     if (hint.isPresent()) {
       return MappedType.explicit(hint.get());
     }
