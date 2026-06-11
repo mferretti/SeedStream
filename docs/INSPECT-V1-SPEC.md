@@ -98,7 +98,7 @@ Finite set for v1. Extend later; no open-ended "etc."
 | # | question | decision |
 |---|---|---|
 | 1 | scope | OpenAPI **and** DDL (DDL pulled forward from v2) |
-| 2 | unknown type | warn + `char[1..50]` fallback, flagged inferred in the CLI summary. Never hard-fail, never silent skip |
+| 2 | unknown type | warn + `char[1..50]` fallback, flagged with an inline review comment. Never hard-fail, never silent skip |
 | 3 | granularity | one YAML file per schema object. Matches `{entity}.yaml` + `object[...]` auto-load |
 | 4 | `$ref` | emit `object[ref_name]` + separate file, recurse. Lean on existing circular-ref detection |
 | 5 | required/optional | ignore in v1 (no nullable concept in type system yet). Follow-up if needed |
@@ -108,7 +108,23 @@ Finite set for v1. Extend later; no open-ended "etc."
 - Existing target file → **skip + warn** unless `--force`.
 - Filename = snake_case of schema object name + `.yaml` (e.g. `LineItem` → `line_item.yaml`),
   matching `object[line_item]` lookup.
-- Print summary: files written, skipped, inferred-field count.
+- Print summary: files written, skipped, count of fields flagged for review.
+
+## 7a. Review comments (inferred-reason taxonomy)
+
+Every mapping is tagged with a reason; only the two **guesses** get an inline `# ...` comment on the
+field's `datatype:` line. The **certainties** stay silent so a real DB isn't buried in noise.
+
+| reason | example | comment |
+|---|---|---|
+| `DECLARED` | `format:email`, `enum`, bounded `int`, `VARCHAR(40)`, `boolean`, `DATE` | none |
+| `DEFAULT_RANGE` | `BIGINT`→`int[1..999999]`, `TEXT`→`char[1..500]` (inherent SQL/OpenAPI gap) | none |
+| `NAME_HINT` | `city`→`city`, custom `beer_style`→`beer_style` (guessed from the name) | `# guessed from column name — verify` |
+| `UNKNOWN_TYPE` | `JSONB`→`char[1..50]` (type not recognized) | `# unrecognized source type, defaulted — verify` |
+
+Comments are appended after Jackson serialization (the body is serialized normally; only the comment
+text is added, matched positionally so a repeated datatype value is never mis-tagged). SeedStream's
+YAML parser ignores `#` comments, so annotated files round-trip cleanly.
 
 ## 7b. Datafaker types & custom types
 
@@ -148,7 +164,6 @@ Finite set for v1. Extend later; no open-ended "etc."
 
 ## 8. Out of scope (tracked follow-ups)
 
-- Inline `# inferred` YAML comments (currently surfaced in the CLI summary, not in the file).
 - `alias` auto-emission when source name ≠ idiomatic.
 - `geolocation`/locale selection (emits Datafaker hints with no locale; default applies).
 - Primary-key / uniqueness handling; nullable/required mapping.

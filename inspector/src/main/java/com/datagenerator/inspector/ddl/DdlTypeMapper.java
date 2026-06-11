@@ -43,20 +43,20 @@ public final class DdlTypeMapper {
   public MappedType map(String columnName, String sqlType, List<String> args) {
     String type = sqlType == null ? "" : sqlType.toUpperCase(Locale.ROOT);
     return switch (type) {
-      case "BOOLEAN", "BOOL" -> MappedType.explicit("boolean");
-      case "DATE" -> MappedType.explicit(Defaults.DATE);
-      case "TIMESTAMP", "DATETIME" -> MappedType.explicit(Defaults.TIMESTAMP);
+      case "BOOLEAN", "BOOL" -> MappedType.declared("boolean");
+      case "DATE" -> MappedType.declared(Defaults.DATE);
+      case "TIMESTAMP", "DATETIME" -> MappedType.declared(Defaults.TIMESTAMP);
       case "INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT" ->
-          MappedType.inferred("int[" + Defaults.INT_MIN + ".." + Defaults.INT_MAX + "]");
+          MappedType.defaultRange("int[" + Defaults.INT_MIN + ".." + Defaults.INT_MAX + "]");
       case "DECIMAL", "NUMERIC", "NUMBER", "REAL", "FLOAT", "DOUBLE" ->
-          MappedType.inferred(
+          MappedType.defaultRange(
               "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]");
       case "VARCHAR", "CHAR", "NVARCHAR", "NCHAR", "CHARACTER" -> {
         boolean hasLength = args != null && !args.isEmpty();
         yield mapString(columnName, length(args, Defaults.VARCHAR_DEFAULT_LENGTH), !hasLength);
       }
       case "TEXT", "CLOB", "NCLOB" -> mapString(columnName, Defaults.TEXT_MAX_LENGTH, true);
-      default -> MappedType.inferred(Defaults.STRING); // unknown — §6 Q2
+      default -> MappedType.unknownType(Defaults.STRING); // unknown — §6 Q2
     };
   }
 
@@ -66,10 +66,10 @@ public final class DdlTypeMapper {
             .flatMap(FakerTypes::canonical)
             .or(() -> FakerTypes.canonical(Names.toSnakeCase(columnName)));
     if (hint.isPresent()) {
-      return MappedType.explicit(hint.get());
+      return MappedType.nameHint(hint.get());
     }
     String datatype = "char[1.." + maxLength + "]";
-    return lengthInferred ? MappedType.inferred(datatype) : MappedType.explicit(datatype);
+    return lengthInferred ? MappedType.defaultRange(datatype) : MappedType.declared(datatype);
   }
 
   private int length(List<String> args, int fallback) {

@@ -50,21 +50,24 @@ public class OpenApiInspector {
     }
 
     List<DataStructure> structures = new ArrayList<>();
-    List<String> inferred = new ArrayList<>();
+    Map<String, Map<String, String>> comments = new LinkedHashMap<>();
     List<String> warnings = new ArrayList<>();
 
     for (Map.Entry<String, JsonNode> entry : schemas.properties()) {
-      DataStructure structure = toStructure(entry.getKey(), entry.getValue(), inferred, warnings);
+      DataStructure structure = toStructure(entry.getKey(), entry.getValue(), comments, warnings);
       if (structure != null) {
         structures.add(structure);
       }
     }
 
-    return new Inspection(structures, inferred, warnings);
+    return new Inspection(structures, comments, warnings);
   }
 
   private DataStructure toStructure(
-      String schemaName, JsonNode schemaNode, List<String> inferred, List<String> warnings) {
+      String schemaName,
+      JsonNode schemaNode,
+      Map<String, Map<String, String>> comments,
+      List<String> warnings) {
     String name = Names.toSnakeCase(schemaName);
     JsonNode properties = schemaNode.path("properties");
     if (!properties.isObject() || properties.isEmpty()) {
@@ -73,13 +76,17 @@ public class OpenApiInspector {
     }
 
     Map<String, FieldDefinition> data = new LinkedHashMap<>();
+    Map<String, String> fieldComments = new LinkedHashMap<>();
     for (Map.Entry<String, JsonNode> property : properties.properties()) {
       String fieldName = property.getKey();
       MappedType mapped = mapper.map(fieldName, property.getValue());
-      if (mapped.inferred()) {
-        inferred.add(name + "." + fieldName);
+      if (mapped.flagged()) {
+        fieldComments.put(fieldName, mapped.comment());
       }
       data.put(fieldName, new FieldDefinition(mapped.datatype(), null));
+    }
+    if (!fieldComments.isEmpty()) {
+      comments.put(name, fieldComments);
     }
 
     return new DataStructure(name, null, data);

@@ -18,13 +18,23 @@ package com.datagenerator.inspector;
 
 import com.datagenerator.schema.model.DataStructure;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Outcome of inspecting a schema: the structures to emit plus diagnostics.
  *
  * @param structures one {@link DataStructure} per schema object, ready to write
- * @param inferredFields {@code "structure.field"} entries where a default was guessed (§4)
- * @param warnings human-readable warnings (unknown types, fallbacks)
+ * @param comments review comments to emit, keyed by structure name then field name — only for
+ *     flagged guesses (name hints, unknown types); declared and default-range fields are absent
+ * @param warnings human-readable warnings (skipped schemas, etc.)
  */
 public record Inspection(
-    List<DataStructure> structures, List<String> inferredFields, List<String> warnings) {}
+    List<DataStructure> structures,
+    Map<String, Map<String, String>> comments,
+    List<String> warnings) {
+
+  /** Total number of flagged fields across all structures. */
+  public int flaggedCount() {
+    return comments.values().stream().mapToInt(Map::size).sum();
+  }
+}

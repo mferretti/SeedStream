@@ -81,10 +81,18 @@ class DdlInspectorTest {
   }
 
   @Test
-  void shouldFlagUnboundedNumericAsInferred(@TempDir Path dir) throws IOException {
+  void shouldFlagNameHintsButNotDefaultRanges(@TempDir Path dir) throws IOException {
     Inspection inspection = inspect(dir);
-    assertThat(inspection.inferredFields())
-        .contains("customers.balance", "customers.id", "customers.bio");
+    Map<String, String> comments = inspection.comments().getOrDefault("customers", Map.of());
+
+    // name-hint / direct registry-key matches are flagged
+    assertThat(comments).containsKey("email").containsKey("full_name");
+    assertThat(comments.get("email")).contains("guessed from column name");
+    // default-range (unbounded numeric, BIGINT, TEXT) is expected, not flagged
+    assertThat(comments)
+        .doesNotContainKey("balance")
+        .doesNotContainKey("id")
+        .doesNotContainKey("bio");
   }
 
   @Test

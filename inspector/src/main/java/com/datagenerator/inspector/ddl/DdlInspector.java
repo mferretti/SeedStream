@@ -61,12 +61,12 @@ public class DdlInspector {
     }
 
     List<DataStructure> structures = new ArrayList<>();
-    List<String> inferred = new ArrayList<>();
+    Map<String, Map<String, String>> comments = new LinkedHashMap<>();
     List<String> warnings = new ArrayList<>();
 
     for (Statement statement : statements) {
       if (statement instanceof CreateTable createTable) {
-        DataStructure structure = toStructure(createTable, inferred, warnings);
+        DataStructure structure = toStructure(createTable, comments, warnings);
         if (structure != null) {
           structures.add(structure);
         }
@@ -76,11 +76,11 @@ public class DdlInspector {
     if (structures.isEmpty()) {
       throw new InspectorException("No CREATE TABLE statements found in " + sqlFile);
     }
-    return new Inspection(structures, inferred, warnings);
+    return new Inspection(structures, comments, warnings);
   }
 
   private DataStructure toStructure(
-      CreateTable createTable, List<String> inferred, List<String> warnings) {
+      CreateTable createTable, Map<String, Map<String, String>> comments, List<String> warnings) {
     String name = Names.toSnakeCase(unquote(createTable.getTable().getName()));
     List<ColumnDefinition> columns = createTable.getColumnDefinitions();
     if (columns == null || columns.isEmpty()) {
@@ -90,6 +90,7 @@ public class DdlInspector {
 
     Map<String, String> foreignKeys = tableForeignKeys(createTable);
     Map<String, FieldDefinition> data = new LinkedHashMap<>();
+    Map<String, String> fieldComments = new LinkedHashMap<>();
 
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
@@ -97,12 +98,15 @@ public class DdlInspector {
       if (datatype == null) {
         ColDataType colType = column.getColDataType();
         MappedType mapped = mapper.map(columnName, baseTypeName(colType), typeArguments(colType));
-        if (mapped.inferred()) {
-          inferred.add(name + "." + columnName);
+        if (mapped.flagged()) {
+          fieldComments.put(columnName, mapped.comment());
         }
         datatype = mapped.datatype();
       }
       data.put(columnName, new FieldDefinition(datatype, null));
+    }
+    if (!fieldComments.isEmpty()) {
+      comments.put(name, fieldComments);
     }
 
     return new DataStructure(name, null, data);

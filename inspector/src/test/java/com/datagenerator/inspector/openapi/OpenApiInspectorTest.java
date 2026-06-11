@@ -106,12 +106,17 @@ class OpenApiInspectorTest {
   }
 
   @Test
-  void shouldFlagUnboundedNumberAsInferred(@TempDir Path dir) throws IOException {
+  void shouldFlagNameHintsButNotDefaultRanges(@TempDir Path dir) throws IOException {
     Inspection inspection = inspect(dir);
+    Map<String, String> comments = inspection.comments().getOrDefault("customer", Map.of());
 
+    // name-hint guesses are flagged for review
+    assertThat(comments).containsKey("userEmail").containsKey("firstName");
+    assertThat(comments.get("userEmail")).contains("guessed from column name");
+    // default-range (unbounded number) is expected, not flagged
+    assertThat(comments).doesNotContainKey("balance");
     assertThat(datatypesOf(inspection, "customer"))
         .containsEntry("balance", "decimal[0.0..9999.99]");
-    assertThat(inspection.inferredFields()).contains("customer.balance");
   }
 
   @Test

@@ -26,34 +26,73 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Writes a {@link DataStructure} to a {@code {name}.yaml} file under the output directory. Existing
  * files are skipped unless {@code force} is set — never silently clobbered (§7). Field order
  * matches the SeedStream convention: {@code name}, {@code geolocation}, then {@code data}.
+ *
+ * <p>Review comments for flagged fields are appended inline to that field's {@code datatype:} line.
+ * The document body is serialized by Jackson (correct quoting/escaping); only the comment text is
+ * appended afterwards, matched positionally so a repeated datatype value is never mis-tagged.
  */
 public class StructureYamlWriter {
+
+  private static final Pattern FIELD_KEY_LINE = Pattern.compile("^ {2}([A-Za-z0-9_]+):\\s*$");
+  private static final String DATATYPE_LINE_PREFIX = "    datatype:";
 
   private final YAMLMapper yaml =
       new YAMLMapper(
           YAMLFactory.builder().disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER).build());
 
   /**
-   * Writes one structure. Returns {@code true} if the file was written, {@code false} if it already
-   * existed and {@code force} was not set.
+   * Writes one structure with optional inline review comments (field name → comment text). Returns
+   * {@code true} if the file was written, {@code false} if it already existed and {@code force} was
+   * not set.
    */
-  public boolean write(DataStructure structure, Path outputDir, boolean force) {
+  public boolean write(
+      DataStructure structure, Path outputDir, boolean force, Map<String, String> comments) {
     Path file = outputDir.resolve(structure.getName() + ".yaml");
     if (Files.exists(file) && !force) {
       return false;
     }
     try {
       Files.createDirectories(outputDir);
-      yaml.writeValue(file.toFile(), toOrderedMap(structure));
+      String body = yaml.writeValueAsString(toOrderedMap(structure));
+      Files.writeString(file, annotate(body, comments == null ? Map.of() : comments));
       return true;
     } catch (IOException e) {
       throw new InspectorException("Failed to write structure: " + file, e);
     }
+  }
+
+  /** Appends {@code # comment} to the {@code datatype:} line of each commented field. */
+  private String annotate(String body, Map<String, String> comments) {
+    if (comments.isEmpty()) {
+      return body;
+    }
+    String[] lines = body.split("\n", -1);
+    StringBuilder out = new StringBuilder(body.length() + 64);
+    String currentField = null;
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      Matcher keyMatch = FIELD_KEY_LINE.matcher(line);
+      if (keyMatch.matches()) {
+        currentField = keyMatch.group(1);
+      } else if (currentField != null
+          && line.startsWith(DATATYPE_LINE_PREFIX)
+          && comments.containsKey(currentField)) {
+        line = line + "  # " + comments.get(currentField);
+        currentField = null;
+      }
+      out.append(line);
+      if (i < lines.length - 1) {
+        out.append('\n');
+      }
+    }
+    return out.toString();
   }
 
   private Map<String, Object> toOrderedMap(DataStructure structure) {

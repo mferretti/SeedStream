@@ -26,6 +26,7 @@ import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.parser.CustomTypeConfigLoader;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine.Command;
@@ -107,7 +108,9 @@ public class InspectCommand implements Callable<Integer> {
       int written = 0;
       int skipped = 0;
       for (DataStructure structure : inspection.structures()) {
-        if (writer.write(structure, outputDir, force)) {
+        Map<String, String> comments =
+            inspection.comments().getOrDefault(structure.getName(), Map.of());
+        if (writer.write(structure, outputDir, force, comments)) {
           written++;
           log.info("wrote {}/{}.yaml", outputDir, structure.getName());
         } else {
@@ -120,16 +123,12 @@ public class InspectCommand implements Callable<Integer> {
       }
 
       inspection.warnings().forEach(log::warn);
-      inspection
-          .inferredFields()
-          .forEach(
-              field -> log.warn("inferred default for {} — review the generated range", field));
 
       log.info(
-          "inspect complete: {} written, {} skipped, {} fields inferred",
+          "inspect complete: {} written, {} skipped, {} fields flagged for review (commented)",
           written,
           skipped,
-          inspection.inferredFields().size());
+          inspection.flaggedCount());
       return 0;
     } catch (InspectorException e) {
       log.error("inspect failed: {}", e.getMessage());
