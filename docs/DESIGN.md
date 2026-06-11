@@ -315,6 +315,12 @@ graph LR
 
 **Termination**: Poison pill pattern. Workers submit sentinel value when done, writer stops after consuming all records + sentinel.
 
+**Optional worker-side serialization**: when the destination can append an independently-encoded record (`DestinationAdapter.supportsSerializedWrite()` → file JSON, all Kafka), the engine folds serialization into the producer side — each worker serializes its record to `byte[]` in parallel and enqueues bytes, and the writer thread does ordered I/O only (`destination.writeSerialized(byte[])`). This parallelizes the heaviest CPU stage without changing ordering or requiring thread-safe destinations (the writer is still single-threaded). Avro OCF and CSV opt out: Avro OCF is a single ordered container, and CSV needs the record's keys to emit its header row, so both serialize on the writer thread via `destination.write(Map)`.
+
+### Record Model — `FieldRecord` flyweight
+
+Each generated record is a `FieldRecord`: an interned `RecordSchema` (field-name array + name→index map, built once per structure and shared by all its records) plus a per-record `Object[]` of values. This replaces a per-record `LinkedHashMap`, removing the hash table, the one `Node` allocation per field, and the repeated field-name strings — the dominant short-lived allocation at millions of records. `FieldRecord` is a full `Map<String,Object>` with schema-ordered iteration, so serializers, destinations, and `ref[parent.*]` resolution consume it unchanged and output field order is identical to the previous map.
+
 ### Automatic Optimization
 
 **Small Jobs** (< 1000 records):
