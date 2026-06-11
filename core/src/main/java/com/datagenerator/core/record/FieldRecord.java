@@ -41,7 +41,7 @@ import java.util.Set;
 public final class FieldRecord extends AbstractMap<String, Object> {
 
   private final RecordSchema schema;
-  private final Object[] values;
+  private final Object[] fieldValues;
 
   /**
    * Create an empty record for the given schema.
@@ -50,7 +50,7 @@ public final class FieldRecord extends AbstractMap<String, Object> {
    */
   public FieldRecord(RecordSchema schema) {
     this.schema = schema;
-    this.values = new Object[schema.size()];
+    this.fieldValues = new Object[schema.size()];
   }
 
   @Override
@@ -59,7 +59,7 @@ public final class FieldRecord extends AbstractMap<String, Object> {
       return null;
     }
     int i = schema.indexOf(name);
-    return i < 0 ? null : values[i];
+    return i < 0 ? null : fieldValues[i];
   }
 
   @Override
@@ -73,14 +73,28 @@ public final class FieldRecord extends AbstractMap<String, Object> {
     if (i < 0) {
       throw new IllegalArgumentException("Field not declared in schema: " + key);
     }
-    Object previous = values[i];
-    values[i] = value;
+    Object previous = fieldValues[i];
+    fieldValues[i] = value;
     return previous;
   }
 
   @Override
   public int size() {
-    return values.length;
+    return fieldValues.length;
+  }
+
+  // equals/hashCode are intentionally inherited from AbstractMap: a record's identity is its
+  // content (entrySet), exactly like the LinkedHashMap it replaces. Declared here to make that
+  // explicit and satisfy the "override equals when adding fields" rule — the added fields
+  // (schema, fieldValues) are storage only and carry no identity beyond the entries they expose.
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
   @Override
@@ -92,7 +106,7 @@ public final class FieldRecord extends AbstractMap<String, Object> {
   private final class FieldEntrySet extends AbstractSet<Entry<String, Object>> {
     @Override
     public int size() {
-      return values.length;
+      return fieldValues.length;
     }
 
     @Override
@@ -102,16 +116,16 @@ public final class FieldRecord extends AbstractMap<String, Object> {
 
         @Override
         public boolean hasNext() {
-          return cursor < values.length;
+          return cursor < fieldValues.length;
         }
 
         @Override
         public Entry<String, Object> next() {
-          if (cursor >= values.length) {
+          if (cursor >= fieldValues.length) {
             throw new NoSuchElementException();
           }
           int idx = cursor++;
-          return new SimpleImmutableEntry<>(schema.nameAt(idx), values[idx]);
+          return new SimpleImmutableEntry<>(schema.nameAt(idx), fieldValues[idx]);
         }
       };
     }

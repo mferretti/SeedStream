@@ -40,7 +40,7 @@ public final class RecordSchema {
    */
   public RecordSchema(String[] orderedNames) {
     this.names = orderedNames.clone();
-    Map<String, Integer> idx = new HashMap<>(Math.max(4, names.length * 2));
+    Map<String, Integer> idx = HashMap.newHashMap(names.length);
     for (int i = 0; i < names.length; i++) {
       idx.put(names[i], i);
     }

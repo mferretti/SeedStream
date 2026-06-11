@@ -284,9 +284,7 @@ public class GenerationEngine {
                   randomProvider,
                   produce,
                   recordQueue,
-                  generated,
-                  count,
-                  startTime);
+                  new ProgressTracker(generated, count, startTime));
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
               log.error("Worker {} interrupted", finalWorkerId, e);
@@ -314,6 +312,16 @@ public class GenerationEngine {
   }
 
   /**
+   * Shared progress state passed to every worker: the cross-worker generated counter, the overall
+   * target count, and the run start time used for throughput logging.
+   *
+   * @param generated atomic counter for total generated records across all workers
+   * @param totalCount total record count, for progress percentage
+   * @param startTime run start time in milliseconds, for throughput calculation
+   */
+  private record ProgressTracker(AtomicLong generated, long totalCount, long startTime) {}
+
+  /**
    * Generate records for a single worker.
    *
    * @param <P> payload type carried worker → writer
@@ -322,9 +330,7 @@ public class GenerationEngine {
    * @param randomProvider RandomProvider for getting thread-local Random
    * @param produce builds (and optionally serializes) one payload from a Random
    * @param queue Queue for submitting generated record chunks
-   * @param generated Atomic counter for total generated records
-   * @param totalCount Total record count (for progress logging)
-   * @param startTime Start time for throughput calculation
+   * @param progress shared progress state (total generated counter, target count, start time)
    * @throws InterruptedException if interrupted
    */
   private <P> void generateWorkerRecords(
@@ -333,9 +339,7 @@ public class GenerationEngine {
       RandomProvider randomProvider,
       Function<Random, P> produce,
       BlockingQueue<List<P>> queue,
-      AtomicLong generated,
-      long totalCount,
-      long startTime)
+      ProgressTracker progress)
       throws InterruptedException {
 
     // Get thread-local Random for this worker
@@ -360,11 +364,11 @@ public class GenerationEngine {
       }
 
       workerGenerated++;
-      long totalGenerated = generated.incrementAndGet();
+      long totalGenerated = progress.generated().incrementAndGet();
 
       // Progress logging
       if (totalGenerated % logBatchSize == 0) {
-        logProgress(totalGenerated, totalCount, startTime);
+        logProgress(totalGenerated, progress.totalCount(), progress.startTime());
       }
     }
 

@@ -29,49 +29,49 @@ class FieldRecordTest {
 
   @Test
   void shouldStoreAndRetrieveValuesByKey() {
-    Map<String, Object> record = new FieldRecord(SCHEMA);
-    record.put("id", 42);
-    record.put("name", "Milan");
+    Map<String, Object> fieldRecord = new FieldRecord(SCHEMA);
+    fieldRecord.put("id", 42);
+    fieldRecord.put("name", "Milan");
 
-    assertThat(record.get("id")).isEqualTo(42);
-    assertThat(record.get("name")).isEqualTo("Milan");
-    assertThat(record.get("city")).isNull(); // declared but unset
-    assertThat(record.get("missing")).isNull();
+    assertThat(fieldRecord).containsEntry("id", 42).containsEntry("name", "Milan");
+    assertThat(fieldRecord.get("city")).isNull(); // declared but unset
+    assertThat(fieldRecord.get("missing")).isNull();
   }
 
   @Test
   void shouldPreserveSchemaFieldOrder() {
-    Map<String, Object> record = new FieldRecord(SCHEMA);
+    Map<String, Object> fieldRecord = new FieldRecord(SCHEMA);
     // Insert out of schema order; iteration must still follow schema order
-    record.put("city", "Rome");
-    record.put("id", 1);
-    record.put("name", "Jane");
+    fieldRecord.put("city", "Rome");
+    fieldRecord.put("id", 1);
+    fieldRecord.put("name", "Jane");
 
-    assertThat(record.keySet()).containsExactly("id", "name", "city");
+    assertThat(fieldRecord.keySet()).containsExactly("id", "name", "city");
   }
 
   @Test
   void shouldBehaveLikeEquivalentLinkedHashMap() {
-    Map<String, Object> record = new FieldRecord(SCHEMA);
-    record.put("id", 7);
-    record.put("name", "Ada");
-    record.put("city", "Turin");
+    Map<String, Object> fieldRecord = new FieldRecord(SCHEMA);
+    fieldRecord.put("id", 7);
+    fieldRecord.put("name", "Ada");
+    fieldRecord.put("city", "Turin");
 
     Map<String, Object> expected = new LinkedHashMap<>();
     expected.put("id", 7);
     expected.put("name", "Ada");
     expected.put("city", "Turin");
 
-    assertThat(record).isEqualTo(expected);
-    assertThat(record).hasSize(3);
-    assertThat(record.containsKey("name")).isTrue();
-    assertThat(record.containsKey("missing")).isFalse();
+    assertThat(fieldRecord)
+        .isEqualTo(expected)
+        .hasSize(3)
+        .containsKey("name")
+        .doesNotContainKey("missing");
   }
 
   @Test
   void shouldRejectKeysNotInSchema() {
-    Map<String, Object> record = new FieldRecord(SCHEMA);
-    assertThatThrownBy(() -> record.put("unknown", 1))
+    Map<String, Object> fieldRecord = new FieldRecord(SCHEMA);
+    assertThatThrownBy(() -> fieldRecord.put("unknown", 1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("unknown");
   }
