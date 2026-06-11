@@ -22,6 +22,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
+- 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec or SQL DDL — no hand-writing required
 - 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault backends
 
 ---
@@ -100,6 +101,88 @@ export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
 ---
 
+## Schema Inspection
+
+Already have a live database schema or an OpenAPI spec? `inspect` bootstraps SeedStream structure YAML files from it, so you don't need to write them by hand.
+
+```bash
+# From a SQL DDL file (auto-detected from .sql extension)
+datagenerator inspect schema.sql --output config/structures/
+
+# From an OpenAPI 3.x spec (auto-detected from .yaml / .json extension)
+datagenerator inspect api.yaml --output config/structures/
+
+# Overwrite any existing structure files
+datagenerator inspect schema.sql --output config/structures/ --force
+```
+
+**What you get**: one `{snake_case_name}.yaml` per `CREATE TABLE` or OpenAPI schema object, written to the output directory and immediately usable in a job. For example, given:
+
+```sql
+CREATE TABLE customers (
+  id       BIGINT,
+  email    VARCHAR(100),
+  city     VARCHAR(50),
+  status   VARCHAR(10),
+  balance  DECIMAL(10,2),
+  joined   DATE
+);
+```
+
+the inspector produces `config/structures/customers.yaml`:
+
+```yaml
+name: customers
+data:
+  id:
+    datatype: int[1..999999]
+  email:
+    datatype: "email"  # guessed from column name — verify
+  city:
+    datatype: "city"  # guessed from column name — verify
+  status:
+    datatype: char[1..10]
+  balance:
+    datatype: decimal[0.0..9999.99]
+  joined:
+    datatype: date[2020-01-01..2030-12-31]
+```
+
+**Review comments** appear on fields where the inspector made a guess that a human should confirm:
+
+| comment | what happened | action |
+|---------|---------------|--------|
+| `# guessed from column name — verify` | A Datafaker semantic type was inferred from the column name. | Keep it, change it, or replace with a `char[min..max]` range. |
+| `# unrecognized source type, defaulted — verify` | SQL/OpenAPI type not recognized; fell back to `char[1..50]`. | Adjust the range or type. |
+
+Fields with **no comment** were mapped from explicit schema information (declared SQL types, OpenAPI `format`, `enum`, numeric bounds) and don't need review. The CLI summary reports the total count: `inspect complete: 3 written, 0 skipped, 2 fields flagged for review (commented)`.
+
+**After inspection**: review and adjust any commented fields, then create a job YAML pointing at the output directory and run `execute` as normal.
+
+### `inspect` flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `<input>` | required | Schema file to inspect (`.sql`, `.yaml`, `.yml`, `.json`) |
+| `--output` | `config/structures/` | Directory to write structure YAML files |
+| `--force` | off | Overwrite existing structure files (default: skip and warn) |
+| `--format openapi\|ddl` | auto-detect | Override format detection (by default inferred from extension) |
+| `--faker-types <file>` | unset | YAML config of extra Datafaker types; register before inspection so name hints can target them |
+
+### Custom Datafaker types
+
+The built-in name hints cover common fields (`email`, `city`, `first_name`, etc.). For domain-specific column names, register extra Datafaker providers with `--faker-types`:
+
+```bash
+datagenerator inspect schema.sql \
+  --faker-types config/datafaker-types.example.yaml \
+  --output config/structures/
+```
+
+The same `--faker-types` file must be passed to `execute` so those types resolve at generation time. See [config/datafaker-types.example.yaml](config/datafaker-types.example.yaml) for the format and [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) for the full type-mapping reference.
+
+---
+
 ## Performance
 
 Validated throughput from JMH benchmarks (March 2026):
@@ -135,6 +218,7 @@ See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading 
 | Document | Contents |
 |----------|----------|
 | [config/README.md](config/README.md) | Type system reference, job/structure examples, Kafka & database config |
+| [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) | `inspect` subcommand: type mapping tables, DDL/OpenAPI rules, review comment taxonomy |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture, threading model, reproducibility, extensibility |
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Benchmarks, tuning guide, hardware recommendations |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common errors, debug mode, FAQ |

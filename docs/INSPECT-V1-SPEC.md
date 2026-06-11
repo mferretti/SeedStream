@@ -22,7 +22,8 @@ Flags:
 |---|---|---|
 | `--output <dir>` | `config/structures/` | where YAML files are written |
 | `--force` | off | overwrite existing files (else skip + warn — never silent clobber) |
-| `--format openapi` | auto | reserved; only `openapi` valid in v1 |
+| `--format openapi\|ddl` | auto | input format override; supports both implemented inspectors |
+| `--faker-types <file>` | unset | optional custom Datafaker types config loaded before inspection |
 
 ## 2. Module
 
@@ -58,8 +59,9 @@ Resolution order per property:
 
 ## 4. Default ranges (configurable later; constants for v1)
 
-No bound in source → use these documented defaults, and emit a `# inferred` YAML comment so
-the user sees it was a guess:
+No bound in source → use these documented defaults. In v1, these are treated as expected
+`DEFAULT_RANGE` mappings (silent by design), while only `NAME_HINT` and `UNKNOWN_TYPE`
+mappings receive inline review comments (§7a):
 
 | placeholder | value |
 |---|---|
@@ -154,7 +156,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
     (e.g. column `beer_style` → `beer_style`).
   - The same config must be passed to `execute` so the referenced types resolve at generation time.
 
-## 7a. DDL specifics
+## 7c. DDL specifics
 
 - Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](INSPECT.md).
 - Type names arrive inline (e.g. `VARCHAR (255)`); base name + args are parsed off that string.

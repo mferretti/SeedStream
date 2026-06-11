@@ -1,5 +1,8 @@
 # datagenerator inspect — Design Notes
 
+Status note: this document captures the original design exploration.
+For implemented behavior and current decisions, use `docs/INSPECT-V1-SPEC.md` as the source of truth.
+
 ## Problem
 
 Writing YAML structure configs by hand is the main friction point when adopting SeedStream on

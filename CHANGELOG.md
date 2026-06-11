@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Inspector
+- **`inspect` subcommand** — reads an OpenAPI 3.x spec (`.yaml` / `.json`) or a SQL DDL file (`.sql`) and emits one ready-to-use SeedStream structure YAML per schema object / `CREATE TABLE`
+- **Reason taxonomy** (`DECLARED`, `DEFAULT_RANGE`, `NAME_HINT`, `UNKNOWN_TYPE`) — every field mapping is tagged with why its type was chosen; only the two *guesses* (`NAME_HINT`, `UNKNOWN_TYPE`) receive an inline `# …` review comment on the `datatype:` line, keeping schemas with declared types noise-free
+- **`--faker-types <file>`** flag — registers extra Datafaker providers before inspection so domain-specific column names (e.g. `beer_style`) resolve to custom semantic types rather than a plain `char` fallback
+- **`CustomProviderSmokeTest`** — end-to-end test: loads non-default providers (`Beer`, `Pokemon`), inspects a DDL, asserts emitted types and exact comment placement
+- Output safety: existing files skipped unless `--force`; CLI summary reports files written, skipped, and fields flagged for review
+
 #### Formats
 - **Avro serializer** (`avro`) — OCF container format with dynamic schema generation from job structure; no external dependencies
 - **Avro + Confluent Schema Registry** (`avro-registry`) — Confluent wire format (magic byte + schema ID + Avro binary); registers schema on first write, caches ID in memory; supports `bearer` and `basic` auth
