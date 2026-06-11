@@ -127,13 +127,14 @@ datagenerator/
 - Running git status/diff/log/blame
 - Creating example config files in `config/`
 - Running the CLI with test jobs
+- Creating a feature branch when starting new feature work (commit/push still require confirmation)
 
 ## Require Explicit Confirmation
 - `./gradlew clean` or deleting build artifacts
 - Modifying root `build.gradle.kts` or `settings.gradle.kts`
 - Adding new modules to the project
 - Installing system packages
-- Git commit, push, or branch creation
+- Git commit or push (feature-branch creation is pre-authorized; other branch creation still requires confirmation)
 - Docker commands or Testcontainers setup
 - Modifying `.gitignore`, `.github/`, or workspace meta files
 
