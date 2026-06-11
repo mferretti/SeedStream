@@ -85,10 +85,37 @@ serialization heavy enough that throughput **scales with threads** (1→4: ~22k 
 | 4 | 606 / 164 s / 20 MB | 522 / 191 s / 18 MB | 524 / 190 s / 21 MB |
 | 8 | 655 / 152 s / 18 MB | 539 / 185 s / 18 MB | 528 / 189 s / 25 MB |
 
-Database throughput (~520–655 rec/s) is **two orders of magnitude below file/Kafka**
-because each generated invoice fans out to multiple `INSERT`s across four tables
-(`per_batch` strategy). More worker threads do **not** help — the bottleneck is
-the single JDBC connection / DB write path, not generation. Heap is tiny (18–25 MB).
+### Why database throughput looks ~50× lower — record folding
+
+The `rec/s` figure counts **logical invoice records**, but one invoice is not one
+write. The nested `invoice` is **folded (decomposed) into its parent/child rows**
+and written across four tables:
+
+- 1 row → `invoices` (parent)
+- 1 row → `issuer` (`object[company]`)
+- 1 row → `recipient` (`object[company]`)
+- **1–20 rows → `line_items`** (`array[object[line_item], 1..20]`, mean ≈ 10.5),
+  each carrying an injected `invoices_id` foreign key
+
+So **each logical record is ~13.5 physical rows** (1 + 1 + 1 + ~10.5). A
+100,000-invoice run therefore writes roughly:
+
+| Table | Rows |
+|--|--|
+| invoices | 100,000 |
+| issuer | 100,000 |
+| recipient | 100,000 |
+| line_items | ~1,050,000 |
+| **Total** | **~1,350,000 rows** |
+
+Restating the throughput in **physical rows**: ~655 invoices/s × ~13.5 ≈
+**~8,800 rows/s** inserted. That is the apples-to-apples comparison — file/Kafka
+serialize **one** blob per record, while the database performs ~13.5 keyed
+multi-table `INSERT`s (`per_batch` strategy) plus FK injection per record. The gap
+is the relational fan-out, not a generation slowdown.
+
+More worker threads do **not** help — the bottleneck is the single JDBC
+connection / DB write path, not record generation. Heap stays tiny (18–25 MB).
 
 ## Running the full suite
 

@@ -59,7 +59,7 @@ SeedStream sustains **~28,000–35,000 records/second** for flat-record file gen
 **Key Observations:**
 - File (flat passport): ~28–35K rec/s, overhead/IO-bound at a ~33K ceiling; formats converge and thread count barely moves throughput. Heap 28–79 MB, GC <3%.
 - Kafka (nested invoice): ~21–29K rec/s; serialization is heavy enough that throughput **scales with threads** (1→4: ~22K→~28K).
-- Database (nested invoice → 4 tables): ~520–655 rec/s, JDBC-bound; more threads do **not** help (single write path). Heap 18–25 MB.
+- Database (nested invoice → 4 tables): ~520–655 **invoices**/s, but each invoice folds into ~13.5 physical rows (1 invoices + 1 issuer + 1 recipient + ~10.5 line_items), so a 100K run writes ~1.35M rows ≈ **~8,800 rows/s**. JDBC-bound; more threads do **not** help (single write path). Heap 18–25 MB. See [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md#why-database-throughput-looks-50-lower--record-folding).
 - Memory configuration has minimal impact (256MB sufficient, 512MB recommended).
 - GC overhead healthy across all tests (<2.7%)
 
