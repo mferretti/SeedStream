@@ -10,6 +10,20 @@
 
 High-performance, seed-based test data generator for enterprise applications. Generate realistic, reproducible data to Kafka, databases, and files using simple YAML configuration.
 
+## Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [Schema Inspection](#schema-inspection)
+- [Performance](#performance)
+- [Architecture](#architecture)
+- [Documentation](#documentation)
+- [Secret Management](#secret-management)
+- [Security](#security)
+- [Contributing](#contributing)
+- [License](#license)
+
 ---
 
 ## Features
@@ -157,7 +171,7 @@ data:
 
 Fields with **no comment** were mapped from explicit schema information (declared SQL types, OpenAPI `format`, `enum`, numeric bounds) and don't need review. The CLI summary reports the total count: `inspect complete: 3 written, 0 skipped, 2 fields flagged for review (commented)`.
 
-**Foreign keys → flat references (no nesting)**: each foreign key becomes a scalar `ref[parent_table.column]` on the child structure, so every table maps to its own independent, joinable dataset that scales with `--count`. The inspector does **not** invert a `1:n` relationship into a nested document — e.g. for `customer → invoice → invoice_item` it emits three flat structures (`invoice.customer_id: ref[customer.id]`, `invoice_item.invoice_id: ref[invoice.id]`), **not** an `invoice` that embeds `array[object[invoice_item], 1..N]`. If you need embedded/nested output, add the `object[...]` / `array[object[...], min..max]` fields by hand after inspection. FK-inversion nesting is a tracked follow-up — see [docs/INSPECT-NESTING-PLAN.md](docs/INSPECT-NESTING-PLAN.md).
+**Foreign keys → flat references (no nesting)**: each foreign key becomes a scalar `ref[parent_table.column]` on the child structure, so every table maps to its own independent, joinable dataset that scales with `--count`. The inspector does **not** invert a `1:n` relationship into a nested document — e.g. for `customer → invoice → invoice_item` it emits three flat structures (`invoice.customer_id: ref[customer.id]`, `invoice_item.invoice_id: ref[invoice.id]`), **not** an `invoice` that embeds `array[object[invoice_item], 1..N]`. If you need embedded/nested output, add the `object[...]` / `array[object[...], min..max]` fields by hand after inspection. This limitation is **DDL-only**: an OpenAPI spec that already declares nested objects/arrays is emitted with its nesting intact (`$ref` → `object[...]`, `array` of `$ref` → `array[object[...], min..max]`). FK-inversion nesting for DDL is a tracked follow-up — see [docs/INSPECT-NESTING-PLAN.md](docs/INSPECT-NESTING-PLAN.md).
 
 **After inspection**: review and adjust any commented fields, then create a job YAML pointing at the output directory and run `execute` as normal.
 

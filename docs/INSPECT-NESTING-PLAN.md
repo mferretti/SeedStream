@@ -1,6 +1,10 @@
 # Plan: FK-inversion nesting for `inspect` (follow-up)
 
-**Status:** proposed — not implemented. Tracking issue: [#87](https://github.com/mferretti/SeedStream/issues/87).
+**Status:** partially implemented. The **OpenAPI** inspector already emits nested types from a
+spec's native structure — `$ref` → `object[child]`, and `array` items → `array[object[child],
+min..max]` (see `OpenApiTypeMapper`). What is **not** implemented is **DDL FK-inversion**: turning
+a relational `1:n` foreign key into a nested `array[object[child]]` on the parent. This plan covers
+that DDL gap. Tracking issue: [#87](https://github.com/mferretti/SeedStream/issues/87).
 **Owner:** unassigned.
 **Depends on:** current `inspect` v1 (DDL + OpenAPI inspectors, `ref[]` mapping).
 
@@ -31,8 +35,8 @@ explicitly.
 
 In scope:
 - DDL inspector (JSQLParser) — FK metadata is explicit and reliable.
-- OpenAPI inspector — only where `$ref` / `x-` relationship hints make the parent→child link
-  unambiguous (see §7). May land DDL-first, OpenAPI later.
+- OpenAPI inspector — native nesting (`$ref`, `array` items) is **already implemented**; no
+  FK-inversion work is needed there (see §7). DDL is the sole target of this plan.
 
 Out of scope (this iteration): cross-file schemas, M:N auto-pivot into two nested arrays,
 polymorphic/inheritance relations, configurable per-relationship multiplicity tuning beyond a
@@ -127,10 +131,11 @@ All warnings flow through the existing `Inspection.warnings` channel and the CLI
 
 ## 7. OpenAPI notes
 
-OpenAPI already expresses nesting natively (`$ref` inside `properties` / `items`). The current
-OpenApiInspector flattens or refs these. FK-inversion is less relevant; the work there is to
-**preserve** existing nested `$ref`s as `object[...]` / `array[object[...], min..max]` rather than
-inventing inversions. Treat as a separate sub-task; DDL is the primary target of this plan.
+OpenAPI already expresses nesting natively (`$ref` inside `properties` / `items`), and the
+inspector **already maps it**: `OpenApiTypeMapper.map(...)` emits `object[child]` for a `$ref` and
+`array[object[child], min..max]` for an `array` of `$ref` items. So there is **no FK-inversion
+work for OpenAPI** — nested documents already come out of the OpenAPI path today. DDL is the sole
+target of this plan.
 
 ## 8. Touch points (implementation)
 
