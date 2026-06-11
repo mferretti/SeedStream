@@ -18,11 +18,13 @@ package com.datagenerator.inspector;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Name-hint heuristics for unformatted strings. Maps a field name to a candidate {@link
  * com.datagenerator.core.registry.DatafakerRegistry} key based on whole-token matches (never raw
- * substring), so {@code email} matches {@code userEmail} but not {@code email_verified_at}.
+ * substring), so {@code email} matches the {@code email} token in {@code userEmail} or {@code
+ * email_verified_at}, but not a bare substring inside a single token such as {@code emailish}.
  *
  * <p>The returned value is a bare registry key (e.g. {@code email}, {@code first_name}) — the only
  * datafaker syntax {@code TypeParser} accepts. Callers must still validate it against the registry
@@ -36,45 +38,30 @@ public final class NameHints {
 
   private NameHints() {}
 
+  private record Hint(Predicate<List<String>> matches, String key) {}
+
+  private static final List<Hint> HINTS =
+      List.of(
+          new Hint(t -> t.contains("email"), "email"),
+          new Hint(
+              t -> t.contains("phone") || t.contains("mobile") || t.contains("cell"),
+              "phone_number"),
+          new Hint(t -> t.contains("first") && t.contains("name"), "first_name"),
+          new Hint(t -> t.contains("last") && t.contains("name"), "last_name"),
+          new Hint(t -> t.contains("city"), "city"),
+          new Hint(t -> t.contains("country"), "country"),
+          new Hint(t -> t.contains("street"), "street_name"),
+          new Hint(t -> t.contains("address"), "address"),
+          new Hint(t -> t.contains("zip") || t.contains("postal"), "postal_code"),
+          new Hint(t -> t.contains("uuid") || t.contains("guid"), "uuid"),
+          new Hint(t -> t.contains("url") || t.contains("uri"), "url"));
+
   /** Returns a candidate datafaker registry key for a field name, or empty if no rule matches. */
   public static Optional<String> forFieldName(String fieldName) {
     List<String> tokens = Names.tokenize(fieldName);
     if (tokens.isEmpty()) {
       return Optional.empty();
     }
-    if (tokens.contains("email")) {
-      return Optional.of("email");
-    }
-    if (tokens.contains("phone") || tokens.contains("mobile") || tokens.contains("cell")) {
-      return Optional.of("phone_number");
-    }
-    if (tokens.contains("first") && tokens.contains("name")) {
-      return Optional.of("first_name");
-    }
-    if (tokens.contains("last") && tokens.contains("name")) {
-      return Optional.of("last_name");
-    }
-    if (tokens.contains("city")) {
-      return Optional.of("city");
-    }
-    if (tokens.contains("country")) {
-      return Optional.of("country");
-    }
-    if (tokens.contains("street")) {
-      return Optional.of("street_name");
-    }
-    if (tokens.contains("address")) {
-      return Optional.of("address");
-    }
-    if (tokens.contains("zip") || tokens.contains("postal")) {
-      return Optional.of("postal_code");
-    }
-    if (tokens.contains("uuid") || tokens.contains("guid")) {
-      return Optional.of("uuid");
-    }
-    if (tokens.contains("url") || tokens.contains("uri")) {
-      return Optional.of("url");
-    }
-    return Optional.empty();
+    return HINTS.stream().filter(h -> h.matches().test(tokens)).findFirst().map(Hint::key);
   }
 }

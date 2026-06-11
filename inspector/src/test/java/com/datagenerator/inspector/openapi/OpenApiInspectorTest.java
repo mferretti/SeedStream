@@ -123,8 +123,9 @@ class OpenApiInspectorTest {
   void shouldFailOnSpecWithoutComponentSchemas(@TempDir Path dir) throws IOException {
     Path spec = dir.resolve("empty.yaml");
     Files.writeString(spec, "openapi: 3.0.3\ninfo:\n  title: x\n  version: \"1\"\n");
+    OpenApiInspector inspector = new OpenApiInspector();
 
-    assertThatThrownBy(() -> new OpenApiInspector().inspect(spec))
+    assertThatThrownBy(() -> inspector.inspect(spec))
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("components.schemas");
   }

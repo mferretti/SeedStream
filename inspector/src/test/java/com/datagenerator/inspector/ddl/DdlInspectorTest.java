@@ -99,8 +99,9 @@ class DdlInspectorTest {
   void shouldFailWhenNoCreateTable(@TempDir Path dir) throws IOException {
     Path sql = dir.resolve("noddl.sql");
     Files.writeString(sql, "SELECT 1;");
+    DdlInspector inspector = new DdlInspector();
 
-    assertThatThrownBy(() -> new DdlInspector().inspect(sql))
+    assertThatThrownBy(() -> inspector.inspect(sql))
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("No CREATE TABLE");
   }

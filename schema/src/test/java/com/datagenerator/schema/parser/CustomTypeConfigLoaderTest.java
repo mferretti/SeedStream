@@ -54,8 +54,9 @@ class CustomTypeConfigLoaderTest {
   void shouldFailOnInvalidExpression(@TempDir Path dir) throws IOException {
     Path config = dir.resolve("bad.yaml");
     Files.writeString(config, "types:\n  broken: no.suchMethodHere\n");
+    CustomTypeConfigLoader loader = new CustomTypeConfigLoader();
 
-    assertThatThrownBy(() -> new CustomTypeConfigLoader().load(config))
+    assertThatThrownBy(() -> loader.load(config))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("broken");
   }

@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
  */
 public class StructureYamlWriter {
 
-  private static final Pattern FIELD_KEY_LINE = Pattern.compile("^ {2}([A-Za-z0-9_]+):\\s*$");
+  private static final Pattern FIELD_KEY_LINE = Pattern.compile("^ {2}(\\w+):\\s*$");
   private static final String DATATYPE_LINE_PREFIX = "    datatype:";
 
   private final YAMLMapper yaml =

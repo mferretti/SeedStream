@@ -32,6 +32,11 @@ import java.util.function.Supplier;
  */
 public final class OpenApiTypeMapper {
 
+  private static final String MINIMUM = "minimum";
+  private static final String MAXIMUM = "maximum";
+  private static final String MIN_ITEMS = "minItems";
+  private static final String MAX_ITEMS = "maxItems";
+
   public MappedType map(String fieldName, JsonNode schema) {
     if (schema.hasNonNull("$ref")) {
       return MappedType.declared("object[" + refName(schema.get("$ref").asText()) + "]");
@@ -82,17 +87,17 @@ public final class OpenApiTypeMapper {
   }
 
   private MappedType mapInteger(JsonNode schema) {
-    boolean bounded = schema.has("minimum") || schema.has("maximum");
-    long min = schema.has("minimum") ? schema.get("minimum").asLong() : Defaults.INT_MIN;
-    long max = schema.has("maximum") ? schema.get("maximum").asLong() : Defaults.INT_MAX;
+    boolean bounded = schema.has(MINIMUM) || schema.has(MAXIMUM);
+    long min = schema.has(MINIMUM) ? schema.get(MINIMUM).asLong() : Defaults.INT_MIN;
+    long max = schema.has(MAXIMUM) ? schema.get(MAXIMUM).asLong() : Defaults.INT_MAX;
     String datatype = "int[" + min + ".." + max + "]";
     return bounded ? MappedType.declared(datatype) : MappedType.defaultRange(datatype);
   }
 
   private MappedType mapNumber(JsonNode schema) {
-    boolean bounded = schema.has("minimum") || schema.has("maximum");
-    String min = schema.has("minimum") ? schema.get("minimum").asText() : Defaults.DECIMAL_MIN;
-    String max = schema.has("maximum") ? schema.get("maximum").asText() : Defaults.DECIMAL_MAX;
+    boolean bounded = schema.has(MINIMUM) || schema.has(MAXIMUM);
+    String min = schema.has(MINIMUM) ? schema.get(MINIMUM).asText() : Defaults.DECIMAL_MIN;
+    String max = schema.has(MAXIMUM) ? schema.get(MAXIMUM).asText() : Defaults.DECIMAL_MAX;
     String datatype = "decimal[" + min + ".." + max + "]";
     return bounded ? MappedType.declared(datatype) : MappedType.defaultRange(datatype);
   }
@@ -101,9 +106,9 @@ public final class OpenApiTypeMapper {
     JsonNode items = schema.path("items");
     MappedType inner =
         items.isMissingNode() ? MappedType.defaultRange(Defaults.STRING) : map(fieldName, items);
-    boolean bounded = schema.has("minItems") || schema.has("maxItems");
-    int min = schema.has("minItems") ? schema.get("minItems").asInt() : Defaults.ARRAY_MIN;
-    int max = schema.has("maxItems") ? schema.get("maxItems").asInt() : Defaults.ARRAY_MAX;
+    boolean bounded = schema.has(MIN_ITEMS) || schema.has(MAX_ITEMS);
+    int min = schema.has(MIN_ITEMS) ? schema.get(MIN_ITEMS).asInt() : Defaults.ARRAY_MIN;
+    int max = schema.has(MAX_ITEMS) ? schema.get(MAX_ITEMS).asInt() : Defaults.ARRAY_MAX;
     String datatype = "array[" + inner.datatype() + ", " + min + ".." + max + "]";
     return new MappedType(datatype, !bounded ? MappedType.Reason.DEFAULT_RANGE : inner.reason());
   }
