@@ -272,11 +272,11 @@ register("pokemon", (faker, random) -> faker.pokemon().name());
 
 No interface changes, no schema changes, no breaking changes. Existing YAML configs are unaffected.
 
-### Option C: External JAR via `extras/` directory (planned — TASK-044)
+### Option C: External JAR via `extras/` directory
 
-Once TASK-044 is implemented, users will be able to drop a JAR containing pre-registered types
-into the `extras/` directory. The JAR uses Datafaker's Service Loader mechanism, and `DatafakerRegistry`
-picks up any pre-registered custom types on startup.
+Drop a JAR containing pre-registered types into the `extras/` directory — the launch scripts prepend
+`extras/*` to the classpath at startup. The JAR uses Datafaker's Service Loader mechanism, and
+`DatafakerRegistry` picks up any pre-registered custom types on startup.
 
 ---
 

@@ -81,10 +81,10 @@ SeedStream sustains **~28,000–35,000 records/second** for flat-record file gen
 - Phone: 13K ops/s
 - All within expected range for realistic data
 
-**Serializers:**
-- JSON: Component benchmarks TBD
-- CSV: Component benchmarks TBD
-- Protobuf: Component benchmarks TBD
+**Serializers (`SerializerBenchmark`):**
+- JSON: 3.0M ops/s (simple), 1.08M (complex), 699K (nested)
+- CSV: 2.6M ops/s (simple), 942K (complex), 218K (nested — double-serializes object→JSON→CSV)
+- Protobuf: benchmark methods exist (simple/complex/nested); results not yet recorded in BENCHMARK-RESULTS.md
 
 **Full Component Results:** See [BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md)
 
@@ -168,7 +168,7 @@ SeedStream sustains **~28,000–35,000 records/second** for flat-record file gen
 1. **Datafaker Overhead (98% CPU time)**
    - Despite thread-local optimization, Datafaker still dominates CPU
    - This is normal operation - realistic data generation is expensive
-   - Further optimization would require Datafaker fork with cross-instance caching
+   - Cross-instance caching is now addressed upstream: [datafaker-net/datafaker#1819](https://github.com/datafaker-net/datafaker/pull/1819) makes the expression-resolution and regex-compilation caches static/shared across Faker instances (open, not yet merged). Once merged + released, expect a further reduction here without any SeedStream code change.
    - **Priority:** P3 (low) - Current performance is acceptable for production
 
 2. **Single-Thread Throughput Cap (~33K rec/s)**
@@ -196,11 +196,11 @@ None currently identified. System meets all performance requirements.
 
 #### P3 - Nice to Have
 
-1. **Datafaker Deep Caching (Requires Upstream)**
-   - Add cross-instance YAML/template caching
+1. **Datafaker Deep Caching (Upstream PR submitted)**
+   - Add cross-instance expression-resolution + regex-compilation caching
    - Expected: 2-4× additional improvement on top of thread-local cache
-   - Blocker: Requires Datafaker fork or upstream contribution
-   - Benefit: Minimal - current performance already meets needs
+   - Status: submitted upstream as [datafaker-net/datafaker#1819](https://github.com/datafaker-net/datafaker/pull/1819) — makes `FakeValuesService` caches static (two-level: static `RECIPE_MAP` L1 + per-instance L2, plus static `expression2generex` regex cache). No public API change; lands transparently on the next Datafaker bump. Currently **open, not merged**.
+   - Benefit: Minimal for current needs — meaningful for seeded-per-record workloads that churn short-lived Fakers
 
 2. **Serializer Micro-Optimizations**
    - Buffer size tuning

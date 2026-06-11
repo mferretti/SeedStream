@@ -1,5 +1,8 @@
 # User Stories - SeedStream Data Generator
 
+> **⚠️ FROZEN ARCHIVE — not maintained.**
+> These user stories are a historical record of the acceptance-driven, AI-built development of SeedStream. They are **superseded by** the implementation tasks in [`../tasks/`](../tasks/) (the single source of truth for status) and by the test suite (the executable acceptance criteria). They are **not kept in sync** with the code and may be stale — do not rely on them as current. Kept for provenance and audit trail only.
+
 This directory contains human-readable user stories derived from AI agent task files. Each user story is designed for human developers to implement features or review AI-generated work (e.g., PR approval).
 
 ---

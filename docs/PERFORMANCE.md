@@ -91,15 +91,15 @@ Datafaker generates **realistic, locale-aware** data (names, addresses, etc.). E
 
 | Format | Throughput (simple) | Throughput (complex) | Throughput (nested) |
 |--------|---------------------|----------------------|---------------------|
-| **JSON** | **2.6M ops/s** | **946K ops/s** | **580K ops/s** |
-| **CSV** | **2.6M ops/s** | N/A (flat only) | N/A |
-| **Protobuf** | **~2.5M ops/s** | **~900K ops/s** | **~550K ops/s** |
+| **JSON** | **3.0M ops/s** | **1.08M ops/s** | **699K ops/s** |
+| **CSV** | **2.6M ops/s** | **942K ops/s** | **218K ops/s** |
+| **Protobuf** | **~2.5M ops/s** (est.) | **~900K ops/s** (est.) | **~550K ops/s** (est.) |
 
 **Observations**:
-- JSON, CSV, and Protobuf have similar throughput for simple records
-- Protobuf produces 50-70% smaller output than JSON (binary encoding)
-- CSV doesn't support nested structures (serializes as JSON string)
-- Nested structures slow serialization by ~4-5× across all formats
+- JSON and CSV are close for simple records; JSON is ~18% faster
+- JSON handles nesting far better than CSV (699K vs 218K — 3.2×): CSV has no native nested representation, so it double-serializes (object→JSON string→CSV cell)
+- Protobuf produces 50-70% smaller output than JSON (binary encoding); Protobuf throughput is estimated — `SerializerBenchmark` has the methods but results are not yet recorded in [BENCHMARK-RESULTS.md](../BENCHMARK-RESULTS.md)
+- Nested structures slow serialization ~4× across all formats
 
 ### File I/O
 
@@ -311,17 +311,17 @@ conf:
   username: ${DB_USER}
   password: ${DB_PASSWORD}
   table: customers              # optional — defaults to structure name
-  batch_size: 500               # records per batch INSERT (default: 100)
-  transaction_strategy: BATCH   # AUTO_COMMIT | BATCH | SINGLE
+  batch_size: 500                   # records per batch INSERT (default: 100)
+  transaction_strategy: per_batch   # per_batch | per_job | auto_commit
 ```
 
 **Transaction strategies**:
 
 | Strategy | Description | Throughput | Use Case |
 |----------|-------------|------------|----------|
-| `BATCH` | One transaction per batch | **Best** | Default recommendation |
-| `AUTO_COMMIT` | Commit after each batch | 2-3× slower | Resumable / observable jobs |
-| `SINGLE` | One transaction for entire job | Fastest (no commit overhead) | Small jobs only — holds lock for entire run |
+| `per_batch` | One transaction per batch (commit after each batch) | **Best** | Default recommendation |
+| `per_job` | Single transaction for entire job (one commit at end, all-or-nothing) | Fast, but holds lock for the full run | Small jobs only |
+| `auto_commit` | JDBC auto-commit (per-statement commit) | 2-3× slower | Resumable / observable jobs |
 
 **Batch size guidelines**:
 
@@ -344,15 +344,15 @@ Each child record requires the parent's generated ID, so inserts are inherently 
 
 For nested structures, reduce `batch_size` to 100-200 to avoid large transactions with mixed table inserts.
 
-**JDBC driver**: PostgreSQL and MySQL drivers are currently bundled in the distribution. Support for user-supplied drivers via an `extras/` directory is planned (TASK-044).
+**JDBC driver**: drivers are **not** bundled in the distribution. Drop the driver JAR for your database (PostgreSQL, MySQL, or any JDBC-compliant driver) into the `extras/` directory — the launch scripts prepend `extras/*` to the classpath at startup, so the driver registers via `DriverManager` automatically.
 
 ### 5. Format Selection
 
 | Format | Speed | Size | Use Case |
 |--------|-------|------|----------|
-| **JSON** | Fast (~2.6M ops/s) | Medium | General purpose, nested structures, human-readable |
+| **JSON** | Fast (~3.0M ops/s) | Medium | General purpose, nested structures, human-readable |
 | **CSV** | Fast (~2.6M ops/s) | Smaller | Flat tabular data, spreadsheet import |
-| **Protobuf** | Fast (~2.5M ops/s) | Smallest (50-70% smaller) | High-volume, language-agnostic, binary format |
+| **Protobuf** | Fast (~2.5M ops/s, est.) | Smallest (50-70% smaller) | High-volume, language-agnostic, binary format |
 
 **Recommendation**: Use CSV for simple flat data, JSON for everything else.
 
@@ -523,13 +523,13 @@ For more details, see [benchmarks/README.md](../benchmarks/README.md).
 ### Issue: Slow database inserts
 
 **Diagnostics**:
-1. Check transaction strategy: `AUTO_COMMIT` is 2-3× slower than `BATCH`.
+1. Check transaction strategy: `auto_commit` is 2-3× slower than `per_batch`.
 2. Check batch size: default (100) is conservative — try 500.
 3. Check network: `localhost` vs remote DB makes a large throughput difference.
 4. Check nested depth: 3-level nested structures produce many INSERTs per record.
 
 **Solutions**:
-- Switch to `transaction_strategy: BATCH`
+- Switch to `transaction_strategy: per_batch`
 - Increase `batch_size` to 500-1000
 - For nested structures, target a simpler schema or reduce array cardinality
 
@@ -561,53 +561,11 @@ For more troubleshooting, see [README.md](../README.md#troubleshooting) or open 
 - ✅ E2E benchmarks: 54 tests across 2 destinations × 3 formats × 3 threads × 3 memory configs
 - ✅ Database E2E benchmarking: invoice nested structure (invoices → issuer, recipient, line_items)
 - ✅ Database JMH component benchmarks: flat (57K–85K ops/s) and nested (2.5K–3.3K ops/s), 16-configuration matrix (4 batch sizes × 2 transaction strategies)
+- ✅ Serializer JMH component benchmarks: JSON, CSV, Protobuf × simple/complex/nested (`SerializerBenchmark`)
 
 **Planned**:
-- 📋 Serializer JMH component benchmarks (JSON, CSV, Protobuf isolated throughput)
 - 📋 Distributed generation (external orchestrator assigning non-overlapping seeds and record ranges across multiple instances)
 - 📋 GPU acceleration for primitives (experimental)
-
----
-
-## Performance Tuning Guide
-
-### 1. Generator Selection
-
-| Type | Throughput | Use when |
-|------|-----------|----------|
-| Primitives (`int`, `boolean`, `char`) | 10M+ ops/s | Volume testing, load generation |
-| Semantic / Datafaker | 13–154K ops/s | Realism required (names, emails, etc.) |
-
-**Rule of thumb**: Datafaker is ~1,000× slower. Use primitives for volume, semantic types for realism.
-
-### 2. Data Complexity
-
-| Structure | Throughput |
-|-----------|-----------|
-| Flat object (5 fields) | ~100K ops/s |
-| Nested objects (2–3 levels) | ~10–50K ops/s |
-| Arrays (10–100 elements) | ~50K–1M ops/s |
-
-### 3. Thread Count
-
-```bash
---threads $(nproc)             # primitive-heavy: use all CPU cores
---threads 4                    # Datafaker-heavy: I/O bound, 4 is enough
---threads 2                    # memory-constrained environments
-```
-
-### 4. File I/O
-
-- **Buffer**: 64KB internal default
-- **Batch writes**: 1,000 records/batch (configurable via `conf.batch_size`)
-- **Compression**: `compress: true` gives 70–80% size reduction at the cost of slower writes
-- **Format**: CSV serialises ~same speed as JSON (~2.6M ops/s); use CSV for flat tabular data, JSON for nested structures, Protobuf for 50–70% smaller binary output
-
-### 5. Kafka / Database
-
-- Increase `conf.batch_size` to amortise round-trip latency (start at 1,000, tune up)
-- Use `sync: false` (async) for Kafka throughput; `sync: true` for reliability
-- Use `transaction_strategy: per_batch` for DB — `per_job` holds one transaction open for the full run
 
 ---
 
