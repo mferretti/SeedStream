@@ -32,6 +32,15 @@ public final class Defaults {
   public static final String DATE = "date[2020-01-01..2030-12-31]";
   public static final String TIMESTAMP = "timestamp[now-365d..now]";
   public static final String STRING = "char[1..50]";
+
+  /**
+   * ID-pool range appended to synthesized flat foreign-key refs. A bare {@code ref[t.col]} is
+   * rejected by the engine ({@code ReferenceGenerator} requires a range); {@code 1..count} ties the
+   * pool to the job's record count so the emitted YAML runs at any scale. Used as {@code ref[t.col,
+   * 1..count]}.
+   */
+  public static final String REF_POOL = "1..count";
+
   public static final int ARRAY_MIN = 1;
   public static final int ARRAY_MAX = 10;
 

@@ -71,13 +71,13 @@ class DdlInspectorTest {
   @Test
   void shouldMapTableLevelForeignKeyToRef(@TempDir Path dir) throws IOException {
     assertThat(datatypesOf(inspect(dir), "orders"))
-        .containsEntry("customer_id", "ref[customers.id]");
+        .containsEntry("customer_id", "ref[customers.id, 1..count]");
   }
 
   @Test
   void shouldMapInlineForeignKeyToRef(@TempDir Path dir) throws IOException {
     assertThat(datatypesOf(inspect(dir), "orders"))
-        .containsEntry("product_id", "ref[products.sku]");
+        .containsEntry("product_id", "ref[products.sku, 1..count]");
   }
 
   @Test

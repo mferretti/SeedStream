@@ -173,9 +173,11 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   - native `UUID` / `UNIQUEIDENTIFIER` → the `uuid` datafaker key (or `char[36..36]` fallback)
   Genuinely opaque types (`JSON`, `JSONB`, `BYTEA`, `GEOMETRY`, …) still fall back to `char[1..50]`
   flagged `UNKNOWN_TYPE`.
-- Foreign keys → `ref[table.column]`: table-level `FOREIGN KEY` constraints (reliable) and inline
-  column `REFERENCES table(col)` (best-effort token scan). Optionally inverted into nested documents
-  — see §9.
+- Foreign keys → `ref[table.column, 1..count]`: table-level `FOREIGN KEY` constraints (reliable)
+  and inline
+  column `REFERENCES table(col)` (best-effort token scan). The `1..count` ID-pool range is appended
+  by default — a bare `ref[t.col]` is rejected by the engine — so the pool scales with `--count` and
+  the emitted YAML runs at any size. Optionally inverted into nested documents — see §9.
 - String columns run through the same `NameHints` before falling back to `char[1..n]`.
 
 ## 8. Out of scope (with rationale)
@@ -206,7 +208,7 @@ Now implemented (previously listed here):
 
 ## 9. FK-inversion nesting (opt-in)
 
-Foreign keys default to flat `ref[parent.column]` (child → parent), matching the DB. With `--nest`
+Foreign keys default to flat `ref[parent.column, 1..count]` (child → parent), matching the DB. With `--nest`
 the DDL inspector inverts `1:n` / `1:1` FKs into the direction SeedStream embeds — a parent carrying
 its children as nested documents:
 

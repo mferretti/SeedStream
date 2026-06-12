@@ -171,7 +171,7 @@ data:
 
 Fields with **no comment** were mapped from explicit schema information (declared SQL types, OpenAPI `format`, `enum`, numeric bounds) and don't need review. The CLI summary reports the total count: `inspect complete: 3 written, 0 skipped, 2 fields flagged for review (commented)`.
 
-**Foreign keys → flat references by default**: each foreign key becomes a scalar `ref[parent_table.column]` on the child structure, so every table maps to its own independent, joinable dataset that scales with `--count`. For `customer → invoice → invoice_item` that is three flat structures (`invoice.customer_id: ref[customer.id]`, `invoice_item.invoice_id: ref[invoice.id]`).
+**Foreign keys → flat references by default**: each foreign key becomes a scalar `ref[parent_table.column, 1..count]` on the child structure, so every table maps to its own independent, joinable dataset that scales with `--count`. For `customer → invoice → invoice_item` that is three flat structures (`invoice.customer_id: ref[customer.id, 1..count]`, `invoice_item.invoice_id: ref[invoice.id, 1..count]`).
 
 **Opt-in nesting** (`--nest`): the DDL inspector can invert `1:n` / `1:1` foreign keys into embedded documents — the same `customer → invoice → invoice_item` chain then emits a `customer` that carries `invoices: array[object[invoice], 1..10]` and an `invoice` that carries `invoice_items: array[object[invoice_item], 1..10]`:
 

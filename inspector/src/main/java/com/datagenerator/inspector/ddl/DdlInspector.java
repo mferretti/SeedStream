@@ -16,6 +16,7 @@
 
 package com.datagenerator.inspector.ddl;
 
+import com.datagenerator.inspector.Defaults;
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.MappedType;
@@ -251,7 +252,7 @@ public class DdlInspector {
           String referenced = columnAt(referencedColumns, i);
           result.put(
               unquote(localColumns.get(i)).toLowerCase(Locale.ROOT),
-              "ref[" + refTable + "." + unquote(referenced) + "]");
+              "ref[" + refTable + "." + unquote(referenced) + ", " + Defaults.REF_POOL + "]");
         }
       }
     }
@@ -278,7 +279,13 @@ public class DdlInspector {
         referenced = specs.get(i + 2).replaceAll("[()]", "");
       }
       return Optional.of(
-          "ref[" + Names.toSnakeCase(unquote(table)) + "." + unquote(referenced) + "]");
+          "ref["
+              + Names.toSnakeCase(unquote(table))
+              + "."
+              + unquote(referenced)
+              + ", "
+              + Defaults.REF_POOL
+              + "]");
     }
     return Optional.empty();
   }
