@@ -16,6 +16,7 @@
 
 package com.datagenerator.schema.secret;
 
+import com.datagenerator.core.security.UrlValidator;
 import com.datagenerator.schema.exception.SecretResolutionException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,8 +38,8 @@ import lombok.extern.slf4j.Slf4j;
  * <p>KV v2 responses ({@code data.data.*}) are detected automatically. KV v1 ({@code data.*}) is
  * used as a fallback.
  *
- * <p><b>Authentication:</b> Vault token is read from the {@code VAULT_TOKEN} environment variable
- * (or {@code VAULT_TOKEN} system property for tests). It is never read from YAML config.
+ * <p><b>Authentication:</b> Vault token is read from the {@code VAULT_TOKEN} environment variable.
+ * It is never read from YAML config.
  *
  * <p><b>Security:</b> Resolved values are never logged.
  */
@@ -52,6 +53,7 @@ public final class VaultSecretResolver implements SecretResolver {
   private final String vaultAddr;
   private final String namespace;
   private final HttpClient httpClient;
+  private final java.util.function.UnaryOperator<String> envReader;
 
   public VaultSecretResolver(String addr, String namespace) {
     this(addr, namespace, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
@@ -59,9 +61,23 @@ public final class VaultSecretResolver implements SecretResolver {
 
   /** Package-private constructor for injecting a mock HttpClient in unit tests. */
   VaultSecretResolver(String addr, String namespace, HttpClient client) {
+    this(addr, namespace, client, System::getenv);
+  }
+
+  /** Package-private constructor for injecting both HttpClient and env reader in unit tests. */
+  VaultSecretResolver(
+      String addr,
+      String namespace,
+      HttpClient client,
+      java.util.function.UnaryOperator<String> envReader) {
+    if (addr == null || addr.isBlank()) {
+      throw new SecretResolutionException("vault_addr must not be null or blank");
+    }
+    UrlValidator.validate(addr, "Vault address");
     this.vaultAddr = addr.endsWith("/") ? addr.substring(0, addr.length() - 1) : addr;
     this.namespace = namespace;
     this.httpClient = client;
+    this.envReader = envReader;
   }
 
   @Override
@@ -70,10 +86,7 @@ public final class VaultSecretResolver implements SecretResolver {
     String secretPath = sp.id();
     String field = sp.field();
 
-    String token = System.getenv(TOKEN_ENV);
-    if (token == null) {
-      token = System.getProperty(TOKEN_ENV);
-    }
+    String token = envReader.apply(TOKEN_ENV);
     if (token == null) {
       throw new SecretResolutionException(
           "VAULT_TOKEN environment variable not set; required for Vault secret resolver");

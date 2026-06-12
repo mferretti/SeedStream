@@ -17,6 +17,8 @@
 package com.datagenerator.core.seed;
 
 import com.datagenerator.core.exception.SeedResolutionException;
+import com.datagenerator.core.security.PathValidator;
+import com.datagenerator.core.security.UrlValidator;
 import com.datagenerator.core.util.LogUtils;
 import java.io.IOException;
 import java.net.URI;
@@ -48,13 +50,23 @@ public class SeedResolver {
 
   // Optional test-injected client (package-private constructor)
   private final HttpClient injectedHttpClient;
+  // Injectable env reader for testing (defaults to System::getenv)
+  private final java.util.function.UnaryOperator<String> envReader;
 
   public SeedResolver() {
     this.injectedHttpClient = null;
+    this.envReader = System::getenv;
   }
 
   SeedResolver(HttpClient client) {
     this.injectedHttpClient = client;
+    this.envReader = System::getenv;
+  }
+
+  /** Package-private constructor for injecting both HttpClient and env reader in unit tests. */
+  SeedResolver(HttpClient client, java.util.function.UnaryOperator<String> envReader) {
+    this.injectedHttpClient = client;
+    this.envReader = envReader;
   }
 
   /**
@@ -93,7 +105,7 @@ public class SeedResolver {
   }
 
   private long resolveFile(SeedConfig.FileSeed fileSeed) {
-    Path path = Path.of(fileSeed.getPath());
+    Path path = PathValidator.validate(fileSeed.getPath(), null, "seed file path");
     if (!Files.exists(path)) {
       throw new SeedResolutionException("Seed file not found: " + path);
     }
@@ -123,12 +135,7 @@ public class SeedResolver {
 
   private long resolveEnv(SeedConfig.EnvSeed envSeed) {
     String varName = envSeed.getName();
-    String value = System.getenv(varName);
-
-    // Fallback to system property if environment variable not found (useful for testing)
-    if (value == null || value.isBlank()) {
-      value = System.getProperty(varName);
-    }
+    String value = envReader.apply(varName);
 
     if (value == null || value.isBlank()) {
       throw new SeedResolutionException(
@@ -152,6 +159,7 @@ public class SeedResolver {
 
   private long resolveRemote(SeedConfig.RemoteSeed remoteSeed) {
     String url = remoteSeed.getUrl();
+    UrlValidator.validate(url, "remote seed URL");
     HttpClient client = injectedHttpClient != null ? injectedHttpClient : HttpClientHolder.INSTANCE;
     HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
 

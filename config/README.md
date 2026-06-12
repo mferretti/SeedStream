@@ -786,7 +786,10 @@ Generate a key and encrypt credentials with the `encrypt` CLI command:
 
 ```bash
 export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
-./seedstream encrypt "my-db-password"
+# Pipe via stdin — value not visible in ps or shell history:
+echo -n "my-db-password" | ./seedstream encrypt
+# Or run without argument to be prompted interactively (value hidden at terminal):
+./seedstream encrypt
 # → AES256GCM:BASE64ENCODED...
 ```
 

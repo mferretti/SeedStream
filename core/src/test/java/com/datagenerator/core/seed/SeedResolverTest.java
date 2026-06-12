@@ -99,13 +99,10 @@ class SeedResolverTest {
 
   @Test
   void shouldResolveEnvSeed() {
-    System.setProperty(ENV_SEED_KEY, "99887766");
-    try {
-      SeedConfig.EnvSeed config = new SeedConfig.EnvSeed("env", ENV_SEED_KEY);
-      assertThat(resolver.resolve(config)).isEqualTo(99887766L);
-    } finally {
-      System.clearProperty(ENV_SEED_KEY);
-    }
+    SeedResolver envResolver =
+        new SeedResolver(null, key -> ENV_SEED_KEY.equals(key) ? "99887766" : null);
+    SeedConfig.EnvSeed config = new SeedConfig.EnvSeed("env", ENV_SEED_KEY);
+    assertThat(envResolver.resolve(config)).isEqualTo(99887766L);
   }
 
   @Test

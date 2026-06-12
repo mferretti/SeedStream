@@ -95,7 +95,9 @@ git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
 
 # Encrypt a credential for embedding in job YAML
 export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
-./gradlew :cli:run --args="encrypt my-db-password"
+echo -n "my-db-password" | ./gradlew :cli:run --args="encrypt"
+# Or interactively (value hidden at terminal):
+./gradlew :cli:run --args="encrypt"
 # Output already includes the AES256GCM: prefix, e.g.:  AES256GCM:BASE64CIPHERTEXT...
 # Paste it verbatim into job YAML as: password: "${SECRET:enc:<output>}"
 ```
@@ -265,8 +267,10 @@ Database passwords, Kafka credentials, and other secrets can be stored securely 
 # Generate a key (store it safely — you need it to decrypt)
 export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
-# Encrypt a credential
-./seedstream encrypt "my-db-password"
+# Encrypt a credential — pipe via stdin (value not visible in ps or shell history)
+echo -n "my-db-password" | ./seedstream encrypt
+# Or run without argument to be prompted interactively (value hidden at terminal)
+./seedstream encrypt
 # → AES256GCM:BASE64CIPHERTEXT...
 ```
 

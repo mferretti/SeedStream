@@ -17,7 +17,12 @@
 package com.datagenerator.cli;
 
 import com.datagenerator.schema.secret.AesGcmCrypto;
+import java.io.BufferedReader;
+import java.io.Console;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
@@ -34,12 +39,18 @@ import picocli.CommandLine.Spec;
  * <p><b>Usage:</b>
  *
  * <pre>
- * # Using an env var key (default):
+ * # Secure: read plaintext from stdin (not visible in shell history or ps)
  * export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
+ * echo -n "my-db-password" | ./seedstream encrypt
+ *
+ * # Or omit argument to be prompted interactively:
+ * ./seedstream encrypt
+ *
+ * # Legacy (insecure): plaintext as argument (visible in ps / shell history)
  * ./seedstream encrypt "my-db-password"
  *
  * # Using a key file:
- * ./seedstream encrypt --key-file /etc/seedstream/key.hex "my-db-password"
+ * ./seedstream encrypt --key-file /etc/seedstream/key.hex
  *
  * # Output (paste into YAML as ${SECRET:enc:AES256GCM:...}):
  * AES256GCM:BASE64CIPHERTEXT...
@@ -59,9 +70,17 @@ public class EncryptCommand implements Callable<Integer> {
   /** Overridable in tests; production always uses {@code System::getenv}. */
   Function<String, String> envReader = System::getenv;
 
+  /** Overridable in tests to inject a non-interactive stdin. */
+  InputStream stdinSupplier = System.in;
+
   @Spec CommandSpec spec;
 
-  @Parameters(index = "0", description = "Plaintext value to encrypt")
+  @Parameters(
+      index = "0",
+      arity = "0..1",
+      description =
+          "Plaintext value to encrypt. Omit (or use '-') to read from stdin "
+              + "(recommended: avoids plaintext in shell history and process list).")
   String plaintext;
 
   @Option(
@@ -85,13 +104,53 @@ public class EncryptCommand implements Callable<Integer> {
     if (keyHex == null) {
       return 1;
     }
+    String value = readPlaintext();
+    if (value == null) {
+      return 1;
+    }
     try {
       byte[] key = AesGcmCrypto.hexToKey(keyHex);
-      spec.commandLine().getOut().println(AesGcmCrypto.encrypt(key, plaintext));
+      spec.commandLine().getOut().println(AesGcmCrypto.encrypt(key, value));
       return 0;
     } catch (Exception e) { // NOPMD: caught by method-level suppression
       spec.commandLine().getErr().println("Encryption failed: " + e.getMessage());
       return 1;
+    }
+  }
+
+  /**
+   * Returns the plaintext to encrypt.
+   *
+   * <p>Priority: (1) positional argument if provided and not {@code "-"}; (2) stdin. Reading from
+   * stdin avoids the value appearing in {@code ps} output or shell history.
+   */
+  private String readPlaintext() {
+    if (plaintext != null && !"-".equals(plaintext)) {
+      return plaintext;
+    }
+    // Read from stdin — prefer Console.readPassword() for interactive terminals (hides typing)
+    Console console = System.console();
+    if (console != null && stdinSupplier == System.in) {
+      char[] chars = console.readPassword("Enter plaintext to encrypt: ");
+      if (chars == null || chars.length == 0) {
+        spec.commandLine().getErr().println("Error: no plaintext provided.");
+        return null;
+      }
+      return new String(chars);
+    }
+    // Non-interactive: read from injected InputStream (piped input or test)
+    try {
+      String value =
+          new BufferedReader(new InputStreamReader(stdinSupplier, StandardCharsets.UTF_8))
+              .readLine();
+      if (value == null || value.isBlank()) {
+        spec.commandLine().getErr().println("Error: no plaintext provided on stdin.");
+        return null;
+      }
+      return value;
+    } catch (IOException e) {
+      spec.commandLine().getErr().println("Error reading stdin: " + e.getMessage());
+      return null;
     }
   }
 

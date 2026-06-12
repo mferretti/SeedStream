@@ -413,8 +413,11 @@ public class ExecuteCommand implements Callable<Integer> {
       permValidator.validateSeedFile(Path.of(fileSeed.getPath()));
     }
 
+    // 1b. Build secret resolver early — needed for seed auth substitution and destination conf
+    SecretResolver secretResolver = SecretResolverFactory.create(jobConfig.getSecrets());
+
     // 2. Resolve seed
-    long seed = resolveSeed(jobConfig);
+    long seed = resolveSeed(jobConfig, secretResolver);
     log.info("Using seed: {}", seed);
 
     // 3. Load data structure
@@ -445,7 +448,8 @@ public class ExecuteCommand implements Callable<Integer> {
     log.info("Created serializer: {}", serializer.getFormatName());
 
     // 5. Create destination adapter
-    DestinationAdapter destination = createDestination(jobConfig, serializer, dataStructure);
+    DestinationAdapter destination =
+        createDestination(jobConfig, serializer, dataStructure, secretResolver);
     log.info("Created destination: {}", destination.getDestinationType());
 
     // 6. Set up generation context
@@ -537,7 +541,7 @@ public class ExecuteCommand implements Callable<Integer> {
    * @return resolved seed value (never null)
    */
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
-  private long resolveSeed(JobConfig jobConfig) {
+  private long resolveSeed(JobConfig jobConfig, SecretResolver secretResolver) {
     if (seedOverride != null) {
       log.info("Using seed override from command line: {}", seedOverride);
       return seedOverride;
@@ -549,6 +553,12 @@ public class ExecuteCommand implements Callable<Integer> {
       return 0L;
     }
 
+    // Substitute ${SECRET:...} / ${ENV_VAR} in remote-seed auth fields so credentials
+    // never need to be stored in plaintext in job YAML.
+    if (seedConfig instanceof SeedConfig.RemoteSeed remoteSeed && remoteSeed.getAuth() != null) {
+      seedConfig = substituteRemoteSeedAuth(remoteSeed, secretResolver);
+    }
+
     try {
       SeedResolver resolver = new SeedResolver();
       long resolvedSeed = resolver.resolve(seedConfig);
@@ -558,6 +568,21 @@ public class ExecuteCommand implements Callable<Integer> {
       log.error("Failed to resolve seed, using default: 0", e);
       return 0L;
     }
+  }
+
+  /** Returns a copy of {@code remoteSeed} with all auth credential fields substituted. */
+  private static SeedConfig.RemoteSeed substituteRemoteSeedAuth(
+      SeedConfig.RemoteSeed remoteSeed, SecretResolver secretResolver) {
+    SeedConfig.RemoteSeed.AuthConfig orig = remoteSeed.getAuth();
+    SeedConfig.RemoteSeed.AuthConfig substituted =
+        new SeedConfig.RemoteSeed.AuthConfig(
+            orig.getType(),
+            ConfigSubstitutor.substitute(orig.getToken(), secretResolver),
+            ConfigSubstitutor.substitute(orig.getUsername(), secretResolver),
+            ConfigSubstitutor.substitute(orig.getPassword(), secretResolver),
+            orig.getKey(),
+            ConfigSubstitutor.substitute(orig.getValue(), secretResolver));
+    return new SeedConfig.RemoteSeed(remoteSeed.getType(), remoteSeed.getUrl(), substituted);
   }
 
   /**
@@ -614,8 +639,10 @@ public class ExecuteCommand implements Callable<Integer> {
   }
 
   private DestinationAdapter createDestination(
-      JobConfig jobConfig, FormatSerializer serializer, DataStructure dataStructure) {
-    SecretResolver secretResolver = SecretResolverFactory.create(jobConfig.getSecrets());
+      JobConfig jobConfig,
+      FormatSerializer serializer,
+      DataStructure dataStructure,
+      SecretResolver secretResolver) {
     String normalizedType =
         jobConfig.getType() != null ? jobConfig.getType().toLowerCase(Locale.ROOT) : "";
     JsonNode conf = jobConfig.getConf();

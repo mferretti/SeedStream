@@ -109,7 +109,7 @@ Masking: before any log statement, replace resolved secret values with `***`.
 ## Acceptance Criteria
 
 - ✅ `SecretResolver` interface in `schema` module (`schema/secret/` package)
-- ✅ `EnvSecretResolver` wraps existing env-var logic (backward compatible, `System.getProperty` fallback for tests)
+- ✅ `EnvSecretResolver` resolves from `System.getenv()` only — no `System.getProperty` fallback (removed; tests use injectable `envReader`)
 - ✅ `VaultSecretResolver` resolves KV v2 secrets over HTTPS; KV v1 auto-detected via `data.data` structure
 - ✅ `${SECRET:path}` syntax wired into config substitution via `ConfigSubstitutor`
 - ✅ `${ENV_VAR}` syntax unchanged and still works (always resolved from env, independent of configured resolver)

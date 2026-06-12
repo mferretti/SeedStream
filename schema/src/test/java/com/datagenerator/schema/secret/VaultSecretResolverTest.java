@@ -26,9 +26,8 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,18 +46,12 @@ class VaultSecretResolverTest {
   private static final String VAULT_TOKEN_KEY = "VAULT_TOKEN";
   private static final String SECRET_PATH = "secret/data/app#key";
 
+  /** Env reader that always returns the test token for VAULT_TOKEN. */
+  private static final UnaryOperator<String> TEST_ENV =
+      key -> VAULT_TOKEN_KEY.equals(key) ? TEST_TOKEN : null;
+
   @Mock HttpClient mockClient;
   @Mock HttpResponse<String> mockResponse;
-
-  @BeforeEach
-  void setUp() {
-    System.setProperty(VAULT_TOKEN_KEY, TEST_TOKEN);
-  }
-
-  @AfterEach
-  void tearDown() {
-    System.clearProperty(VAULT_TOKEN_KEY);
-  }
 
   static Stream<Arguments> vaultResolveScenarios() {
     return Stream.of(
@@ -81,7 +74,7 @@ class VaultSecretResolverTest {
     when(mockResponse.body()).thenReturn(body);
     doReturn(mockResponse).when(mockClient).send(any(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
     assertThat(resolver.resolve(path)).isEqualTo(expected);
   }
 
@@ -90,7 +83,7 @@ class VaultSecretResolverTest {
     when(mockResponse.statusCode()).thenReturn(403);
     doReturn(mockResponse).when(mockClient).send(any(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
     assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("403");
@@ -103,7 +96,7 @@ class VaultSecretResolverTest {
     when(mockResponse.body()).thenReturn(body);
     doReturn(mockResponse).when(mockClient).send(any(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
     assertThatThrownBy(() -> resolver.resolve("secret/data/app#nonexistent"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("nonexistent");
@@ -116,7 +109,7 @@ class VaultSecretResolverTest {
     when(mockResponse.body()).thenReturn(body);
     doReturn(mockResponse).when(mockClient).send(any(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
     assertThatThrownBy(() -> resolver.resolve("secret/data/app"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("multiple fields");
@@ -130,7 +123,8 @@ class VaultSecretResolverTest {
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, "myteam", mockClient);
+    VaultSecretResolver resolver =
+        new VaultSecretResolver(VAULT_ADDR, "myteam", mockClient, TEST_ENV);
     resolver.resolve("secret/data/app#token");
 
     assertThat(captor.getValue().headers().firstValue("X-Vault-Namespace")).hasValue("myteam");
@@ -144,7 +138,7 @@ class VaultSecretResolverTest {
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
     resolver.resolve(SECRET_PATH);
 
     assertThat(captor.getValue().headers().firstValue("X-Vault-Token")).hasValue(TEST_TOKEN);
@@ -152,9 +146,8 @@ class VaultSecretResolverTest {
 
   @Test
   void shouldThrowWhenVaultTokenNotSet() {
-    System.clearProperty(VAULT_TOKEN_KEY);
-
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver =
+        new VaultSecretResolver(VAULT_ADDR, null, mockClient, key -> null);
     assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining(VAULT_TOKEN_KEY);
@@ -164,7 +157,7 @@ class VaultSecretResolverTest {
   void shouldThrowOnNetworkFailure() throws Exception {
     when(mockClient.send(any(), any())).thenThrow(new IOException("connection refused"));
 
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient);
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
     assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining(VAULT_ADDR);
@@ -178,7 +171,8 @@ class VaultSecretResolverTest {
     ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
     doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
 
-    VaultSecretResolver resolver = new VaultSecretResolver("http://vault:8200/", null, mockClient);
+    VaultSecretResolver resolver =
+        new VaultSecretResolver("http://vault:8200/", null, mockClient, TEST_ENV);
     resolver.resolve(SECRET_PATH);
 
     assertThat(captor.getValue().uri()).hasToString("http://vault:8200/v1/secret/data/app");

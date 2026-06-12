@@ -16,6 +16,7 @@
 
 package com.datagenerator.formats.avro;
 
+import com.datagenerator.core.security.UrlValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -61,6 +62,7 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
     if (url == null || url.isBlank()) {
       throw new SchemaRegistryException("schema_registry_url is required for avro-registry format");
     }
+    UrlValidator.validate(url, "Schema Registry URL");
     this.baseUrl = normalizeUrl(url);
     this.authHeader = buildAuthHeader(authType, token);
     this.httpClient = SHARED_HTTP_CLIENT;

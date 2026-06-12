@@ -42,13 +42,10 @@ class ConfigSubstitutorTest {
 
   @Test
   void shouldResolveEnvVarSyntaxFromEnvironment() {
-    System.setProperty("SEEDSTREAM_TEST_SUBST_VAR", "env-password");
-    try {
-      assertThat(ConfigSubstitutor.substitute("${SEEDSTREAM_TEST_SUBST_VAR}", mockResolver))
-          .isEqualTo("env-password");
-    } finally {
-      System.clearProperty("SEEDSTREAM_TEST_SUBST_VAR");
-    }
+    // PATH is always set in any Unix/CI environment and has no Java property equivalent
+    String expected = System.getenv("PATH");
+    assertThat(expected).isNotNull();
+    assertThat(ConfigSubstitutor.substitute("${PATH}", mockResolver)).isEqualTo(expected);
   }
 
   @Test
@@ -104,15 +101,10 @@ class ConfigSubstitutorTest {
 
   @Test
   void shouldUseEnvResolverNotSecretResolverForDollarBracePattern() {
-    // ${VAR} always goes to env, regardless of the configured secretResolver
-    System.setProperty("SEEDSTREAM_TEST_ENV_ONLY", "from-env");
-    try {
-      // Even with a custom resolver that would return something different, ${VAR} hits env
-      SecretResolver customResolver = path -> "SHOULD-NOT-BE-CALLED";
-      assertThat(ConfigSubstitutor.substitute("${SEEDSTREAM_TEST_ENV_ONLY}", customResolver))
-          .isEqualTo("from-env");
-    } finally {
-      System.clearProperty("SEEDSTREAM_TEST_ENV_ONLY");
-    }
+    // ${VAR} always goes to env, regardless of the configured secretResolver.
+    // PATH has no Java property equivalent — guaranteed set in any Unix/CI environment.
+    String expected = System.getenv("PATH");
+    SecretResolver customResolver = path -> "SHOULD-NOT-BE-CALLED";
+    assertThat(ConfigSubstitutor.substitute("${PATH}", customResolver)).isEqualTo(expected);
   }
 }

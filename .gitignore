@@ -55,3 +55,6 @@ graphify-out/
 
 # SonarQube scanner working directory (local artifacts)
 .scannerwork/
+
+# Internal security working document
+SECURITY-FINDINGS.md

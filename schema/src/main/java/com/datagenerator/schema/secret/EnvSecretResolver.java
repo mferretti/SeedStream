@@ -23,9 +23,6 @@ import com.datagenerator.schema.exception.SecretResolutionException;
  *
  * <p>Used both as the default {@code ${SECRET:VAR_NAME}} resolver when no {@code secrets:} block is
  * configured, and internally by {@link ConfigSubstitutor} for legacy {@code ${VAR_NAME}} syntax.
- *
- * <p>Falls back to {@link System#getProperty} when the environment variable is not set — this
- * allows test code to inject values without needing OS-level env var manipulation.
  */
 @SuppressWarnings("java:S6548")
 public final class EnvSecretResolver implements SecretResolver {
@@ -37,9 +34,6 @@ public final class EnvSecretResolver implements SecretResolver {
   @Override
   public String resolve(String varName) {
     String value = System.getenv(varName);
-    if (value == null) {
-      value = System.getProperty(varName);
-    }
     if (value == null) {
       throw new SecretResolutionException(
           "Environment variable '" + varName + "' is not set (referenced in job config)");

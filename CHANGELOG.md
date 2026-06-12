@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Secret Management
 - **`${SECRET:enc:AES256GCM:<ciphertext>}`** — inline AES-256-GCM encrypted secrets in job YAML; key loaded from env var (`SEEDSTREAM_ENCRYPTION_KEY`) or key file (`--key-file`)
-- **`encrypt` CLI command** — `seedstream encrypt "my-password"` produces a ciphertext token ready to paste into YAML; supports `--key-env` and `--key-file` flags
+- **`encrypt` CLI command** — `echo -n "my-password" | seedstream encrypt` (or interactive prompt) produces a ciphertext token ready to paste into YAML; supports `--key-env` and `--key-file` flags; plaintext-as-arg form still accepted but discouraged (visible in shell history)
 - **HashiCorp Vault backend** (`type: vault`) — KV v1/v2 auto-detection; field extraction via `#fieldname` suffix; bearer auth
 - **AWS Secrets Manager backend** (`type: aws`) — resolves `SecretString` and `SecretBinary`; region-configurable; uses default AWS credential chain
 - **Azure Key Vault backend** (`type: azure`) — resolves secrets by name/version; uses `DefaultAzureCredential`

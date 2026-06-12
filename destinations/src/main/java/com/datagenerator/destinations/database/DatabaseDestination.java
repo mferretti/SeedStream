@@ -360,8 +360,8 @@ public class DatabaseDestination extends AbstractDestination {
   @SuppressFBWarnings(
       value = "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
       justification =
-          "SQL is built from schema-derived column names, not from user-supplied input; "
-              + "not a SQL injection risk")
+          "Table name and column names are validated by validateIdentifier(); "
+              + "any identifier with non-alphanumeric/underscore chars is rejected before reaching this point")
   private void initializeStatement(Map<String, Object> firstRecord) {
     columnNames = new ArrayList<>(firstRecord.keySet());
     String sql = buildInsertSql(config.getTableName(), columnNames);
@@ -464,14 +464,14 @@ public class DatabaseDestination extends AbstractDestination {
   @SuppressWarnings({
     "SqlSourceToSinkFlow",
     "java:S2077"
-  }) // table/column names from job config YAML, not user runtime input
+  }) // identifiers are ANSI-quoted and validated by quoteIdentifier()
   @SuppressFBWarnings(
       value = {
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
         "OBL_UNSATISFIED_OBLIGATION"
       },
       justification =
-          "SQL is built from schema-derived column names (not user input); "
+          "Table name and column names are validated by validateIdentifier(); "
               + "PreparedStatement is stored in nestedStatements immediately after creation — "
               + "no resource leak path exists")
   private void initNestedStatementIfAbsent(String tableName, Map<String, Object> firstRecord) {
@@ -490,11 +490,37 @@ public class DatabaseDestination extends AbstractDestination {
     }
   }
 
+  /**
+   * Validates a SQL identifier against a strict allowlist pattern to prevent SQL injection.
+   *
+   * <p>Permits only standard SQL identifiers: letters, digits, underscores, and dollar signs,
+   * starting with a letter or underscore. Rejects anything else (spaces, quotes, semicolons, etc.)
+   * before it can reach the statement builder.
+   *
+   * @throws DestinationException if the identifier contains unsafe characters
+   */
+  static String validateIdentifier(String name) {
+    if (name == null || name.isEmpty()) {
+      throw new DestinationException("SQL identifier must not be null or empty");
+    }
+    if (!name.matches("[a-zA-Z_][a-zA-Z0-9_$]*")) {
+      throw new DestinationException(
+          "SQL identifier contains illegal characters (only letters, digits, _ and $ allowed): '"
+              + name
+              + "'");
+    }
+    return name;
+  }
+
   private static String buildInsertSql(String tableName, List<String> columns) {
-    String cols = String.join(", ", columns);
+    String safeTable = validateIdentifier(tableName);
+    String cols =
+        columns.stream()
+            .map(DatabaseDestination::validateIdentifier)
+            .collect(Collectors.joining(", "));
     String placeholders = "?,".repeat(columns.size());
     placeholders = placeholders.substring(0, placeholders.length() - 1);
-    return "INSERT INTO " + tableName + " (" + cols + ") VALUES (" + placeholders + ")";
+    return "INSERT INTO " + safeTable + " (" + cols + ") VALUES (" + placeholders + ")";
   }
 
   private void executeNestedInsert(String tableName, Map<String, Object> data) {

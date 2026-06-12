@@ -93,25 +93,18 @@ class SeedResolverIT extends IntegrationTest {
 
   @Test
   void shouldResolveSeedFromEnvironmentVariable() {
-    // Given: Environment variable with seed
-    String envVar = "TEST_SEED_" + System.currentTimeMillis();
+    // Given: Environment variable with seed (injected via env reader for portability)
+    String envVar = "TEST_SEED_IT";
     String seedValue = "555666777";
 
-    // Set environment variable (note: this won't work in actual JVM runtime,
-    // so we'll use a system property as a workaround for testing)
-    System.setProperty(envVar, seedValue);
+    SeedResolver envResolver = new SeedResolver(null, key -> envVar.equals(key) ? seedValue : null);
+    SeedConfig config = new SeedConfig.EnvSeed("env", envVar);
 
-    try {
-      SeedConfig config = new SeedConfig.EnvSeed("env", envVar);
+    // When: Resolve seed
+    long seed = envResolver.resolve(config);
 
-      // When: Resolve seed (SeedResolver should check system properties if env var not found)
-      long seed = resolver.resolve(config);
-
-      // Then: Returns value from environment
-      assertThat(seed).isEqualTo(555666777L);
-    } finally {
-      System.clearProperty(envVar);
-    }
+    // Then: Returns value from environment
+    assertThat(seed).isEqualTo(555666777L);
   }
 
   @Test

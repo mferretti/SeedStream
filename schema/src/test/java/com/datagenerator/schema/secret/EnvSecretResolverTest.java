@@ -23,18 +23,6 @@ import org.junit.jupiter.api.Test;
 
 class EnvSecretResolverTest {
 
-  private static final String ENV_KEY = "SEEDSTREAM_TEST_SECRET_ABC";
-
-  @Test
-  void shouldResolveSystemProperty() {
-    System.setProperty(ENV_KEY, "resolved-value");
-    try {
-      assertThat(EnvSecretResolver.INSTANCE.resolve(ENV_KEY)).isEqualTo("resolved-value");
-    } finally {
-      System.clearProperty(ENV_KEY);
-    }
-  }
-
   @Test
   void shouldThrowForUnsetVariable() {
     assertThatThrownBy(
