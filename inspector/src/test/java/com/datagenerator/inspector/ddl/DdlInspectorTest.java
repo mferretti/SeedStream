@@ -62,7 +62,7 @@ class DdlInspectorTest {
         .containsEntry("nickname", "char[1..40]")
         .containsEntry("is_active", "boolean")
         .containsEntry("signup_date", "date[2020-01-01..2030-12-31]")
-        .containsEntry("created_at", "timestamp[now-1y..now]")
+        .containsEntry("created_at", "timestamp[now-365d..now]")
         .containsEntry("balance", "decimal[0.0..9999.99]")
         .containsEntry("bio", "char[1..500]")
         .containsEntry("id", "int[1..999999]");
