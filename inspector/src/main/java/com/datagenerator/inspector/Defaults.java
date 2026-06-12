@@ -30,7 +30,7 @@ public final class Defaults {
   public static final String DECIMAL_MIN = "0.0";
   public static final String DECIMAL_MAX = "9999.99";
   public static final String DATE = "date[2020-01-01..2030-12-31]";
-  public static final String TIMESTAMP = "timestamp[now-1y..now]";
+  public static final String TIMESTAMP = "timestamp[now-365d..now]";
   public static final String STRING = "char[1..50]";
   public static final int ARRAY_MIN = 1;
   public static final int ARRAY_MAX = 10;

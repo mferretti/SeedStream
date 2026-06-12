@@ -20,6 +20,7 @@ import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.StructureYamlWriter;
 import com.datagenerator.inspector.ddl.DdlInspector;
+import com.datagenerator.inspector.ddl.NestingOptions;
 import com.datagenerator.inspector.openapi.OpenApiInspector;
 import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
@@ -87,6 +88,23 @@ public class InspectCommand implements Callable<Integer> {
               + "can target them (see docs/INSPECT-V1-SPEC.md).")
   private Path fakerTypes;
 
+  @Option(
+      names = {"--nest"},
+      arity = "0..1",
+      fallbackValue = "auto",
+      description =
+          "DDL only: invert 1:n/1:1 foreign keys into nested array[object[child]]/object[child]. "
+              + "auto (default when flag given) keeps cycles/M:N/shared children flat; all errors "
+              + "on a true cycle; none is the default when the flag is absent.")
+  private String nest;
+
+  @Option(
+      names = {"--nest-default-count"},
+      description =
+          "DDL only: multiplicity min..max for synthesized nested arrays when the schema gives no "
+              + "hint (default: 1..10).")
+  private String nestDefaultCount;
+
   @Override
   @SuppressWarnings("java:S106")
   public Integer call() {
@@ -97,11 +115,15 @@ public class InspectCommand implements Callable<Integer> {
     if (!loadCustomTypes()) {
       return 2;
     }
+    if (nest != null && !"ddl".equals(resolved)) {
+      log.warn(
+          "--nest ignored for OpenAPI input (nesting comes from the spec's native $ref/array)");
+    }
 
     try {
       Inspection inspection =
           "ddl".equals(resolved)
-              ? new DdlInspector().inspect(inputFile)
+              ? new DdlInspector().inspect(inputFile, resolveNesting(resolved))
               : new OpenApiInspector().inspect(inputFile);
       StructureYamlWriter writer = new StructureYamlWriter();
 
@@ -134,6 +156,14 @@ public class InspectCommand implements Callable<Integer> {
       log.error("inspect failed: {}", e.getMessage());
       return 2;
     }
+  }
+
+  /** Resolves nesting options from the CLI flags ({@code none} when {@code --nest} is absent). */
+  private NestingOptions resolveNesting(String resolved) {
+    if (nest == null || !"ddl".equals(resolved)) {
+      return NestingOptions.none();
+    }
+    return NestingOptions.parse(nest, nestDefaultCount);
   }
 
   /** Loads the optional custom Datafaker types config. Returns false on failure. */

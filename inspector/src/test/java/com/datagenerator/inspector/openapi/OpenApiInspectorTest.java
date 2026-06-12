@@ -102,7 +102,7 @@ class OpenApiInspectorTest {
   void shouldLetFormatWinOverNameHint(@TempDir Path dir) throws IOException {
     // emailVerifiedAt contains the 'email' token but has format date-time -> timestamp wins
     assertThat(datatypesOf(inspect(dir), "customer"))
-        .containsEntry("emailVerifiedAt", "timestamp[now-1y..now]");
+        .containsEntry("emailVerifiedAt", "timestamp[now-365d..now]");
   }
 
   @Test

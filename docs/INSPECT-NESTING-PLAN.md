@@ -1,12 +1,16 @@
-# Plan: FK-inversion nesting for `inspect` (follow-up)
+# Plan: FK-inversion nesting for `inspect`
 
-**Status:** partially implemented. The **OpenAPI** inspector already emits nested types from a
-spec's native structure — `$ref` → `object[child]`, and `array` items → `array[object[child],
-min..max]` (see `OpenApiTypeMapper`). What is **not** implemented is **DDL FK-inversion**: turning
-a relational `1:n` foreign key into a nested `array[object[child]]` on the parent. This plan covers
-that DDL gap. Tracking issue: [#87](https://github.com/mferretti/SeedStream/issues/87).
-**Owner:** unassigned.
+**Status:** ✅ implemented. The **OpenAPI** inspector emits nested types from a spec's native
+structure — `$ref` → `object[child]`, and `array` items → `array[object[child], min..max]` (see
+`OpenApiTypeMapper`). **DDL FK-inversion** is now implemented behind the opt-in `--nest` flag
+(`NestingOptions`, `NestingPlanner`, `Pluralizer`; see `DdlInspector.inspect(Path, NestingOptions)`
+and spec §9). Tracking issue: [#87](https://github.com/mferretti/SeedStream/issues/87).
 **Depends on:** current `inspect` v1 (DDL + OpenAPI inspectors, `ref[]` mapping).
+
+> **Implementation note — demotion (§5.6).** The plan called for removing an embedded child from the
+> top-level output set. That is **not** done: `object[child]` auto-loads `child.yaml`, so every
+> structure must still be written to disk or the reference breaks. "Demotion" is realized as a
+> warning, not file suppression. The embedded child's FK column *is* dropped (§5.7) as planned.
 
 ## 1. Problem
 

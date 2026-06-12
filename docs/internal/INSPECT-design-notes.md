@@ -51,10 +51,10 @@ OpenAPI provides rich semantic information that maps cleanly to SeedStream types
 
 | OpenAPI | SeedStream type |
 |---|---|
-| `type: string, format: email` | `datafaker[internet.emailAddress]` |
+| `type: string, format: email` | `email` |
 | `type: string, format: date` | `date[2020-01-01..2030-12-31]` |
 | `type: string, format: date-time` | `timestamp[now-1y..now]` |
-| `type: string, format: uuid` | `datafaker[internet.uuid]` |
+| `type: string, format: uuid` | `uuid` |
 | `type: string, enum: [A, B, C]` | `enum[A,B,C]` |
 | `type: integer, minimum: 1, maximum: 100` | `int[1..100]` |
 | `type: number` | `decimal[0.0..1000.0]` |
@@ -62,11 +62,11 @@ OpenAPI provides rich semantic information that maps cleanly to SeedStream types
 | `type: string` (no format) | `char[1..100]` (with name-hint heuristics) |
 
 Name-hint heuristics for unformatted strings (applied when no `format` is present):
-- field name contains `email` → `datafaker[internet.emailAddress]`
-- field name contains `phone` → `datafaker[phoneNumber.cellPhone]`
-- field name matches `first_name`, `firstName` → `datafaker[name.firstName]`
-- field name matches `last_name`, `lastName` → `datafaker[name.lastName]`
-- field name matches `city` → `datafaker[address.city]`
+- field name contains `email` → `email`
+- field name contains `phone` → `phone_number`
+- field name matches `first_name`, `firstName` → `first_name`
+- field name matches `last_name`, `lastName` → `last_name`
+- field name matches `city` → `city`
 - etc.
 
 ## DDL mapping (priority 2)

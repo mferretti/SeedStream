@@ -23,15 +23,81 @@ import com.datagenerator.inspector.NameHints;
 import com.datagenerator.inspector.Names;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
  * Maps a SQL column type to a SeedStream datatype string (foreign keys are resolved separately by
  * {@link DdlInspector}). Mapping is mechanical — SQL carries no value semantics, so string columns
- * lean on the shared {@link NameHints}. See {@code docs/INSPECT-V1-SPEC.md} §8 / INSPECT.md DDL
- * table.
+ * lean on the shared {@link NameHints}. See {@code docs/INSPECT-V1-SPEC.md} §7c.
+ *
+ * <p>Type names are first folded to a small canonical alphabet ({@link #canonicalType}) so that
+ * multi-word ANSI forms ({@code CHARACTER VARYING}, {@code DOUBLE PRECISION}, {@code TIMESTAMP WITH
+ * TIME ZONE}) and vendor aliases ({@code SERIAL}, {@code INT8}, {@code UUID}, {@code JSONB}) land
+ * on the same branch as their common synonyms instead of falling through to the unknown-type
+ * default.
  */
 public final class DdlTypeMapper {
+
+  /**
+   * Vendor / multi-word SQL type names folded onto a canonical key. The canonical keys are the ones
+   * the {@link #map} switch branches on; anything absent here passes through unchanged and, if
+   * still unrecognized, defaults to {@link Defaults#STRING} flagged {@code UNKNOWN_TYPE}.
+   */
+  private static final Map<String, String> SYNONYMS =
+      Map.ofEntries(
+          Map.entry("BOOL", "BOOLEAN"),
+          Map.entry("DATETIME", "TIMESTAMP"),
+          Map.entry("SMALLDATETIME", "TIMESTAMP"),
+          Map.entry("TIMESTAMPTZ", "TIMESTAMP"),
+          Map.entry("TIMESTAMP WITH TIME ZONE", "TIMESTAMP"),
+          Map.entry("TIMESTAMP WITHOUT TIME ZONE", "TIMESTAMP"),
+          Map.entry("UNIQUEIDENTIFIER", "UUID"),
+          Map.entry("INTEGER", "INT"),
+          Map.entry("BIGINT", "INT"),
+          Map.entry("SMALLINT", "INT"),
+          Map.entry("TINYINT", "INT"),
+          Map.entry("MEDIUMINT", "INT"),
+          Map.entry("INT2", "INT"),
+          Map.entry("INT4", "INT"),
+          Map.entry("INT8", "INT"),
+          Map.entry("SERIAL", "INT"),
+          Map.entry("BIGSERIAL", "INT"),
+          Map.entry("SMALLSERIAL", "INT"),
+          Map.entry("SERIAL4", "INT"),
+          Map.entry("SERIAL8", "INT"),
+          Map.entry("NUMERIC", "DECIMAL"),
+          Map.entry("NUMBER", "DECIMAL"),
+          Map.entry("DEC", "DECIMAL"),
+          Map.entry("REAL", "DECIMAL"),
+          Map.entry("FLOAT", "DECIMAL"),
+          Map.entry("FLOAT4", "DECIMAL"),
+          Map.entry("FLOAT8", "DECIMAL"),
+          Map.entry("DOUBLE", "DECIMAL"),
+          Map.entry("DOUBLE PRECISION", "DECIMAL"),
+          Map.entry("BINARY_FLOAT", "DECIMAL"),
+          Map.entry("BINARY_DOUBLE", "DECIMAL"),
+          Map.entry("MONEY", "DECIMAL"),
+          Map.entry("SMALLMONEY", "DECIMAL"),
+          Map.entry("CHARACTER", "VARCHAR"),
+          Map.entry("CHARACTER VARYING", "VARCHAR"),
+          Map.entry("CHAR VARYING", "VARCHAR"),
+          Map.entry("NATIONAL CHARACTER", "VARCHAR"),
+          Map.entry("NATIONAL CHARACTER VARYING", "VARCHAR"),
+          Map.entry("NVARCHAR", "VARCHAR"),
+          Map.entry("NCHAR", "VARCHAR"),
+          Map.entry("CHAR", "VARCHAR"),
+          Map.entry("VARCHAR2", "VARCHAR"),
+          Map.entry("NVARCHAR2", "VARCHAR"),
+          Map.entry("VARCHARACTER", "VARCHAR"),
+          Map.entry("STRING", "VARCHAR"),
+          Map.entry("CLOB", "TEXT"),
+          Map.entry("NCLOB", "TEXT"),
+          Map.entry("TINYTEXT", "TEXT"),
+          Map.entry("MEDIUMTEXT", "TEXT"),
+          Map.entry("LONGTEXT", "TEXT"),
+          Map.entry("NTEXT", "TEXT"),
+          Map.entry("LONG VARCHAR", "TEXT"));
 
   /**
    * Maps a column.
@@ -41,23 +107,47 @@ public final class DdlTypeMapper {
    * @param args type arguments (e.g. {@code [255]} for {@code VARCHAR(255)})
    */
   public MappedType map(String columnName, String sqlType, List<String> args) {
-    String type = sqlType == null ? "" : sqlType.toUpperCase(Locale.ROOT);
+    String type = canonicalType(sqlType);
     return switch (type) {
-      case "BOOLEAN", "BOOL" -> MappedType.declared("boolean");
+      case "BOOLEAN" -> MappedType.declared("boolean");
       case "DATE" -> MappedType.declared(Defaults.DATE);
-      case "TIMESTAMP", "DATETIME" -> MappedType.declared(Defaults.TIMESTAMP);
-      case "INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT" ->
+      case "TIMESTAMP" -> MappedType.declared(Defaults.TIMESTAMP);
+      case "UUID" -> uuidType();
+      case "INT" ->
           MappedType.defaultRange("int[" + Defaults.INT_MIN + ".." + Defaults.INT_MAX + "]");
-      case "DECIMAL", "NUMERIC", "NUMBER", "REAL", "FLOAT", "DOUBLE" ->
+      case "DECIMAL" ->
           MappedType.defaultRange(
               "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]");
-      case "VARCHAR", "CHAR", "NVARCHAR", "NCHAR", "CHARACTER" -> {
+      case "VARCHAR" -> {
         boolean hasLength = args != null && !args.isEmpty();
         yield mapString(columnName, length(args, Defaults.VARCHAR_DEFAULT_LENGTH), !hasLength);
       }
-      case "TEXT", "CLOB", "NCLOB" -> mapString(columnName, Defaults.TEXT_MAX_LENGTH, true);
+      case "TEXT" -> mapString(columnName, Defaults.TEXT_MAX_LENGTH, true);
       default -> MappedType.unknownType(Defaults.STRING); // unknown — §6 Q2
     };
+  }
+
+  /**
+   * Folds a raw SQL type name to a canonical key: upper-cased, whitespace collapsed, then resolved
+   * through {@link #SYNONYMS}. {@code "character varying"} and {@code "CHARACTER VARYING"} both
+   * become {@code VARCHAR}; an unmapped name passes through so the switch can default it to
+   * unknown.
+   */
+  private String canonicalType(String sqlType) {
+    if (sqlType == null) {
+      return "";
+    }
+    String normalized = sqlType.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
+    return SYNONYMS.getOrDefault(normalized, normalized);
+  }
+
+  /**
+   * Native {@code UUID} column → the {@code uuid} datafaker key, or a fixed-width char fallback.
+   */
+  private MappedType uuidType() {
+    return FakerTypes.canonical("uuid")
+        .map(MappedType::declared)
+        .orElseGet(() -> MappedType.declared("char[36..36]"));
   }
 
   private MappedType mapString(String columnName, int maxLength, boolean lengthInferred) {
