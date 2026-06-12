@@ -68,7 +68,7 @@ mappings receive inline review comments (§7a):
 | `intMin..intMax` | `1..999999` |
 | `decMin..decMax` | `0.0..9999.99` |
 | `dateMin..dateMax` | `2020-01-01..2030-12-31` |
-| `date-time window` | `now-1y..now` |
+| `date-time window` (`<window>`) | `365d` → `timestamp[now-365d..now]` |
 | default string | `char[1..50]` |
 | default array bounds | `1..10` |
 
