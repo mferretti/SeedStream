@@ -122,8 +122,7 @@ class InspectExecuteRoundTripTest {
     // The real assertion: generation completes (no CircularReferenceException / stack overflow).
     List<JsonNode> records = execute(structures, "a", 3);
 
-    assertThat(records).hasSize(3);
-    assertThat(records).allSatisfy(a -> assertThat(a.has("b_id")).isTrue());
+    assertThat(records).hasSize(3).allSatisfy(a -> assertThat(a.has("b_id")).isTrue());
   }
 
   /** Runs {@code inspect} on the given DDL and returns the structures output directory. */

@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -107,28 +108,34 @@ public final class NestingPlanner {
                 + "' looks like an M:N junction — keeping flat refs, not nesting");
       }
       for (ForeignKeyRef fk : table.foreignKeys()) {
-        if (fk.localColumns().size() != 1) {
-          warnings.add(
-              "composite FK on '" + table.name() + "' — single-field nesting only, kept flat");
-          continue;
-        }
-        String childCol = fk.localColumns().get(0);
-        String parent = fk.refTable().toLowerCase(Locale.ROOT);
-        if (!byName.containsKey(parent)) {
-          continue; // FK to a table outside this DDL — already a flat ref, nothing to invert
-        }
-        if (junction) {
-          continue;
-        }
-        if (parent.equals(table.name().toLowerCase(Locale.ROOT))) {
-          warnings.add("self-referencing FK on '" + table.name() + "' — kept flat (cycle)");
-          continue;
-        }
-        String parentCol = fk.refColumns().isEmpty() ? "id" : fk.refColumns().get(0);
-        edges.add(new Edge(table.name(), childCol, byName.get(parent).name(), parentCol));
+        candidateEdge(table, fk, junction, byName, warnings).ifPresent(edges::add);
       }
     }
     return edges;
+  }
+
+  /** Returns an Edge if {@code fk} is eligible for nesting, or empty if it must stay flat. */
+  private Optional<Edge> candidateEdge(
+      TableInfo table,
+      ForeignKeyRef fk,
+      boolean junction,
+      Map<String, TableInfo> byName,
+      List<String> warnings) {
+    if (fk.localColumns().size() != 1) {
+      warnings.add("composite FK on '" + table.name() + "' — single-field nesting only, kept flat");
+      return Optional.empty();
+    }
+    String childCol = fk.localColumns().get(0);
+    String parent = fk.refTable().toLowerCase(Locale.ROOT);
+    if (!byName.containsKey(parent) || junction) {
+      return Optional.empty();
+    }
+    if (parent.equals(table.name().toLowerCase(Locale.ROOT))) {
+      warnings.add("self-referencing FK on '" + table.name() + "' — kept flat (cycle)");
+      return Optional.empty();
+    }
+    String parentCol = fk.refColumns().isEmpty() ? "id" : fk.refColumns().get(0);
+    return Optional.of(new Edge(table.name(), childCol, byName.get(parent).name(), parentCol));
   }
 
   /** A pure junction: exactly two single-column FKs and no payload columns beyond them. */

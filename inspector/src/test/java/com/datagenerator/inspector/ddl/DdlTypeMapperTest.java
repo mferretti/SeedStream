@@ -24,6 +24,8 @@ import com.datagenerator.inspector.MappedType.Reason;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DdlTypeMapperTest {
 
@@ -59,16 +61,17 @@ class DdlTypeMapperTest {
     assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
   }
 
-  @Test
-  void timestampMapsToDefaultTimestamp() {
-    MappedType mt = mapper.map("created_at", "TIMESTAMP", List.of());
-    assertThat(mt.datatype()).isEqualTo(Defaults.TIMESTAMP);
-    assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
-  }
-
-  @Test
-  void datetimeMapsToDefaultTimestamp() {
-    MappedType mt = mapper.map("updated_at", "DATETIME", List.of());
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "TIMESTAMP",
+        "DATETIME",
+        "TIMESTAMP WITH TIME ZONE",
+        "TIMESTAMP WITHOUT TIME ZONE",
+        "TIMESTAMPTZ"
+      })
+  void sqlTypeMapsToTimestamp(String sqlType) {
+    MappedType mt = mapper.map("created_at", sqlType, List.of());
     assertThat(mt.datatype()).isEqualTo(Defaults.TIMESTAMP);
     assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
   }
@@ -172,20 +175,10 @@ class DdlTypeMapperTest {
 
   // --- TEXT / CLOB ---
 
-  @Test
-  void textMapsToDefaultRangeChar() {
-    // No name-hint match for "description" (not a registered faker key by default without camel
-    // split resolving to one) — depends on NameHints; at minimum it must return DEFAULT_RANGE or
-    // NAME_HINT and use TEXT_MAX_LENGTH when no hint
-    MappedType mt = mapper.map("notes", "TEXT", List.of());
-    // notes has no name-hint → DEFAULT_RANGE with TEXT_MAX_LENGTH
-    assertThat(mt.datatype()).isEqualTo("char[1.." + Defaults.TEXT_MAX_LENGTH + "]");
-    assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
-  }
-
-  @Test
-  void clobMapsLikeText() {
-    MappedType mt = mapper.map("blob_col", "CLOB", List.of());
+  @ParameterizedTest
+  @ValueSource(strings = {"TEXT", "CLOB", "LONGTEXT"})
+  void sqlTypeMapsToTextChar(String sqlType) {
+    MappedType mt = mapper.map("col", sqlType, List.of());
     assertThat(mt.datatype()).isEqualTo("char[1.." + Defaults.TEXT_MAX_LENGTH + "]");
     assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
   }
@@ -213,19 +206,6 @@ class DdlTypeMapperTest {
     assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
   }
 
-  @Test
-  void timestampWithTimeZoneMapsToTimestamp() {
-    MappedType mt = mapper.map("created_at", "TIMESTAMP WITH TIME ZONE", List.of());
-    assertThat(mt.datatype()).isEqualTo(Defaults.TIMESTAMP);
-    assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
-  }
-
-  @Test
-  void timestampWithoutTimeZoneMapsToTimestamp() {
-    MappedType mt = mapper.map("updated_at", "timestamp without time zone", List.of());
-    assertThat(mt.datatype()).isEqualTo(Defaults.TIMESTAMP);
-  }
-
   // --- vendor aliases (§7c / §8 follow-up) ---
 
   @Test
@@ -246,11 +226,6 @@ class DdlTypeMapperTest {
   }
 
   @Test
-  void timestamptzMapsToTimestamp() {
-    assertThat(mapper.map("ts", "TIMESTAMPTZ", List.of()).datatype()).isEqualTo(Defaults.TIMESTAMP);
-  }
-
-  @Test
   void moneyMapsToDecimal() {
     assertThat(mapper.map("price", "MONEY", List.of()).datatype()).startsWith("decimal[");
   }
@@ -260,13 +235,6 @@ class DdlTypeMapperTest {
     MappedType mt = mapper.map("code_col", "VARCHAR2", List.of("12"));
     assertThat(mt.datatype()).isEqualTo("char[1..12]");
     assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
-  }
-
-  @Test
-  void longtextMapsLikeText() {
-    MappedType mt = mapper.map("body", "LONGTEXT", List.of());
-    assertThat(mt.datatype()).isEqualTo("char[1.." + Defaults.TEXT_MAX_LENGTH + "]");
-    assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
   }
 
   @Test

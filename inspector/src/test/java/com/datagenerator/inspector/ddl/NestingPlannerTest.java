@@ -170,7 +170,8 @@ class NestingPlannerTest {
             set(),
             fks(fk("a_id", "a", "id")));
 
-    assertThatThrownBy(() -> planner.plan(List.of(a, b), NestingOptions.parse("all", null)))
+    NestingOptions allMode = NestingOptions.parse("all", null);
+    assertThatThrownBy(() -> planner.plan(List.of(a, b), allMode))
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("cycle");
   }

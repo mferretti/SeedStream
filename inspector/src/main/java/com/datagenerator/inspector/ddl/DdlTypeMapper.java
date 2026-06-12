@@ -39,6 +39,10 @@ import java.util.Optional;
  */
 public final class DdlTypeMapper {
 
+  private static final String TYPE_TIMESTAMP = "TIMESTAMP";
+  private static final String TYPE_DECIMAL = "DECIMAL";
+  private static final String TYPE_VARCHAR = "VARCHAR";
+
   /**
    * Vendor / multi-word SQL type names folded onto a canonical key. The canonical keys are the ones
    * the {@link #map} switch branches on; anything absent here passes through unchanged and, if
@@ -47,11 +51,11 @@ public final class DdlTypeMapper {
   private static final Map<String, String> SYNONYMS =
       Map.ofEntries(
           Map.entry("BOOL", "BOOLEAN"),
-          Map.entry("DATETIME", "TIMESTAMP"),
-          Map.entry("SMALLDATETIME", "TIMESTAMP"),
-          Map.entry("TIMESTAMPTZ", "TIMESTAMP"),
-          Map.entry("TIMESTAMP WITH TIME ZONE", "TIMESTAMP"),
-          Map.entry("TIMESTAMP WITHOUT TIME ZONE", "TIMESTAMP"),
+          Map.entry("DATETIME", TYPE_TIMESTAMP),
+          Map.entry("SMALLDATETIME", TYPE_TIMESTAMP),
+          Map.entry("TIMESTAMPTZ", TYPE_TIMESTAMP),
+          Map.entry("TIMESTAMP WITH TIME ZONE", TYPE_TIMESTAMP),
+          Map.entry("TIMESTAMP WITHOUT TIME ZONE", TYPE_TIMESTAMP),
           Map.entry("UNIQUEIDENTIFIER", "UUID"),
           Map.entry("INTEGER", "INT"),
           Map.entry("BIGINT", "INT"),
@@ -66,31 +70,31 @@ public final class DdlTypeMapper {
           Map.entry("SMALLSERIAL", "INT"),
           Map.entry("SERIAL4", "INT"),
           Map.entry("SERIAL8", "INT"),
-          Map.entry("NUMERIC", "DECIMAL"),
-          Map.entry("NUMBER", "DECIMAL"),
-          Map.entry("DEC", "DECIMAL"),
-          Map.entry("REAL", "DECIMAL"),
-          Map.entry("FLOAT", "DECIMAL"),
-          Map.entry("FLOAT4", "DECIMAL"),
-          Map.entry("FLOAT8", "DECIMAL"),
-          Map.entry("DOUBLE", "DECIMAL"),
-          Map.entry("DOUBLE PRECISION", "DECIMAL"),
-          Map.entry("BINARY_FLOAT", "DECIMAL"),
-          Map.entry("BINARY_DOUBLE", "DECIMAL"),
-          Map.entry("MONEY", "DECIMAL"),
-          Map.entry("SMALLMONEY", "DECIMAL"),
-          Map.entry("CHARACTER", "VARCHAR"),
-          Map.entry("CHARACTER VARYING", "VARCHAR"),
-          Map.entry("CHAR VARYING", "VARCHAR"),
-          Map.entry("NATIONAL CHARACTER", "VARCHAR"),
-          Map.entry("NATIONAL CHARACTER VARYING", "VARCHAR"),
-          Map.entry("NVARCHAR", "VARCHAR"),
-          Map.entry("NCHAR", "VARCHAR"),
-          Map.entry("CHAR", "VARCHAR"),
-          Map.entry("VARCHAR2", "VARCHAR"),
-          Map.entry("NVARCHAR2", "VARCHAR"),
-          Map.entry("VARCHARACTER", "VARCHAR"),
-          Map.entry("STRING", "VARCHAR"),
+          Map.entry("NUMERIC", TYPE_DECIMAL),
+          Map.entry("NUMBER", TYPE_DECIMAL),
+          Map.entry("DEC", TYPE_DECIMAL),
+          Map.entry("REAL", TYPE_DECIMAL),
+          Map.entry("FLOAT", TYPE_DECIMAL),
+          Map.entry("FLOAT4", TYPE_DECIMAL),
+          Map.entry("FLOAT8", TYPE_DECIMAL),
+          Map.entry("DOUBLE", TYPE_DECIMAL),
+          Map.entry("DOUBLE PRECISION", TYPE_DECIMAL),
+          Map.entry("BINARY_FLOAT", TYPE_DECIMAL),
+          Map.entry("BINARY_DOUBLE", TYPE_DECIMAL),
+          Map.entry("MONEY", TYPE_DECIMAL),
+          Map.entry("SMALLMONEY", TYPE_DECIMAL),
+          Map.entry("CHARACTER", TYPE_VARCHAR),
+          Map.entry("CHARACTER VARYING", TYPE_VARCHAR),
+          Map.entry("CHAR VARYING", TYPE_VARCHAR),
+          Map.entry("NATIONAL CHARACTER", TYPE_VARCHAR),
+          Map.entry("NATIONAL CHARACTER VARYING", TYPE_VARCHAR),
+          Map.entry("NVARCHAR", TYPE_VARCHAR),
+          Map.entry("NCHAR", TYPE_VARCHAR),
+          Map.entry("CHAR", TYPE_VARCHAR),
+          Map.entry("VARCHAR2", TYPE_VARCHAR),
+          Map.entry("NVARCHAR2", TYPE_VARCHAR),
+          Map.entry("VARCHARACTER", TYPE_VARCHAR),
+          Map.entry("STRING", TYPE_VARCHAR),
           Map.entry("CLOB", "TEXT"),
           Map.entry("NCLOB", "TEXT"),
           Map.entry("TINYTEXT", "TEXT"),
@@ -111,14 +115,14 @@ public final class DdlTypeMapper {
     return switch (type) {
       case "BOOLEAN" -> MappedType.declared("boolean");
       case "DATE" -> MappedType.declared(Defaults.DATE);
-      case "TIMESTAMP" -> MappedType.declared(Defaults.TIMESTAMP);
+      case TYPE_TIMESTAMP -> MappedType.declared(Defaults.TIMESTAMP);
       case "UUID" -> uuidType();
       case "INT" ->
           MappedType.defaultRange("int[" + Defaults.INT_MIN + ".." + Defaults.INT_MAX + "]");
-      case "DECIMAL" ->
+      case TYPE_DECIMAL ->
           MappedType.defaultRange(
               "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]");
-      case "VARCHAR" -> {
+      case TYPE_VARCHAR -> {
         boolean hasLength = args != null && !args.isEmpty();
         yield mapString(columnName, length(args, Defaults.VARCHAR_DEFAULT_LENGTH), !hasLength);
       }
