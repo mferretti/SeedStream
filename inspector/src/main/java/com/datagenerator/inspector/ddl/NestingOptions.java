@@ -85,7 +85,7 @@ public record NestingOptions(Mode mode, int defaultMin, int defaultMax) {
       case "", "auto" -> Mode.AUTO;
       case "all" -> Mode.ALL;
       case "none" -> Mode.NONE;
-      default ->
+      case null, default ->
           throw new InspectorException(
               "Invalid --nest '" + nestValue + "' (expected auto|all|none)");
     };
