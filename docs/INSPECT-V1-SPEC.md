@@ -42,10 +42,10 @@ Resolution order per property:
 
 | OpenAPI | SeedStream |
 |---|---|
-| `string` + `format: email` | `datafaker[internet.emailAddress]` |
+| `string` + `format: email` | `email` |
 | `string` + `format: date` | `date[<dateMin>..<dateMax>]` |
 | `string` + `format: date-time` | `timestamp[now-<window>..now]` |
-| `string` + `format: uuid` | `datafaker[internet.uuid]` |
+| `string` + `format: uuid` | `uuid` |
 | `string` + `enum:[A,B,C]` | `enum[A,B,C]` |
 | `string` + `maxLength: n` | `char[1..n]` |
 | `string` (no format/len) | name-hint → else `char[1..50]` |
@@ -82,16 +82,17 @@ mappings receive inline review comments (§7a):
 
 | token(s) | SeedStream |
 |---|---|
-| `email` | `datafaker[internet.emailAddress]` |
-| `phone`, `mobile`, `cell` | `datafaker[phoneNumber.cellPhone]` |
-| `firstName` / `first` + `name` | `datafaker[name.firstName]` |
-| `lastName` / `last` + `name` | `datafaker[name.lastName]` |
-| `city` | `datafaker[address.city]` |
-| `country` | `datafaker[address.country]` |
-| `street`, `address` | `datafaker[address.streetAddress]` |
-| `zip`, `postal` | `datafaker[address.zipCode]` |
-| `uuid`, `guid` | `datafaker[internet.uuid]` |
-| `url`, `uri` | `datafaker[internet.url]` |
+| `email` | `email` |
+| `phone`, `mobile`, `cell` | `phone_number` |
+| `firstName` / `first` + `name` | `first_name` |
+| `lastName` / `last` + `name` | `last_name` |
+| `city` | `city` |
+| `country` | `country` |
+| `street` | `street_name` |
+| `address` | `address` |
+| `zip`, `postal` | `postal_code` |
+| `uuid`, `guid` | `uuid` |
+| `url`, `uri` | `url` |
 
 Finite set for v1. Extend later; no open-ended "etc."
 
@@ -160,17 +161,78 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
 
 - Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](internal/INSPECT-design-notes.md).
 - Type names arrive inline (e.g. `VARCHAR (255)`); base name + args are parsed off that string.
+- **Type folding.** Before mapping, each SQL type name is upper-cased, its internal whitespace is
+  collapsed, and it is resolved through a synonym table (`DdlTypeMapper.SYNONYMS`). This lets
+  multi-word ANSI forms and vendor aliases land on the same branch as their common synonym instead
+  of the unknown-type default:
+  - `CHARACTER VARYING`, `CHAR VARYING`, `VARCHAR2`, `NATIONAL CHARACTER VARYING`, `STRING` → `VARCHAR`
+  - `DOUBLE PRECISION`, `FLOAT4/8`, `BINARY_FLOAT/DOUBLE`, `MONEY`, `NUMERIC`, `NUMBER`, `DEC` → `DECIMAL`
+  - `TIMESTAMP WITH[OUT] TIME ZONE`, `TIMESTAMPTZ`, `DATETIME`, `SMALLDATETIME` → `TIMESTAMP`
+  - `SERIAL`/`BIGSERIAL`/`SMALLSERIAL`, `INT2/4/8` → `INT`
+  - `CLOB`, `NCLOB`, `TINY/MEDIUM/LONGTEXT`, `NTEXT`, `LONG VARCHAR` → `TEXT`
+  - native `UUID` / `UNIQUEIDENTIFIER` → the `uuid` datafaker key (or `char[36..36]` fallback)
+  Genuinely opaque types (`JSON`, `JSONB`, `BYTEA`, `GEOMETRY`, …) still fall back to `char[1..50]`
+  flagged `UNKNOWN_TYPE`.
 - Foreign keys → `ref[table.column]`: table-level `FOREIGN KEY` constraints (reliable) and inline
-  column `REFERENCES table(col)` (best-effort token scan).
+  column `REFERENCES table(col)` (best-effort token scan). Optionally inverted into nested documents
+  — see §9.
 - String columns run through the same `NameHints` before falling back to `char[1..n]`.
 
-## 8. Out of scope (tracked follow-ups)
+## 8. Out of scope (with rationale)
 
-- `alias` auto-emission when source name ≠ idiomatic.
-- `geolocation`/locale selection (emits Datafaker hints with no locale; default applies).
-- Primary-key / uniqueness handling; nullable/required mapping.
-- DDL: `CHARACTER VARYING` / multi-word and vendor-specific types (fall back to `char[1..50]`).
-- **FK-inversion nesting.** Foreign keys map to flat `ref[parent.column]` only (child → parent). The
-  inspector does not invert a `1:n` FK into a nested `array[object[child], min..max]` on the parent,
-  i.e. it never produces embedded documents. Tracked follow-up: see
-  [INSPECT-NESTING-PLAN.md](INSPECT-NESTING-PLAN.md).
+These stay out of v1 — but the reason matters, because two of them are *not* inspector gaps at all:
+
+- **`alias` auto-emission.** The structure model has an `alias` slot, but the generation engine
+  **drops it** today (`ExecuteCommand` builds `Map<String, DataType>` from `datatype` only, never
+  `alias`), so an emitted alias would be silently ignored at generation time. Auto-emitting one is
+  pointless until the engine honors `alias` end-to-end. **Blocked on an engine change, not an
+  inspector feature.**
+- **`geolocation` / locale.** Locale is *not derivable from a schema* — an OpenAPI spec or DDL never
+  says "this is Italian data." It is a generation-time choice the user makes per job/structure, so
+  the inspector correctly cannot and does not infer it. (The earlier note about "Datafaker hints
+  with no locale" was misleading and has been removed.) **Out of scope by nature, not a gap.**
+- **nullable / required mapping.** Inapplicable. The structure YAML is a *recipe*: every field is
+  always generated by Datafaker and is never null, so a `NOT NULL` source constraint is already
+  satisfied by construction and an optional/`required:false` field has no meaningful recipe
+  representation (the inspector always emits the field). **Nothing to map.**
+- **Primary-key / uniqueness handling.** A PK is `NOT NULL` + `UNIQUE`; the not-null half is free
+  (above), but the engine has **no uniqueness guarantee** — an `int[1..999999]` PK can emit
+  duplicate ids. Enforcing uniqueness is a *generation-engine* policy (a new `unique` concept in the
+  type system), not a recipe-shape the inspector can express. **Tracked engine follow-up.**
+
+Now implemented (previously listed here):
+- DDL multi-word / vendor-specific types — see §7c type folding.
+- FK-inversion nesting — see §9.
+
+## 9. FK-inversion nesting (opt-in)
+
+Foreign keys default to flat `ref[parent.column]` (child → parent), matching the DB. With `--nest`
+the DDL inspector inverts `1:n` / `1:1` FKs into the direction SeedStream embeds — a parent carrying
+its children as nested documents:
+
+| flag | behavior |
+|---|---|
+| (absent) | `none` — every FK stays a flat `ref[]` (default) |
+| `--nest` / `--nest=auto` | invert FKs where safe; keep flat on cycles / M:N / shared children (warn) |
+| `--nest=all` | aggressive — nest every invertible FK, **error** on a true cycle instead of falling back |
+| `--nest-default-count <min..max>` | array multiplicity when the schema gives no hint (default `1..10`) |
+
+```bash
+datagenerator inspect schema.sql --nest --output config/structures/
+```
+
+- **1:1** (child FK column is `UNIQUE`/PK) → `object[child]`; **1:n** → `array[object[child], min..max]`.
+- Nested field name = pluralized child table (`invoice → invoices`, `invoice_item → invoice_items`);
+  a collision with an existing parent column appends `_set` (warn).
+- A child is embedded into **at most one** parent (first by declaration order); other parents keep a
+  flat `ref[]` (warn). The embedded child's FK column to that parent is dropped (redundant once
+  nested).
+- **Never nested** (kept flat + warned): self-references and cycles (broken at the back-edge),
+  composite/multi-column FKs, and pure M:N junction tables.
+- **Every structure is still written to disk**, even when embedded: `object[child]` auto-loads
+  `child.yaml`, so suppressing the file would break the reference. "Demotion" here is a warning, not
+  file suppression — a deliberate deviation from the original plan's §5.6 to keep refs resolvable.
+- OpenAPI already nests natively (`$ref` → `object`, `array` of `$ref` → `array[object[…]]`), so
+  `--nest` is **ignored** for OpenAPI input (a warning is logged). DDL is the sole target.
+
+See [INSPECT-NESTING-PLAN.md](INSPECT-NESTING-PLAN.md) for the full algorithm and edge-case table.

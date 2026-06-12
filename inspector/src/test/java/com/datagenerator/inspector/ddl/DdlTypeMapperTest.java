@@ -190,6 +190,97 @@ class DdlTypeMapperTest {
     assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
   }
 
+  // --- multi-word ANSI types (§7c / §8 follow-up) ---
+
+  @Test
+  void characterVaryingMapsLikeVarchar() {
+    MappedType mt = mapper.map("generic_col", "CHARACTER VARYING", List.of("80"));
+    assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mt.datatype()).isEqualTo("char[1..80]");
+  }
+
+  @Test
+  void characterVaryingIsWhitespaceInsensitive() {
+    MappedType mt = mapper.map("generic_col", "CHARACTER   VARYING", List.of());
+    assertThat(mt.datatype()).isEqualTo("char[1.." + Defaults.VARCHAR_DEFAULT_LENGTH + "]");
+    assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
+  }
+
+  @Test
+  void doublePrecisionMapsToDecimal() {
+    MappedType mt = mapper.map("ratio", "DOUBLE PRECISION", List.of());
+    assertThat(mt.datatype()).startsWith("decimal[");
+    assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
+  }
+
+  @Test
+  void timestampWithTimeZoneMapsToTimestamp() {
+    MappedType mt = mapper.map("created_at", "TIMESTAMP WITH TIME ZONE", List.of());
+    assertThat(mt.datatype()).isEqualTo(Defaults.TIMESTAMP);
+    assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
+  }
+
+  @Test
+  void timestampWithoutTimeZoneMapsToTimestamp() {
+    MappedType mt = mapper.map("updated_at", "timestamp without time zone", List.of());
+    assertThat(mt.datatype()).isEqualTo(Defaults.TIMESTAMP);
+  }
+
+  // --- vendor aliases (§7c / §8 follow-up) ---
+
+  @Test
+  void serialMapsToIntDefaultRange() {
+    MappedType mt = mapper.map("id", "SERIAL", List.of());
+    assertThat(mt.datatype()).startsWith("int[");
+    assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
+  }
+
+  @Test
+  void bigserialMapsToIntDefaultRange() {
+    assertThat(mapper.map("id", "BIGSERIAL", List.of()).datatype()).startsWith("int[");
+  }
+
+  @Test
+  void int8MapsToInt() {
+    assertThat(mapper.map("n", "INT8", List.of()).datatype()).startsWith("int[");
+  }
+
+  @Test
+  void timestamptzMapsToTimestamp() {
+    assertThat(mapper.map("ts", "TIMESTAMPTZ", List.of()).datatype()).isEqualTo(Defaults.TIMESTAMP);
+  }
+
+  @Test
+  void moneyMapsToDecimal() {
+    assertThat(mapper.map("price", "MONEY", List.of()).datatype()).startsWith("decimal[");
+  }
+
+  @Test
+  void varchar2MapsLikeVarchar() {
+    MappedType mt = mapper.map("code_col", "VARCHAR2", List.of("12"));
+    assertThat(mt.datatype()).isEqualTo("char[1..12]");
+    assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
+  }
+
+  @Test
+  void longtextMapsLikeText() {
+    MappedType mt = mapper.map("body", "LONGTEXT", List.of());
+    assertThat(mt.datatype()).isEqualTo("char[1.." + Defaults.TEXT_MAX_LENGTH + "]");
+    assertThat(mt.reason()).isEqualTo(Reason.DEFAULT_RANGE);
+  }
+
+  @Test
+  void nativeUuidTypeMapsToUuidKeyOrCharFallback() {
+    MappedType mt = mapper.map("ext_id", "UUID", List.of());
+    assertThat(mt.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mt.datatype()).isIn("uuid", "char[36..36]");
+  }
+
+  @Test
+  void lowercaseTypeNameStillResolves() {
+    assertThat(mapper.map("active", "boolean", List.of()).datatype()).isEqualTo("boolean");
+  }
+
   // --- unknown type fallback ---
 
   @Test

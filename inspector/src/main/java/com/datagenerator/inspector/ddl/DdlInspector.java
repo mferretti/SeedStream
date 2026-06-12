@@ -20,6 +20,8 @@ import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.Names;
+import com.datagenerator.inspector.ddl.NestingPlanner.ForeignKeyRef;
+import com.datagenerator.inspector.ddl.NestingPlanner.TableInfo;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.FieldDefinition;
 import java.io.IOException;
@@ -28,10 +30,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -51,8 +55,17 @@ public class DdlInspector {
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
 
-  /** Inspects a SQL DDL file and returns one structure per {@code CREATE TABLE}. */
+  /** Inspects a SQL DDL file and returns one structure per {@code CREATE TABLE} (no nesting). */
   public Inspection inspect(Path sqlFile) {
+    return inspect(sqlFile, NestingOptions.none());
+  }
+
+  /**
+   * Inspects a SQL DDL file. With {@link NestingOptions#enabled()} the planner inverts {@code 1:n}
+   * / {@code 1:1} foreign keys into nested {@code array[object[child]]} / {@code object[child]}
+   * fields; otherwise every FK stays a flat {@code ref[parent.col]}.
+   */
+  public Inspection inspect(Path sqlFile, NestingOptions nesting) {
     Statements statements;
     try {
       statements = CCJSqlParserUtil.parseStatements(readFile(sqlFile));
@@ -60,27 +73,44 @@ public class DdlInspector {
       throw new InspectorException("Failed to parse SQL DDL: " + sqlFile, e);
     }
 
-    List<DataStructure> structures = new ArrayList<>();
-    Map<String, Map<String, String>> comments = new LinkedHashMap<>();
+    List<TableInfo> tables = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
-
     for (Statement statement : statements) {
       if (statement instanceof CreateTable createTable) {
-        DataStructure structure = toStructure(createTable, comments, warnings);
-        if (structure != null) {
-          structures.add(structure);
+        TableInfo table = toTableInfo(createTable, tables.size(), warnings);
+        if (table != null) {
+          tables.add(table);
         }
       }
     }
 
-    if (structures.isEmpty()) {
+    if (tables.isEmpty()) {
       throw new InspectorException("No CREATE TABLE statements found in " + sqlFile);
+    }
+
+    if (nesting.enabled()) {
+      Inspection nested = new NestingPlanner().plan(tables, nesting);
+      List<String> all = new ArrayList<>(warnings);
+      all.addAll(nested.warnings());
+      return new Inspection(nested.structures(), nested.comments(), all);
+    }
+    return toInspection(tables, warnings);
+  }
+
+  /** Flat (non-nested) projection: one structure per table, FK columns as {@code ref[]}. */
+  private Inspection toInspection(List<TableInfo> tables, List<String> warnings) {
+    List<DataStructure> structures = new ArrayList<>();
+    Map<String, Map<String, String>> comments = new LinkedHashMap<>();
+    for (TableInfo table : tables) {
+      structures.add(new DataStructure(table.name(), null, table.data()));
+      if (!table.comments().isEmpty()) {
+        comments.put(table.name(), table.comments());
+      }
     }
     return new Inspection(structures, comments, warnings);
   }
 
-  private DataStructure toStructure(
-      CreateTable createTable, Map<String, Map<String, String>> comments, List<String> warnings) {
+  private TableInfo toTableInfo(CreateTable createTable, int order, List<String> warnings) {
     String name = Names.toSnakeCase(unquote(createTable.getTable().getName()));
     List<ColumnDefinition> columns = createTable.getColumnDefinitions();
     if (columns == null || columns.isEmpty()) {
@@ -89,8 +119,8 @@ public class DdlInspector {
     }
 
     Map<String, String> foreignKeys = tableForeignKeys(createTable);
-    Map<String, FieldDefinition> data = new LinkedHashMap<>();
-    Map<String, String> fieldComments = new LinkedHashMap<>();
+    LinkedHashMap<String, FieldDefinition> data = new LinkedHashMap<>();
+    LinkedHashMap<String, String> fieldComments = new LinkedHashMap<>();
 
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
@@ -105,11 +135,94 @@ public class DdlInspector {
       }
       data.put(columnName, new FieldDefinition(datatype, null));
     }
-    if (!fieldComments.isEmpty()) {
-      comments.put(name, fieldComments);
-    }
 
-    return new DataStructure(name, null, data);
+    return new TableInfo(
+        name,
+        data,
+        fieldComments,
+        keyConstraintColumns(createTable, columns, "PRIMARY"),
+        keyConstraintColumns(createTable, columns, "UNIQUE"),
+        foreignKeyRefs(createTable, columns),
+        order);
+  }
+
+  /**
+   * Collects the column names carrying a key constraint of the given kind ({@code PRIMARY} or
+   * {@code UNIQUE}), from both inline column specs and table-level index constraints.
+   */
+  private Set<String> keyConstraintColumns(
+      CreateTable createTable, List<ColumnDefinition> columns, String kind) {
+    Set<String> result = new LinkedHashSet<>();
+    for (ColumnDefinition column : columns) {
+      List<String> specs = column.getColumnSpecs();
+      if (specs != null && specs.stream().anyMatch(kind::equalsIgnoreCase)) {
+        result.add(unquote(column.getColumnName()));
+      }
+    }
+    List<Index> indexes = createTable.getIndexes();
+    if (indexes != null) {
+      for (Index index : indexes) {
+        if (index instanceof ForeignKeyIndex) {
+          continue;
+        }
+        String type = index.getType();
+        if (type != null && type.toUpperCase(Locale.ROOT).startsWith(kind)) {
+          index.getColumnsNames().forEach(c -> result.add(unquote(c)));
+        }
+      }
+    }
+    return result;
+  }
+
+  /** Collects FK constraints (table-level and inline {@code REFERENCES}) as structured edges. */
+  private List<ForeignKeyRef> foreignKeyRefs(
+      CreateTable createTable, List<ColumnDefinition> columns) {
+    List<ForeignKeyRef> result = new ArrayList<>();
+    List<Index> indexes = createTable.getIndexes();
+    if (indexes != null) {
+      for (Index index : indexes) {
+        if (index instanceof ForeignKeyIndex fk) {
+          result.add(
+              new ForeignKeyRef(
+                  fk.getColumnsNames().stream().map(this::unquote).toList(),
+                  Names.toSnakeCase(unquote(fk.getTable().getName())),
+                  fk.getReferencedColumnNames().stream().map(this::unquote).toList()));
+        }
+      }
+    }
+    for (ColumnDefinition column : columns) {
+      inlineForeignKeyRef(unquote(column.getColumnName()), column.getColumnSpecs())
+          .ifPresent(result::add);
+    }
+    return result;
+  }
+
+  /** Best-effort structured parse of an inline {@code ... REFERENCES table(column)} column spec. */
+  private Optional<ForeignKeyRef> inlineForeignKeyRef(String columnName, List<String> specs) {
+    if (specs == null) {
+      return Optional.empty();
+    }
+    for (int i = 0; i < specs.size(); i++) {
+      if (!"REFERENCES".equalsIgnoreCase(specs.get(i)) || i + 1 >= specs.size()) {
+        continue;
+      }
+      String token = specs.get(i + 1);
+      String table = token;
+      String referenced = "id";
+      int paren = token.indexOf('(');
+      if (paren >= 0) {
+        table = token.substring(0, paren);
+        referenced = token.substring(paren + 1).replace(")", "");
+      } else if (i + 2 < specs.size() && specs.get(i + 2).startsWith("(")) {
+        referenced = specs.get(i + 2).replaceAll("[()]", "");
+      }
+      return Optional.of(
+          new ForeignKeyRef(
+              List.of(columnName),
+              Names.toSnakeCase(unquote(table)),
+              List.of(unquote(referenced))));
+    }
+    return Optional.empty();
   }
 
   /** Resolves a foreign-key reference for a column from table-level then inline constraints. */

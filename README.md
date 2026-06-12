@@ -171,7 +171,16 @@ data:
 
 Fields with **no comment** were mapped from explicit schema information (declared SQL types, OpenAPI `format`, `enum`, numeric bounds) and don't need review. The CLI summary reports the total count: `inspect complete: 3 written, 0 skipped, 2 fields flagged for review (commented)`.
 
-**Foreign keys → flat references (no nesting)**: each foreign key becomes a scalar `ref[parent_table.column]` on the child structure, so every table maps to its own independent, joinable dataset that scales with `--count`. The inspector does **not** invert a `1:n` relationship into a nested document — e.g. for `customer → invoice → invoice_item` it emits three flat structures (`invoice.customer_id: ref[customer.id]`, `invoice_item.invoice_id: ref[invoice.id]`), **not** an `invoice` that embeds `array[object[invoice_item], 1..N]`. If you need embedded/nested output, add the `object[...]` / `array[object[...], min..max]` fields by hand after inspection. This limitation is **DDL-only**: an OpenAPI spec that already declares nested objects/arrays is emitted with its nesting intact (`$ref` → `object[...]`, `array` of `$ref` → `array[object[...], min..max]`). FK-inversion nesting for DDL is a tracked follow-up — see [docs/INSPECT-NESTING-PLAN.md](docs/INSPECT-NESTING-PLAN.md).
+**Foreign keys → flat references by default**: each foreign key becomes a scalar `ref[parent_table.column]` on the child structure, so every table maps to its own independent, joinable dataset that scales with `--count`. For `customer → invoice → invoice_item` that is three flat structures (`invoice.customer_id: ref[customer.id]`, `invoice_item.invoice_id: ref[invoice.id]`).
+
+**Opt-in nesting** (`--nest`): the DDL inspector can invert `1:n` / `1:1` foreign keys into embedded documents — the same `customer → invoice → invoice_item` chain then emits a `customer` that carries `invoices: array[object[invoice], 1..10]` and an `invoice` that carries `invoice_items: array[object[invoice_item], 1..10]`:
+
+```bash
+datagenerator inspect schema.sql --nest --output config/structures/
+# array multiplicity defaults to 1..10; override with --nest-default-count 2..5
+```
+
+`--nest` (= `--nest=auto`) keeps cycles, composite FKs, and M:N junction tables flat (with a warning); `--nest=all` errors on a true cycle instead. A `UNIQUE`/PK foreign key nests as `object[child]` (1:1). OpenAPI specs already declare their own nesting (`$ref` → `object[...]`, `array` of `$ref` → `array[object[...], min..max]`), so `--nest` is ignored for OpenAPI input. See [docs/INSPECT-NESTING-PLAN.md](docs/INSPECT-NESTING-PLAN.md) and spec §9.
 
 **After inspection**: review and adjust any commented fields, then create a job YAML pointing at the output directory and run `execute` as normal.
 
@@ -184,6 +193,8 @@ Fields with **no comment** were mapped from explicit schema information (declare
 | `--force` | off | Overwrite existing structure files (default: skip and warn) |
 | `--format openapi\|ddl` | auto-detect | Override format detection (by default inferred from extension) |
 | `--faker-types <file>` | unset | YAML config of extra Datafaker types; register before inspection so name hints can target them |
+| `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]`. `auto` keeps cycles/M:N/shared children flat; `all` errors on a true cycle |
+| `--nest-default-count <min..max>` | `1..10` | DDL only: multiplicity for synthesized nested arrays when the schema gives no hint |
 
 ### Custom Datafaker types
 
