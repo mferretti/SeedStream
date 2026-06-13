@@ -27,9 +27,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class SeedResolverTest {
   private static final String TYPE_REMOTE = "remote";
@@ -114,89 +118,58 @@ class SeedResolverTest {
         .hasMessageContaining("not set or empty");
   }
 
-  @Test
-  void shouldResolveRemoteSeedWithBearerAuth() throws Exception {
+  static Stream<Arguments> remoteAuthScenarios() {
+    return Stream.of(
+        Arguments.of(
+            new SeedConfig.RemoteSeed.AuthConfig("bearer", "secret-token", null, null, null, null),
+            "77777",
+            "Authorization",
+            "Bearer secret-token"),
+        Arguments.of(
+            new SeedConfig.RemoteSeed.AuthConfig("basic", null, "user", "pass", null, null),
+            "88888",
+            "Authorization",
+            "Basic dXNlcjpwYXNz"), // base64("user:pass")
+        Arguments.of(
+            new SeedConfig.RemoteSeed.AuthConfig(
+                "api_key", null, null, null, API_KEY_HEADER, "my-key-123"),
+            "66666",
+            API_KEY_HEADER,
+            "my-key-123"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("remoteAuthScenarios")
+  void shouldResolveRemoteSeedWithAuth(
+      SeedConfig.RemoteSeed.AuthConfig auth, String body, String headerName, String headerValue)
+      throws Exception {
     HttpClient mockClient = mock(HttpClient.class);
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
     when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn("77777");
+    when(mockResponse.body()).thenReturn(body);
     when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenReturn(mockResponse);
 
     SeedResolver customResolver = new SeedResolver(mockClient);
-    SeedConfig.RemoteSeed.AuthConfig auth =
-        new SeedConfig.RemoteSeed.AuthConfig("bearer", "secret-token", null, null, null, null);
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
 
     long seed = customResolver.resolve(config);
 
-    assertThat(seed).isEqualTo(77777L);
+    assertThat(seed).isEqualTo(Long.parseLong(body));
     verify(mockClient)
         .send(
-            argThat(
-                req ->
-                    req.headers()
-                        .firstValue("Authorization")
-                        .orElse("")
-                        .equals("Bearer secret-token")),
+            argThat(req -> req.headers().firstValue(headerName).orElse("").equals(headerValue)),
             any());
   }
 
   @Test
-  void shouldResolveRemoteSeedWithBasicAuth() throws Exception {
+  void shouldRejectRedirectResponse() throws Exception {
+    // Core-1 / CWE-918: redirects are not followed; a 3xx surfaces as a non-200 error rather than
+    // reaching an unvalidated (possibly internal) target.
     HttpClient mockClient = mock(HttpClient.class);
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
-    when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn("88888");
-    when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-        .thenReturn(mockResponse);
-
-    SeedResolver customResolver = new SeedResolver(mockClient);
-    SeedConfig.RemoteSeed.AuthConfig auth =
-        new SeedConfig.RemoteSeed.AuthConfig("basic", null, "user", "pass", null, null);
-    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
-
-    long seed = customResolver.resolve(config);
-
-    assertThat(seed).isEqualTo(88888L);
-    verify(mockClient)
-        .send(
-            argThat(
-                req -> req.headers().firstValue("Authorization").orElse("").startsWith("Basic ")),
-            any());
-  }
-
-  @Test
-  void shouldResolveRemoteSeedWithApiKey() throws Exception {
-    HttpClient mockClient = mock(HttpClient.class);
-    HttpResponse<String> mockResponse = mock(HttpResponse.class);
-    when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn("66666");
-    when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
-        .thenReturn(mockResponse);
-
-    SeedResolver customResolver = new SeedResolver(mockClient);
-    SeedConfig.RemoteSeed.AuthConfig auth =
-        new SeedConfig.RemoteSeed.AuthConfig(
-            "api_key", null, null, null, API_KEY_HEADER, "my-key-123");
-    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
-
-    long seed = customResolver.resolve(config);
-
-    assertThat(seed).isEqualTo(66666L);
-    verify(mockClient)
-        .send(
-            argThat(
-                req -> req.headers().firstValue(API_KEY_HEADER).orElse("").equals("my-key-123")),
-            any());
-  }
-
-  @Test
-  void shouldFailWhenRemoteReturnsNon200() throws Exception {
-    HttpClient mockClient = mock(HttpClient.class);
-    HttpResponse<String> mockResponse = mock(HttpResponse.class);
-    when(mockResponse.statusCode()).thenReturn(500);
-    when(mockResponse.body()).thenReturn("Internal Server Error");
+    when(mockResponse.statusCode()).thenReturn(302);
+    when(mockResponse.body()).thenReturn("redirecting");
     when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenReturn(mockResponse);
 
@@ -205,15 +178,41 @@ class SeedResolverTest {
 
     assertThatThrownBy(() -> customResolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
-        .hasMessageContaining("status 500");
+        .hasMessageContaining("302");
   }
 
   @Test
-  void shouldFailWhenRemoteReturnsInvalidNumber() throws Exception {
+  void shouldSetRequestTimeout() throws Exception {
+    // Core-2 / CWE-400: every remote-seed request carries a hard timeout.
     HttpClient mockClient = mock(HttpClient.class);
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
     when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn("invalid");
+    when(mockResponse.body()).thenReturn("123");
+    when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+
+    SeedResolver customResolver = new SeedResolver(mockClient);
+    customResolver.resolve(new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, null));
+
+    verify(mockClient).send(argThat(req -> req.timeout().isPresent()), any());
+  }
+
+  static Stream<Arguments> badRemoteResponses() {
+    return Stream.of(
+        // Core-1: a redirect (3xx) is not followed — surfaces as a rejected non-200 status.
+        Arguments.of(302, "redirecting", "302"),
+        Arguments.of(500, "Internal Server Error", "status 500"),
+        Arguments.of(200, "invalid", "Invalid seed value"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("badRemoteResponses")
+  void shouldFailOnBadRemoteResponse(int status, String body, String expectedMessage)
+      throws Exception {
+    HttpClient mockClient = mock(HttpClient.class);
+    HttpResponse<String> mockResponse = mock(HttpResponse.class);
+    when(mockResponse.statusCode()).thenReturn(status);
+    when(mockResponse.body()).thenReturn(body);
     when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenReturn(mockResponse);
 
@@ -222,7 +221,7 @@ class SeedResolverTest {
 
     assertThatThrownBy(() -> customResolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
-        .hasMessageContaining("Invalid seed value");
+        .hasMessageContaining(expectedMessage);
   }
 
   @Test

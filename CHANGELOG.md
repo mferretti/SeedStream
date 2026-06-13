@@ -102,6 +102,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Sensitive data exposure (CWE-532)** — `execute` now redacts JDBC URL credentials (URI userinfo and `password`/`user` query parameters) before logging, so a secret embedded in `jdbc_url` via `${SECRET:…}` substitution is masked as `****` instead of being written to the log in cleartext.
 - **OWASP review of the inspector surface** — blocked arbitrary file write from untrusted specs:
   - **Path traversal (CWE-22)** — `inspect` derives output filenames from the spec's schema/table names; `StructureYamlWriter` now rejects any name that is not a plain file segment (no `/`, `\`, `..`, NUL) and verifies the resolved path stays under the output directory, so a hostile spec can no longer write YAML outside `--output`.
+- **OWASP review of the core surface** — hardened remote seed fetching:
+  - **SSRF via redirect (CWE-918)** — `SeedResolver` no longer follows HTTP redirects, so a `3xx` from a seed endpoint can't reach an unvalidated internal target (e.g. cloud metadata) and bypass `UrlValidator`; a redirect is now treated as a non-200 error.
+  - **Resource exhaustion (CWE-400)** — every remote seed request now carries a hard read timeout, so a slow/hung endpoint can no longer block generation indefinitely.
 
 ---
 

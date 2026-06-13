@@ -39,12 +39,20 @@ import lombok.extern.slf4j.Slf4j;
 public class SeedResolver {
   private static final long DEFAULT_SEED = 0L;
 
+  /** Hard timeout for a single remote-seed request (Core-2: prevents an indefinite read hang). */
+  private static final Duration REMOTE_REQUEST_TIMEOUT = Duration.ofSeconds(30);
+
   // LazyHolder defers HttpClient construction until resolveRemote() is first called
   private static final class HttpClientHolder {
     static final HttpClient INSTANCE =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
-            .followRedirects(HttpClient.Redirect.NORMAL)
+            // Core-1 (CWE-918): do NOT follow redirects — UrlValidator only vetted the initial URL,
+            // and a 3xx Location would reach an unvalidated (possibly internal) target. A seed API
+            // returns a plain number and has no legitimate reason to redirect; a 3xx is treated as
+            // a
+            // non-200 error instead.
+            .followRedirects(HttpClient.Redirect.NEVER)
             .build();
   }
 
@@ -161,7 +169,8 @@ public class SeedResolver {
     String url = remoteSeed.getUrl();
     UrlValidator.validate(url, "remote seed URL");
     HttpClient client = injectedHttpClient != null ? injectedHttpClient : HttpClientHolder.INSTANCE;
-    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder().uri(URI.create(url)).timeout(REMOTE_REQUEST_TIMEOUT).GET();
 
     applyAuth(requestBuilder, remoteSeed.getAuth());
 
