@@ -22,6 +22,7 @@ import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.security.keyvault.secrets.SecretClient;
 import com.azure.security.keyvault.secrets.SecretClientBuilder;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
+import com.datagenerator.core.security.UrlValidator;
 import com.datagenerator.schema.exception.SecretResolutionException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,6 +53,13 @@ public final class AzureKeyVaultResolver implements SecretResolver {
     if (vaultUri == null || vaultUri.isBlank()) {
       throw new SecretResolutionException(
           "vault_uri is required when secrets.resolver: azure_keyvault");
+    }
+    // SSRF guard: vault_uri comes from job YAML and receives an Azure bearer token, so reject
+    // non-HTTP(S) schemes / malformed URIs before handing it to the SDK (parity with Vault #2).
+    try {
+      UrlValidator.validate(vaultUri, "Azure Key Vault URI (vault_uri)");
+    } catch (IllegalArgumentException e) {
+      throw new SecretResolutionException(e.getMessage(), e);
     }
     this.client =
         new SecretClientBuilder()

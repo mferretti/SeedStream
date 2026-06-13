@@ -158,6 +158,21 @@ class AzureKeyVaultResolverTest {
         .hasMessageContaining("vault_uri");
   }
 
+  @Test
+  void shouldRejectNonHttpVaultUri() {
+    // SSRF guard: vault_uri receives an Azure bearer token, so non-HTTP(S) schemes are rejected
+    // before the SDK is built (finding #11).
+    assertThatThrownBy(() -> new AzureKeyVaultResolver("file:///etc/passwd"))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("http");
+  }
+
+  @Test
+  void shouldRejectMalformedVaultUri() {
+    assertThatThrownBy(() -> new AzureKeyVaultResolver("not-a-valid-uri"))
+        .isInstanceOf(SecretResolutionException.class);
+  }
+
   // ── Auth error ─────────────────────────────────────────────────────────────
 
   @Test

@@ -158,9 +158,33 @@ class VaultSecretResolverTest {
     when(mockClient.send(any(), any())).thenThrow(new IOException("connection refused"));
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    // Error must not leak the Vault address (info-disclosure hardening, finding #10).
     assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
         .isInstanceOf(SecretResolutionException.class)
-        .hasMessageContaining(VAULT_ADDR);
+        .hasMessageContaining("Failed to contact Vault")
+        .hasMessageNotContaining(VAULT_ADDR);
+  }
+
+  @Test
+  void shouldAcceptAny2xxResponse() throws Exception {
+    // Vault (and proxies) may answer with 2xx codes other than 200 (finding #10).
+    when(mockResponse.statusCode()).thenReturn(204);
+    when(mockResponse.body()).thenReturn("{\"data\": {\"data\": {\"key\": \"v\"}}}");
+    doReturn(mockResponse).when(mockClient).send(any(), any());
+
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    assertThat(resolver.resolve(SECRET_PATH)).isEqualTo("v");
+  }
+
+  @Test
+  void shouldThrowOn3xxResponse() throws Exception {
+    when(mockResponse.statusCode()).thenReturn(301);
+    doReturn(mockResponse).when(mockClient).send(any(), any());
+
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    assertThatThrownBy(() -> resolver.resolve(SECRET_PATH))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("301");
   }
 
   @Test

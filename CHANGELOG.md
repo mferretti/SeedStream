@@ -82,6 +82,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`FakerCache.getOrCreate()`** — suppressed PMD `CompareObjectsWithEquals` false positive (Codacy); `Random` does not override `equals()` so identity comparison (`!=`) is correct and intentional.
 - `ExecuteCommand.createDestination()` switch default referenced wrong variable (`type` instead of `normalizedType`) — compilation error after Codacy renames; fixed
 
+### Security
+- **OWASP review of the schema/secrets surface** — hardened the configuration and secret-resolution paths:
+  - **SQL injection** — `DatabaseDestination` validates table/column identifiers against a strict allowlist before building INSERT SQL.
+  - **SSRF** — new `core/security/UrlValidator` enforces http/https + non-empty host on all outbound URLs (remote seed API, Schema Registry, Vault, and now Azure Key Vault `vault_uri`).
+  - **Path traversal** — new `core/security/PathValidator` canonicalizes file paths (`toRealPath`) with optional base-dir containment, applied to seed files and the encryption-key file.
+  - **Secret handling** — remote-seed auth fields are resolved through the secret substitutor before use; the `encrypt` CLI reads plaintext via console/stdin instead of a shell argument; the `System.getProperty` fallback for env/secret lookups was removed.
+  - **TOCTOU** — `FilePermissionValidator` reads permissions from an already-open `FileChannel` instead of an `exists()` check-then-act.
+  - **Config strictness** — YAML parsing now rejects unknown properties (`FAIL_ON_UNKNOWN_PROPERTIES`) so mistyped/smuggled keys fail fast instead of being silently ignored.
+  - **Input validation** — empty `${SECRET:}` paths and empty `${}` variable names are rejected; Vault errors no longer leak the server address and now accept any 2xx response.
+
 ---
 
 ## [0.5.0] - 2026-06-04

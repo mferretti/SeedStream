@@ -110,19 +110,14 @@ public final class VaultSecretResolver implements SecretResolver {
       response = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new SecretResolutionException("Interrupted while contacting Vault: " + vaultAddr, e);
+      throw new SecretResolutionException("Interrupted while contacting Vault", e);
     } catch (IOException e) {
-      throw new SecretResolutionException("Failed to contact Vault at " + vaultAddr, e);
+      throw new SecretResolutionException("Failed to contact Vault", e);
     }
 
-    if (response.statusCode() != 200) {
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
       throw new SecretResolutionException(
-          "Vault returned HTTP "
-              + response.statusCode()
-              + " for path '"
-              + secretPath
-              + "' at "
-              + vaultAddr);
+          "Vault returned HTTP " + response.statusCode() + " for path '" + secretPath + "'");
     }
 
     return extractValue(response.body(), field, secretPath);

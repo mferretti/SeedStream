@@ -16,6 +16,8 @@
 
 package com.datagenerator.schema.secret;
 
+import com.datagenerator.schema.exception.SecretResolutionException;
+
 /**
  * Substitutes {@code ${...}} patterns in job config string values.
  *
@@ -48,10 +50,17 @@ public final class ConfigSubstitutor {
     }
     if (value.startsWith("${SECRET:") && value.endsWith("}")) {
       String path = value.substring(9, value.length() - 1);
+      if (path.isEmpty()) {
+        throw new SecretResolutionException(
+            "Empty secret path in substitution pattern: ${SECRET:}");
+      }
       return secretResolver.resolve(path);
     }
     if (value.startsWith("${") && value.endsWith("}")) {
       String varName = value.substring(2, value.length() - 1);
+      if (varName.isEmpty()) {
+        throw new SecretResolutionException("Empty variable name in substitution pattern: ${}");
+      }
       return EnvSecretResolver.INSTANCE.resolve(varName);
     }
     return value;

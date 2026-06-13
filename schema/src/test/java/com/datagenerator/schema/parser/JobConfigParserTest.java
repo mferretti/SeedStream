@@ -365,6 +365,24 @@ class JobConfigParserTest {
   }
 
   @Test
+  void shouldFailOnUnknownProperty() throws Exception {
+    // Unknown top-level keys are rejected to surface typos / smuggled fields (finding #8).
+    String yaml =
+        """
+            source: data.yaml
+            type: file
+            bogus_field: oops
+            conf:
+              path: output/data
+            """;
+
+    Path file = tempDir.resolve("unknown.yaml");
+    Files.writeString(file, yaml);
+
+    assertThatThrownBy(() -> parser.parse(file)).isInstanceOf(SchemaParseException.class);
+  }
+
+  @Test
   void shouldFailWhenFileDoesNotExist() {
     Path nonExistent = tempDir.resolve("missing.yaml");
 

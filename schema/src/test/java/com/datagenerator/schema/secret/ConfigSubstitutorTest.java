@@ -69,6 +69,22 @@ class ConfigSubstitutorTest {
   }
 
   @Test
+  void shouldThrowForEmptySecretPath() {
+    // ${SECRET:} with no path must fail fast rather than resolving an empty path (finding #9).
+    assertThatThrownBy(() -> ConfigSubstitutor.substitute("${SECRET:}", mockResolver))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("Empty secret path");
+  }
+
+  @Test
+  void shouldThrowForEmptyVariableName() {
+    // ${} with no variable name must fail fast (finding #9).
+    assertThatThrownBy(() -> ConfigSubstitutor.substitute("${}", mockResolver))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("Empty variable name");
+  }
+
+  @Test
   void shouldNotSubstitutePartialPattern() {
     assertThat(ConfigSubstitutor.substitute("${not-closed", mockResolver))
         .isEqualTo("${not-closed");
