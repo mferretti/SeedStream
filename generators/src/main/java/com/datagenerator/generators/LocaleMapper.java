@@ -17,6 +17,8 @@
 package com.datagenerator.generators;
 
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,6 +50,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LocaleMapper {
 
+  private static final Map<String, Locale> CACHE = new ConcurrentHashMap<>();
+
   private LocaleMapper() {
     // Utility class
   }
@@ -58,13 +62,17 @@ public class LocaleMapper {
    * @param geolocation Geolocation name (e.g., "italy", "usa", "france") or null
    * @return Java Locale (defaults to US English if unknown or null)
    */
-  @SuppressWarnings("java:S1479")
   public static Locale map(String geolocation) {
     if (geolocation == null || geolocation.isBlank()) {
       log.debug("No geolocation specified, defaulting to US English");
       return Locale.US;
     }
 
+    return CACHE.computeIfAbsent(geolocation, LocaleMapper::compute);
+  }
+
+  @SuppressWarnings("java:S1479")
+  private static Locale compute(String geolocation) {
     String normalized = geolocation.toLowerCase(Locale.ROOT).trim().replace("_", "-");
 
     Locale locale =

@@ -21,7 +21,9 @@ import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.GeneratorValidation;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Generates random integers (int[min..max]) within specified bounds.
@@ -38,21 +40,21 @@ import java.util.Random;
  */
 public class IntegerGenerator implements DataGenerator {
 
+  private record Bounds(int min, int max) {}
+
+  private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
+
   @Override
   public Object generate(Random random, DataType dataType) {
     PrimitiveType primitiveType =
         GeneratorValidation.requirePrimitiveKind(
             dataType, PrimitiveType.Kind.INT, "IntegerGenerator");
 
-    // Parse min/max bounds
-    int min = parseInt(primitiveType.getMinValue(), "minValue");
-    int max = parseInt(primitiveType.getMaxValue(), "maxValue");
-
-    GeneratorValidation.requireValidRange(min, max, "int");
+    Bounds b = boundsCache.computeIfAbsent(primitiveType, this::parseBounds);
 
     // Generate random integer in range [min, max]
     // Use long arithmetic to avoid overflow when (max - min + 1) doesn't fit in int
-    long range = (long) max - min + 1;
+    long range = (long) b.max() - b.min() + 1;
     if (range <= 0 || range > Integer.MAX_VALUE) {
       // Range exceeds int capacity — rejection sampling for uniform distribution
       int result;
@@ -60,10 +62,17 @@ public class IntegerGenerator implements DataGenerator {
       do {
         result = random.nextInt() & Integer.MAX_VALUE;
       } while (result >= limit);
-      return min + (int) (result % range);
+      return b.min() + (int) (result % range);
     }
 
-    return min + random.nextInt((int) range);
+    return b.min() + random.nextInt((int) range);
+  }
+
+  private Bounds parseBounds(PrimitiveType primitiveType) {
+    int min = parseInt(primitiveType.getMinValue(), "minValue");
+    int max = parseInt(primitiveType.getMaxValue(), "maxValue");
+    GeneratorValidation.requireValidRange(min, max, "int");
+    return new Bounds(min, max);
   }
 
   @Override

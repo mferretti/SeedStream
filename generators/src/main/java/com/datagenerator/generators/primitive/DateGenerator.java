@@ -25,7 +25,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Generates random dates (date[start..end]) within specified range.
@@ -46,29 +48,36 @@ import java.util.Random;
 public class DateGenerator implements DataGenerator {
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
+  private record Bounds(LocalDate start, LocalDate end) {}
+
+  private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
+
   @Override
   public Object generate(Random random, DataType dataType) {
     PrimitiveType primitiveType =
         GeneratorValidation.requirePrimitiveKind(
             dataType, PrimitiveType.Kind.DATE, "DateGenerator");
 
-    // Parse start/end dates
-    LocalDate startDate = parseDate(primitiveType.getMinValue(), "minValue");
-    LocalDate endDate = parseDate(primitiveType.getMaxValue(), "maxValue");
-
-    GeneratorValidation.requireValidRange(startDate, endDate, "date");
+    Bounds b = boundsCache.computeIfAbsent(primitiveType, this::parseBounds);
 
     // Calculate days between dates
-    long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
+    long daysBetween = ChronoUnit.DAYS.between(b.start(), b.end());
 
     if (daysBetween == 0) {
-      return startDate; // Same date
+      return b.start(); // Same date
     }
 
     // Generate random days offset — clamp to include the end date
     long randomDays = random.nextLong(daysBetween + 1);
 
-    return startDate.plusDays(randomDays);
+    return b.start().plusDays(randomDays);
+  }
+
+  private Bounds parseBounds(PrimitiveType primitiveType) {
+    LocalDate startDate = parseDate(primitiveType.getMinValue(), "minValue");
+    LocalDate endDate = parseDate(primitiveType.getMaxValue(), "maxValue");
+    GeneratorValidation.requireValidRange(startDate, endDate, "date");
+    return new Bounds(startDate, endDate);
   }
 
   @Override
