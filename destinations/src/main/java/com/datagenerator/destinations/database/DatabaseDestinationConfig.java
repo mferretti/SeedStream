@@ -17,6 +17,7 @@
 package com.datagenerator.destinations.database;
 
 import lombok.Builder;
+import lombok.ToString;
 import lombok.Value;
 
 /**
@@ -59,7 +60,8 @@ public class DatabaseDestinationConfig {
   String username;
 
   /** Database password. Supports {@code ${ENV_VAR}} substitution. */
-  String password;
+  // Excluded from toString() to keep the credential out of logs / exception messages (CWE-532).
+  @ToString.Exclude String password;
 
   /**
    * Target table name. Defaults to the structure name (resolved by the caller). Use this to

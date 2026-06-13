@@ -96,6 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OWASP review of the formats surface** — neutralized output-side injection:
   - **CSV formula injection (CWE-1236)** — `CsvSerializer` prefixes string cells/headers that begin with `= + - @`, TAB or CR with a single quote, so generated values (e.g. Datafaker phone numbers, config enums) cannot execute as spreadsheet formulas. Typed numbers/dates are unaffected.
   - **Path injection (CWE-88)** — `HttpSchemaRegistryClient` URL-encodes the Schema Registry `subject` as a single path segment, so a config-derived subject cannot break out of the request path.
+- **OWASP review of the destinations surface** — kept credentials out of logs:
+  - **Sensitive data exposure (CWE-532)** — `DatabaseDestinationConfig.password` and the Kafka `saslJaasConfig` / SSL store passwords are now `@ToString.Exclude`d, so the Lombok-generated `toString()` can never leak them into logs or exception messages.
 
 ---
 

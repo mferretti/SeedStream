@@ -17,6 +17,7 @@
 package com.datagenerator.destinations.kafka;
 
 import lombok.Builder;
+import lombok.ToString;
 import lombok.Value;
 
 /**
@@ -64,20 +65,21 @@ public class KafkaDestinationConfig {
   String saslMechanism;
 
   /** SASL JAAS configuration string. Optional. */
-  String saslJaasConfig;
+  // Contains credentials — excluded from toString() to avoid leaking into logs (CWE-532).
+  @ToString.Exclude String saslJaasConfig;
 
   // SSL fields
   /** Path to SSL truststore file. Optional. */
   String sslTruststoreLocation;
 
   /** Password for SSL truststore. Optional. */
-  String sslTruststorePassword;
+  @ToString.Exclude String sslTruststorePassword;
 
   /** Path to SSL keystore file. Optional. */
   String sslKeystoreLocation;
 
   /** Password for SSL keystore. Optional. */
-  String sslKeystorePassword;
+  @ToString.Exclude String sslKeystorePassword;
 
   // Retry policy (sync mode only)
   /**
