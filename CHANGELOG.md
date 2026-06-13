@@ -91,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **TOCTOU** — `FilePermissionValidator` reads permissions from an already-open `FileChannel` instead of an `exists()` check-then-act.
   - **Config strictness** — YAML parsing now rejects unknown properties (`FAIL_ON_UNKNOWN_PROPERTIES`) so mistyped/smuggled keys fail fast instead of being silently ignored.
   - **Input validation** — empty `${SECRET:}` paths and empty `${}` variable names are rejected; Vault errors no longer leak the server address and now accept any 2xx response.
+- **OWASP review of the generators surface** — bounded resource allocation at generation time:
+  - **Memory-exhaustion DoS** — `ArrayGenerator` and `CharGenerator` now reject a `maxLength` above `GeneratorValidation.MAX_GENERATED_SIZE` (10M) before allocating, so a crafted type bound (e.g. from an untrusted spec passed through `inspect`) raises `GeneratorException` instead of `OutOfMemoryError`.
 
 ---
 

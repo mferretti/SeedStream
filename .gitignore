@@ -58,3 +58,4 @@ graphify-out/
 
 # Internal security working document
 SECURITY-FINDINGS.md
+GENERATORS-SECURITY-FINDINGS.md

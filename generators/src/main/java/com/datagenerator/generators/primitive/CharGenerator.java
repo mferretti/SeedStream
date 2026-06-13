@@ -47,6 +47,7 @@ public class CharGenerator implements DataGenerator {
     int maxLength = parseLength(primitiveType.getMaxValue(), "maxValue");
 
     GeneratorValidation.requireValidRange(minLength, maxLength, "char");
+    GeneratorValidation.requireBoundedSize(maxLength, "char");
 
     // Generate random length in range [minLength, maxLength]
     int length = minLength + random.nextInt(maxLength - minLength + 1);

@@ -56,6 +56,19 @@ class ArrayGeneratorTest {
   }
 
   @Test
+  void shouldRejectArrayLengthAboveCap() {
+    // Unbounded maxLength would OOM at allocation; reject before allocating (finding G1).
+    PrimitiveType intType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "100");
+    ArrayType huge =
+        new ArrayType(
+            intType, 1, com.datagenerator.generators.GeneratorValidation.MAX_GENERATED_SIZE + 1);
+
+    assertThatThrownBy(() -> generateWithContext(huge, RANDOM))
+        .isInstanceOf(GeneratorException.class)
+        .hasMessageContaining("exceeds the maximum");
+  }
+
+  @Test
   void shouldGenerateArrayWithinLengthRange() {
     // array[int[1..100], 5..10]
     ArrayType arrayType =

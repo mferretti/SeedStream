@@ -21,7 +21,38 @@ import com.datagenerator.core.type.PrimitiveType;
 
 public final class GeneratorValidation {
 
+  /**
+   * Hard ceiling on any single generated collection/string length. Type bounds can originate from
+   * untrusted input (e.g. the {@code inspector} module emits structures from external OpenAPI/SQL
+   * specs), and {@code core} type parsing imposes no upper bound — so an unbounded {@code
+   * maxLength} would let a crafted spec request a multi-billion-element array or string and trigger
+   * an {@link OutOfMemoryError} at allocation time (CWE-789 / DoS). Generators reject anything
+   * above this ceiling before allocating. 10M comfortably exceeds any realistic test-data field
+   * while staying well clear of catastrophic allocation.
+   */
+  public static final int MAX_GENERATED_SIZE = 10_000_000;
+
   private GeneratorValidation() {}
+
+  /**
+   * Reject a generated length that exceeds {@link #MAX_GENERATED_SIZE} before it is allocated.
+   *
+   * @param length the upper-bound length about to drive an allocation
+   * @param typeName human-readable type name for the error message (e.g. "array length", "char")
+   * @throws GeneratorException if {@code length} exceeds the ceiling
+   */
+  public static void requireBoundedSize(long length, String typeName) {
+    if (length > MAX_GENERATED_SIZE) {
+      throw new GeneratorException(
+          "Generated "
+              + typeName
+              + " size "
+              + length
+              + " exceeds the maximum allowed ("
+              + MAX_GENERATED_SIZE
+              + "); refusing to allocate to avoid memory exhaustion");
+    }
+  }
 
   public static PrimitiveType requirePrimitiveKind(
       DataType dataType, PrimitiveType.Kind expected, String generatorName) {

@@ -80,6 +80,7 @@ public class ArrayGenerator implements DataGenerator {
     }
 
     GeneratorValidation.requireValidRange(minLength, maxLength, "array length");
+    GeneratorValidation.requireBoundedSize(maxLength, "array length");
 
     int length = minLength + random.nextInt(maxLength - minLength + 1);
 

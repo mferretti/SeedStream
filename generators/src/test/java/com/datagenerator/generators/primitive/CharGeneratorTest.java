@@ -30,6 +30,18 @@ class CharGeneratorTest {
   private static final Random RANDOM = new Random(42L);
 
   @Test
+  void shouldRejectCharLengthAboveCap() {
+    // Unbounded max length would OOM at StringBuilder allocation; reject first (finding G2).
+    String hugeMax =
+        Integer.toString(com.datagenerator.generators.GeneratorValidation.MAX_GENERATED_SIZE + 1);
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", hugeMax);
+
+    assertThatThrownBy(() -> generator.generate(RANDOM, type))
+        .isInstanceOf(GeneratorException.class)
+        .hasMessageContaining("exceeds the maximum");
+  }
+
+  @Test
   void shouldGenerateStringWithinLengthRange() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.CHAR, "5", "10");
     Random random = new Random(42L);
