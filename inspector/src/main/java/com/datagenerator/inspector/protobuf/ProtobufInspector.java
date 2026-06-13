@@ -44,7 +44,20 @@ import java.util.Map;
  */
 public class ProtobufInspector {
 
+  static final long MAX_DESCRIPTOR_BYTES = 64L * 1024 * 1024;
+
   private final ProtobufTypeMapper mapper = new ProtobufTypeMapper();
+
+  static void validateSize(long size) {
+    if (size > MAX_DESCRIPTOR_BYTES) {
+      throw new InspectorException(
+          "Protobuf descriptor set too large: "
+              + size
+              + " bytes (max "
+              + MAX_DESCRIPTOR_BYTES
+              + ")");
+    }
+  }
 
   /** Inspects a compiled FileDescriptorSet file and returns the structures plus diagnostics. */
   public Inspection inspect(Path descriptorSetFile) {
@@ -70,6 +83,7 @@ public class ProtobufInspector {
 
   private byte[] readBytes(Path file) {
     try {
+      validateSize(Files.size(file));
       return Files.readAllBytes(file);
     } catch (IOException e) {
       throw new InspectorException("Failed to read protobuf descriptor set: " + file, e);

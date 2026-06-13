@@ -397,6 +397,20 @@ class ProtobufInspectorTest {
   }
 
   @Test
+  void shouldRejectDescriptorSetExceedingMaxSize() {
+    long overLimit = ProtobufInspector.MAX_DESCRIPTOR_BYTES + 1;
+    assertThatThrownBy(() -> ProtobufInspector.validateSize(overLimit))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("too large");
+  }
+
+  @Test
+  void shouldAcceptDescriptorSetAtMaxSize() {
+    long atLimit = ProtobufInspector.MAX_DESCRIPTOR_BYTES;
+    assertThatCode(() -> ProtobufInspector.validateSize(atLimit)).doesNotThrowAnyException();
+  }
+
+  @Test
   void shouldResolveDependenciesBetweenFiles() throws IOException {
     DescriptorProto product =
         DescriptorProto.newBuilder()
