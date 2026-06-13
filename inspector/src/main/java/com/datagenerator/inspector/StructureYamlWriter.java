@@ -54,7 +54,7 @@ public class StructureYamlWriter {
    */
   public boolean write(
       DataStructure structure, Path outputDir, boolean force, Map<String, String> comments) {
-    Path file = outputDir.resolve(structure.getName() + ".yaml");
+    Path file = safeOutputFile(outputDir, structure.getName());
     if (Files.exists(file) && !force) {
       return false;
     }
@@ -66,6 +66,36 @@ public class StructureYamlWriter {
     } catch (IOException e) {
       throw new InspectorException("Failed to write structure: " + file, e);
     }
+  }
+
+  /**
+   * Resolves the output file for {@code name} under {@code outputDir}, rejecting any name that
+   * could escape the directory (CWE-22). The structure name comes from an untrusted spec (OpenAPI
+   * schema key / SQL table name), so a value like {@code ../../etc/cron.d/x} or an absolute path
+   * must not be allowed to redirect the write. The name is required to be a single safe path
+   * segment, and the normalized result must stay strictly under the normalized output directory.
+   *
+   * @throws InspectorException if the name is unsafe or escapes {@code outputDir}
+   */
+  private static Path safeOutputFile(Path outputDir, String name) {
+    if (name == null
+        || name.isBlank()
+        || name.indexOf('/') >= 0
+        || name.indexOf('\\') >= 0
+        || name.indexOf('\0') >= 0
+        || name.contains("..")) {
+      throw new InspectorException(
+          "Refusing to write structure with unsafe name '"
+              + name
+              + "' (must be a plain file name)");
+    }
+    Path base = outputDir.normalize();
+    Path file = base.resolve(name + ".yaml").normalize();
+    if (!file.startsWith(base) || file.equals(base)) {
+      throw new InspectorException(
+          "Refusing to write structure '" + name + "' — resolves outside output directory " + base);
+    }
+    return file;
   }
 
   /** Appends {@code # comment} to the {@code datatype:} line of each commented field. */

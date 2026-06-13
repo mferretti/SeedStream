@@ -100,6 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Sensitive data exposure (CWE-532)** — `DatabaseDestinationConfig.password` and the Kafka `saslJaasConfig` / SSL store passwords are now `@ToString.Exclude`d, so the Lombok-generated `toString()` can never leak them into logs or exception messages.
 - **OWASP review of the CLI surface** — kept credentials out of logs:
   - **Sensitive data exposure (CWE-532)** — `execute` now redacts JDBC URL credentials (URI userinfo and `password`/`user` query parameters) before logging, so a secret embedded in `jdbc_url` via `${SECRET:…}` substitution is masked as `****` instead of being written to the log in cleartext.
+- **OWASP review of the inspector surface** — blocked arbitrary file write from untrusted specs:
+  - **Path traversal (CWE-22)** — `inspect` derives output filenames from the spec's schema/table names; `StructureYamlWriter` now rejects any name that is not a plain file segment (no `/`, `\`, `..`, NUL) and verifies the resolved path stays under the output directory, so a hostile spec can no longer write YAML outside `--output`.
 
 ---
 
