@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -53,6 +54,10 @@ import net.sf.jsqlparser.statement.create.table.Index;
  * {@code docs/INSPECT-V1-SPEC.md}.
  */
 public class DdlInspector {
+
+  private static final Pattern PARENS = Pattern.compile("[()]");
+  private static final Pattern COMMA = Pattern.compile(",");
+  private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
 
@@ -215,7 +220,7 @@ public class DdlInspector {
         table = token.substring(0, paren);
         referenced = token.substring(paren + 1).replace(")", "");
       } else if (i + 2 < specs.size() && specs.get(i + 2).startsWith("(")) {
-        referenced = specs.get(i + 2).replaceAll("[()]", "");
+        referenced = PARENS.matcher(specs.get(i + 2)).replaceAll("");
       }
       return Optional.of(
           new ForeignKeyRef(
@@ -276,7 +281,7 @@ public class DdlInspector {
         table = token.substring(0, paren);
         referenced = token.substring(paren + 1).replace(")", "");
       } else if (i + 2 < specs.size() && specs.get(i + 2).startsWith("(")) {
-        referenced = specs.get(i + 2).replaceAll("[()]", "");
+        referenced = PARENS.matcher(specs.get(i + 2)).replaceAll("");
       }
       return Optional.of(
           "ref["
@@ -318,7 +323,7 @@ public class DdlInspector {
     if (open < 0 || close <= open) {
       return List.of();
     }
-    return Arrays.stream(raw.substring(open + 1, close).split(","))
+    return Arrays.stream(COMMA.split(raw.substring(open + 1, close)))
         .map(String::trim)
         .filter(s -> !s.isBlank())
         .toList();
@@ -335,7 +340,7 @@ public class DdlInspector {
     if (identifier == null) {
       return "";
     }
-    return identifier.replaceAll("[\"`\\[\\]]", "").trim();
+    return IDENT_QUOTES.matcher(identifier).replaceAll("").trim();
   }
 
   private String readFile(Path sqlFile) {
