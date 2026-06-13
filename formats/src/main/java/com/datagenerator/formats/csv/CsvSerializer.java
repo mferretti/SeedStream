@@ -88,7 +88,11 @@ public class CsvSerializer implements FormatSerializer {
    */
   public String serializeHeader(Map<String, Object> data) {
     if (data.isEmpty()) return "";
-    return writeCsv(data.keySet().toArray(new String[0]));
+    String[] headers = data.keySet().toArray(new String[0]);
+    for (int i = 0; i < headers.length; i++) {
+      headers[i] = neutralizeFormula(headers[i]);
+    }
+    return writeCsv(headers);
   }
 
   @Override
@@ -115,7 +119,7 @@ public class CsvSerializer implements FormatSerializer {
   private String convertToString(Object value) {
     return switch (value) {
       case null -> "";
-      case String s -> s;
+      case String s -> neutralizeFormula(s);
       case Number n -> n.toString();
       case Boolean b -> b.toString();
       case Character c -> c.toString();
@@ -125,6 +129,32 @@ public class CsvSerializer implements FormatSerializer {
       case List<?> list -> toJson(list);
       default -> value.toString();
     };
+  }
+
+  /**
+   * Neutralize CSV formula injection (CWE-1236). A cell whose first character is a spreadsheet
+   * formula trigger ({@code = + - @}, TAB or CR) is executed as a formula by
+   * Excel/LibreOffice/Sheets even when quoted, so prefix it with a single quote per OWASP guidance.
+   * Only string cells pass through here; typed numbers/dates and nested JSON are not formula
+   * vectors.
+   *
+   * @param value raw string cell value
+   * @return the value unchanged, or prefixed with {@code '} if it starts with a formula trigger
+   */
+  private static String neutralizeFormula(String value) {
+    if (value == null || value.isEmpty()) {
+      return value;
+    }
+    char first = value.charAt(0);
+    if (first == '='
+        || first == '+'
+        || first == '-'
+        || first == '@'
+        || first == '\t'
+        || first == '\r') {
+      return "'" + value;
+    }
+    return value;
   }
 
   private String toJson(Object value) {

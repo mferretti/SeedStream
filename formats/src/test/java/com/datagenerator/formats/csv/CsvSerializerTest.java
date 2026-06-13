@@ -69,6 +69,36 @@ class CsvSerializerTest {
   }
 
   @Test
+  void shouldNeutralizeFormulaInjectionInValues() {
+    // CSV formula injection (F1): leading = + - @ TAB CR get a single-quote prefix.
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("formula", "=cmd|'/c calc'!A1");
+    data.put("phone", "+39061234567");
+
+    String csv = serializer.serialize(data);
+
+    assertThat(csv).isEqualTo("\"'=cmd|'/c calc'!A1\",\"'+39061234567\"");
+  }
+
+  @Test
+  void shouldNeutralizeFormulaInjectionInHeader() {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("=evil", "x");
+
+    assertThat(serializer.serializeHeader(data)).isEqualTo("\"'=evil\"");
+  }
+
+  @Test
+  void shouldNotAlterNormalValues() {
+    // Typed numbers (incl. negative) and ordinary strings are untouched.
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "John");
+    data.put("balance", -42);
+
+    assertThat(serializer.serialize(data)).isEqualTo("\"John\",\"-42\"");
+  }
+
+  @Test
   void shouldSerializeWithFieldAliases() {
     // Simulate generator output with aliases
     Map<String, Object> data = new LinkedHashMap<>();

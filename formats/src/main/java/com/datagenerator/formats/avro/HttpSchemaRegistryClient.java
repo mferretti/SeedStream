@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -91,7 +92,10 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
       return cached;
     }
 
-    String url = baseUrl + "/subjects/" + subject + "/versions";
+    // URL-encode the subject as a single path segment so a config-derived subject containing
+    // '/', '?', '#', '..' or whitespace cannot break out of the intended path (CWE-88).
+    String encodedSubject = URLEncoder.encode(subject, StandardCharsets.UTF_8);
+    String url = baseUrl + "/subjects/" + encodedSubject + "/versions";
     String body = buildRequestBody(avroSchemaJson);
 
     log.debug("Registering schema for subject '{}' at {}", subject, url);

@@ -92,6 +92,19 @@ class HttpSchemaRegistryClientTest {
   }
 
   @Test
+  void shouldUrlEncodeSubjectInPath() throws Exception {
+    // F2: a subject with path-breaking characters is percent-encoded as one segment.
+    stubResponse(200, "{\"id\":9}");
+
+    client.registerSchema("evil/../admin", "{}");
+
+    ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+    verify(httpClient).send(captor.capture(), any());
+    assertThat(captor.getValue().uri())
+        .hasToString("http://registry:8081/subjects/evil%2F..%2Fadmin/versions");
+  }
+
+  @Test
   void trailingSlashInBaseUrlIsTrimmed() throws Exception {
     HttpSchemaRegistryClient slashClient =
         new HttpSchemaRegistryClient("http://registry:8081/", httpClient);

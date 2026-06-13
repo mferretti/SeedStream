@@ -93,6 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Input validation** — empty `${SECRET:}` paths and empty `${}` variable names are rejected; Vault errors no longer leak the server address and now accept any 2xx response.
 - **OWASP review of the generators surface** — bounded resource allocation at generation time:
   - **Memory-exhaustion DoS** — `ArrayGenerator` and `CharGenerator` now reject a `maxLength` above `GeneratorValidation.MAX_GENERATED_SIZE` (10M) before allocating, so a crafted type bound (e.g. from an untrusted spec passed through `inspect`) raises `GeneratorException` instead of `OutOfMemoryError`.
+- **OWASP review of the formats surface** — neutralized output-side injection:
+  - **CSV formula injection (CWE-1236)** — `CsvSerializer` prefixes string cells/headers that begin with `= + - @`, TAB or CR with a single quote, so generated values (e.g. Datafaker phone numbers, config enums) cannot execute as spreadsheet formulas. Typed numbers/dates are unaffected.
+  - **Path injection (CWE-88)** — `HttpSchemaRegistryClient` URL-encodes the Schema Registry `subject` as a single path segment, so a config-derived subject cannot break out of the request path.
 
 ---
 
