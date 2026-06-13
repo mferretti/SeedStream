@@ -98,6 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Path injection (CWE-88)** — `HttpSchemaRegistryClient` URL-encodes the Schema Registry `subject` as a single path segment, so a config-derived subject cannot break out of the request path.
 - **OWASP review of the destinations surface** — kept credentials out of logs:
   - **Sensitive data exposure (CWE-532)** — `DatabaseDestinationConfig.password` and the Kafka `saslJaasConfig` / SSL store passwords are now `@ToString.Exclude`d, so the Lombok-generated `toString()` can never leak them into logs or exception messages.
+- **OWASP review of the CLI surface** — kept credentials out of logs:
+  - **Sensitive data exposure (CWE-532)** — `execute` now redacts JDBC URL credentials (URI userinfo and `password`/`user` query parameters) before logging, so a secret embedded in `jdbc_url` via `${SECRET:…}` substitution is masked as `****` instead of being written to the log in cleartext.
 
 ---
 
