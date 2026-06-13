@@ -1,20 +1,26 @@
 # datagenerator inspect — v1 Spec
 
-Status: implemented. Scope: OpenAPI **and** SQL DDL → SeedStream structure YAML.
+Status: implemented. Scope: OpenAPI, SQL DDL **and** Protobuf → SeedStream structure YAML.
 Supersedes the open questions in [INSPECT.md](internal/INSPECT-design-notes.md) with locked decisions.
 
 ## 1. Scope
 
-- **In**: OpenAPI 3.x specs (`.yaml` / `.json`, object schemas under `components.schemas`) and
-  SQL DDL (`.sql`, `CREATE TABLE` statements incl. foreign keys → `ref[...]`).
+- **In**: OpenAPI 3.x specs (`.yaml` / `.json`, object schemas under `components.schemas`),
+  SQL DDL (`.sql`, `CREATE TABLE` statements incl. foreign keys → `ref[...]`), and compiled
+  Protobuf **FileDescriptorSet**s (`.desc` / `.binpb` / `.protoset` from `protoc --descriptor_set_out`
+  or `buf build -o`; one structure per message, nested messages → `object[...]`, `repeated` → `array[...]`,
+  `enum` → `enum[...]`). Protobuf carries no value bounds, so scalars use default ranges; `bytes`,
+  `map<k,v>`, well-known dynamic types (`Any`/`Struct`/…) and `oneof` members are flagged for review.
+  Parsing `.proto` source directly is not supported — pre-compile to a descriptor set.
 - **Out**: `alias` emission, nullable/required hints, geolocation/locale, primary-key handling.
 - One `inspect` subcommand on the existing `datagenerator` CLI. No separate binary.
-- Format auto-detected from extension (`.sql` → DDL, `.yaml`/`.yml`/`.json` → OpenAPI);
-  `--format openapi|ddl` overrides.
+- Format auto-detected from extension (`.sql` → DDL, `.desc`/`.binpb`/`.protoset` → Protobuf,
+  `.yaml`/`.yml`/`.json` → OpenAPI); `--format openapi|ddl|protobuf` overrides.
 
 ```bash
-datagenerator inspect api.yaml   --output config/structures/
-datagenerator inspect schema.sql --output config/structures/ --force
+datagenerator inspect api.yaml      --output config/structures/
+datagenerator inspect schema.sql    --output config/structures/ --force
+datagenerator inspect schema.desc   --output config/structures/   # protoc/buf descriptor set
 ```
 
 Flags:
@@ -22,7 +28,7 @@ Flags:
 |---|---|---|
 | `--output <dir>` | `config/structures/` | where YAML files are written |
 | `--force` | off | overwrite existing files (else skip + warn — never silent clobber) |
-| `--format openapi\|ddl` | auto | input format override; supports both implemented inspectors |
+| `--format openapi\|ddl\|protobuf` | auto | input format override; supports all three implemented inspectors |
 | `--faker-types <file>` | unset | optional custom Datafaker types config loaded before inspection |
 
 ## 2. Module
