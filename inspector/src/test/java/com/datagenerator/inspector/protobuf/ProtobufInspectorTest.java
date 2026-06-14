@@ -29,6 +29,7 @@ import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Label;
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
+import com.google.protobuf.DescriptorProtos.MessageOptions;
 import com.google.protobuf.DescriptorProtos.OneofDescriptorProto;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -451,5 +452,214 @@ class ProtobufInspectorTest {
         .extracting(DataStructure::getName)
         .contains("product", "cart");
     assertThat(datatypesOf(inspection, "cart")).containsEntry("product", "object[product]");
+  }
+
+  @Test
+  void shouldSkipMessageWithNoFieldsAndWarn() throws IOException {
+    DescriptorProto empty = DescriptorProto.newBuilder().setName("Empty").build();
+    DescriptorProto filled =
+        DescriptorProto.newBuilder()
+            .setName("Filled")
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("e.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(empty)
+            .addMessageType(filled)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    assertThat(inspection.structures())
+        .extracting(DataStructure::getName)
+        .contains("filled")
+        .doesNotContain("empty");
+    assertThat(inspection.warnings()).anyMatch(w -> w.contains("Empty") && w.contains("no fields"));
+  }
+
+  @Test
+  void shouldEmitNestedMessageTypes() throws IOException {
+    DescriptorProto inner =
+        DescriptorProto.newBuilder()
+            .setName("Inner")
+            .addField(optionalField("label", 1, Type.TYPE_STRING))
+            .build();
+    DescriptorProto outer =
+        DescriptorProto.newBuilder()
+            .setName("Outer")
+            .addNestedType(inner)
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("n.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(outer)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    assertThat(inspection.structures())
+        .extracting(DataStructure::getName)
+        .contains("outer", "inner");
+  }
+
+  @Test
+  void shouldFlagMapFieldAndSkipMapEntry() throws IOException {
+    DescriptorProto entry =
+        DescriptorProto.newBuilder()
+            .setName("LabelsEntry")
+            .setOptions(MessageOptions.newBuilder().setMapEntry(true).build())
+            .addField(optionalField("key", 1, Type.TYPE_STRING))
+            .addField(optionalField("value", 2, Type.TYPE_STRING))
+            .build();
+    FieldDescriptorProto labels =
+        FieldDescriptorProto.newBuilder()
+            .setName("labels")
+            .setNumber(1)
+            .setType(Type.TYPE_MESSAGE)
+            .setLabel(Label.LABEL_REPEATED)
+            .setTypeName(".pkg.Cfg.LabelsEntry")
+            .build();
+    DescriptorProto cfg =
+        DescriptorProto.newBuilder().setName("Cfg").addNestedType(entry).addField(labels).build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("m.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(cfg)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    // The synthetic map-entry message is not emitted as its own structure.
+    assertThat(inspection.structures())
+        .extracting(DataStructure::getName)
+        .contains("cfg")
+        .doesNotContain("labels_entry");
+    // map<k,v> has no SeedStream equivalent → flagged, defaulted to a string.
+    assertThat(datatypesOf(inspection, "cfg")).containsEntry("labels", "char[1..50]");
+    assertThat(inspection.comments().getOrDefault("cfg", Map.of())).containsKey("labels");
+  }
+
+  @Test
+  void shouldFlagDynamicWellKnownType() throws IOException {
+    // google.protobuf.Any is dynamic — no clean SeedStream mapping, so it is flagged.
+    FileDescriptorProto anyFile = com.google.protobuf.Any.getDescriptor().getFile().toProto();
+    DescriptorProto wrapper =
+        DescriptorProto.newBuilder()
+            .setName("Wrapper")
+            .addField(
+                FieldDescriptorProto.newBuilder()
+                    .setName("payload")
+                    .setNumber(1)
+                    .setType(Type.TYPE_MESSAGE)
+                    .setLabel(Label.LABEL_OPTIONAL)
+                    .setTypeName(".google.protobuf.Any")
+                    .build())
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("w.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addDependency(anyFile.getName())
+            .addMessageType(wrapper)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(anyFile, fdp));
+
+    assertThat(datatypesOf(inspection, "wrapper")).containsEntry("payload", "char[1..50]");
+    assertThat(inspection.comments().getOrDefault("wrapper", Map.of())).containsKey("payload");
+  }
+
+  @Test
+  void shouldTolerateUnusedMissingDependency() throws IOException {
+    // A declared but unused dependency absent from the set resolves to null, is filtered out, and
+    // the file still builds.
+    DescriptorProto msg =
+        DescriptorProto.newBuilder()
+            .setName("Thing")
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("t.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addDependency("missing.proto")
+            .addMessageType(msg)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    assertThat(inspection.structures()).extracting(DataStructure::getName).contains("thing");
+  }
+
+  @Test
+  void shouldFailOnUnresolvableType() throws IOException {
+    // A field referencing a non-existent message type fails FileDescriptor validation, surfacing as
+    // an InspectorException.
+    DescriptorProto msg =
+        DescriptorProto.newBuilder()
+            .setName("Bad")
+            .addField(
+                FieldDescriptorProto.newBuilder()
+                    .setName("ref")
+                    .setNumber(1)
+                    .setType(Type.TYPE_MESSAGE)
+                    .setLabel(Label.LABEL_OPTIONAL)
+                    .setTypeName(".pkg.DoesNotExist")
+                    .build())
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("bad.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(msg)
+            .build();
+    Path file = buildAndWrite(fdp);
+    ProtobufInspector inspector = new ProtobufInspector();
+
+    assertThatThrownBy(() -> inspector.inspect(file))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("descriptor set");
+  }
+
+  @Test
+  void shouldCombineFlagAndOneofComment() throws IOException {
+    // A field that is both flagged (bytes) and a oneof member gets both comments concatenated.
+    DescriptorProto msg =
+        DescriptorProto.newBuilder()
+            .setName("Choice")
+            .addOneofDecl(OneofDescriptorProto.newBuilder().setName("body").build())
+            .addField(
+                FieldDescriptorProto.newBuilder()
+                    .setName("blob")
+                    .setNumber(1)
+                    .setType(Type.TYPE_BYTES)
+                    .setLabel(Label.LABEL_OPTIONAL)
+                    .setOneofIndex(0)
+                    .build())
+            .addField(optionalField("name", 2, Type.TYPE_STRING))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("c.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(msg)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    String comment = inspection.comments().getOrDefault("choice", Map.of()).get("blob");
+    assertThat(comment).isNotNull().contains("oneof");
   }
 }
