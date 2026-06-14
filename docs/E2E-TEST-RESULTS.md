@@ -16,6 +16,24 @@
 Production adds WAN/LAN latency, bandwidth limits, and broker/storage overhead —
 expect Kafka 30–50% slower and absolute numbers to differ by hardware.
 
+## Test environment (baseline hardware)
+
+Absolute throughput is hardware-bound; these numbers were produced on:
+
+| | |
+|--|--|
+| CPU | AMD Ryzen 5 PRO 4650U — 6 cores / 12 threads, max 2.1 GHz (low-power U-series) |
+| RAM | 30 GiB |
+| Disk | local SSD |
+| OS | Ubuntu 24.04.4 LTS (kernel 6.17.0-35-generic) |
+| JDK | OpenJDK 21.0.9 LTS |
+| Docker | 29.5.3 (Kafka + PostgreSQL containers on `localhost`) |
+
+The 2.1 GHz power-constrained mobile CPU is the reason absolute rec/s sit
+in the tens-of-thousands rather than higher; a desktop/server CPU at 3.5+ GHz
+will report proportionally higher figures. Use these as a **relative baseline**
+for comparing config/version changes on the same host, not as production targets.
+
 ## Structures under test
 
 | Destination | Structure | Shape |

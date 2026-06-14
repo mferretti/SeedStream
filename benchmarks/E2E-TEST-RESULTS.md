@@ -18,6 +18,14 @@ All tests execute on a **single machine** with:
 - Bandwidth constraints
 - Lower Kafka throughput (expect 30-50% reduction)
 
+**Test environment (auto-captured baseline hardware):**
+- CPU: AMD Ryzen 5 PRO 4650U with Radeon Graphics (6 cores / 12 threads)
+- RAM: 30Gi
+- OS: Ubuntu 24.04.4 LTS (kernel 6.17.0-35-generic)
+- JDK: OpenJDK 21.0.9; Docker version 29.5.3
+
+Absolute throughput is hardware-bound — treat these figures as a **relative baseline** for this host, not production targets.
+
 **Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs enum-based pre-refactoring baseline).
 
 ## Executive Summary

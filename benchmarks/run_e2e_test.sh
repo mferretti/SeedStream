@@ -592,6 +592,19 @@ generate_report() {
     date_str=$(date +"%B %d, %Y")
     local report_file="${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
 
+    # Auto-capture host hardware so every report records the machine that produced
+    # the numbers (absolute throughput is hardware-bound). Each probe is guarded.
+    local hw_cpu hw_cores hw_threads hw_ram hw_os hw_kernel hw_jdk hw_docker
+    hw_cpu=$(lscpu 2>/dev/null | awk -F: '/Model name/{gsub(/^[ \t]+/,"",$2); print $2; exit}')
+    hw_cores=$(lscpu 2>/dev/null | awk -F: '/^Core\(s\) per socket/{gsub(/ /,"",$2); print $2; exit}')
+    hw_threads=$(nproc 2>/dev/null)
+    hw_ram=$(free -h 2>/dev/null | awk '/Mem:/{print $2; exit}')
+    hw_os=$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-$(uname -s)}")
+    hw_kernel=$(uname -r 2>/dev/null)
+    hw_jdk=$(java -version 2>&1 | head -1 | sed 's/.*version "//;s/".*//')
+    hw_docker=$(docker --version 2>/dev/null | sed 's/,.*//')
+    [[ -z "$hw_cpu" ]] && hw_cpu="unknown"
+
     local elapsed_min=$(( (SECONDS - BENCHMARK_START_SECONDS) / 60 ))
     local file_kafka_tests=$(( ${#DESTINATIONS[@]} * ${#FORMATS[@]} * ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
     local db_tests=$(( ${#THREADS[@]} * ${#MEMORY_LIMITS[@]} ))
@@ -674,6 +687,14 @@ All tests execute on a **single machine** with:
 - Network round-trip latency (1-100ms typical)
 - Bandwidth constraints
 - Lower Kafka throughput (expect 30-50% reduction)
+
+**Test environment (auto-captured baseline hardware):**
+- CPU: ${hw_cpu} (${hw_cores} cores / ${hw_threads} threads)
+- RAM: ${hw_ram}
+- OS: ${hw_os} (kernel ${hw_kernel})
+- JDK: OpenJDK ${hw_jdk}; ${hw_docker}
+
+Absolute throughput is hardware-bound — treat these figures as a **relative baseline** for this host, not production targets.
 
 **Registry Refactoring Impact:** Tests run after implementing DatafakerRegistry pattern (commits fe83bd3, c299834). Performance remains **stable** - registry lookup overhead is negligible (<1% difference vs enum-based pre-refactoring baseline).
 
