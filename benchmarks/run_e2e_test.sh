@@ -215,7 +215,25 @@ build_project() {
         log_error "CLI build failed - script not found at $CLI_SCRIPT"
         exit 1
     fi
-    
+
+    # installDist wipes extras/ on every sync, so (re)install the PostgreSQL JDBC
+    # driver the database tests need. Driver is NOT bundled by design; pull the
+    # release jar from the Gradle cache if present.
+    local extras_dir="${PROJECT_ROOT}/cli/build/install/cli/extras"
+    mkdir -p "$extras_dir"
+    if ! ls "$extras_dir"/postgresql-*.jar >/dev/null 2>&1; then
+        local pg_jar
+        pg_jar=$(find "${HOME}/.gradle/caches" -path '*/org.postgresql/postgresql/*' \
+            -name 'postgresql-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' 2>/dev/null \
+            | sort -V | tail -1)
+        if [[ -n "$pg_jar" ]]; then
+            cp "$pg_jar" "$extras_dir/"
+            log_success "Installed JDBC driver: $(basename "$pg_jar")"
+        else
+            log_warn "No PostgreSQL driver in Gradle cache - database tests may fail"
+        fi
+    fi
+
     log_success "Build complete - CLI installed at $CLI_SCRIPT"
 }
 
