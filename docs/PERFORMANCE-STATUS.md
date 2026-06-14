@@ -308,13 +308,16 @@ jmc benchmarks/build/jfr/profile_file_json_t8_m512m.jfr
 
 ### Current Development Hardware
 
-**Benchmarks run on:**
-- CPU: Intel Core i7/i9 (8 cores)
-- RAM: 16-32GB
-- Disk: NVMe SSD
-- OS: Linux/macOS
+**Benchmarks run on (June 14, 2026 baseline):**
+- CPU: AMD Ryzen 5 PRO 4650U — 6 cores / 12 threads, max 2.1 GHz (low-power U-series)
+- RAM: 30 GiB
+- Disk: local SSD
+- OS: Ubuntu 24.04.4 LTS (kernel 6.17.0-35-generic)
+- JDK: OpenJDK 21.0.9 LTS; Docker 29.5.3 (Kafka + PostgreSQL on `localhost`)
 
-Results may vary on different hardware configurations.
+The 2.1 GHz power-constrained mobile CPU caps absolute throughput; a 3.5+ GHz
+desktop/server CPU reports proportionally higher rec/s. Treat these as a
+relative baseline for the same host, not production targets.
 
 ---
 
