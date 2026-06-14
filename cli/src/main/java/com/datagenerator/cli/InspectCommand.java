@@ -22,6 +22,7 @@ import com.datagenerator.inspector.StructureYamlWriter;
 import com.datagenerator.inspector.ddl.DdlInspector;
 import com.datagenerator.inspector.ddl.NestingOptions;
 import com.datagenerator.inspector.openapi.OpenApiInspector;
+import com.datagenerator.inspector.protobuf.ProtobufInspector;
 import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.parser.CustomTypeConfigLoader;
@@ -62,6 +63,7 @@ import picocli.CommandLine.Parameters;
     description = "Generate SeedStream structure YAML from an OpenAPI spec or SQL DDL",
     mixinStandardHelpOptions = true)
 public class InspectCommand implements Callable<Integer> {
+  private static final String FORMAT_PROTOBUF = "protobuf";
 
   @Parameters(index = "0", description = "Schema file to inspect (OpenAPI 3.x JSON/YAML or .sql)")
   private Path inputFile;
@@ -121,10 +123,14 @@ public class InspectCommand implements Callable<Integer> {
     }
 
     try {
-      Inspection inspection =
-          "ddl".equals(resolved)
-              ? new DdlInspector().inspect(inputFile, resolveNesting(resolved))
-              : new OpenApiInspector().inspect(inputFile);
+      Inspection inspection;
+      if ("ddl".equals(resolved)) {
+        inspection = new DdlInspector().inspect(inputFile, resolveNesting(resolved));
+      } else if (FORMAT_PROTOBUF.equals(resolved)) {
+        inspection = new ProtobufInspector().inspect(inputFile);
+      } else {
+        inspection = new OpenApiInspector().inspect(inputFile);
+      }
       StructureYamlWriter writer = new StructureYamlWriter();
 
       int written = 0;
@@ -184,10 +190,10 @@ public class InspectCommand implements Callable<Integer> {
   private String resolveFormat() {
     String requested = format.toLowerCase(Locale.ROOT);
     return switch (requested) {
-      case "openapi", "ddl" -> requested;
+      case "openapi", "ddl", FORMAT_PROTOBUF -> requested;
       case "auto" -> detectFormat();
       default -> {
-        log.error("Unsupported --format '{}'. Supported: openapi, ddl", format);
+        log.error("Unsupported --format '{}'. Supported: openapi, ddl, protobuf", format);
         yield null;
       }
     };
@@ -199,11 +205,17 @@ public class InspectCommand implements Callable<Integer> {
     if (fileName.endsWith(".sql")) {
       return "ddl";
     }
+    if (fileName.endsWith(".desc")
+        || fileName.endsWith(".binpb")
+        || fileName.endsWith(".protoset")) {
+      return FORMAT_PROTOBUF;
+    }
     if (fileName.endsWith(".yaml") || fileName.endsWith(".yml") || fileName.endsWith(".json")) {
       return "openapi";
     }
     log.error(
-        "Cannot auto-detect format for '{}'. Use --format openapi|ddl", inputFile.getFileName());
+        "Cannot auto-detect format for '{}'. Use --format openapi|ddl|protobuf",
+        inputFile.getFileName());
     return null;
   }
 }

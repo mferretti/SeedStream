@@ -10,4 +10,7 @@ dependencies {
 
     // SQL DDL parsing (CREATE TABLE -> columns, types, foreign keys)
     implementation(libs.jsqlparser)
+
+    // Protobuf FileDescriptorSet ingestion
+    implementation(libs.protobuf.java)
 }

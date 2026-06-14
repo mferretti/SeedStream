@@ -383,8 +383,9 @@ public class DatabaseDestination extends AbstractDestination {
         for (int i = 0; i < columnNames.size(); i++) {
           String col = columnNames.get(i);
           Object value = data.get(col);
-          if (schema != null && schema.containsKey(col)) {
-            JdbcTypeMapper.bind(insertStatement, i + 1, value, schema.get(col));
+          DataType fieldType = schema != null ? schema.get(col) : null;
+          if (fieldType != null) {
+            JdbcTypeMapper.bind(insertStatement, i + 1, value, fieldType);
           } else {
             JdbcTypeMapper.bind(insertStatement, i + 1, value);
           }

@@ -358,27 +358,38 @@ public class GenerationEngine {
 
       // Accumulate into a chunk; hand off the whole chunk to amortize queue lock/signal overhead
       chunk.add(item);
+      workerGenerated++;
       if (chunk.size() >= chunkSize) {
         queue.put(chunk); // blocks if queue is full - backpressure
+        recordChunkProgress(progress, chunk.size());
         chunk = new ArrayList<>(chunkSize);
-      }
-
-      workerGenerated++;
-      long totalGenerated = progress.generated().incrementAndGet();
-
-      // Progress logging
-      if (totalGenerated % logBatchSize == 0) {
-        logProgress(totalGenerated, progress.totalCount(), progress.startTime());
       }
     }
 
     // Flush any trailing partial chunk
     if (!chunk.isEmpty()) {
       queue.put(chunk);
+      recordChunkProgress(progress, chunk.size());
     }
 
     log.debug("Worker {} completed: generated {} records", workerId, workerGenerated);
     workerCleanup.run();
+  }
+
+  /**
+   * Updates the shared generated-record counter once per flushed chunk instead of once per record,
+   * avoiding cross-worker CAS contention on the hot path, and logs progress when the running total
+   * crosses a {@code logBatchSize} boundary.
+   *
+   * @param progress shared progress state
+   * @param chunkCount number of records in the just-flushed chunk
+   */
+  private void recordChunkProgress(ProgressTracker progress, int chunkCount) {
+    long before = progress.generated().getAndAdd(chunkCount);
+    long after = before + chunkCount;
+    if (before / logBatchSize != after / logBatchSize) {
+      logProgress(after, progress.totalCount(), progress.startTime());
+    }
   }
 
   /**

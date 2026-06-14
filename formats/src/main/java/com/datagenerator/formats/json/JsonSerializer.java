@@ -89,6 +89,16 @@ public class JsonSerializer implements FormatSerializer {
     }
   }
 
+  @Override
+  public byte[] serializeToBytes(Map<String, Object> data) {
+    try {
+      return mapper.writeValueAsBytes(data);
+    } catch (JsonProcessingException e) {
+      log.error("Failed to serialize record to JSON: {}", data, e);
+      throw new SerializationException("JSON serialization failed", e);
+    }
+  }
+
   /**
    * Open a streaming writer that holds one {@link JsonGenerator} open for all records, eliminating
    * per-record String allocation. The generator is closed (but the stream is not) when the writer

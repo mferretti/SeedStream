@@ -21,7 +21,9 @@ import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.GeneratorValidation;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Generates random strings (char[min..max]) with length constraints.
@@ -36,30 +38,39 @@ public class CharGenerator implements DataGenerator {
   // Alphabet: a-z, A-Z (52 characters)
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+  private static final int ALPHABET_LEN = ALPHABET.length();
+
+  private record Bounds(int min, int max) {}
+
+  private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
+
   @Override
   public Object generate(Random random, DataType dataType) {
     PrimitiveType primitiveType =
         GeneratorValidation.requirePrimitiveKind(
             dataType, PrimitiveType.Kind.CHAR, "CharGenerator");
 
-    // Parse min/max length
-    int minLength = parseLength(primitiveType.getMinValue(), "minValue");
-    int maxLength = parseLength(primitiveType.getMaxValue(), "maxValue");
-
-    GeneratorValidation.requireValidRange(minLength, maxLength, "char");
-    GeneratorValidation.requireBoundedSize(maxLength, "char");
+    Bounds b = boundsCache.computeIfAbsent(primitiveType, this::parseBounds);
 
     // Generate random length in range [minLength, maxLength]
-    int length = minLength + random.nextInt(maxLength - minLength + 1);
+    int length = b.min() + random.nextInt(b.max() - b.min() + 1);
 
     // Generate string with random characters from alphabet
     StringBuilder sb = new StringBuilder(length);
     for (int i = 0; i < length; i++) {
-      int index = random.nextInt(ALPHABET.length());
+      int index = random.nextInt(ALPHABET_LEN);
       sb.append(ALPHABET.charAt(index));
     }
 
     return sb.toString();
+  }
+
+  private Bounds parseBounds(PrimitiveType primitiveType) {
+    int minLength = parseLength(primitiveType.getMinValue(), "minValue");
+    int maxLength = parseLength(primitiveType.getMaxValue(), "maxValue");
+    GeneratorValidation.requireValidRange(minLength, maxLength, "char");
+    GeneratorValidation.requireBoundedSize(maxLength, "char");
+    return new Bounds(minLength, maxLength);
   }
 
   @Override

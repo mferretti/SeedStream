@@ -71,6 +71,12 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
 
   private final Object initLock = new Object();
 
+  // Reused across records on the same worker thread for throughput; never remove()d because the
+  // reuse is the point and generation worker threads are short-lived (terminate at job end, like
+  // FakerCache). Holds no per-record state beyond the bound stream.
+  @SuppressWarnings("java:S5164")
+  private static final ThreadLocal<BinaryEncoder> ENCODER = new ThreadLocal<>();
+
   /**
    * @param avroSerializer the base Avro serializer (schema inference and record building)
    * @param registryClient Schema Registry client for schema registration
@@ -137,7 +143,8 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
     try {
       GenericRecord avroRecord = avroSerializer.buildGenericRecord(data);
       ByteArrayOutputStream out = new ByteArrayOutputStream();
-      BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
+      BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, ENCODER.get());
+      ENCODER.set(encoder);
       datumWriter.write(avroRecord, encoder);
       encoder.flush();
       return out.toByteArray();

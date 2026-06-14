@@ -19,9 +19,15 @@ package com.datagenerator.inspector;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /** Name utilities: tokenization and snake_case conversion shared by the inspector. */
 public final class Names {
+
+  private static final Pattern CAMEL_BOUNDARY = Pattern.compile("([a-z0-9])([A-Z])");
+  private static final Pattern ACRONYM_BOUNDARY = Pattern.compile("([A-Z]+)([A-Z][a-z])");
+  private static final Pattern SEPARATORS = Pattern.compile("[_\\-\\s]+");
+  private static final Pattern SPACE = Pattern.compile(" ");
 
   private Names() {}
 
@@ -47,12 +53,10 @@ public final class Names {
     if (name == null || name.isBlank()) {
       return List.of();
     }
-    String spaced =
-        name.replaceAll("([a-z0-9])([A-Z])", "$1 $2") // camelCase boundary
-            .replaceAll("([A-Z]+)([A-Z][a-z])", "$1 $2") // ACRONYMWord boundary
-            .replaceAll("[_\\-\\s]+", " ") // separators
-            .trim()
-            .toLowerCase(Locale.ROOT);
-    return Arrays.stream(spaced.split(" ")).filter(s -> !s.isBlank()).toList();
+    String spaced = CAMEL_BOUNDARY.matcher(name).replaceAll("$1 $2"); // camelCase boundary
+    spaced = ACRONYM_BOUNDARY.matcher(spaced).replaceAll("$1 $2"); // ACRONYMWord boundary
+    spaced =
+        SEPARATORS.matcher(spaced).replaceAll(" ").trim().toLowerCase(Locale.ROOT); // separators
+    return Arrays.stream(SPACE.split(spaced)).filter(s -> !s.isBlank()).toList();
   }
 }

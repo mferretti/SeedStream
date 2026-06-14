@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Maps a SQL column type to a SeedStream datatype string (foreign keys are resolved separately by
@@ -42,6 +43,8 @@ public final class DdlTypeMapper {
   private static final String TYPE_TIMESTAMP = "TIMESTAMP";
   private static final String TYPE_DECIMAL = "DECIMAL";
   private static final String TYPE_VARCHAR = "VARCHAR";
+
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
   /**
    * Vendor / multi-word SQL type names folded onto a canonical key. The canonical keys are the ones
@@ -141,7 +144,7 @@ public final class DdlTypeMapper {
     if (sqlType == null) {
       return "";
     }
-    String normalized = sqlType.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
+    String normalized = WHITESPACE.matcher(sqlType.trim()).replaceAll(" ").toUpperCase(Locale.ROOT);
     return SYNONYMS.getOrDefault(normalized, normalized);
   }
 

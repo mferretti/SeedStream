@@ -23,7 +23,9 @@ import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.GeneratorValidation;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Generates random decimal numbers (decimal[min..max]) within specified bounds.
@@ -41,30 +43,35 @@ import java.util.Random;
  */
 public class DecimalGenerator implements DataGenerator {
 
+  private record Bounds(BigDecimal min, BigDecimal range, int scale) {}
+
+  private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
+
   @Override
   public Object generate(Random random, DataType dataType) {
     PrimitiveType primitiveType =
         GeneratorValidation.requirePrimitiveKind(
             dataType, PrimitiveType.Kind.DECIMAL, "DecimalGenerator");
 
-    // Parse min/max bounds as BigDecimal for precision
-    BigDecimal min = parseDecimal(primitiveType.getMinValue(), "minValue");
-    BigDecimal max = parseDecimal(primitiveType.getMaxValue(), "maxValue");
-
-    GeneratorValidation.requireValidRange(min, max, "decimal");
-
-    // Determine scale (decimal places) from max precision in min/max
-    int scale = Math.max(min.scale(), max.scale());
+    Bounds b = boundsCache.computeIfAbsent(primitiveType, this::parseBounds);
 
     // Generate random value: min + random * (max - min)
     // nextDouble() returns [0.0, 1.0) so max is approached but not guaranteed; acceptable for
     // decimals
-    BigDecimal range = max.subtract(min);
     BigDecimal randomFactor = BigDecimal.valueOf(random.nextDouble());
-    BigDecimal value = min.add(range.multiply(randomFactor));
+    BigDecimal value = b.min().add(b.range().multiply(randomFactor));
 
     // Round to desired scale
-    return value.setScale(scale, RoundingMode.HALF_UP);
+    return value.setScale(b.scale(), RoundingMode.HALF_UP);
+  }
+
+  private Bounds parseBounds(PrimitiveType primitiveType) {
+    BigDecimal min = parseDecimal(primitiveType.getMinValue(), "minValue");
+    BigDecimal max = parseDecimal(primitiveType.getMaxValue(), "maxValue");
+    GeneratorValidation.requireValidRange(min, max, "decimal");
+    int scale = Math.max(min.scale(), max.scale());
+    BigDecimal range = max.subtract(min);
+    return new Bounds(min, range, scale);
   }
 
   @Override
