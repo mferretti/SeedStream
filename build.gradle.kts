@@ -116,7 +116,7 @@ subprojects {
 
         // Force newer versions to address security vulnerabilities
         constraints {
-            implementation("com.google.protobuf:protobuf-java:4.35.0") // CVE-2024-7254
+            implementation("com.google.protobuf:protobuf-java:4.35.1") // CVE-2024-7254
         }
 
         // Logging
