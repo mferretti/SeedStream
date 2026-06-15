@@ -90,6 +90,12 @@ Common exclusions:
 Configuration: `build.gradle.kts`
 - **Minimum coverage**: 70%
 - **Reports**: XML (for CI), HTML (for viewing)
+- **Scope**: **unit tests only** — the `test` task uses `excludeTags("integration")`,
+  so the Testcontainers `integrationTest` suite and `*IT.java` classes are **not**
+  reflected in the JaCoCo/Codecov figure. Integration behaviour is verified by the
+  separate `integrationTest` task and the e2e benchmark suite. See
+  [CODECOV-SETUP.md](CODECOV-SETUP.md#what-the-percentage-measures-scope) — this is
+  why `destinations` (~75%) and `cli` (~78%) report low despite heavy IT coverage.
 
 Coverage reports are generated automatically after tests run.
 
