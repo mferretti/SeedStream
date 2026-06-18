@@ -110,6 +110,8 @@ Determinism is abstract until you watch two hashes match. One command generates 
 ./scripts/determinism-demo.sh
 ```
 
+![Determinism demo: identical SHA-256 across 1, 4, and 8 threads](docs/assets/determinism.gif)
+
 ```text
 ==> Generating 5000 records with --seed 12345, three thread counts…
     threads=1  sha256=d87c2c641609dc72488ad9bb37af068f5b315b6890e39bc63d81654ef5fa2c44
