@@ -277,5 +277,7 @@ You can now run the E2E script and it will use your custom config via the symlin
 
 ---
 
+Running these in a container? The resource-sizing guidance (CPU→threads, memory→heap, per-destination) lives in [../docs/CONTAINER.md](../docs/CONTAINER.md).
+
 **Questions?** See [../docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md) or open an issue.
 

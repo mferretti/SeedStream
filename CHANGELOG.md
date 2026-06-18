@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**In progress**: Avro + Schema Registry, AES-256-GCM secret encryption, cloud secret backends, parent-reference FK propagation, determinism bug fixes.
+**Highlights**: Avro + Confluent Schema Registry formats, AES-256-GCM secret encryption with cloud backends (Vault / AWS / Azure), `inspect` subcommand (OpenAPI / DDL / Protobuf → structure YAML), parent-reference FK propagation (`ref[parent.field]`), and a determinism fix making output byte-for-byte identical across thread counts.
 
 ### Added
 

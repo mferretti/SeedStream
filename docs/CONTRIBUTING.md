@@ -5,6 +5,7 @@ First off, thank you for considering contributing to SeedStream! It's people lik
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
+- [Your First Contribution](#your-first-contribution)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
 - [Code Quality Standards](#code-quality-standards)
@@ -20,6 +21,31 @@ First off, thank you for considering contributing to SeedStream! It's people lik
 This project and everyone participating in it is governed by the [SeedStream Code of Conduct](../CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
 **TL;DR**: Be respectful, constructive, and welcoming. We're building great software together.
+
+---
+
+## Your First Contribution
+
+New here? Start with an issue labelled
+[`good first issue`](https://github.com/mferretti/SeedStream/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+Many of them touch only **YAML config** or **a single test** — no deep Java
+needed. The fastest first-PR path:
+
+1. **Build it green first** — `git clone … && cd SeedStream && ./gradlew build`.
+   If that passes, your environment is ready.
+2. **Pick one `good first issue`** and comment that you're taking it (so two
+   people don't duplicate work).
+3. **Branch** — `git checkout -b <type>/<short-description>` (e.g.
+   `feat/employee-config`).
+4. **Make the change**, then run `./gradlew spotlessApply test` — formatting and
+   tests must pass. Most starter issues ask for a test that includes a
+   **same-seed determinism** check; mirror an existing one.
+5. **Open a PR** following [Pull Request Process](#pull-request-process). Small,
+   focused PRs get reviewed fastest.
+
+Stuck? Open a draft PR or ask in
+[Discussions](https://github.com/mferretti/SeedStream/discussions) — a question
+is always welcome.
 
 ---
 
