@@ -27,45 +27,35 @@ import lombok.extern.slf4j.Slf4j;
  * <p><b>Design Rationale:</b>
  *
  * <p>1. <b>Thread Safety:</b> {@link Random} is not thread-safe. Each worker thread needs its own
- * instance to avoid contention and race conditions.
+ * instance to avoid contention and race conditions — {@link #getRandom()} provides a reusable
+ * thread-local instance for that purpose.
  *
- * <p>2. <b>Determinism:</b> For reproducibility, the same master seed must produce the same data
- * across multiple runs, even with parallel generation. We achieve this by:
+ * <p>2. <b>Determinism (per-record seeding):</b> reproducibility is guaranteed by seeding each
+ * record from its <b>global record index</b> via {@link #deriveRecordSeed(long)}, not from the
+ * worker that happens to generate it. The engine reseeds the thread-local {@link Random} with
+ * {@code deriveRecordSeed(globalIndex)} before generating record {@code globalIndex}. Because the
+ * seed of record {@code i} depends only on the master seed and {@code i}:
  *
  * <ul>
- *   <li>Using a master seed from the job configuration
- *   <li>Assigning logical worker IDs (0, 1, 2, ...) to threads, NOT JVM thread IDs
- *   <li>Deriving deterministic per-thread seeds: {@code deriveSeed(masterSeed, workerID)}
+ *   <li>the same master seed produces the same value at every index, across runs;
+ *   <li>the result is independent of thread count and core count — partitioning the work
+ *       differently cannot change any record's value (the property a per-worker sequential RNG
+ *       could not give).
  * </ul>
  *
- * <p><b>Why NOT JVM Thread IDs?</b>
- *
- * <p>JVM thread IDs ({@link Thread#threadId()}) are assigned sequentially as threads are created,
- * including system threads, GC threads, and application threads. They are NOT guaranteed to be the
- * same across JVM restarts:
- *
- * <pre>
- * Run 1: Worker threads get JVM IDs [15, 17, 19, 21] → derived seeds [X, Y, Z, W]
- * Run 2: Worker threads get JVM IDs [18, 20, 22, 24] → derived seeds [A, B, C, D] ❌ Different data!
- * </pre>
- *
- * <p><b>Solution: Logical Worker IDs</b>
- *
- * <p>We use an {@link AtomicInteger} counter to assign sequential worker IDs (0, 1, 2, ...) as
- * threads first request a Random instance. This ensures:
- *
- * <pre>
- * Run 1: Worker 0 → seed X, Worker 1 → seed Y, Worker 2 → seed Z
- * Run 2: Worker 0 → seed X, Worker 1 → seed Y, Worker 2 → seed Z ✅ Identical data!
- * </pre>
+ * <p><b>Why index-based, not JVM thread IDs?</b> JVM thread IDs ({@link Thread#threadId()}) vary
+ * across runs (system/GC threads are created in between), so anything derived from them is not
+ * reproducible. The logical worker IDs assigned by {@link #getRandom()} (via an {@link
+ * AtomicInteger}, not JVM IDs) keep the thread-local instances stable, but the per-record index
+ * seed is what actually pins the data — and it removes the dependency on partitioning entirely.
  *
  * <p><b>Usage:</b>
  *
  * <pre>
  * RandomProvider provider = new RandomProvider(12345L);
- * // Each thread calls:
- * Random random = provider.getRandom();
- * int value = random.nextInt(100); // Deterministic based on worker ID
+ * Random random = provider.getRandom();          // reusable per-thread instance
+ * random.setSeed(provider.deriveRecordSeed(i));  // seed record i by its global index
+ * int value = random.nextInt(100);               // deterministic for index i, any thread count
  * </pre>
  *
  * @see SeedResolver
@@ -136,6 +126,27 @@ public class RandomProvider {
   private long deriveSeed(long base, int workerId) {
     long seed = base;
     seed ^= workerId; // Mix in worker ID
+    seed ^= (seed << 21); // Bit avalanche
+    seed ^= (seed >>> 35); // Spread bits
+    seed ^= (seed << 4); // Final mixing
+    return seed;
+  }
+
+  /**
+   * Derive a deterministic seed for a single record from its <b>global</b> index (0, 1, 2, ...),
+   * independent of which worker thread generates it.
+   *
+   * <p>This is the key to thread-count- and machine-invariant output: record {@code i} is seeded
+   * the same way no matter how the work is partitioned, so the generated value for index {@code i}
+   * is identical across any thread count or core count. Same avalanche mixing as {@link
+   * #deriveSeed(long, int)} but keyed on a {@code long} record index instead of a worker ID.
+   *
+   * @param index global record index (0-based)
+   * @return derived seed for that record
+   */
+  public long deriveRecordSeed(long index) {
+    long seed = masterSeed;
+    seed ^= index; // Mix in record index
     seed ^= (seed << 21); // Bit avalanche
     seed ^= (seed >>> 35); // Spread bits
     seed ^= (seed << 4); // Final mixing

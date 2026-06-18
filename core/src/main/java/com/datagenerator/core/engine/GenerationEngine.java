@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.Builder;
@@ -41,22 +42,30 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <ul>
  *   <li>Parallel generation using worker threads
- *   <li>Deterministic output (same seed → same data)
- *   <li>Backpressure handling with bounded queue
- *   <li>Single writer thread for ordered writes
+ *   <li>Deterministic output: same seed → byte-for-byte identical output, <b>regardless of thread
+ *       count</b> (and therefore across machines with different core counts)
+ *   <li>Backpressure handling with bounded per-worker queues
+ *   <li>Single writer thread that merges workers in global record order
  *   <li>Auto-optimization for small jobs (single-threaded)
  *   <li>Progress logging
  * </ul>
  *
- * <p><b>Architecture:</b> workers generate records and batch them into chunks; a single writer
- * thread drains chunks and performs serialization + ordered I/O on the destination. Serialization
- * lives on the writer side because destinations (single output stream, Avro OCF container, Kafka
- * record counter) are ordered/stateful, not because generation is serial.
+ * <p><b>Determinism model:</b> records are partitioned into fixed-size chunks of <i>global</i>
+ * indices; chunk {@code c} (records {@code [c*chunkSize, (c+1)*chunkSize)}) is owned by worker
+ * {@code c % activeWorkers}. Each record is seeded from its global index ({@link
+ * RandomProvider#deriveRecordSeed(long)}), so the value at index {@code i} is independent of which
+ * worker produced it or how many workers there are. The writer then merges the per-worker queues in
+ * ascending chunk order, so the byte output is identical for any thread count.
+ *
+ * <p><b>Architecture:</b> each worker generates its chunks in order into its own bounded queue; a
+ * single writer thread pulls chunk {@code c} from queue {@code c % activeWorkers} and serializes +
+ * writes it. Serialization lives on the writer side because destinations (single output stream,
+ * Avro OCF container, Kafka record counter) are ordered/stateful, not because generation is serial.
  *
  * <pre>
- * Worker Thread 0 (seed derived) → Generate → chunk →\
- * Worker Thread 1 (seed derived) → Generate → chunk → } → Queue → Writer Thread → Serialize → Destination
- * Worker Thread N (seed derived) → Generate → chunk →/
+ * Worker 0 → chunks 0,N,2N…  → queue[0] →\
+ * Worker 1 → chunks 1,N+1…   → queue[1] → } → Writer (merge in chunk order) → Serialize → Destination
+ * Worker N-1 → chunks N-1…    → queue[N-1] →/
  * </pre>
  *
  * <p><b>Example Usage:</b>
@@ -195,6 +204,8 @@ public class GenerationEngine {
     long startTime = System.currentTimeMillis();
 
     for (long i = 0; i < count; i++) {
+      // Seed by global record index so output matches the multi-threaded path byte-for-byte.
+      random.setSeed(randomProvider.deriveRecordSeed(i));
       consume.accept(produce.apply(random));
 
       // Progress logging
@@ -217,37 +228,48 @@ public class GenerationEngine {
   @SuppressFBWarnings(
       value = "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE",
       justification =
-          "Worker Future is intentionally not stored; exceptions are logged in the lambda "
-              + "and the writer thread propagates failures via the queue poison-pill shutdown")
+          "Worker Future is intentionally not stored; the first worker failure is captured in "
+              + "workerError, which interrupts the writer and is rethrown after awaitTermination")
   @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S3776"})
   private <P> void runMultiThreaded(long count, Function<Random, P> produce, Consumer<P> consume)
       throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
-    // Bounded queue of record chunks for backpressure. queueCapacity is expressed in records, but
-    // the queue carries chunks, so derive a chunk-granular capacity that buffers a similar number
-    // of records in flight.
-    int chunkQueueCapacity = Math.max(1, queueCapacity / chunkSize);
-    BlockingQueue<List<P>> recordQueue = new ArrayBlockingQueue<>(chunkQueueCapacity);
+    // Work is split into fixed-size chunks of global record indices: chunk c covers records
+    // [c*chunkSize, (c+1)*chunkSize) and is owned by worker (c % activeWorkers). Each worker
+    // produces
+    // its chunks in ascending order into its OWN bounded queue; the writer merges the queues in
+    // global chunk order (chunk c from queue c % activeWorkers). Since per-record seeding is keyed
+    // on
+    // the global index, this reconstructs byte-for-byte identical output regardless of thread
+    // count,
+    // with bounded memory and no reorder buffer.
+    long totalChunks = (count + chunkSize - 1) / chunkSize;
+    int activeWorkers = (int) Math.min(workerThreads, Math.max(1L, totalChunks));
 
-    // Poison pill (identity-compared) to signal end of generation
-    final List<P> poisonPill = new ArrayList<>(0);
+    // Per-worker bounded queues provide backpressure: a worker blocks once it runs queueCapacity
+    // ahead of the writer. queueCapacity is in records; convert to chunks and split across workers,
+    // keeping at least 2 chunks per worker so generation and writing overlap.
+    int perWorkerCapacity = Math.max(2, queueCapacity / chunkSize / activeWorkers);
+    List<BlockingQueue<List<P>>> workerQueues = new ArrayList<>(activeWorkers);
+    for (int i = 0; i < activeWorkers; i++) {
+      workerQueues.add(new ArrayBlockingQueue<>(perWorkerCapacity));
+    }
 
-    // Atomic counter for generated records
+    // First worker failure (if any), used to abort the writer instead of letting it block forever.
+    AtomicReference<Throwable> workerError = new AtomicReference<>();
     AtomicLong generated = new AtomicLong(0);
-
     long startTime = System.currentTimeMillis();
 
-    // Start writer thread
+    // Single writer thread: pulls chunk c from its owning worker's queue, in ascending c, and
+    // writes
+    // it. Because each worker emits its chunks in order, this reconstructs the exact global order.
     Thread writerThread =
         new Thread(
             () -> {
               try {
-                while (true) {
-                  List<P> chunk = recordQueue.take();
-                  if (chunk == poisonPill) {
-                    break;
-                  }
+                for (long c = 0; c < totalChunks; c++) {
+                  List<P> chunk = workerQueues.get((int) (c % activeWorkers)).take();
                   for (P item : chunk) {
                     consume.accept(item);
                   }
@@ -255,7 +277,7 @@ public class GenerationEngine {
                 log.debug("Writer thread finished");
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.error("Writer thread interrupted", e);
+                log.debug("Writer thread interrupted (generation aborted)");
               } catch (Exception e) {
                 log.error("Writer thread failed", e);
                 throw new IllegalStateException("Writer thread failed", e);
@@ -265,32 +287,32 @@ public class GenerationEngine {
     writerThread.start();
 
     // Start worker threads
-    ExecutorService workers = Executors.newFixedThreadPool(workerThreads);
+    ExecutorService workers = Executors.newFixedThreadPool(activeWorkers);
 
-    // Distribute work across workers
-    long recordsPerWorker = count / workerThreads;
-    long remainder = count % workerThreads;
-
-    for (int workerId = 0; workerId < workerThreads; workerId++) {
-      long workerCount = recordsPerWorker + (workerId < remainder ? 1 : 0);
+    for (int workerId = 0; workerId < activeWorkers; workerId++) {
       int finalWorkerId = workerId;
+      int finalActiveWorkers = activeWorkers;
+      BlockingQueue<List<P>> myQueue = workerQueues.get(workerId);
 
       workers.submit(
           () -> {
             try {
               generateWorkerRecords(
                   finalWorkerId,
-                  workerCount,
+                  finalActiveWorkers,
+                  count,
+                  totalChunks,
                   randomProvider,
                   produce,
-                  recordQueue,
+                  myQueue,
                   new ProgressTracker(generated, count, startTime));
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
+              workerError.compareAndSet(null, e);
               log.error("Worker {} interrupted", finalWorkerId, e);
             } catch (Exception e) {
+              workerError.compareAndSet(null, e);
               log.error("Worker {} failed", finalWorkerId, e);
-              throw new IllegalStateException("Worker " + finalWorkerId + " failed", e);
             }
           });
     }
@@ -302,13 +324,19 @@ public class GenerationEngine {
       log.warn("Worker threads did not terminate gracefully");
     }
 
-    // Signal writer to stop
-    recordQueue.put(poisonPill);
+    // If a worker failed, the writer may be blocked waiting for a chunk that will never arrive —
+    // interrupt it, then surface the failure. Otherwise it drains exactly totalChunks and exits.
+    Throwable failure = workerError.get();
+    if (failure != null) {
+      writerThread.interrupt();
+      writerThread.join();
+      throw new IllegalStateException("Parallel generation failed", failure);
+    }
     writerThread.join();
 
     logProgress(count, count, startTime); // Final progress
     log.info(
-        "Parallel generation complete: {} records generated by {} workers", count, workerThreads);
+        "Parallel generation complete: {} records generated by {} workers", count, activeWorkers);
   }
 
   /**
@@ -322,53 +350,54 @@ public class GenerationEngine {
   private record ProgressTracker(AtomicLong generated, long totalCount, long startTime) {}
 
   /**
-   * Generate records for a single worker.
+   * Generate the chunks assigned to a single worker. Worker {@code workerId} owns chunks {@code
+   * workerId, workerId + activeWorkers, ...} (interleaved). Each record is seeded by its global
+   * index via {@link RandomProvider#deriveRecordSeed(long)}, so the value at a given index does not
+   * depend on which worker produced it — the property that makes output thread-count-invariant.
    *
    * @param <P> payload type carried worker → writer
-   * @param workerId Worker ID (0-based)
-   * @param count Number of records this worker should generate
-   * @param randomProvider RandomProvider for getting thread-local Random
+   * @param workerId worker ID (0-based)
+   * @param activeWorkers number of workers participating (chunk stride)
+   * @param totalRecords total record count across all workers
+   * @param totalChunks total number of chunks
+   * @param randomProvider provider of the thread-local Random (reseeded per record)
    * @param produce builds (and optionally serializes) one payload from a Random
-   * @param queue Queue for submitting generated record chunks
+   * @param queue this worker's own queue for handing off its chunks, in ascending chunk order
    * @param progress shared progress state (total generated counter, target count, start time)
    * @throws InterruptedException if interrupted
    */
+  @SuppressWarnings("java:S107")
   private <P> void generateWorkerRecords(
       int workerId,
-      long count,
+      int activeWorkers,
+      long totalRecords,
+      long totalChunks,
       RandomProvider randomProvider,
       Function<Random, P> produce,
       BlockingQueue<List<P>> queue,
       ProgressTracker progress)
       throws InterruptedException {
 
-    // Get thread-local Random for this worker
+    // Thread-local Random, reseeded per record from the record's global index.
     Random random = randomProvider.getRandom();
-
     long workerGenerated = 0;
-    List<P> chunk = new ArrayList<>(chunkSize);
-    while (workerGenerated < count) {
-      // Generate (and, on the serialized pipeline, serialize) one payload
-      P item = produce.apply(random);
 
-      // TRACE log individual record generation (sampled)
-      if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
-        log.trace("Worker {} generated record {}", workerId, workerGenerated + 1);
+    for (long c = workerId; c < totalChunks; c += activeWorkers) {
+      long start = c * chunkSize;
+      long end = Math.min(start + (long) chunkSize, totalRecords);
+      List<P> chunk = new ArrayList<>((int) (end - start));
+
+      for (long globalIndex = start; globalIndex < end; globalIndex++) {
+        random.setSeed(randomProvider.deriveRecordSeed(globalIndex));
+        chunk.add(produce.apply(random));
+        workerGenerated++;
+
+        if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
+          log.trace("Worker {} generated record at index {}", workerId, globalIndex);
+        }
       }
 
-      // Accumulate into a chunk; hand off the whole chunk to amortize queue lock/signal overhead
-      chunk.add(item);
-      workerGenerated++;
-      if (chunk.size() >= chunkSize) {
-        queue.put(chunk); // blocks if queue is full - backpressure
-        recordChunkProgress(progress, chunk.size());
-        chunk = new ArrayList<>(chunkSize);
-      }
-    }
-
-    // Flush any trailing partial chunk
-    if (!chunk.isEmpty()) {
-      queue.put(chunk);
+      queue.put(chunk); // blocks if queue is full - backpressure
       recordChunkProgress(progress, chunk.size());
     }
 
