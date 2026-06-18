@@ -1,6 +1,6 @@
 # End-to-End Test Results
 
-**Date:** June 11, 2026
+**Date:** June 14, 2026
 **Record Count:** 100,000 per test
 **Test Matrix:** file (3 formats) + kafka (2 formats) + database = 54 executed, 9 skipped
 **Timing:** millisecond-resolution wall clock (`throughput = records × 1000 / duration_ms`)
@@ -15,6 +15,24 @@
 `localhost` (no network latency); file destination on local SSD; loopback only.
 Production adds WAN/LAN latency, bandwidth limits, and broker/storage overhead —
 expect Kafka 30–50% slower and absolute numbers to differ by hardware.
+
+## Test environment (baseline hardware)
+
+Absolute throughput is hardware-bound; these numbers were produced on:
+
+| | |
+|--|--|
+| CPU | AMD Ryzen 5 PRO 4650U — 6 cores / 12 threads, max 2.1 GHz (low-power U-series) |
+| RAM | 30 GiB |
+| Disk | local SSD |
+| OS | Ubuntu 24.04.4 LTS (kernel 6.17.0-35-generic) |
+| JDK | OpenJDK 21.0.9 LTS |
+| Docker | 29.5.3 (Kafka + PostgreSQL containers on `localhost`) |
+
+The 2.1 GHz power-constrained mobile CPU is the reason absolute rec/s sit
+in the tens-of-thousands rather than higher; a desktop/server CPU at 3.5+ GHz
+will report proportionally higher figures. Use these as a **relative baseline**
+for comparing config/version changes on the same host, not as production targets.
 
 ## Structures under test
 
@@ -33,57 +51,57 @@ flat CSV form.
 
 | Destination / Format | min | mean | peak | n |
 |--|--|--|--|--|
-| file / csv | 28,612 | 33,135 | 35,549 | 9 |
-| file / protobuf | 29,231 | 32,132 | 34,199 | 9 |
-| file / json | 28,240 | 31,023 | 32,530 | 9 |
-| kafka / json | 21,621 | 26,239 | 28,571 | 9 |
-| kafka / protobuf | 20,725 | 23,320 | 25,575 | 9 |
-| database (invoice, nested) | 522 | 570 | 655 | 9 |
+| file / csv | 31,989 | 36,028 | 38,372 | 9 |
+| file / protobuf | 32,404 | 35,411 | 37,864 | 9 |
+| file / json | 32,351 | 34,447 | 39,666 | 9 |
+| kafka / json | 24,746 | 28,036 | 31,605 | 9 |
+| kafka / protobuf | 21,353 | 24,080 | 25,654 | 9 |
+| database (invoice, nested) | 530 | 605 | 676 | 9 |
 
-**54 SUCCESS, 0 FAILED, 9 skipped** (kafka/csv, by design).
+**45 SUCCESS, 0 FAILED, 9 skipped** (kafka/csv, by design).
 
 ## File destination — `passport` (rec/s, heap used MB, GC %)
 
 | Format | 1 thread | 4 threads | 8 threads |
 |--|--|--|--|
-| json (256 MB) | 32,258 / 55 / 2.06% | 28,240 / 76 / 1.89% | 32,530 / 77 / 2.05% |
-| json (512 MB) | 30,358 / 30 / 0.94% | 31,046 / 31 / 0.99% | 32,071 / 31 / 1.03% |
-| json (1024 MB) | 29,967 / 75 / 1.59% | 32,216 / 39 / 1.16% | 30,525 / 36 / 0.92% |
-| csv (256 MB) | 32,819 / 56 / 2.30% | 34,746 / 76 / 2.95% | 35,423 / 79 / 2.73% |
-| csv (512 MB) | 31,515 / 30 / 1.10% | 33,886 / 31 / 1.05% | 35,549 / 32 / 1.21% |
-| csv (1024 MB) | 32,583 / 76 / 2.15% | 33,090 / 78 / 1.75% | 28,612 / 36 / 1.06% |
-| protobuf (256 MB) | 30,826 / 40 / 2.22% | 34,025 / 74 / 2.59% | 32,905 / 75 / 2.07% |
-| protobuf (512 MB) | 30,656 / 28 / 1.13% | 33,255 / 28 / 1.30% | 34,199 / 28 / 1.50% |
-| protobuf (1024 MB) | 29,231 / 72 / 1.84% | 33,244 / 43 / 1.56% | 30,854 / 78 / 2.25% |
+| json (256 MB) | 34,530 / 57 / 1.93% | 39,666 / 57 / 1.98% | 37,411 / 57 / 1.72% |
+| json (512 MB) | 33,658 / 30 / 0.74% | 33,003 / 31 / 0.96% | 32,435 / 31 / 0.94% |
+| json (1024 MB) | 34,164 / 76 / 1.67% | 32,808 / 75 / 1.97% | 32,351 / 78 / 1.71% |
+| csv (256 MB) | 37,664 / 56 / 2.30% | 38,372 / 54 / 1.92% | 33,211 / 57 / 1.96% |
+| csv (512 MB) | 36,284 / 31 / 1.05% | 37,965 / 31 / 0.91% | 37,147 / 32 / 1.23% |
+| csv (1024 MB) | 36,589 / 76 / 1.98% | 35,038 / 76 / 2.00% | 31,989 / 78 / 1.86% |
+| protobuf (256 MB) | 34,013 / 41 / 2.48% | 37,864 / 42 / 2.20% | 36,859 / 41 / 2.25% |
+| protobuf (512 MB) | 33,189 / 29 / 0.93% | 36,496 / 28 / 1.35% | 35,448 / 29 / 1.21% |
+| protobuf (1024 MB) | 32,404 / 73 / 1.85% | 37,243 / 73 / 1.90% | 35,186 / 73 / 2.15% |
 
-Flat passport is **overhead/IO-bound at a ~33k ceiling** — generation and
+Flat passport is **overhead/IO-bound at a ~35–40k ceiling** — generation and
 serialization are cheap, so the formats converge and thread count barely moves
-throughput. Heap stays low (28–79 MB) thanks to the `FieldRecord` flyweight and
+throughput. Heap stays low (28–78 MB) thanks to the `FieldRecord` flyweight and
 streaming writes.
 
 ## Kafka destination — `invoice` (rec/s, heap used MB, GC %)
 
 | Format | 1 thread | 4 threads | 8 threads |
 |--|--|--|--|
-| json (256 MB) | 21,621 / 44 / 1.84% | 27,932 / 64 / 2.29% | 28,571 / 69 / 2.17% |
-| json (512 MB) | 22,941 / 25 / 1.15% | 28,473 / 55 / 1.71% | 27,716 / 61 / 1.64% |
-| json (1024 MB) | 23,485 / 18 / 0.73% | 27,502 / 56 / 1.43% | 27,917 / 62 / 1.31% |
-| protobuf (256 MB) | 21,953 / 18 / 2.28% | 25,568 / 63 / 2.58% | 23,551 / 64 / 2.31% |
-| protobuf (512 MB) | 21,519 / 19 / 1.68% | 24,881 / 55 / 2.02% | 23,923 / 60 / 1.87% |
-| protobuf (1024 MB) | 20,725 / 18 / 1.14% | 25,575 / 56 / 1.43% | 22,192 / 58 / 1.40% |
+| json (256 MB) | 25,933 / 19 / 1.87% | 31,605 / 60 / 2.34% | 29,052 / 64 / 1.92% |
+| json (512 MB) | 26,184 / 19 / 1.13% | 28,977 / 58 / 1.48% | 29,779 / 64 / 1.61% |
+| json (1024 MB) | 24,746 / 18 / 0.72% | 27,639 / 57 / 1.35% | 28,409 / 63 / 1.53% |
+| protobuf (256 MB) | 22,925 / 20 / 2.25% | 25,654 / 66 / 2.39% | 24,943 / 66 / 2.47% |
+| protobuf (512 MB) | 22,857 / 20 / 1.58% | 24,666 / 57 / 1.87% | 24,096 / 62 / 1.78% |
+| protobuf (1024 MB) | 21,353 / 19 / 1.02% | 25,342 / 57 / 1.44% | 24,888 / 60 / 4.95% |
 
 Kafka uses the **worker-side serialized pipeline** (each message is an
 independently-encoded payload), and the nested invoice payload makes
-serialization heavy enough that throughput **scales with threads** (1→4: ~22k →
-~28k json).
+serialization heavy enough that throughput **scales with threads** (1→4: ~25k →
+~31k json).
 
 ## Database destination — `invoice` nested → 4 tables (rec/s, duration, heap)
 
 | Threads | 256 MB | 512 MB | 1024 MB |
 |--|--|--|--|
-| 1 | 620 / 161 s / 18 MB | 522 / 191 s / 18 MB | 619 / 161 s / 18 MB |
-| 4 | 606 / 164 s / 20 MB | 522 / 191 s / 18 MB | 524 / 190 s / 21 MB |
-| 8 | 655 / 152 s / 18 MB | 539 / 185 s / 18 MB | 528 / 189 s / 25 MB |
+| 1 | 652 / 153 s / 19 MB | 626 / 160 s / 18 MB | 585 / 171 s / 18 MB |
+| 4 | 632 / 158 s / 21 MB | 559 / 179 s / 20 MB | 676 / 148 s / 20 MB |
+| 8 | 538 / 186 s / 23 MB | 530 / 189 s / 24 MB | 647 / 155 s / 27 MB |
 
 ### Why database throughput looks ~50× lower — record folding
 
@@ -108,14 +126,14 @@ So **each logical record is ~13.5 physical rows** (1 + 1 + 1 + ~10.5). A
 | line_items | ~1,050,000 |
 | **Total** | **~1,350,000 rows** |
 
-Restating the throughput in **physical rows**: ~655 invoices/s × ~13.5 ≈
-**~8,800 rows/s** inserted. That is the apples-to-apples comparison — file/Kafka
+Restating the throughput in **physical rows**: ~676 invoices/s × ~13.5 ≈
+**~9,100 rows/s** inserted. That is the apples-to-apples comparison — file/Kafka
 serialize **one** blob per record, while the database performs ~13.5 keyed
 multi-table `INSERT`s (`per_batch` strategy) plus FK injection per record. The gap
 is the relational fan-out, not a generation slowdown.
 
 More worker threads do **not** help — the bottleneck is the single JDBC
-connection / DB write path, not record generation. Heap stays tiny (18–25 MB).
+connection / DB write path, not record generation. Heap stays tiny (18–27 MB).
 
 ## Running the full suite
 

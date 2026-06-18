@@ -28,7 +28,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 
 ## Features
 
-- 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 25–33K rec/sec for realistic Datafaker data
+- 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 32–39K rec/sec for realistic Datafaker data
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
 - 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
@@ -220,7 +220,7 @@ Validated throughput from JMH benchmarks (March 2026):
 |-----------|-----------|
 | Primitive (int, boolean) | 12–258M records/sec |
 | Datafaker (names, emails, etc.) | 13–154K records/sec |
-| Real-world (10-field customer, E2E) | ~25–33K records/sec |
+| Real-world (10-field customer, E2E) | ~32–39K records/sec |
 | File I/O | 600–800 MB/s |
 
 **Scaling**: 3.7× speedup with 4 workers (92% efficiency). Datafaker workloads are I/O-bound — 4 threads is usually optimal regardless of core count.

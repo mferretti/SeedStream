@@ -52,6 +52,35 @@ Coverage settings are defined in `codecov.yml`:
 - **Patch Coverage**: New code must have 70% coverage (5% threshold)
 - **Ignored Paths**: Test files, build outputs, benchmarks, demo files
 
+## What the percentage measures (scope)
+
+> **The Codecov number is _unit-test_ coverage only.** CI runs
+> `./gradlew test jacocoTestReport`, and the `test` task is configured with
+> `excludeTags("integration")` — so the Testcontainers integration suite
+> (`integrationTest` task and `*IT.java` classes) **does not contribute** to the
+> reported figure. The coverage is uploaded under the `unittests` flag.
+
+This is why the headline sits around **78%** rather than higher, and why the
+integration-heavy modules look low even though they are well exercised:
+
+| Module | Unit coverage | Note |
+|--|--|--|
+| inspector / generators / schema / core | 90–95% | logic-heavy, unit-testable |
+| formats | ~82% | |
+| cli | ~78% | Picocli command glue, validated mostly via integration/e2e |
+| destinations | ~75% | 6 Testcontainers `*IT` files (Kafka/DB/File adapters) **not counted** |
+
+`destinations` and `cli` are the two modules pulling the aggregate down, purely
+because the code paths their integration tests cover are excluded from the
+report. Integration behaviour is verified separately by the `integrationTest`
+task (and the e2e benchmark suite), not by this number. Treat the Codecov
+percentage as a **unit-coverage** signal, not total test coverage.
+
+> If we ever want the badge to reflect total (unit + integration) coverage, the
+> change is to run `integrationTest` in CI and either upload its JaCoCo report
+> under a second `integration` flag or merge the exec data into one report. That
+> trade-off (accurate number vs. slower CI) is intentionally **not** taken today.
+
 ## Coverage in Pull Requests
 
 Codecov automatically comments on pull requests with:

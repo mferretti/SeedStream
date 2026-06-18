@@ -1,6 +1,6 @@
 # Performance Status - Current State
 
-**Last Updated:** June 11, 2026
+**Last Updated:** June 14, 2026
 **Version:** Post worker-side parallel serialization + `FieldRecord` flyweight + queue chunk-batching
 
 > **June 2026 re-measure** with a millisecond timer. Earlier figures used a
@@ -13,16 +13,16 @@
 
 ## Executive Summary
 
-SeedStream sustains **~28,000–35,000 records/second** for flat-record file generation and **~21,000–29,000 rec/s** for nested-record Kafka (E2E validated, ms timer). Database (nested invoice → 4 tables) is JDBC-bound at **~520–655 rec/s**. Performance comes from thread-local Faker caching, worker-side parallel serialization, and the `FieldRecord` flyweight (low GC).
+SeedStream sustains **~32,000–39,000 records/second** for flat-record file generation and **~21,000–32,000 rec/s** for nested-record Kafka (E2E validated, ms timer). Database (nested invoice → 4 tables) is JDBC-bound at **~530–676 rec/s**. Performance comes from thread-local Faker caching, worker-side parallel serialization, and the `FieldRecord` flyweight (low GC).
 
 ### Quick Performance Reference
 
 | Workload | Current Performance | Status |
 |----------|-------------------|--------|
-| **E2E File Generation (passport, 1 thread)** | 29-33K rec/s | ✅ Validated |
-| **E2E File Generation (passport, 4 threads)** | 28-35K rec/s | ✅ Validated |
-| **E2E Kafka Generation (invoice, 1 thread)** | 21-23K rec/s | ✅ Validated |
-| **E2E Kafka Generation (invoice, 4 threads)** | 25-28K rec/s | ✅ Validated |
+| **E2E File Generation (passport, 1 thread)** | 33-37K rec/s | ✅ Validated |
+| **E2E File Generation (passport, 4 threads)** | 32-39K rec/s | ✅ Validated |
+| **E2E Kafka Generation (invoice, 1 thread)** | 21-26K rec/s | ✅ Validated |
+| **E2E Kafka Generation (invoice, 4 threads)** | 25-32K rec/s | ✅ Validated |
 | **E2E Database (invoice → 4 tables)** | 0.5-0.7K rec/s | ✅ Validated (JDBC-bound) |
 | **Primitive Generation (in-memory)** | 12-258M ops/s | ✅ Exceeds target |
 | **Datafaker Generation (isolated)** | 13-154K ops/s | ✅ Within expected range |
@@ -34,7 +34,7 @@ SeedStream sustains **~28,000–35,000 records/second** for flat-record file gen
 
 ## Current Performance Metrics
 
-### End-to-End Performance (June 11, 2026)
+### End-to-End Performance (June 14, 2026)
 
 **Test Configuration:**
 - Data Structure: Passport (11 flat fields, ~200 bytes/record) for File; Invoice (nested: invoices + issuer + recipient + line_items) for Kafka and Database
@@ -47,19 +47,19 @@ SeedStream sustains **~28,000–35,000 records/second** for flat-record file gen
 
 | Configuration | Throughput | Duration | GC Time % |
 |---------------|------------|----------|-----------|
-| **File/JSON/1T** | 30,358 rec/s | 3.3s | 0.94% |
-| **File/CSV/4T** | 33,886 rec/s | 3.0s | 1.05% |
-| **File/Protobuf/4T** | 33,255 rec/s | 3.0s | 1.30% |
-| **File/JSON/8T** | 32,071 rec/s | 3.1s | 1.03% |
-| **Kafka/JSON/1T** | 22,941 rec/s | 4.4s | 1.15% |
-| **Kafka/Protobuf/4T** | 24,881 rec/s | 4.0s | 2.02% |
-| **Kafka/JSON/8T** | 27,716 rec/s | 3.6s | 1.64% |
-| **Database/8T/256M** | 655 rec/s | 152s | — |
+| **File/JSON/1T** | 33,658 rec/s | 3.0s | 0.74% |
+| **File/CSV/4T** | 37,965 rec/s | 2.6s | 0.91% |
+| **File/Protobuf/4T** | 36,496 rec/s | 2.7s | 1.35% |
+| **File/JSON/8T** | 32,435 rec/s | 3.1s | 0.94% |
+| **Kafka/JSON/1T** | 26,184 rec/s | 3.8s | 1.13% |
+| **Kafka/Protobuf/4T** | 24,666 rec/s | 4.1s | 1.87% |
+| **Kafka/JSON/8T** | 29,779 rec/s | 3.4s | 1.61% |
+| **Database/8T/256M** | 538 rec/s | 185.8s | — |
 
 **Key Observations:**
-- File (flat passport): ~28–35K rec/s, overhead/IO-bound at a ~33K ceiling; formats converge and thread count barely moves throughput. Heap 28–79 MB, GC <3%.
-- Kafka (nested invoice): ~21–29K rec/s; serialization is heavy enough that throughput **scales with threads** (1→4: ~22K→~28K).
-- Database (nested invoice → 4 tables): ~520–655 **invoices**/s, but each invoice folds into ~13.5 physical rows (1 invoices + 1 issuer + 1 recipient + ~10.5 line_items), so a 100K run writes ~1.35M rows ≈ **~8,800 rows/s**. JDBC-bound; more threads do **not** help (single write path). Heap 18–25 MB. See [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md#why-database-throughput-looks-50-lower--record-folding).
+- File (flat passport): ~32–39K rec/s; formats converge and thread count has modest effect. Heap 28–78 MB, GC <5%.
+- Kafka (nested invoice): ~21–32K rec/s; serialization is heavy enough that throughput **scales with threads** (1→4: ~26K→~32K).
+- Database (nested invoice → 4 tables): ~530–676 **invoices**/s, but each invoice folds into ~13.5 physical rows (1 invoices + 1 issuer + 1 recipient + ~10.5 line_items), so a 100K run writes ~1.35M rows ≈ **~8,800 rows/s**. JDBC-bound; more threads do **not** help (single write path). Heap 18–27 MB. See [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md#why-database-throughput-looks-50-lower--record-folding).
 - Memory configuration has minimal impact (256MB sufficient, 512MB recommended).
 - GC overhead healthy across all tests (<2.7%)
 
@@ -308,13 +308,16 @@ jmc benchmarks/build/jfr/profile_file_json_t8_m512m.jfr
 
 ### Current Development Hardware
 
-**Benchmarks run on:**
-- CPU: Intel Core i7/i9 (8 cores)
-- RAM: 16-32GB
-- Disk: NVMe SSD
-- OS: Linux/macOS
+**Benchmarks run on (June 14, 2026 baseline):**
+- CPU: AMD Ryzen 5 PRO 4650U — 6 cores / 12 threads, max 2.1 GHz (low-power U-series)
+- RAM: 30 GiB
+- Disk: local SSD
+- OS: Ubuntu 24.04.4 LTS (kernel 6.17.0-35-generic)
+- JDK: OpenJDK 21.0.9 LTS; Docker 29.5.3 (Kafka + PostgreSQL on `localhost`)
 
-Results may vary on different hardware configurations.
+The 2.1 GHz power-constrained mobile CPU caps absolute throughput; a 3.5+ GHz
+desktop/server CPU reports proportionally higher rec/s. Treat these as a
+relative baseline for the same host, not production targets.
 
 ---
 
