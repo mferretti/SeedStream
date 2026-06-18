@@ -1,0 +1,17 @@
+# 60-Second Quickstart job — baked into the Docker image.
+# Generates nested, deterministic invoices (object[company] + array[line_item])
+# to JSON. Same seed -> byte-for-byte identical output, every run.
+#
+#   docker run --rm -v "$PWD/out:/work/out" seedstream:latest \
+#     execute --job config/jobs/quickstart.yaml --count 1000
+#
+# Output lands in ./out/invoices on the host.
+source: invoice.yaml
+type: file
+structures_path: config/structures/
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: out/invoices
+  format: json
