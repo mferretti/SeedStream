@@ -25,7 +25,7 @@ The job config and sample structures are baked into the image, so the first run 
 sha256sum out/invoices.json
 ```
 
-Streaming into Kafka or Postgres instead of a file? See the [container guide](docs/CONTAINER.md). Prefer a local build? Jump to [Quick Start](#quick-start).
+Streaming into Kafka or Postgres instead of a file? See the [container guide](docs/CONTAINER.md). Prefer a local build? Jump to [Other Ways to Run](#other-ways-to-run).
 
 ---
 
@@ -46,7 +46,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - [How It Compares](#how-it-compares)
 - [Proof of Determinism](#proof-of-determinism)
 - [Requirements](#requirements)
-- [Quick Start](#quick-start)
+- [Other Ways to Run](#other-ways-to-run)
 - [Schema Inspection](#schema-inspection)
 - [Performance](#performance)
 - [Architecture](#architecture)
@@ -134,7 +134,9 @@ The output byte-for-byte does not depend on thread count, core count, or machine
 
 ---
 
-## Quick Start
+## Other Ways to Run
+
+Prefer not to use Docker? Run from a release JAR, the distribution zip, or source.
 
 ### Option 1 — Fat JAR (no build required)
 
