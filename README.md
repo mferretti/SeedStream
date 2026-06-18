@@ -4,7 +4,7 @@
 
 ## ⚡ 60-Second Quickstart
 
-No JDK, no Gradle, no clone — only Docker. Generate 1,000 deterministic invoices to `./out/`:
+No JDK, no Gradle, no clone — only Docker. The multi-arch image [`ghcr.io/mferretti/seedstream`](https://github.com/mferretti/SeedStream/pkgs/container/seedstream) ships on GitHub Container Registry and is pulled automatically on first run. Generate 1,000 deterministic invoices to `./out/`:
 
 ```bash
 mkdir -p out
