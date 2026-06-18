@@ -294,6 +294,58 @@ class GenerationEngineTest {
   }
 
   @Test
+  void shouldProduceIdenticalOrderedOutputRegardlessOfThreadCount() throws InterruptedException {
+    // Generator that consumes a VARIABLE amount of randomness per record (1..5 draws). With
+    // per-worker sequential seeding this makes the output depend on how work is partitioned; with
+    // per-record global-index seeding it must not. This is the core reproducibility guarantee.
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> {
+          int draws = random.nextInt(5) + 1;
+          List<Integer> values = new ArrayList<>(draws);
+          for (int i = 0; i < draws; i++) {
+            values.add(random.nextInt(1_000_000));
+          }
+          return Map.of("values", values);
+        };
+
+    int recordCount = 3000;
+
+    // Reference: the single-threaded path (count below threshold).
+    List<Map<String, Object>> reference = new ArrayList<>();
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordWriter(reference::add)
+        .masterSeed(987654321L)
+        .singleThreadedThreshold(Integer.MAX_VALUE) // force single-threaded path
+        .build()
+        .generate(recordCount);
+    assertThat(reference).hasSize(recordCount);
+
+    // Every thread count (via the multi-threaded path) must reproduce it byte-for-byte, in order.
+    for (int threads : new int[] {1, 2, 3, 4, 8, 16}) {
+      List<Map<String, Object>> run = new ArrayList<>();
+      GenerationEngine.RecordWriter writer =
+          data -> {
+            synchronized (run) {
+              run.add(data);
+            }
+          };
+      GenerationEngine.builder()
+          .recordGenerator(recordGenerator)
+          .recordWriter(writer)
+          .masterSeed(987654321L)
+          .workerThreads(threads)
+          .singleThreadedThreshold(1) // force multi-threaded path even at 1 worker
+          .build()
+          .generate(recordCount);
+
+      assertThat(run)
+          .as("output with %d worker thread(s) must equal the single-threaded reference", threads)
+          .containsExactlyElementsOf(reference);
+    }
+  }
+
+  @Test
   void shouldUseSerializedPipelineMultiThreadedWhenSerializerProvided()
       throws InterruptedException {
     // Given: serialized pipeline above the multi-thread threshold

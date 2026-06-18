@@ -1,6 +1,6 @@
 # SeedStream - Design Documentation
 
-**Last Updated**: June 4, 2026 (v0.5.0)
+**Last Updated**: June 18, 2026 (v0.5.0)
 
 This document captures the architectural decisions, design patterns, issues encountered, and their resolutions during development. It serves as a reference for developers extending the project and for discussions around alternative approaches.
 
@@ -152,39 +152,42 @@ ThreadLocal<Random> random = ThreadLocal.withInitial(() ->
   ```
 - Different thread IDs → different seeds → different data → **NOT reproducible**
 
-### Solution: Logical Worker IDs
+### Solution: Per-Record Seeding by Global Index
 
-**Key Insight**: Use application-level sequential IDs (0, 1, 2, ...), not JVM thread IDs.
+**Key Insight**: Seed each record from its **global record index** (0, 1, 2, …), not from the worker
+that happens to generate it. The seed of record `i` depends only on the master seed and `i`, so the
+value at index `i` is the same no matter how the work is partitioned.
 
-**Implementation** (`RandomProvider`):
+This is what makes output invariant to **thread count** and **core count** (and therefore identical
+across machines). A per-worker sequential RNG cannot give this: with `T` workers each drawing
+sequentially from its own seed, the value at a given index depends on how many records its worker
+drew before it — which changes with `T`.
+
+**Implementation** (`RandomProvider` + `GenerationEngine`):
 ```java
-private final AtomicInteger workerIdCounter = new AtomicInteger(0);
-private final ThreadLocal<Random> threadLocalRandom = ThreadLocal.withInitial(() -> {
-    int workerId = workerIdCounter.getAndIncrement(); // 0, 1, 2, ...
-    long threadSeed = deriveSeed(masterSeed, workerId);
-    return new Random(threadSeed);
-});
+// RandomProvider provides a reusable, thread-local Random per worker (java.util.Random is not
+// thread-safe). The instance's initial seed is irrelevant — the engine reseeds it per record:
+Random random = randomProvider.getRandom();           // reusable per-thread instance
+random.setSeed(randomProvider.deriveRecordSeed(i));   // seed record i by its GLOBAL index
+Map<String,Object> record = generator.generate(random);
 ```
 
-**Result**:
-```
-Run 1: Worker 0 (JVM thread 15) → seed A, Worker 1 (JVM thread 17) → seed B
-Run 2: Worker 0 (JVM thread 18) → seed A, Worker 1 (JVM thread 20) → seed B ✅
-```
+`setSeed` per record costs a little (one `java.util.Random` reseed, ~2–3% end-to-end at high thread
+counts), but RNG is not the hot path — generation and serialization dominate.
 
-**Guarantees**:
-- Same master seed → same worker IDs → same derived seeds → **identical data**
-- Thread-safe (AtomicInteger for counter, ThreadLocal for Random)
-- No contention (each worker has its own Random)
+**Logical worker IDs** (an `AtomicInteger`, not JVM thread IDs) are still used to hand each thread a
+stable `Random` instance, but they no longer determine the data — they only avoid the thread-ID trap
+above for the *instance*, while the per-record index seed pins the *values*.
 
 ### Seed Derivation Algorithm
 
-**Function**: `deriveSeed(long masterSeed, int workerId) → long`
+**Function**: `deriveRecordSeed(long globalIndex) → long` (and the analogous per-worker
+`deriveSeed(masterSeed, workerId)` used only for instance initialization).
 
 **Algorithm**:
 ```java
 long seed = masterSeed;
-seed ^= workerId;       // Mix in worker ID
+seed ^= globalIndex;    // Mix in the global record index
 seed ^= (seed << 21);   // Bit avalanche (spread changes)
 seed ^= (seed >>> 35);  // Spread high bits to low
 seed ^= (seed << 4);    // Final mixing
@@ -192,11 +195,15 @@ return seed;
 ```
 
 **Properties**:
-- **Deterministic**: Same inputs always produce same output
-- **Distinct**: Different worker IDs produce very different seeds (avalanche effect)
-- **Fast**: Simple bit operations, no cryptographic overhead
+- **Deterministic**: Same index always produces the same seed → same record value.
+- **Partition-independent**: The value at index `i` does not depend on thread/core count.
+- **Distinct**: Adjacent indices produce very different seeds (avalanche effect).
+- **Fast**: Simple bit operations, no cryptographic overhead.
 
-**Why Not Hash Functions?**: Hash functions (SHA-256, MD5) are overkill. We need speed and determinism, not cryptographic security. Simple XOR mixing is sufficient for pseudo-random seed derivation.
+**Why Not Hash Functions?**: Hash functions (SHA-256, MD5) are overkill. We need speed and
+determinism, not cryptographic security. Simple XOR mixing is sufficient for pseudo-random seed
+derivation. (Note: adjacent indices `i`, `i+1` differ by one bit before mixing, so the avalanche
+step matters — it is what decorrelates consecutive records.)
 
 ### Seed Resolution
 
@@ -264,56 +271,65 @@ interface RecordWriter {
 
 ### Worker Pool Architecture
 
-**Pipeline**: Workers → Bounded Queue → Writer Thread
+**Pipeline**: Workers → per-worker bounded queues → Writer Thread (ordered merge)
+
+Work is split into fixed-size **chunks of global record indices**: chunk `c` covers records
+`[c*chunkSize, (c+1)*chunkSize)` and is owned by worker `c % activeWorkers` (interleaved). Each
+worker generates its chunks **in ascending order** into its **own** bounded queue. The single writer
+then pulls chunk `c` from queue `c % activeWorkers`, reconstructing the exact global order — which,
+combined with per-record index seeding, makes the byte output identical for any thread count.
 
 ```mermaid
 graph LR
     W0["Worker 0
-    (thread-local RNG
-    seed: derive master,0)"] --> Q["Bounded Queue
-    (capacity: 1000
-    backpressure)"]
+    chunks 0, N, 2N…
+    (per-record index seed)"] --> Q0["queue[0]
+    (bounded)"]
     W1["Worker 1
-    (thread-local RNG
-    seed: derive master,1)"] --> Q
-    W2["Worker 2
-    (thread-local RNG
-    seed: derive master,2)"] --> Q
-    W3[Worker N...] -.-> Q
-    Q --> WT["Writer Thread
-    (single thread
-    ordered writes)"]
+    chunks 1, N+1…"] --> Q1["queue[1]
+    (bounded)"]
+    W2["Worker N-1
+    chunks N-1…"] --> Q2["queue[N-1]
+    (bounded)"]
+    Q0 --> WT["Writer Thread
+    (merge: chunk c from
+    queue c % N, in order)"]
+    Q1 --> WT
+    Q2 --> WT
     WT --> DEST["Destination
     (Kafka/File/DB)"]
-    
+
     style W0 fill:#e1f5e1
     style W1 fill:#e1f5e1
     style W2 fill:#e1f5e1
-    style W3 fill:#e1f5e1
-    style Q fill:#fff3e0
+    style Q0 fill:#fff3e0
+    style Q1 fill:#fff3e0
+    style Q2 fill:#fff3e0
     style WT fill:#e3f2fd
     style DEST fill:#fce4ec
 ```
 
 **Components**:
 1. **Worker Threads** (fixed thread pool):
-   - Each worker gets logical ID (0, 1, 2, ...)
-   - Each gets thread-local Random from RandomProvider
-   - Generate records → batch into chunks (default 256) → submit chunk to queue
+   - Each worker owns the interleaved chunk set `{workerId, workerId + activeWorkers, …}`
+   - Reseeds its thread-local Random **per record** from the record's global index (`deriveRecordSeed`)
+   - Generates each owned chunk (default 256 records) in order → puts it on its own queue
 
-2. **Bounded Queue** (ArrayBlockingQueue):
-   - Default capacity: 1000 records (chunk-granular: `queueCapacity / chunkSize` chunks in flight)
-   - Provides backpressure (workers block when full)
-   - Prevents memory overflow
-   - Carries chunks, not single records, so the `put`/`take` lock+signal cost is amortized ~chunkSize
+2. **Per-worker Bounded Queues** (one `ArrayBlockingQueue` each):
+   - Capacity ≈ `queueCapacity / chunkSize / activeWorkers` chunks (≥ 2 per worker)
+   - Backpressure: a worker blocks once it runs ahead of the writer; total in-flight memory is
+     bounded by `activeWorkers × perWorkerCapacity` chunks
+   - Carries chunks, not single records, amortizing the `put`/`take` lock+signal cost ~chunkSize
 
-3. **Writer Thread** (single thread):
-   - Consumes chunks → serializes each record → writes to destination
-   - Serialization runs here (not on workers) because destinations are ordered/stateful:
-     a single output stream, the Avro OCF container, or the Kafka record counter
-   - Single thread ensures ordered writes and no contention on destination
+3. **Writer Thread** (single thread, ordered merge):
+   - For `c = 0 … totalChunks-1`, takes chunk `c` from queue `c % activeWorkers` and serializes +
+     writes its records — so output order is the global record order, deterministically
+   - Single thread ⇒ ordered writes, no contention, and no reorder buffer needed (each worker's
+     queue is already in order)
 
-**Termination**: Poison pill pattern. Workers submit sentinel value when done, writer stops after consuming all records + sentinel.
+**Termination**: the writer reads exactly `totalChunks` chunks and exits — no poison pill needed. If
+a worker fails, its error is captured and the writer is interrupted so it cannot block forever
+waiting for a chunk that will never arrive; the failure is then rethrown.
 
 **Optional worker-side serialization**: when the destination can append an independently-encoded record (`DestinationAdapter.supportsSerializedWrite()` → file JSON, all Kafka), the engine folds serialization into the producer side — each worker serializes its record to `byte[]` in parallel and enqueues bytes, and the writer thread does ordered I/O only (`destination.writeSerialized(byte[])`). This parallelizes the heaviest CPU stage without changing ordering or requiring thread-safe destinations (the writer is still single-threaded). Avro OCF and CSV opt out: Avro OCF is a single ordered container, and CSV needs the record's keys to emit its header row, so both serialize on the writer thread via `destination.write(Map)`.
 
@@ -353,20 +369,22 @@ queue.put(record); // Blocks if queue is full
 
 ### Determinism Guarantee
 
-**Key Property**: Same seed → identical data, regardless of thread count.
+**Key Property**: Same seed → **byte-for-byte identical output, regardless of thread count** (and
+therefore across machines with different core counts).
 
-**How**:
-1. Master seed → RandomProvider
-2. Worker logical IDs (0, 1, 2, ...) → derived seeds
-3. Each worker generates deterministic subset:
-   ```
-   Worker 0 generates: records 0, 4, 8, 12, ...
-   Worker 1 generates: records 1, 5, 9, 13, ...
-   Worker 2 generates: records 2, 6, 10, 14, ...
-   Worker 3 generates: records 3, 7, 11, 15, ...
-   ```
+**How** (two independent halves, both required):
+1. **Values** — each record is seeded from its global index (`deriveRecordSeed(i)`), so the value at
+   index `i` is independent of which worker produced it or how many workers there are. Workers own
+   interleaved chunks, but the chunk→worker mapping never changes any record's value.
+2. **Order** — the writer merges the per-worker queues in ascending chunk order (chunk `c` from queue
+   `c % activeWorkers`), so records are written in global-index order for any thread count. The
+   single-threaded path emits indices `0…count-1` directly, producing the identical sequence.
 
-**Verification**: SHA-256 hash of output identical across runs with same seed.
+**Verification**: `GenerationEngineTest.shouldProduceIdenticalOrderedOutputRegardlessOfThreadCount`
+asserts byte-identical output across 1/2/3/4/8/16 worker threads and against the single-threaded
+path, using a generator that consumes a *variable* amount of randomness per record (the case a
+per-worker sequential RNG would get wrong). End-to-end this is confirmed by an identical SHA-256 of
+the generated file across thread counts.
 
 ### Progress Tracking
 
