@@ -64,11 +64,15 @@ jobs:
           nvd-
 
     - name: Run OWASP Dependency-Check
-      # --no-configuration-cache: the OWASP plugin's Analyze task is not
-      # configuration-cache compatible (serializes Project), and the cache is
-      # enabled globally in gradle.properties. Without this the task fails
-      # whenever the config cache misses.
-      run: ./gradlew dependencyCheckAll --no-configuration-cache
+      # --no-configuration-cache: the OWASP Analyze task serializes Project and is
+      #   not configuration-cache compatible; the cache is enabled globally in
+      #   gradle.properties, so without this the task fails on every cache miss.
+      # --no-parallel: dependencyCheckAll fans out dependencyCheckAnalyze across
+      #   all modules. With org.gradle.parallel=true they race on the single
+      #   shared NVD H2 data dir, producing "connectionPool is null" NPEs. Run
+      #   the analysis serially so one connection pool owns the data store.
+      # --stacktrace: surface the underlying NVD/DB cause in CI logs on failure.
+      run: ./gradlew dependencyCheckAll --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
