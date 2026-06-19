@@ -250,6 +250,11 @@ subprojects {
         // Optional: Use NVD_API_KEY for faster updates (50 req/30s vs 5 req/30s)
         // Get free key at: https://nvd.nist.gov/developers/request-an-api-key
         nvd.apiKey = System.getenv("NVD_API_KEY") ?: ""
+
+        // Treat cached NVD data as fresh for 24h so a transient NVD outage
+        // (recurring 503 windows) does not hard-fail the gate on every run.
+        // Combined with the CI NVD cache, a warm cache survives short outages.
+        nvd.validForHours = 24
     }
 
     // SonarQube: explicitly categorise production vs test sources per module.
