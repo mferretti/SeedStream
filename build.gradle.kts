@@ -243,9 +243,12 @@ subprojects {
         failBuildOnCVSS = 7.0f
         suppressionFile = "$rootDir/config/dependency-check-suppressions.xml"
 
-        // Always enable auto-update to download NVD database on first run
-        // With NVD_API_KEY, updates are fast (cache handles efficiency)
-        autoUpdate = true
+        // Do NOT update NVD during analysis. The OWASP plugin treats an NVD
+        // update failure (e.g. a 503) as a fatal error that bypasses
+        // failOnError, so an autoUpdate during analyze turns every NVD outage
+        // into a failed gate. Instead CI runs `dependencyCheckUpdate` as a
+        // separate best-effort step and analysis here scans the cached database.
+        autoUpdate = false
 
         // Optional: Use NVD_API_KEY for faster updates (50 req/30s vs 5 req/30s)
         // Get free key at: https://nvd.nist.gov/developers/request-an-api-key

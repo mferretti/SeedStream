@@ -63,33 +63,44 @@ jobs:
         restore-keys: |
           nvd-
 
-    - name: Run OWASP Dependency-Check
-      # --no-configuration-cache: the OWASP Analyze task serializes Project and is
-      #   not configuration-cache compatible; the cache is enabled globally in
-      #   gradle.properties, so without this the task fails on every cache miss.
-      # --no-parallel: dependencyCheckAll fans out dependencyCheckAnalyze across
-      #   all modules. With org.gradle.parallel=true they race on the single
-      #   shared NVD H2 data dir, producing "connectionPool is null" NPEs. Run
-      #   the analysis serially so one connection pool owns the data store.
-      # --stacktrace: surface the underlying NVD/DB cause in CI logs on failure.
-      run: ./gradlew dependencyCheckAll --no-configuration-cache --no-parallel --stacktrace
+    # Update the NVD data on its own, tolerating transient NVD 503s. The OWASP
+    # plugin treats an NVD update failure during analysis as a FATAL error that
+    # bypasses failOnError, so we must NOT update during analysis (autoUpdate is
+    # false in build.gradle.kts). This best-effort step refreshes the cached NVD
+    # database when NVD is reachable and is allowed to fail when it isn't — the
+    # analysis below then runs against whatever cached data exists.
+    - name: Update NVD database (best-effort)
+      continue-on-error: true
+      run: ./gradlew :core:dependencyCheckUpdate --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
-    - name: Verify NVD database was actually scanned
-      # failOnError=false (build.gradle.kts) lets the analysis fall back to cached
-      # NVD data during a transient NVD 503, so the CVSS gate keeps working. The
-      # risk is a cold/empty cache silently passing with nothing to scan. Guard
-      # against that: a real NVD database is hundreds of MB; fail the job if no
-      # populated odc.mv.db exists, so "no data" never counts as "no vulns".
+    # Gate the analysis on real data: a populated NVD database is hundreds of MB.
+    # If none exists (cold cache + NVD outage), fail loudly instead of running an
+    # empty scan that would pass with "no vulnerabilities" — "no data" is not
+    # "no vulns".
+    - name: Verify NVD database is present
       run: |
         db="$(find ~/.gradle/dependency-check-data -name 'odc.mv.db' -size +50M 2>/dev/null | head -n 1)"
         if [ -z "$db" ]; then
-          echo "::error::NVD database missing or unpopulated — dependency-check did not scan against real vulnerability data (likely NVD outage on a cold cache). Failing the security gate."
+          echo "::error::NVD database missing or unpopulated — cannot scan against real vulnerability data (likely an NVD outage on a cold cache). Failing the security gate rather than passing without data."
           find ~/.gradle/dependency-check-data -name 'odc.mv.db' -exec ls -lh {} + 2>/dev/null || echo "  (no odc.mv.db found at all)"
           exit 1
         fi
         echo "NVD database present and populated: $db ($(du -h "$db" | cut -f1))"
+
+    - name: Run OWASP Dependency-Check
+      # autoUpdate is disabled (build.gradle.kts) so analysis never contacts NVD
+      # and a transient 503 can't fail it — it scans the cached database verified
+      # above and enforces the failBuildOnCVSS gate.
+      # --no-configuration-cache: the OWASP Analyze task serializes Project and is
+      #   not configuration-cache compatible (cache is enabled globally).
+      # --no-parallel: dependencyCheckAll fans analyze across modules; with
+      #   org.gradle.parallel=true they race on the shared NVD H2 dir
+      #   ("connectionPool is null"). Serialize so one pool owns the data store.
+      run: ./gradlew dependencyCheckAll --no-configuration-cache --no-parallel --stacktrace
+      env:
+        NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
     - name: Upload Dependency-Check reports
       uses: actions/upload-artifact@v7
