@@ -20,6 +20,24 @@ if [[ "$CURRENT_BRANCH" != "$MAIN_BRANCH" ]]; then
     exit 0
 fi
 
+# git pre-push passes the refs being pushed on stdin, one per line:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# A branch deletion has an all-zero local sha and pushes no commits, so there is
+# nothing for Sonar to analyse — skip the gate so deletions aren't blocked.
+# Reading stdin is safe: if it's empty (e.g. the hook is run by hand) the loop
+# body never executes and we fall through to run the gate as before.
+saw_ref=0
+has_content_push=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+    [[ -z "${local_sha:-}" ]] && continue
+    saw_ref=1
+    [[ "$local_sha" =~ ^0+$ ]] || has_content_push=1
+done
+if [[ "$saw_ref" -eq 1 && "$has_content_push" -eq 0 ]]; then
+    echo "[sonar] skipped — branch deletion / no commits to analyse"
+    exit 0
+fi
+
 SONAR_URL="${SONAR_HOST_URL:-$(grep -E '^sonar\.host\.url=' "$GRADLE_PROPS" 2>/dev/null | cut -d= -f2- | tr -d ' ' || true)}"
 SONAR_TOKEN="${SONAR_TOKEN:-$(grep -E '^sonar\.token=' "$GRADLE_PROPS" 2>/dev/null | cut -d= -f2- | tr -d ' ' || true)}"
 
