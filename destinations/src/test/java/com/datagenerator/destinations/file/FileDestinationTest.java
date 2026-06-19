@@ -106,24 +106,36 @@ class FileDestinationTest {
     Path outputFile = tempDir.resolve(OUTPUT_JSON);
     FileDestinationConfig config = configBuilder.filePath(outputFile).compress(true).build();
 
-    Map<String, Object> data = Map.of("name", "John", "age", 42);
+    Map<String, Object> record1 = Map.of("name", "Alice", "age", 30);
+    Map<String, Object> record2 = Map.of("name", "Bob", "age", 25);
+    Map<String, Object> record3 = Map.of("name", "Carol", "age", 28);
 
     try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
       destination.open();
-      destination.write(data);
+      destination.write(record1);
+      destination.write(record2);
+      destination.write(record3);
     }
 
     // File should have .gz extension
     Path gzFile = Path.of(outputFile.toString() + ".gz");
     assertThat(gzFile).exists();
+    assertThat(Files.size(gzFile)).isGreaterThan(0);
 
-    // Decompress and verify content
+    // Decompress and verify all records round-trip
+    List<String> lines = new ArrayList<>();
     try (BufferedReader reader =
         new BufferedReader(
             new InputStreamReader(new GZIPInputStream(Files.newInputStream(gzFile))))) {
-      String line = reader.readLine();
-      assertThat(line).contains("John");
+      String line;
+      while ((line = reader.readLine()) != null) {
+        lines.add(line);
+      }
     }
+    assertThat(lines).hasSize(3);
+    assertThat(lines.get(0)).contains("Alice").contains("\"age\":30");
+    assertThat(lines.get(1)).contains("Bob").contains("\"age\":25");
+    assertThat(lines.get(2)).contains("Carol").contains("\"age\":28");
   }
 
   @Test
