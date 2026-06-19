@@ -64,7 +64,11 @@ jobs:
           nvd-
 
     - name: Run OWASP Dependency-Check
-      run: ./gradlew dependencyCheckAll
+      # --no-configuration-cache: the OWASP plugin's Analyze task is not
+      # configuration-cache compatible (serializes Project), and the cache is
+      # enabled globally in gradle.properties. Without this the task fails
+      # whenever the config cache misses.
+      run: ./gradlew dependencyCheckAll --no-configuration-cache
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
