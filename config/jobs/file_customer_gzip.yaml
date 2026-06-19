@@ -1,0 +1,9 @@
+source: customer.yaml
+type: file
+seed:
+  type: embedded
+  value: 98765
+conf:
+  path: build/run-output/customers
+  compress: true
+  append: false

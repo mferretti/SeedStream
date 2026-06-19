@@ -160,25 +160,38 @@ conf:
 ---
 
 #### Compressed File Output (gzip)
-**File**: `file_order.yaml`
+
+Set `compress: true` in the `conf` section to write gzip-compressed output. The `.gz` extension is appended automatically — no need to include it in the path.
+
+Supported with **JSON** and **CSV** formats (Avro uses its own internal Deflate codec when `compress: true`).
+
+**File**: `file_customer_gzip.yaml`
 ```yaml
-source: order.yaml
+source: customer.yaml
 type: file
 seed:
   type: embedded
-  value: 54321
+  value: 98765
 conf:
-  path: output/orders
-  compress: true    # Enable gzip compression
+  path: build/run-output/customers
+  compress: true    # Enable gzip compression (.gz added automatically)
   append: false
 ```
 
 **Usage**:
 ```bash
-./gradlew :cli:run --args="execute --job config/jobs/file_order.yaml --format json --count 10000"
+./gradlew :cli:run --args="execute --job config/jobs/file_customer_gzip.yaml --format json --count 1000"
 ```
 
-**Output**: `output/orders.json.gz` (compressed)
+**Output**: `build/run-output/customers.json.gz` (valid gzip, decompresses to newline-delimited JSON)
+
+See `config/jobs/file_order.yaml` for a gzip example with nested structures.
+
+```bash
+# Verify gzip output is valid and round-trips:
+gzip -t build/run-output/customers.json.gz
+zcat build/run-output/customers.json.gz | head -3
+```
 
 ---
 
