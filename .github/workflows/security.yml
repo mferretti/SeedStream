@@ -76,6 +76,21 @@ jobs:
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
+    - name: Verify NVD database was actually scanned
+      # failOnError=false (build.gradle.kts) lets the analysis fall back to cached
+      # NVD data during a transient NVD 503, so the CVSS gate keeps working. The
+      # risk is a cold/empty cache silently passing with nothing to scan. Guard
+      # against that: a real NVD database is hundreds of MB; fail the job if no
+      # populated odc.mv.db exists, so "no data" never counts as "no vulns".
+      run: |
+        db="$(find ~/.gradle/dependency-check-data -name 'odc.mv.db' -size +50M 2>/dev/null | head -n 1)"
+        if [ -z "$db" ]; then
+          echo "::error::NVD database missing or unpopulated — dependency-check did not scan against real vulnerability data (likely NVD outage on a cold cache). Failing the security gate."
+          find ~/.gradle/dependency-check-data -name 'odc.mv.db' -exec ls -lh {} + 2>/dev/null || echo "  (no odc.mv.db found at all)"
+          exit 1
+        fi
+        echo "NVD database present and populated: $db ($(du -h "$db" | cut -f1))"
+
     - name: Upload Dependency-Check reports
       uses: actions/upload-artifact@v7
       if: always()

@@ -255,6 +255,15 @@ subprojects {
         // (recurring 503 windows) does not hard-fail the gate on every run.
         // Combined with the CI NVD cache, a warm cache survives short outages.
         nvd.validForHours = 24
+
+        // Do not fail the build on NVD update/transport errors (e.g. 503): fall
+        // back to the cached NVD data and still run the analysis. This keeps the
+        // real security gate working during NVD outages. The CVSS gate
+        // (failBuildOnCVSS, above) is independent of failOnError, so genuine
+        // vulnerabilities still fail the build. CI additionally guards against a
+        // cold/empty cache (see security.yml "Verify NVD database") so a missing
+        // database fails loudly instead of passing without scanning real data.
+        failOnError = false
     }
 
     // SonarQube: explicitly categorise production vs test sources per module.
