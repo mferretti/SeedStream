@@ -1,7 +1,7 @@
 # datagenerator inspect — v1 Spec
 
 Status: implemented. Scope: OpenAPI, SQL DDL **and** Protobuf → SeedStream structure YAML.
-Supersedes the open questions in [INSPECT.md](internal/INSPECT-design-notes.md) with locked decisions.
+Supersedes the open questions from the design phase with locked decisions.
 
 ## 1. Scope
 
@@ -165,7 +165,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
 
 ## 7c. DDL specifics
 
-- Parser: JSQLParser. One structure per `CREATE TABLE`; type table per [INSPECT.md](internal/INSPECT-design-notes.md).
+- Parser: JSQLParser. One structure per `CREATE TABLE`; type table per `DdlTypeMapper`.
 - Type names arrive inline (e.g. `VARCHAR (255)`); base name + args are parsed off that string.
 - **Type folding.** Before mapping, each SQL type name is upper-cased, its internal whitespace is
   collapsed, and it is resolved through a synonym table (`DdlTypeMapper.SYNONYMS`). This lets

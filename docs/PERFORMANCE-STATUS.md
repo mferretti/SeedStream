@@ -116,8 +116,6 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 
 **Key Insight:** The bottleneck wasn't Datafaker being slow - we were defeating its internal optimization by recreating instances. Lesson: verify correct library usage before blaming library performance!
 
-**Implementation Details:** See [internal/tasks/TASK-040-thread-local-faker-cache.md](internal/tasks/TASK-040-thread-local-faker-cache.md)
-
 ---
 
 ## Performance Characteristics
@@ -426,10 +424,6 @@ conf:
 - [BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md) - JMH component benchmarks
 - [PERFORMANCE.md](PERFORMANCE.md) - Performance guide and tuning
 - [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md) - Full E2E test results
-
-**Analysis (Internal):**
-- [internal/tasks/TASK-039-performance-baseline-analysis.md](internal/tasks/TASK-039-performance-baseline-analysis.md) - Baseline analysis methodology
-- [internal/tasks/TASK-040-thread-local-faker-cache.md](internal/tasks/TASK-040-thread-local-faker-cache.md) - Optimization implementation
 
 **Operational:**
 - [../benchmarks/README.md](../benchmarks/README.md) - How to run benchmarks

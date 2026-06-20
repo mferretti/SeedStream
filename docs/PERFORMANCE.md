@@ -420,8 +420,6 @@ For nested structures, reduce `batch_size` to 100-200 to avoid large transaction
 
 **Garbage collection**: < 2% overhead for all tested workloads (validated with JFR profiling).
 
-For detailed memory profiling methodology, see [docs/internal/MEMORY-PROFILING.md](internal/MEMORY-PROFILING.md).
-
 ---
 
 ## Running Benchmarks

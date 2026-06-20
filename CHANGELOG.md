@@ -309,8 +309,6 @@ Not publicly released. Internal prototype for architecture validation.
 
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for how to contribute to SeedStream.
 
-For detailed internal planning, see [docs/internal/BACKLOG.md](docs/internal/BACKLOG.md).
-
 ---
 
 ## License

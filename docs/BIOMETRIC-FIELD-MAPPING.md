@@ -268,5 +268,4 @@ Framework-inspired JSON envelope. Implemented in `CbeffSerializer`.
 
 ---
 
-*Keep mapping tables in sync with YAML structures under `config/structures/`. Internal design
-discussion and scope rationale: `docs/internal/BIOMETRIC-DISCUSSION.md`.*
+*Keep mapping tables in sync with YAML structures under `config/structures/`.*

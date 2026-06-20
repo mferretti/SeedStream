@@ -236,9 +236,6 @@ docker exec kafka-benchmark kafka-broker-api-versions.sh \
 - [PROFILING.md](PROFILING.md) - JFR profiling guide
 - [KAFKA-BENCHMARK-GUIDE.md](KAFKA-BENCHMARK-GUIDE.md) - Kafka benchmarking
 
-**Analysis (Internal):**
-- [../docs/internal/benchmarks/](../docs/internal/benchmarks/) - Historical analysis & methodology
-
 ---
 
 ## E2E Job Configuration: Symlink Support & Naming Convention
