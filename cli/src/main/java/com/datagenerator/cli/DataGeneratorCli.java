@@ -52,14 +52,17 @@ public class DataGeneratorCli implements Runnable {
 
     CommandLine cmd = new CommandLine(new DataGeneratorCli());
 
-    cmd.setExecutionExceptionHandler(
-        (ex, commandLine, parseResult) -> {
-          commandLine.getErr().println(ex.getMessage());
-          return 1;
-        });
+    cmd.setExecutionExceptionHandler(friendlyExceptionHandler());
 
     int exitCode = cmd.execute(args);
     System.exit(exitCode);
+  }
+
+  static CommandLine.IExecutionExceptionHandler friendlyExceptionHandler() {
+    return (ex, commandLine, parseResult) -> {
+      commandLine.getErr().println(ex.getMessage());
+      return 1;
+    };
   }
 
   @Override

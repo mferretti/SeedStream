@@ -287,11 +287,7 @@ class ExecuteCommandTest {
 
     cmd.setErr(new PrintWriter(err));
 
-    cmd.setExecutionExceptionHandler(
-        (ex, commandLine, parseResult) -> {
-          commandLine.getErr().println(ex.getMessage());
-          return 1;
-        });
+    cmd.setExecutionExceptionHandler(DataGeneratorCli.friendlyExceptionHandler());
 
     int code = cmd.execute(OPT_JOB, tempDir.resolve("nonexistent.yaml").toString(), OPT_COUNT, "1");
 
