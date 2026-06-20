@@ -49,8 +49,20 @@ import picocli.CommandLine.IVersionProvider;
 public class DataGeneratorCli implements Runnable {
 
   public static void main(String[] args) {
-    int exitCode = new CommandLine(new DataGeneratorCli()).execute(args);
+
+    CommandLine cmd = new CommandLine(new DataGeneratorCli());
+
+    cmd.setExecutionExceptionHandler(friendlyExceptionHandler());
+
+    int exitCode = cmd.execute(args);
     System.exit(exitCode);
+  }
+
+  static CommandLine.IExecutionExceptionHandler friendlyExceptionHandler() {
+    return (ex, commandLine, parseResult) -> {
+      commandLine.getErr().println(ex.getMessage());
+      return 1;
+    };
   }
 
   @Override

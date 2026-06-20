@@ -24,6 +24,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -274,6 +276,27 @@ class ExecuteCommandTest {
   void nonexistentJobFileReturnsError() {
     int code = execute(OPT_JOB, tempDir.resolve("nonexistent.yaml").toString(), OPT_COUNT, "1");
     assertThat(code).isNotZero();
+  }
+
+  @Test
+  void nonexistentJobFileShowsFriendlyErrorMessage() {
+
+    StringWriter err = new StringWriter();
+
+    CommandLine cmd = new CommandLine(new ExecuteCommand());
+
+    cmd.setErr(new PrintWriter(err));
+
+    cmd.setExecutionExceptionHandler(DataGeneratorCli.friendlyExceptionHandler());
+
+    int code = cmd.execute(OPT_JOB, tempDir.resolve("nonexistent.yaml").toString(), OPT_COUNT, "1");
+
+    String output = err.toString();
+
+    assertThat(code).isNotZero();
+    assertThat(output).contains("nonexistent.yaml");
+    assertThat(output).doesNotContain("SchemaParseException");
+    assertThat(output).doesNotContain("\tat");
   }
 
   @Test
