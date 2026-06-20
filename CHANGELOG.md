@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.6.0] - 2026-06-20
 
-**Highlights**: Avro + Confluent Schema Registry formats, AES-256-GCM secret encryption with cloud backends (Vault / AWS / Azure), `inspect` subcommand (OpenAPI / DDL / Protobuf → structure YAML), parent-reference FK propagation (`ref[parent.field]`), and a determinism fix making output byte-for-byte identical across thread counts.
+**Release**: Avro + Confluent Schema Registry formats, AES-256-GCM secret encryption with cloud backends (Vault / AWS / Azure), `inspect` subcommand (OpenAPI / DDL / Protobuf → structure YAML) with multi-dialect SQL support, parent-reference FK propagation (`ref[parent.field]`), a determinism fix making output byte-for-byte identical across thread counts, and friendlier CLI error reporting.
 
 ### Added
 
@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--faker-types <file>`** flag — registers extra Datafaker providers before inspection so domain-specific column names (e.g. `beer_style`) resolve to custom semantic types rather than a plain `char` fallback
 - **FK-inversion nesting** (`--nest[=auto|all|none]`, `--nest-default-count <min..max>`) — DDL inspector can invert `1:n`/`1:1` foreign keys into nested `array[object[child], min..max]` / `object[child]` fields on the parent instead of flat `ref[]`; cycles (incl. self-references), composite FKs and M:N junctions stay flat with a warning (`auto`) or hard-error on cycles (`all`); a `UNIQUE`/PK FK nests as `object[child]`. New `NestingPlanner`, `Pluralizer`, `NestingOptions`. OpenAPI already nests natively so the flag is ignored there. See [docs/INSPECT-NESTING-PLAN.md](docs/INSPECT-NESTING-PLAN.md) and spec §9
 - **DDL multi-word / vendor-type folding** — type names are folded through a synonym table so `CHARACTER VARYING`, `DOUBLE PRECISION`, `TIMESTAMP WITH[OUT] TIME ZONE`, `SERIAL`/`BIGSERIAL`, `INT2/4/8`, `VARCHAR2`, `LONGTEXT`, native `UUID`, etc. map to the right SeedStream type instead of the `char[1..50]` unknown fallback
+- **DDL dialect handling** — new `DdlPreprocessor` and `SqlStatementSplitter` normalize dialect-specific syntax and reliably split multi-statement scripts before parsing, so `CREATE TABLE` files from Postgres, MySQL, Oracle, and SQL Server are inspected consistently
 - **`CustomProviderSmokeTest`** — end-to-end test: loads non-default providers (`Beer`, `Pokemon`), inspects a DDL, asserts emitted types and exact comment placement
 - Output safety: existing files skipped unless `--force`; CLI summary reports files written, skipped, and fields flagged for review
 
@@ -61,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`NestedRecordDecomposerTest`** — 3 new cases: `injectParentFk=false` omits `lib_authors_id` column, produces no parent context for grandchildren, default constructor still injects
 - **`GenerationEngineTest`** — new case: `workerCleanup` `Runnable` is invoked in the single-threaded path
 - **`LibraryForeignKeyIT`** — full rewrite: 2-table schema (`lib_authors` + `books`), single `generate()` call with `injectParentFk=false`; 3 tests: row counts, orphan check (every `books.author_id` references an actual `lib_authors.id`), seed determinism
+- **Multi-database destination ITs** — `DatabaseDestinationIT` refactored into an `AbstractDatabaseDestinationIT` base with per-engine subclasses (`...PostgresIT`, `...MySqlIT`, `...OracleIT`, `...SqlServerIT`) running against real Testcontainers; Oracle and SQL Server tagged `@slow` (run via `slowTest`). Adds Testcontainers + JDBC driver dependencies for MySQL, Oracle, and SQL Server
 
 #### Performance & Generation Engine
 - **Worker-side parallel serialization** — the engine gained an optional serialized pipeline (`RecordSerializer` + `SerializedWriter`): when a destination supports it, each worker serializes its record to bytes in parallel and the single writer thread performs ordered I/O only, moving the heaviest CPU stage off the lone writer. Enabled for byte-independent paths (file JSON, all Kafka); Avro OCF and CSV stay on the writer thread (ordered container / header dependency). New `DestinationAdapter.supportsSerializedWrite()` / `writeSerialized(byte[])` default methods; `FileDestination` and `KafkaDestination` implement them.
@@ -76,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `KafkaDestination`, `DatabaseDestination`, `FileDestination` constructors renamed parameters to avoid CheckStyle HiddenField violations
 - Switch expressions across codebase updated with `case null` branches (Codacy/PMD compliance)
 - `ExecuteCommand.createSerializer()` and `createDestination()` guard against `null` format/type before `toLowerCase()` (NPE-safe)
+- **Friendlier CLI errors** — a shared picocli `IExecutionExceptionHandler` (`DataGeneratorCli.friendlyExceptionHandler()`) prints a clear message to stderr and returns a non-zero exit code instead of dumping a raw stack trace; e.g. a missing `--job` file now reports the path plainly. The handler is wired into `main()` and exercised by the same instance in tests
 
 ### Fixed
 - **Determinism across thread counts (byte-for-byte)** — output is now identical for the same seed regardless of worker-thread count (and therefore across machines with different core counts), matching the documented guarantee. Previously the engine seeded **per worker** (each worker drew sequentially from its own seed) and the writer emitted chunks in **arrival** order, so changing the thread count changed the generated data *and* parallel runs shuffled record order — only `--threads 1` was reproducible. Fixed by (a) seeding each record from its **global index** (`RandomProvider.deriveRecordSeed(long)`), making values partition-independent, and (b) giving each worker its own bounded queue and having the single writer **merge in global chunk order**, making byte order deterministic. Generators are unchanged (still take a `Random`). Costs ~2–3% throughput at high thread counts (per-record reseed); single-threaded is unaffected. Locked by `GenerationEngineTest.shouldProduceIdenticalOrderedOutputRegardlessOfThreadCount`.
