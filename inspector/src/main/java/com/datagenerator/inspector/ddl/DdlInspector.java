@@ -96,27 +96,7 @@ public class DdlInspector {
     List<String> warnings = new ArrayList<>();
     List<String> failures = new ArrayList<>();
     for (String raw : rawStatements) {
-      if (!CREATE_TABLE_QUICK.matcher(raw).find()) {
-        continue;
-      }
-      String cleaned = preprocessor.sanitize(raw);
-      Statement statement;
-      try {
-        statement = CCJSqlParserUtil.parse(cleaned);
-      } catch (JSQLParserException e) {
-        recordFailure(failures, warnings, raw, bestEffort);
-        continue;
-      }
-      if (statement instanceof CreateTable createTable) {
-        TableInfo table = toTableInfo(createTable, tables.size(), warnings);
-        if (table != null) {
-          tables.add(table);
-        } else {
-          // Parsed as a table but carries no modellable columns (e.g. CREATE TABLE ... AS SELECT).
-          recordFailure(failures, warnings, raw, bestEffort);
-        }
-      }
-      // Parsed to a non-CreateTable statement (index/view/etc.) — skip silently.
+      processStatement(raw, tables, warnings, failures, bestEffort);
     }
 
     if (!bestEffort && !failures.isEmpty()) {
@@ -140,6 +120,40 @@ public class DdlInspector {
       return new Inspection(nested.structures(), nested.comments(), all);
     }
     return toInspection(tables, warnings);
+  }
+
+  /**
+   * Parses a single raw statement and, when it is a modellable {@code CREATE TABLE}, appends its
+   * {@link TableInfo} to {@code tables}. Non-{@code CREATE TABLE} statements are skipped silently;
+   * unparseable or unmodellable tables are recorded as failures.
+   */
+  private void processStatement(
+      String raw,
+      List<TableInfo> tables,
+      List<String> warnings,
+      List<String> failures,
+      boolean bestEffort) {
+    if (!CREATE_TABLE_QUICK.matcher(raw).find()) {
+      return;
+    }
+    String cleaned = preprocessor.sanitize(raw);
+    Statement statement;
+    try {
+      statement = CCJSqlParserUtil.parse(cleaned);
+    } catch (JSQLParserException e) {
+      recordFailure(failures, warnings, raw, bestEffort);
+      return;
+    }
+    if (statement instanceof CreateTable createTable) {
+      TableInfo table = toTableInfo(createTable, tables.size(), warnings);
+      if (table != null) {
+        tables.add(table);
+      } else {
+        // Parsed as a table but carries no modellable columns (e.g. CREATE TABLE ... AS SELECT).
+        recordFailure(failures, warnings, raw, bestEffort);
+      }
+    }
+    // Parsed to a non-CreateTable statement (index/view/etc.) — skip silently.
   }
 
   /** Flat (non-nested) projection: one structure per table, FK columns as {@code ref[]}. */

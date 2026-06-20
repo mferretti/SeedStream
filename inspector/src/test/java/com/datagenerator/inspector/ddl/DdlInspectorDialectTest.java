@@ -23,6 +23,7 @@ import com.datagenerator.inspector.InspectorException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -188,7 +189,10 @@ class DdlInspectorDialectTest {
 
     assertThat(tableNames(inspection)).containsExactlyInAnyOrder("good_one", "good_two");
     assertThat(inspection.warnings())
-        .anyMatch(w -> w.toLowerCase().contains("skipped") && w.toLowerCase().contains("bad"));
+        .anyMatch(
+            w ->
+                w.toLowerCase(Locale.ROOT).contains("skipped")
+                    && w.toLowerCase(Locale.ROOT).contains("bad"));
   }
 
   private Inspection inspect(Path dir, String ddl) throws IOException {
