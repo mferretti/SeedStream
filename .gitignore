@@ -64,3 +64,6 @@ DESTINATIONS-SECURITY-FINDINGS.md
 CLI-SECURITY-FINDINGS.md
 INSPECTOR-SECURITY-FINDINGS.md
 CORE-SECURITY-FINDINGS.md
+
+# Internal planning/process docs — local only
+docs/internal/
