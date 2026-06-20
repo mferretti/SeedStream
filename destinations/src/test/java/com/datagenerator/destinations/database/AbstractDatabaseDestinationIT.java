@@ -31,27 +31,22 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.containers.JdbcDatabaseContainer;
 
 /**
- * Integration tests for {@link DatabaseDestination} against a real PostgreSQL instance.
+ * Integration tests for {@link DatabaseDestination} against any JDBC database provided by
+ * subclasses.
  *
  * <p>Uses the passport structure (Stage 1 — flat fields only) to exercise all supported JDBC type
  * mappings: {@code VARCHAR}, {@code DATE}, and {@code enum} values as strings.
  *
  * <p>Run with: {@code ./gradlew :destinations:integrationTest}
  */
-class DatabaseDestinationIT extends IntegrationTest {
+abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
 
-  @Container
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>("postgres:16-alpine")
-          .withDatabaseName("testdb")
-          .withUsername("testuser")
-          .withPassword("testpass");
-
-  private static final String FIELD_NUMBER = "number";
+  // "doc_number" not "number": NUMBER is a reserved word in Oracle, and identifiers are
+  // emitted unquoted, so a reserved-word column name fails (ORA-03050) on strict dialects.
+  private static final String FIELD_NUMBER = "doc_number";
   private static final String FIELD_FIRST_NAME = "first_name";
   private static final String FIELD_LAST_NAME = "last_name";
   private static final String FIELD_FULL_NAME = "full_name";
@@ -66,7 +61,7 @@ class DatabaseDestinationIT extends IntegrationTest {
   private static final String CREATE_PASSPORTS_TABLE =
       """
       CREATE TABLE passports (
-        number         VARCHAR(9),
+        doc_number     VARCHAR(9),
         first_name     VARCHAR(255),
         last_name      VARCHAR(255),
         full_name      VARCHAR(255),
@@ -82,11 +77,23 @@ class DatabaseDestinationIT extends IntegrationTest {
 
   private Connection verifyConnection;
 
+  protected abstract JdbcDatabaseContainer<?> container();
+
+  protected String jdbcUrl() {
+    return container().getJdbcUrl();
+  }
+
+  protected String username() {
+    return container().getUsername();
+  }
+
+  protected String password() {
+    return container().getPassword();
+  }
+
   @BeforeEach
   void setUp() throws SQLException {
-    verifyConnection =
-        DriverManager.getConnection(
-            postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+    verifyConnection = DriverManager.getConnection(jdbcUrl(), username(), password());
     try (Statement st = verifyConnection.createStatement()) {
       st.execute(CREATE_PASSPORTS_TABLE);
     }
@@ -108,9 +115,9 @@ class DatabaseDestinationIT extends IntegrationTest {
 
   private DatabaseDestinationConfig config(int batchSize) {
     return DatabaseDestinationConfig.builder()
-        .jdbcUrl(postgres.getJdbcUrl())
-        .username(postgres.getUsername())
-        .password(postgres.getPassword())
+        .jdbcUrl(jdbcUrl())
+        .username(username())
+        .password(password())
         .tableName(TABLE_PASSPORTS)
         .batchSize(batchSize)
         .build();
@@ -212,7 +219,7 @@ class DatabaseDestinationIT extends IntegrationTest {
 
     try (Statement st = verifyConnection.createStatement();
         ResultSet rs =
-            st.executeQuery("SELECT number, first_name, last_name, sex FROM passports")) {
+            st.executeQuery("SELECT doc_number, first_name, last_name, sex FROM passports")) {
       assertThat(rs.next()).isTrue();
       assertThat(rs.getString(FIELD_NUMBER)).isEqualTo(PASSPORT_AB);
       assertThat(rs.getString(FIELD_FIRST_NAME)).isEqualTo("Alice");
@@ -288,9 +295,9 @@ class DatabaseDestinationIT extends IntegrationTest {
   void shouldCommitWithPerJobStrategy() throws SQLException {
     DatabaseDestinationConfig perJobConfig =
         DatabaseDestinationConfig.builder()
-            .jdbcUrl(postgres.getJdbcUrl())
-            .username(postgres.getUsername())
-            .password(postgres.getPassword())
+            .jdbcUrl(jdbcUrl())
+            .username(username())
+            .password(password())
             .tableName(TABLE_PASSPORTS)
             .batchSize(5)
             .transactionStrategy("per_job")
@@ -311,9 +318,9 @@ class DatabaseDestinationIT extends IntegrationTest {
   void shouldWorkWithAutoCommitStrategy() throws SQLException {
     DatabaseDestinationConfig autoCommitConfig =
         DatabaseDestinationConfig.builder()
-            .jdbcUrl(postgres.getJdbcUrl())
-            .username(postgres.getUsername())
-            .password(postgres.getPassword())
+            .jdbcUrl(jdbcUrl())
+            .username(username())
+            .password(password())
             .tableName(TABLE_PASSPORTS)
             .batchSize(5)
             .transactionStrategy("auto_commit")
@@ -339,9 +346,9 @@ class DatabaseDestinationIT extends IntegrationTest {
 
     DatabaseDestinationConfig altConfig =
         DatabaseDestinationConfig.builder()
-            .jdbcUrl(postgres.getJdbcUrl())
-            .username(postgres.getUsername())
-            .password(postgres.getPassword())
+            .jdbcUrl(jdbcUrl())
+            .username(username())
+            .password(password())
             .tableName("alt_passports")
             .batchSize(10)
             .build();
@@ -395,7 +402,7 @@ class DatabaseDestinationIT extends IntegrationTest {
   }
 
   // -------------------------------------------------------------------------
-  // Option B — schema-aware binding against real PostgreSQL
+  // Option B — schema-aware binding against real database
   // -------------------------------------------------------------------------
 
   @Test
@@ -412,7 +419,7 @@ class DatabaseDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldCoerceStringToDateWithSchemaAgainstPostgres() throws SQLException {
+  void shouldCoerceStringToDateWithSchema() throws SQLException {
     // Pass ISO-8601 String for date fields instead of LocalDate — schema triggers coercion
     Map<String, Object> recordWithStringDates = new LinkedHashMap<>();
     recordWithStringDates.put(FIELD_NUMBER, "ZZ000001");
@@ -446,7 +453,7 @@ class DatabaseDestinationIT extends IntegrationTest {
   /**
    * Raw YAML type strings for the passport table columns used in this test class.
    *
-   * <p>Keys use alias names (number, dob, authority) to match the data field names produced by
+   * <p>Keys use alias names (doc_number, dob, authority) to match the data field names produced by
    * {@link #samplePassport(int)} and {@link #passportRecord}, which mirror the DB column names.
    */
   private Map<String, String> passportSchema() {

@@ -31,6 +31,9 @@ kafka = "4.3.0"
 # Database
 hikaricp = "7.1.0"
 postgresql = "42.7.11"
+mysql-connector = "8.4.0"
+ojdbc = "23.5.0.24.07"
+mssql-jdbc = "12.8.1.jre11"
 
 # Testing
 junit = "6.1.0"
@@ -96,6 +99,9 @@ kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafk
 # Database
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+mysql-connector = { module = "com.mysql:mysql-connector-j", version.ref = "mysql-connector" }
+ojdbc11 = { module = "com.oracle.database.jdbc:ojdbc11", version.ref = "ojdbc" }
+mssql-jdbc = { module = "com.microsoft.sqlserver:mssql-jdbc", version.ref = "mssql-jdbc" }
 
 # Testing - JUnit
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
@@ -116,6 +122,9 @@ testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-mysql = { module = "org.testcontainers:mysql", version.ref = "testcontainers" }
+testcontainers-oracle-free = { module = "org.testcontainers:oracle-free", version.ref = "testcontainers" }
+testcontainers-mssqlserver = { module = "org.testcontainers:mssqlserver", version.ref = "testcontainers" }
 testcontainers-vault = { module = "org.testcontainers:vault", version.ref = "testcontainers" }
 testcontainers-localstack = { module = "org.testcontainers:localstack", version.ref = "testcontainers" }
 

@@ -91,6 +91,14 @@ public class InspectCommand implements Callable<Integer> {
   private Path fakerTypes;
 
   @Option(
+      names = {"--best-effort"},
+      description =
+          "DDL only: emit the parseable subset and warn on tables that fail to parse, instead of "
+              + "aborting. Default: any unparseable CREATE TABLE fails the whole inspection so no "
+              + "partial, FK-broken output is written.")
+  private boolean bestEffort;
+
+  @Option(
       names = {"--nest"},
       arity = "0..1",
       fallbackValue = "auto",
@@ -125,7 +133,7 @@ public class InspectCommand implements Callable<Integer> {
     try {
       Inspection inspection;
       if ("ddl".equals(resolved)) {
-        inspection = new DdlInspector().inspect(inputFile, resolveNesting(resolved));
+        inspection = new DdlInspector().inspect(inputFile, resolveNesting(resolved), bestEffort);
       } else if (FORMAT_PROTOBUF.equals(resolved)) {
         inspection = new ProtobufInspector().inspect(inputFile);
       } else {

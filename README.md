@@ -1,6 +1,6 @@
 # SeedStream
 
-> **Deterministic synthetic test data for Kafka, Postgres, and files — same seed, byte-for-byte identical output, every run.**
+> **Deterministic synthetic test data for Kafka, databases, and files — same seed, byte-for-byte identical output, every run.**
 
 ## ⚡ 60-Second Quickstart
 
@@ -25,7 +25,7 @@ The job config and sample structures are baked into the image, so the first run 
 sha256sum out/invoices.json
 ```
 
-Streaming into Kafka or Postgres instead of a file? See the [container guide](docs/CONTAINER.md). Prefer a local build? Jump to [Other Ways to Run](#other-ways-to-run).
+Streaming into Kafka or a database instead of a file? See the [container guide](docs/CONTAINER.md). Prefer a local build? Jump to [Other Ways to Run](#other-ways-to-run).
 
 ---
 
@@ -65,7 +65,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
 - 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
-- 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition)
+- 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition — integration-tested against Postgres, MySQL, Oracle, and SQL Server)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
@@ -394,7 +394,7 @@ See [config/README.md](config/README.md) for full secret configuration reference
 
 SeedStream was built with AI assistance — `CLAUDE.md` is in the repo and Claude Code is in the stack, openly. Fair question to ask of any such project. The answer is in the verification, not the prose:
 
-- **~100 test classes** — 86 unit + 12 integration (Testcontainers for real Kafka/Postgres/JDBC), not smoke tests.
+- **~100 test classes** — 86 unit + 12 integration + 3 slow (Testcontainers for real Kafka, and Postgres/MySQL/Oracle/SQL Server over JDBC), not smoke tests.
 - **70% minimum line coverage**, enforced by a JaCoCo gate — the build fails below it.
 - **Static analysis on every build** — SpotBugs (bug patterns) + Spotless (Google Java Style, build fails on drift).
 - **OWASP Dependency-Check on every push** (CVSS ≥ 7.0). Every known CVE is listed below with status and an **expiry date** — no silent, permanent suppressions ([Security](#security)).

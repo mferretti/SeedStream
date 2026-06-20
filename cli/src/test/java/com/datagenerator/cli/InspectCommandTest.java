@@ -41,6 +41,15 @@ class InspectCommandTest {
       );
       """;
 
+  private static final String GOOD_AND_BAD =
+      """
+      CREATE TABLE customer (
+        id   BIGINT PRIMARY KEY,
+        name VARCHAR(120)
+      );
+      CREATE TABLE bad (id BIGINT, , );
+      """;
+
   private static final String CYCLE =
       """
       CREATE TABLE a (id BIGINT PRIMARY KEY, b_id BIGINT,
@@ -80,6 +89,21 @@ class InspectCommandTest {
     Path sql = write("schema.sql", CHAIN);
     assertThat(run(sql.toString(), "-o", outDir().toString())).isZero();
     assertThat(outDir().resolve("invoice.yaml")).exists();
+  }
+
+  @Test
+  void malformedDdlFailsStrictByDefault() throws Exception {
+    Path sql = write("schema.sql", GOOD_AND_BAD);
+    assertThat(run(sql.toString(), "-o", outDir().toString())).isEqualTo(2);
+    // Strict failure writes nothing — not even the parseable table.
+    assertThat(outDir().resolve("customer.yaml")).doesNotExist();
+  }
+
+  @Test
+  void malformedDdlSucceedsWithBestEffort() throws Exception {
+    Path sql = write("schema.sql", GOOD_AND_BAD);
+    assertThat(run(sql.toString(), "-o", outDir().toString(), "--best-effort")).isZero();
+    assertThat(outDir().resolve("customer.yaml")).exists();
   }
 
   @Test

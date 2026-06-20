@@ -41,7 +41,6 @@ import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
@@ -58,8 +57,12 @@ public class DdlInspector {
   private static final Pattern PARENS = Pattern.compile("[()]");
   private static final Pattern COMMA = Pattern.compile(",");
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
+  private static final Pattern CREATE_TABLE_QUICK =
+      Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
+  private final SqlStatementSplitter splitter = new SqlStatementSplitter();
+  private final DdlPreprocessor preprocessor = new DdlPreprocessor();
 
   /** Inspects a SQL DDL file and returns one structure per {@code CREATE TABLE} (no nesting). */
   public Inspection inspect(Path sqlFile) {
@@ -69,25 +72,61 @@ public class DdlInspector {
   /**
    * Inspects a SQL DDL file. With {@link NestingOptions#enabled()} the planner inverts {@code 1:n}
    * / {@code 1:1} foreign keys into nested {@code array[object[child]]} / {@code object[child]}
-   * fields; otherwise every FK stays a flat {@code ref[parent.col]}.
+   * fields; otherwise every FK stays a flat {@code ref[parent.col]}. Strict by default — see {@link
+   * #inspect(Path, NestingOptions, boolean)}.
    */
   public Inspection inspect(Path sqlFile, NestingOptions nesting) {
-    Statements statements;
-    try {
-      statements = CCJSqlParserUtil.parseStatements(readFile(sqlFile));
-    } catch (JSQLParserException e) {
-      throw new InspectorException("Failed to parse SQL DDL: " + sqlFile, e);
-    }
+    return inspect(sqlFile, nesting, false);
+  }
+
+  /**
+   * Inspects a SQL DDL file.
+   *
+   * <p>By default ({@code bestEffort = false}) any {@code CREATE TABLE} that cannot be parsed or
+   * modelled aborts the whole inspection with an {@link InspectorException} and writes nothing: a
+   * silently dropped table would leave {@code ref[...]} / {@code object[...]} references dangling
+   * and break generation. With {@code bestEffort = true} such tables are skipped with a warning and
+   * the parseable subset is returned. Statements that are not {@code CREATE TABLE} (indexes, views,
+   * directives, …) are always skipped silently in both modes.
+   */
+  public Inspection inspect(Path sqlFile, NestingOptions nesting, boolean bestEffort) {
+    List<String> rawStatements = splitter.split(readFile(sqlFile));
 
     List<TableInfo> tables = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
-    for (Statement statement : statements) {
+    List<String> failures = new ArrayList<>();
+    for (String raw : rawStatements) {
+      if (!CREATE_TABLE_QUICK.matcher(raw).find()) {
+        continue;
+      }
+      String cleaned = preprocessor.sanitize(raw);
+      Statement statement;
+      try {
+        statement = CCJSqlParserUtil.parse(cleaned);
+      } catch (JSQLParserException e) {
+        recordFailure(failures, warnings, raw, bestEffort);
+        continue;
+      }
       if (statement instanceof CreateTable createTable) {
         TableInfo table = toTableInfo(createTable, tables.size(), warnings);
         if (table != null) {
           tables.add(table);
+        } else {
+          // Parsed as a table but carries no modellable columns (e.g. CREATE TABLE ... AS SELECT).
+          recordFailure(failures, warnings, raw, bestEffort);
         }
       }
+      // Parsed to a non-CreateTable statement (index/view/etc.) — skip silently.
+    }
+
+    if (!bestEffort && !failures.isEmpty()) {
+      throw new InspectorException(
+          "Failed to parse "
+              + failures.size()
+              + " CREATE TABLE statement(s); no output written (a missing table would break "
+              + "foreign-key references at generation time). Re-run with --best-effort to emit the "
+              + "parseable subset. Offending: "
+              + String.join("; ", failures));
     }
 
     if (tables.isEmpty()) {
@@ -341,6 +380,24 @@ public class DdlInspector {
       return "";
     }
     return IDENT_QUOTES.matcher(identifier).replaceAll("").trim();
+  }
+
+  /**
+   * Records an unparseable / unmodellable {@code CREATE TABLE}. Always tracked so strict mode can
+   * abort; in best-effort mode it also surfaces as a warning so the skipped table stays visible.
+   */
+  private void recordFailure(
+      List<String> failures, List<String> warnings, String raw, boolean bestEffort) {
+    String snippet = shortSnippet(raw);
+    failures.add(snippet);
+    if (bestEffort) {
+      warnings.add("skipped unparseable CREATE TABLE: " + snippet);
+    }
+  }
+
+  private String shortSnippet(String statement) {
+    String oneLine = statement.replace('\n', ' ').replace('\r', ' ');
+    return oneLine.length() <= 60 ? oneLine : oneLine.substring(0, 60) + "...";
   }
 
   private String readFile(Path sqlFile) {
