@@ -78,9 +78,9 @@ public class SqlStatementSplitter {
 
     private int i;
 
-    Scanner(String sql) {
-      this.sql = sql;
-      this.len = sql.length();
+    Scanner(String source) {
+      this.sql = source;
+      this.len = source.length();
     }
 
     List<String> scan() {
@@ -329,7 +329,7 @@ public class SqlStatementSplitter {
     }
 
     private static boolean isBatchTerminator(String line) {
-      return line.equalsIgnoreCase("GO") || line.equals("/");
+      return "GO".equalsIgnoreCase(line) || "/".equals(line);
     }
 
     /**
