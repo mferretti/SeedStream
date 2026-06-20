@@ -26,7 +26,7 @@ class DdlPreprocessorTest {
   private final DdlPreprocessor preprocessor = new DdlPreprocessor();
 
   @Test
-  void shouldTruncateMssqlTrailingOptions() throws Exception {
+  void shouldTruncateMssqlTrailingOptions() {
     String input =
         """
         CREATE TABLE [dbo].[orders] (
@@ -36,15 +36,14 @@ class DdlPreprocessorTest {
 
     String sanitized = preprocessor.sanitize(input);
     assertThatCode(() -> CCJSqlParserUtil.parse(sanitized)).doesNotThrowAnyException();
-    // trailing options stripped
-    assertThat(sanitized).doesNotContainIgnoringCase("WITH");
-    assertThat(sanitized).doesNotContain("ON [PRIMARY]");
-    // column list preserved
-    assertThat(sanitized).containsIgnoringCase("NVARCHAR");
+    assertThat(sanitized)
+        .doesNotContainIgnoringCase("WITH") // trailing options stripped
+        .doesNotContain("ON [PRIMARY]")
+        .containsIgnoringCase("NVARCHAR"); // column list preserved
   }
 
   @Test
-  void shouldTruncateMysqlTrailingOptions() throws Exception {
+  void shouldTruncateMysqlTrailingOptions() {
     String input =
         """
         CREATE TABLE customers (
@@ -54,13 +53,14 @@ class DdlPreprocessorTest {
 
     String sanitized = preprocessor.sanitize(input);
     assertThatCode(() -> CCJSqlParserUtil.parse(sanitized)).doesNotThrowAnyException();
-    assertThat(sanitized).doesNotContainIgnoringCase("ENGINE");
-    assertThat(sanitized).doesNotContainIgnoringCase("CHARSET");
-    assertThat(sanitized).containsIgnoringCase("VARCHAR");
+    assertThat(sanitized)
+        .doesNotContainIgnoringCase("ENGINE")
+        .doesNotContainIgnoringCase("CHARSET")
+        .containsIgnoringCase("VARCHAR");
   }
 
   @Test
-  void shouldTruncateOracleTrailingOptions() throws Exception {
+  void shouldTruncateOracleTrailingOptions() {
     String input =
         """
         CREATE TABLE addresses (
@@ -70,13 +70,14 @@ class DdlPreprocessorTest {
 
     String sanitized = preprocessor.sanitize(input);
     assertThatCode(() -> CCJSqlParserUtil.parse(sanitized)).doesNotThrowAnyException();
-    assertThat(sanitized).doesNotContainIgnoringCase("SEGMENT");
-    assertThat(sanitized).doesNotContainIgnoringCase("TABLESPACE");
-    assertThat(sanitized).containsIgnoringCase("VARCHAR2");
+    assertThat(sanitized)
+        .doesNotContainIgnoringCase("SEGMENT")
+        .doesNotContainIgnoringCase("TABLESPACE")
+        .containsIgnoringCase("VARCHAR2");
   }
 
   @Test
-  void shouldRemoveInlineClusteredKeyword() throws Exception {
+  void shouldRemoveInlineClusteredKeyword() {
     String input =
         """
         CREATE TABLE [t] (
@@ -90,7 +91,7 @@ class DdlPreprocessorTest {
   }
 
   @Test
-  void shouldRemoveNonclusteredKeyword() throws Exception {
+  void shouldRemoveNonclusteredKeyword() {
     String input =
         """
         CREATE TABLE [t] (
@@ -104,7 +105,7 @@ class DdlPreprocessorTest {
   }
 
   @Test
-  void shouldPreserveDefaultWithParensInsideColumnList() throws Exception {
+  void shouldPreserveDefaultWithParensInsideColumnList() {
     String input =
         """
         CREATE TABLE t (
@@ -115,12 +116,11 @@ class DdlPreprocessorTest {
     String sanitized = preprocessor.sanitize(input);
     assertThatCode(() -> CCJSqlParserUtil.parse(sanitized)).doesNotThrowAnyException();
     // DEFAULT (0) and NUMBER(10,2) paren groups must be preserved
-    assertThat(sanitized).contains("DEFAULT (0)");
-    assertThat(sanitized).contains("DECIMAL(10,2)");
+    assertThat(sanitized).contains("DEFAULT (0)").contains("DECIMAL(10,2)");
   }
 
   @Test
-  void shouldPreserveNumberTypeArgumentsInsideColumnList() throws Exception {
+  void shouldPreserveNumberTypeArgumentsInsideColumnList() {
     String input =
         """
         CREATE TABLE t (
@@ -137,6 +137,59 @@ class DdlPreprocessorTest {
   @Test
   void shouldReturnNonCreateTableInputUnchanged() {
     String input = "ALTER TABLE t ADD COLUMN x INT";
+    assertThat(preprocessor.sanitize(input)).isEqualTo(input);
+  }
+
+  @Test
+  void shouldReturnNullInputUnchanged() {
+    assertThat(preprocessor.sanitize(null)).isNull();
+  }
+
+  @Test
+  void shouldStripSchemaPrefixFromTableName() {
+    String sanitized = preprocessor.sanitize("CREATE TABLE dbo.customers (id INT)");
+    assertThatCode(() -> CCJSqlParserUtil.parse(sanitized)).doesNotThrowAnyException();
+    assertThat(sanitized).doesNotContain("dbo.").containsIgnoringCase("customers");
+  }
+
+  @Test
+  void shouldStripLeadingDirectiveLines() {
+    String input =
+        """
+        USE mydb
+        SET NOCOUNT ON
+        CREATE TABLE t (id INT)""";
+    String sanitized = preprocessor.sanitize(input);
+    assertThatCode(() -> CCJSqlParserUtil.parse(sanitized)).doesNotThrowAnyException();
+    assertThat(sanitized).doesNotContainIgnoringCase("NOCOUNT").doesNotContainIgnoringCase("USE ");
+  }
+
+  @Test
+  void shouldNotCountClosingParenInsideStringLiteral() {
+    // the ) inside the DEFAULT string must not be mistaken for the column-list close
+    String input = "CREATE TABLE t (note VARCHAR(10) DEFAULT 'x)y') ENGINE=InnoDB";
+    String sanitized = preprocessor.sanitize(input);
+    assertThat(sanitized).doesNotContainIgnoringCase("ENGINE").contains("'x)y'");
+  }
+
+  @Test
+  void shouldNotCountClosingParenInsideComment() {
+    String input = "CREATE TABLE t (id INT /* a)b */) ENGINE=InnoDB";
+    String sanitized = preprocessor.sanitize(input);
+    assertThat(sanitized).doesNotContainIgnoringCase("ENGINE");
+  }
+
+  @Test
+  void shouldPreserveTrailingSemicolonWhenNoTrailingOptions() {
+    // a bare trailing ';' (tail == ";") is kept on the truncated statement
+    String sanitized = preprocessor.sanitize("CREATE TABLE t (id INT);");
+    assertThat(sanitized).endsWith(");");
+  }
+
+  @Test
+  void shouldReturnStatementUnchangedWhenNoColumnList() {
+    // CREATE TABLE quick-matches but has no column-list paren to truncate
+    String input = "CREATE TABLE t AS SELECT 1";
     assertThat(preprocessor.sanitize(input)).isEqualTo(input);
   }
 }

@@ -294,9 +294,10 @@ class ExecuteCommandTest {
     String output = err.toString();
 
     assertThat(code).isNotZero();
-    assertThat(output).contains("nonexistent.yaml");
-    assertThat(output).doesNotContain("SchemaParseException");
-    assertThat(output).doesNotContain("\tat");
+    assertThat(output)
+        .contains("nonexistent.yaml")
+        .doesNotContain("SchemaParseException")
+        .doesNotContain("\tat");
   }
 
   @Test

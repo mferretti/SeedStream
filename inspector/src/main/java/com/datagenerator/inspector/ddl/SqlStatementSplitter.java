@@ -55,314 +55,303 @@ public class SqlStatementSplitter {
     if (sql == null || sql.isBlank()) {
       return List.of();
     }
-
-    List<String> result = new ArrayList<>();
-    StringBuilder stmt = new StringBuilder();
-
-    // Track the position in stmt where the current line started.
-    // When we detect GO or / at end-of-line, we truncate stmt to this position
-    // (stripping the GO/slash line that was already appended character by character).
-    int currentLineStart = 0;
-
-    int len = sql.length();
-    int i = 0;
-
-    while (i < len) {
-      char c = sql.charAt(i);
-
-      // ---- block comment /* ... */ ----
-      if (c == '/' && i + 1 < len && sql.charAt(i + 1) == '*') {
-        stmt.append(c);
-        stmt.append(sql.charAt(i + 1));
-        i += 2;
-        while (i < len) {
-          char bc = sql.charAt(i);
-          if (bc == '\n') {
-            stmt.append(bc);
-            i++;
-            currentLineStart = stmt.length();
-            continue;
-          }
-          stmt.append(bc);
-          if (bc == '*' && i + 1 < len && sql.charAt(i + 1) == '/') {
-            stmt.append('/');
-            i += 2;
-            break;
-          }
-          i++;
-        }
-        continue;
-      }
-
-      // ---- line comment -- ... <eol> ----
-      if (c == '-' && i + 1 < len && sql.charAt(i + 1) == '-') {
-        stmt.append(c);
-        stmt.append(sql.charAt(i + 1));
-        i += 2;
-        while (i < len) {
-          char lc = sql.charAt(i);
-          if (lc == '\r') {
-            i++;
-            continue;
-          }
-          if (lc == '\n') {
-            stmt.append(lc);
-            i++;
-            currentLineStart = stmt.length();
-            break;
-          }
-          stmt.append(lc);
-          i++;
-        }
-        continue;
-      }
-
-      // ---- single-quoted string '...' with '' escape ----
-      if (c == '\'') {
-        stmt.append(c);
-        i++;
-        while (i < len) {
-          char sc = sql.charAt(i);
-          if (sc == '\r') {
-            i++;
-            continue;
-          }
-          stmt.append(sc);
-          if (sc == '\n') {
-            i++;
-            currentLineStart = stmt.length();
-            continue;
-          }
-          if (sc == '\'') {
-            i++;
-            // doubled quote '' → escaped, not end
-            if (i < len && sql.charAt(i) == '\'') {
-              stmt.append('\'');
-              i++;
-              continue;
-            }
-            break;
-          }
-          i++;
-        }
-        continue;
-      }
-
-      // ---- double-quoted identifier "..." ----
-      if (c == '"') {
-        stmt.append(c);
-        i++;
-        while (i < len) {
-          char dc = sql.charAt(i);
-          if (dc == '\r') {
-            i++;
-            continue;
-          }
-          stmt.append(dc);
-          if (dc == '\n') {
-            i++;
-            currentLineStart = stmt.length();
-            continue;
-          }
-          if (dc == '"') {
-            i++;
-            break;
-          }
-          i++;
-        }
-        continue;
-      }
-
-      // ---- backtick identifier `...` ----
-      if (c == '`') {
-        stmt.append(c);
-        i++;
-        while (i < len) {
-          char bc = sql.charAt(i);
-          if (bc == '\r') {
-            i++;
-            continue;
-          }
-          stmt.append(bc);
-          if (bc == '\n') {
-            i++;
-            currentLineStart = stmt.length();
-            continue;
-          }
-          if (bc == '`') {
-            i++;
-            break;
-          }
-          i++;
-        }
-        continue;
-      }
-
-      // ---- bracket identifier [...] with ]] escape (MSSQL) ----
-      if (c == '[') {
-        stmt.append(c);
-        i++;
-        while (i < len) {
-          char bc = sql.charAt(i);
-          if (bc == '\r') {
-            i++;
-            continue;
-          }
-          stmt.append(bc);
-          if (bc == '\n') {
-            i++;
-            currentLineStart = stmt.length();
-            continue;
-          }
-          if (bc == ']') {
-            i++;
-            // ]] is an escaped bracket
-            if (i < len && sql.charAt(i) == ']') {
-              stmt.append(']');
-              i++;
-              continue;
-            }
-            break;
-          }
-          i++;
-        }
-        continue;
-      }
-
-      // ---- dollar-quoted string $tag$...$tag$ (Postgres) ----
-      if (c == '$') {
-        // Try to read a dollar-quote tag: $[identifier]$
-        int tagEnd = i + 1;
-        while (tagEnd < len && sql.charAt(tagEnd) != '$' && sql.charAt(tagEnd) != '\n') {
-          char tc = sql.charAt(tagEnd);
-          // tag chars: letters, digits, underscore
-          if (!Character.isLetterOrDigit(tc) && tc != '_') {
-            break;
-          }
-          tagEnd++;
-        }
-        if (tagEnd < len && sql.charAt(tagEnd) == '$') {
-          // valid dollar-quote opening: i..tagEnd inclusive
-          String openTag = sql.substring(i, tagEnd + 1); // e.g. "$$" or "$tag$"
-          stmt.append(openTag);
-          i = tagEnd + 1;
-          // Scan until we find the matching close tag
-          while (i < len) {
-            if (sql.startsWith(openTag, i)) {
-              stmt.append(openTag);
-              i += openTag.length();
-              break;
-            }
-            char dc = sql.charAt(i);
-            if (dc == '\r') {
-              i++;
-              continue;
-            }
-            stmt.append(dc);
-            if (dc == '\n') {
-              i++;
-              currentLineStart = stmt.length();
-              continue;
-            }
-            i++;
-          }
-          continue;
-        }
-        // Not a dollar-quote: fall through to regular char handling
-      }
-
-      // ---- CRLF: swallow \r ----
-      if (c == '\r') {
-        i++;
-        continue;
-      }
-
-      // ---- newline: check if the current line is a GO or / batch terminator ----
-      if (c == '\n') {
-        // The current line content is stmt.substring(currentLineStart)
-        String lineContent = stmt.substring(currentLineStart).trim();
-
-        if (lineContent.equalsIgnoreCase("GO") || lineContent.equals("/")) {
-          // Trim back stmt to just before this line (strip the GO/slash)
-          // The content up to currentLineStart is the real statement
-          String s = stmt.substring(0, currentLineStart).stripTrailing();
-          if (!s.isBlank() && !isCommentOnly(s)) {
-            result.add(s);
-          }
-          stmt.setLength(0);
-          currentLineStart = 0;
-          i++;
-          continue;
-        }
-
-        stmt.append(c);
-        i++;
-        currentLineStart = stmt.length();
-        continue;
-      }
-
-      // ---- semicolon at top level ----
-      if (c == ';') {
-        // Don't append the semicolon; emit stmt as-is
-        String s = stmt.toString().stripTrailing();
-        if (!s.isBlank() && !isCommentOnly(s)) {
-          result.add(s);
-        }
-        stmt.setLength(0);
-        currentLineStart = 0;
-        i++;
-        continue;
-      }
-
-      stmt.append(c);
-      i++;
-    }
-
-    // Handle remainder (no trailing delimiter)
-    // Check if current line is a standalone GO or /
-    String lineContent = stmt.substring(currentLineStart).trim();
-    if (lineContent.equalsIgnoreCase("GO") || lineContent.equals("/")) {
-      String s = stmt.substring(0, currentLineStart).stripTrailing();
-      if (!s.isBlank() && !isCommentOnly(s)) {
-        result.add(s);
-      }
-    } else {
-      String s = stmt.toString().strip();
-      if (!s.isBlank() && !isCommentOnly(s)) {
-        result.add(s);
-      }
-    }
-
-    return result;
+    return new Scanner(sql).scan();
   }
 
   /**
-   * Returns true if the string consists entirely of whitespace and/or SQL comments (-- or /* * /).
-   * Used to discard comment-only chunks that are not real statements.
+   * Single-pass cursor over the SQL text. Each {@code consume*} handler inspects the character at
+   * the cursor and, if it recognises the construct it owns, appends it to the in-progress
+   * statement, advances the cursor past it, and returns {@code true}. Returning {@code false} means
+   * "not mine" and the driver loop appends one ordinary character.
    */
-  private boolean isCommentOnly(String s) {
-    int i = 0;
-    int len = s.length();
-    while (i < len) {
-      char c = s.charAt(i);
-      if (Character.isWhitespace(c)) {
-        i++;
-        continue;
-      }
-      if (c == '-' && i + 1 < len && s.charAt(i + 1) == '-') {
-        // skip to end of line
-        i += 2;
-        while (i < len && s.charAt(i) != '\n') i++;
-        continue;
-      }
-      if (c == '/' && i + 1 < len && s.charAt(i + 1) == '*') {
-        i += 2;
-        while (i + 1 < len && !(s.charAt(i) == '*' && s.charAt(i + 1) == '/')) i++;
-        i += 2;
-        continue;
-      }
-      return false; // found real content
+  private static final class Scanner {
+    private final String sql;
+    private final int len;
+    private final List<String> result = new ArrayList<>();
+    private final StringBuilder stmt = new StringBuilder();
+
+    /**
+     * Position in {@code stmt} where the current source line started; used to detect and strip a
+     * {@code GO}/{@code /} batch-terminator line.
+     */
+    private int currentLineStart;
+
+    private int i;
+
+    Scanner(String sql) {
+      this.sql = sql;
+      this.len = sql.length();
     }
-    return true;
+
+    List<String> scan() {
+      while (i < len) {
+        if (!consumeToken()) {
+          stmt.append(sql.charAt(i));
+          i++;
+        }
+      }
+      flushRemainder();
+      return result;
+    }
+
+    /**
+     * Dispatches the character at the cursor to its handler; returns true if one consumed input.
+     */
+    private boolean consumeToken() {
+      switch (sql.charAt(i)) {
+        // Constructs that may decline (the char is not actually their opener) report it.
+        case '/' -> {
+          return consumeBlockComment();
+        }
+        case '-' -> {
+          return consumeLineComment();
+        }
+        case '$' -> {
+          return consumeDollarQuote();
+        }
+        // Constructs that always own their opening character.
+        case '\'' -> consumeQuoted('\'', true);
+        case '"' -> consumeQuoted('"', false);
+        case '`' -> consumeQuoted('`', false);
+        case '[' -> consumeBracket();
+        case '\r' -> swallowCarriageReturn();
+        case '\n' -> consumeNewline();
+        case ';' -> consumeSemicolon();
+        default -> {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /**
+     * {@code /* ... * /} — only when the next char is {@code *}; tracks newlines for line start.
+     */
+    private boolean consumeBlockComment() {
+      if (i + 1 >= len || sql.charAt(i + 1) != '*') {
+        return false;
+      }
+      stmt.append('/').append('*');
+      i += 2;
+      while (i < len) {
+        char c = sql.charAt(i);
+        if (c == '*' && i + 1 < len && sql.charAt(i + 1) == '/') {
+          stmt.append('*').append('/');
+          i += 2;
+          return true;
+        }
+        stmt.append(c);
+        i++;
+        if (c == '\n') {
+          currentLineStart = stmt.length();
+        }
+      }
+      return true;
+    }
+
+    /** {@code -- ... <eol>} — only when the next char is {@code -}; the EOL ends the comment. */
+    private boolean consumeLineComment() {
+      if (i + 1 >= len || sql.charAt(i + 1) != '-') {
+        return false;
+      }
+      stmt.append('-').append('-');
+      i += 2;
+      while (i < len) {
+        char c = sql.charAt(i);
+        if (c == '\r') {
+          i++;
+        } else if (c == '\n') {
+          stmt.append(c);
+          i++;
+          currentLineStart = stmt.length();
+          return true;
+        } else {
+          stmt.append(c);
+          i++;
+        }
+      }
+      return true;
+    }
+
+    /**
+     * A quoted region opened and closed by {@code quote}. When {@code doubledIsEscape} is set, a
+     * doubled quote ({@code ''}) is an escaped quote rather than the end of the region. The opening
+     * and closing quote characters are both appended verbatim. {@code \r} is dropped; {@code \n}
+     * resets the line-start marker.
+     */
+    private void consumeQuoted(char quote, boolean doubledIsEscape) {
+      stmt.append(sql.charAt(i)); // opening quote
+      i++;
+      while (i < len) {
+        char c = sql.charAt(i);
+        if (c == '\r') {
+          i++;
+        } else if (c == '\n') {
+          stmt.append(c);
+          i++;
+          currentLineStart = stmt.length();
+        } else if (c == quote) {
+          stmt.append(c);
+          i++;
+          if (doubledIsEscape && i < len && sql.charAt(i) == quote) {
+            stmt.append(quote);
+            i++;
+          } else {
+            return;
+          }
+        } else {
+          stmt.append(c);
+          i++;
+        }
+      }
+    }
+
+    /** Bracket identifier {@code [...]} with {@code ]]} escape (MSSQL). */
+    private void consumeBracket() {
+      stmt.append('[');
+      i++;
+      while (i < len) {
+        char c = sql.charAt(i);
+        if (c == '\r') {
+          i++;
+        } else if (c == '\n') {
+          stmt.append(c);
+          i++;
+          currentLineStart = stmt.length();
+        } else if (c == ']') {
+          stmt.append(c);
+          i++;
+          if (i < len && sql.charAt(i) == ']') {
+            stmt.append(']');
+            i++;
+          } else {
+            return;
+          }
+        } else {
+          stmt.append(c);
+          i++;
+        }
+      }
+    }
+
+    /**
+     * Dollar-quoted string {@code $tag$ ... $tag$} (Postgres). Returns false (not a dollar quote)
+     * if the opening token is not a valid {@code $[identifier]$} so the driver treats {@code $} as
+     * an ordinary character.
+     */
+    private boolean consumeDollarQuote() {
+      int tagEnd = i + 1;
+      while (tagEnd < len && isTagChar(sql.charAt(tagEnd))) {
+        tagEnd++;
+      }
+      if (tagEnd >= len || sql.charAt(tagEnd) != '$') {
+        return false;
+      }
+      String openTag = sql.substring(i, tagEnd + 1); // e.g. "$$" or "$tag$"
+      stmt.append(openTag);
+      i = tagEnd + 1;
+      scanToDollarClose(openTag);
+      return true;
+    }
+
+    /** Consumes the body of a dollar-quoted string up to and including the matching close tag. */
+    private void scanToDollarClose(String openTag) {
+      while (i < len) {
+        if (sql.startsWith(openTag, i)) {
+          stmt.append(openTag);
+          i += openTag.length();
+          return;
+        }
+        char c = sql.charAt(i);
+        if (c == '\r') {
+          i++;
+        } else {
+          stmt.append(c);
+          i++;
+          if (c == '\n') {
+            currentLineStart = stmt.length();
+          }
+        }
+      }
+    }
+
+    /** Drops a lone {@code \r} so CRLF line endings collapse to {@code \n}. */
+    private void swallowCarriageReturn() {
+      i++;
+    }
+
+    /**
+     * End of a source line: emit the statement if the line was a {@code GO}/{@code /} terminator.
+     */
+    private void consumeNewline() {
+      if (isBatchTerminator(currentLine())) {
+        emit(stmt.substring(0, currentLineStart).stripTrailing());
+        stmt.setLength(0);
+        currentLineStart = 0;
+      } else {
+        stmt.append('\n');
+        currentLineStart = stmt.length();
+      }
+      i++;
+    }
+
+    /** Top-level {@code ;} statement boundary; the semicolon itself is not kept. */
+    private void consumeSemicolon() {
+      emit(stmt.toString().stripTrailing());
+      stmt.setLength(0);
+      currentLineStart = 0;
+      i++;
+    }
+
+    /**
+     * Emits whatever is left after the last delimiter (a statement with no trailing terminator).
+     */
+    private void flushRemainder() {
+      if (isBatchTerminator(currentLine())) {
+        emit(stmt.substring(0, currentLineStart).stripTrailing());
+      } else {
+        emit(stmt.toString().strip());
+      }
+    }
+
+    private String currentLine() {
+      return stmt.substring(currentLineStart).trim();
+    }
+
+    private void emit(String s) {
+      if (!s.isBlank() && !isCommentOnly(s)) {
+        result.add(s);
+      }
+    }
+
+    private static boolean isTagChar(char c) {
+      return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    private static boolean isBatchTerminator(String line) {
+      return line.equalsIgnoreCase("GO") || line.equals("/");
+    }
+
+    /**
+     * Returns true if the string consists entirely of whitespace and/or SQL comments (-- or block).
+     * Used to discard comment-only chunks that are not real statements.
+     */
+    private static boolean isCommentOnly(String s) {
+      int i = 0;
+      int len = s.length();
+      while (i < len) {
+        char c = s.charAt(i);
+        if (Character.isWhitespace(c)) {
+          i++;
+        } else if (SqlScan.isLineCommentStart(s, i)) {
+          i = SqlScan.skipLineComment(s, i);
+        } else if (SqlScan.isBlockCommentStart(s, i)) {
+          i = SqlScan.skipBlockComment(s, i);
+        } else {
+          return false; // found real content
+        }
+      }
+      return true;
+    }
   }
 }

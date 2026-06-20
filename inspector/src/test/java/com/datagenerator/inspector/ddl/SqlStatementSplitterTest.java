@@ -159,8 +159,7 @@ class SqlStatementSplitterTest {
   @Test
   void shouldNotProduceEmptyStatementsFromConsecutiveSemicolons() {
     List<String> result = splitter.split("SELECT 1;; SELECT 2");
-    assertThat(result).hasSize(2);
-    assertThat(result).doesNotContain("").doesNotContain(" ");
+    assertThat(result).hasSize(2).doesNotContain("").doesNotContain(" ");
   }
 
   @Test
@@ -181,5 +180,76 @@ class SqlStatementSplitterTest {
     List<String> result = splitter.split("SELECT $tag$ ;a; $tag$; SELECT 2");
     assertThat(result).hasSize(2);
     assertThat(result.get(0)).contains("$tag$ ;a; $tag$");
+  }
+
+  @Test
+  void shouldNotSplitInsideMultilineSingleQuote() {
+    List<String> result = splitter.split("SELECT 'a;\nb'; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("'a;\nb'");
+  }
+
+  @Test
+  void shouldNotSplitInsideMultilineDoubleQuotedIdentifier() {
+    List<String> result = splitter.split("SELECT \"a;\nb\"; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("\"a;\nb\"");
+  }
+
+  @Test
+  void shouldNotSplitInsideMultilineBacktickIdentifier() {
+    List<String> result = splitter.split("SELECT `a;\nb`; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("`a;\nb`");
+  }
+
+  @Test
+  void shouldNotSplitInsideMultilineBracketIdentifier() {
+    List<String> result = splitter.split("SELECT [a;\nb]; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("[a;\nb]");
+  }
+
+  @Test
+  void shouldHonorEscapedBracketIdentifier() {
+    // ]] is an escaped bracket, so the identifier does not close at the first ]
+    List<String> result = splitter.split("SELECT [a]]b;c]; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("[a]]b;c]");
+  }
+
+  @Test
+  void shouldNotSplitInsideMultilineDollarQuote() {
+    List<String> result = splitter.split("SELECT $$a;\nb$$; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("$$a;\nb$$");
+  }
+
+  @Test
+  void shouldNotSplitInsideMultilineBlockComment() {
+    List<String> result = splitter.split("SELECT 1 /* a;\nb */; SELECT 2");
+    assertThat(result).hasSize(2);
+  }
+
+  @Test
+  void shouldTreatLoneDollarAsOrdinaryCharacter() {
+    // "a$b" is not a dollar-quote (no closing tag); the $ is an ordinary char
+    List<String> result = splitter.split("SELECT a$b; SELECT 2");
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0)).contains("a$b");
+  }
+
+  @Test
+  void shouldStripTrailingGoTerminatorAtEndOfInput() {
+    List<String> result = splitter.split("SELECT 1\nGO");
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0)).isEqualTo("SELECT 1");
+  }
+
+  @Test
+  void shouldStripTrailingSlashTerminatorAtEndOfInput() {
+    List<String> result = splitter.split("SELECT 1\n/");
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0)).isEqualTo("SELECT 1");
   }
 }

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.1] - 2026-06-21
+
+**Release**: Code-quality pass on the DDL inspector. No behavioural change — same parsing, same output.
+
+### Changed
+- **DDL inspector internals refactored for clarity** — `SqlStatementSplitter` is now a state machine of single-purpose `consume*` handlers instead of one large character loop, and `DdlPreprocessor`'s bracket dequoting and trailing-option truncation are split into focused helpers. Shared low-level scan primitives (comment/quote skipping) moved to a new package-private `SqlScan` utility used by both. The splitter and preprocessor unit-test suites were expanded (multi-line quotes/identifiers, escaped brackets, dollar-quote edge cases, schema-prefix and directive stripping) to lock the behaviour in.
+
+---
+
 ## [0.6.0] - 2026-06-20
 
 **Release**: Avro + Confluent Schema Registry formats, AES-256-GCM secret encryption with cloud backends (Vault / AWS / Azure), `inspect` subcommand (OpenAPI / DDL / Protobuf → structure YAML) with multi-dialect SQL support, parent-reference FK propagation (`ref[parent.field]`), a determinism fix making output byte-for-byte identical across thread counts, and friendlier CLI error reporting.

@@ -34,6 +34,10 @@ if (sonarHost != null) {
             property("sonar.host.url", sonarHost)
             property("sonar.projectKey", sonarProjectKey)
             property("sonar.projectName", sonarProjectName)
+            // Per-database integration-test stubs are near-identical Testcontainers wiring
+            // (a static @Container field + a container() override). The duplication is
+            // unavoidable boilerplate, not copy-paste logic, so exclude it from CPD.
+            property("sonar.cpd.exclusions", "**/database/DatabaseDestination*IT.java")
             if (sonarToken != null) {
                 property("sonar.token", sonarToken)
             }
@@ -43,7 +47,7 @@ if (sonarHost != null) {
 
 allprojects {
     group = "com.datagenerator"
-    version = "0.6.0"
+    version = "0.6.1"
     description = "High-performance test data generator for enterprise applications"
 
     repositories {

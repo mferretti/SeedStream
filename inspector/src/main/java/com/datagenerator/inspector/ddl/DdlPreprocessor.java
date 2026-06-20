@@ -46,6 +46,9 @@ import java.util.regex.Pattern;
  */
 public class DdlPreprocessor {
 
+  /** The {@code CREATE} keyword, used both as a regex token and a literal scan target. */
+  private static final String CREATE = "CREATE";
+
   /** Matches a leading directive line that must be stripped before CREATE TABLE. */
   private static final Pattern DIRECTIVE_LINE =
       Pattern.compile("(?im)^[ \\t]*(SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n?");
@@ -75,8 +78,8 @@ public class DdlPreprocessor {
   private static final Pattern TABLE_NAME_AFTER_CREATE =
       Pattern.compile(
           "(?i)(CREATE\\s+TABLE\\s+)"
-              + "(?:\\[?[^\\[\\].(\\s]+\\]?\\.)*" // zero or more schema.  segments
-              + "\\[?([^\\[\\].(\\s]+)\\]?"); // the final table name
+              + "(?:\\[?[^\\[\\].(\\s]++\\]?\\.)*+" // zero or more schema.  segments (possessive)
+              + "\\[?([^\\[\\].(\\s]++)\\]?"); // the final table name
 
   /**
    * Sanitizes one SQL statement for JSQLParser. If the input does not look like a CREATE TABLE
@@ -119,53 +122,65 @@ public class DdlPreprocessor {
    * identifiers by the splitter are now fully replaced with their contents here.
    */
   private String dequoteBrackets(String s) {
-    // First, replace all [identifier] with identifier throughout the statement.
-    // Handle ]] escaped bracket inside identifiers.
+    return stripSchemaPrefix(stripBrackets(s));
+  }
+
+  /**
+   * Replaces every {@code [identifier]} bracket-quoted token with the bare identifier (handling the
+   * {@code ]]} escape), throughout the statement text.
+   */
+  private static String stripBrackets(String s) {
     StringBuilder sb = new StringBuilder(s.length());
     int len = s.length();
     int i = 0;
     while (i < len) {
       char c = s.charAt(i);
       if (c == '[') {
-        // Scan to closing ]
-        int start = i + 1;
-        StringBuilder ident = new StringBuilder();
-        i++;
-        while (i < len) {
-          char bc = s.charAt(i);
-          if (bc == ']') {
-            i++;
-            if (i < len && s.charAt(i) == ']') {
-              // escaped ]] → literal ]
-              ident.append(']');
-              i++;
-            } else {
-              break;
-            }
-          } else {
-            ident.append(bc);
-            i++;
-          }
-        }
-        sb.append(ident);
+        i = appendBracketContent(s, i, sb);
       } else {
         sb.append(c);
         i++;
       }
     }
-    String dequoted = sb.toString();
+    return sb.toString();
+  }
 
-    // Now strip schema qualification: after CREATE TABLE, remove any "schema." prefixes
-    // (e.g. "dbo.customers" → "customers").
-    // Pattern: CREATE TABLE <word>.<word>(  →  CREATE TABLE <lastword>(
-    // We use a regex that finds the table name region and strips schema parts.
+  /**
+   * Appends the bare identifier of a {@code [...]} token opened at {@code i} to {@code sb} and
+   * returns the index just past the closing bracket. {@code ]]} is treated as a literal {@code ]}.
+   */
+  private static int appendBracketContent(String s, int i, StringBuilder sb) {
+    int len = s.length();
+    int j = i + 1;
+    while (j < len) {
+      char c = s.charAt(j);
+      if (c == ']') {
+        j++;
+        if (j < len && s.charAt(j) == ']') {
+          sb.append(']'); // escaped ]] → literal ]
+          j++;
+        } else {
+          return j;
+        }
+      } else {
+        sb.append(c);
+        j++;
+      }
+    }
+    return j;
+  }
+
+  /**
+   * Strips schema qualification from the table name after {@code CREATE TABLE} (e.g. {@code
+   * dbo.customers} → {@code customers}).
+   */
+  private static String stripSchemaPrefix(String dequoted) {
     Matcher m = TABLE_NAME_AFTER_CREATE.matcher(dequoted);
     if (m.find()) {
       // group(1) = "CREATE TABLE "  group(2) = bare table name
       String replacement = m.group(1) + m.group(2);
-      dequoted = dequoted.substring(0, m.start()) + replacement + dequoted.substring(m.end());
+      return dequoted.substring(0, m.start()) + replacement + dequoted.substring(m.end());
     }
-
     return dequoted;
   }
 
@@ -180,99 +195,16 @@ public class DdlPreprocessor {
     if (createIdx < 0) {
       return s;
     }
-
-    // Find the start of the column list: first '(' after the table name
-    int firstParen = -1;
-    int len = s.length();
-    for (int i = createIdx; i < len; i++) {
-      if (s.charAt(i) == '(') {
-        firstParen = i;
-        break;
-      }
-    }
+    // Start of the column list: first '(' at or after CREATE TABLE.
+    int firstParen = s.indexOf('(', createIdx);
     if (firstParen < 0) {
       return s;
     }
-
-    // Walk from firstParen tracking paren depth (quote-aware)
-    int depth = 0;
-    int closingParen = -1;
-    int i = firstParen;
-    while (i < len) {
-      char c = s.charAt(i);
-
-      // block comment
-      if (c == '/' && i + 1 < len && s.charAt(i + 1) == '*') {
-        i += 2;
-        while (i + 1 < len && !(s.charAt(i) == '*' && s.charAt(i + 1) == '/')) i++;
-        i += 2;
-        continue;
-      }
-
-      // line comment
-      if (c == '-' && i + 1 < len && s.charAt(i + 1) == '-') {
-        i += 2;
-        while (i < len && s.charAt(i) != '\n') i++;
-        continue;
-      }
-
-      // single-quoted string with '' escape
-      if (c == '\'') {
-        i++;
-        while (i < len) {
-          char sc = s.charAt(i);
-          i++;
-          if (sc == '\'') {
-            if (i < len && s.charAt(i) == '\'') {
-              i++; // escaped ''
-            } else {
-              break;
-            }
-          }
-        }
-        continue;
-      }
-
-      // double-quoted identifier
-      if (c == '"') {
-        i++;
-        while (i < len && s.charAt(i) != '"') i++;
-        i++;
-        continue;
-      }
-
-      // backtick identifier
-      if (c == '`') {
-        i++;
-        while (i < len && s.charAt(i) != '`') i++;
-        i++;
-        continue;
-      }
-
-      if (c == '(') {
-        depth++;
-        i++;
-        continue;
-      }
-
-      if (c == ')') {
-        depth--;
-        if (depth == 0) {
-          closingParen = i;
-          break;
-        }
-        i++;
-        continue;
-      }
-
-      i++;
-    }
-
+    int closingParen = findColumnListClose(s, firstParen);
     if (closingParen < 0) {
       return s;
     }
-
-    // Everything after closingParen (up to optional trailing ';') is the trailing table options
+    // Everything after closingParen (up to an optional trailing ';') is the trailing table options.
     String tail = s.substring(closingParen + 1).trim();
     if (tail.equals(";")) {
       return s.substring(0, closingParen + 1) + ";";
@@ -281,19 +213,57 @@ public class DdlPreprocessor {
   }
 
   /**
+   * Walks from the opening {@code (} of the column list tracking paren depth (skipping quotes and
+   * comments) and returns the index of its balanced closing {@code )}, or -1 if unbalanced.
+   */
+  private static int findColumnListClose(String s, int firstParen) {
+    int len = s.length();
+    int depth = 0;
+    int i = firstParen;
+    while (i < len) {
+      char c = s.charAt(i);
+      if (SqlScan.isBlockCommentStart(s, i)) {
+        i = SqlScan.skipBlockComment(s, i);
+      } else if (SqlScan.isLineCommentStart(s, i)) {
+        i = SqlScan.skipLineComment(s, i);
+      } else if (c == '\'') {
+        i = SqlScan.skipSingleQuoted(s, i);
+      } else if (c == '"') {
+        i = SqlScan.skipDelimited(s, i, '"');
+      } else if (c == '`') {
+        i = SqlScan.skipDelimited(s, i, '`');
+      } else if (c == '(') {
+        depth++;
+        i++;
+      } else if (c == ')') {
+        depth--;
+        if (depth == 0) {
+          return i;
+        }
+        i++;
+      } else {
+        i++;
+      }
+    }
+    return -1;
+  }
+
+  /**
    * Returns the index of the start of the {@code CREATE} keyword of the {@code CREATE TABLE}
    * clause, or -1 if not found.
    */
   private int indexOfCreateTable(String s) {
     String upper = s.toUpperCase(Locale.ROOT);
-    int idx = upper.indexOf("CREATE");
+    int idx = upper.indexOf(CREATE);
     while (idx >= 0) {
-      int after = idx + "CREATE".length();
-      while (after < upper.length() && Character.isWhitespace(upper.charAt(after))) after++;
+      int after = idx + CREATE.length();
+      while (after < upper.length() && Character.isWhitespace(upper.charAt(after))) {
+        after++;
+      }
       if (upper.startsWith("TABLE", after)) {
         return idx;
       }
-      idx = upper.indexOf("CREATE", idx + 1);
+      idx = upper.indexOf(CREATE, idx + 1);
     }
     return -1;
   }
