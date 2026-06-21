@@ -427,6 +427,16 @@ To report a vulnerability, open a [GitHub issue](https://github.com/mferretti/Se
 
 ---
 
+## Example: `support_ticket` Domain
+
+A ready-to-run example of a new domain. Structure: `config/structures/support_ticket.yaml` (uses primitives, `enum[...]`, `date[...]`, and a nested `object[...]`). Job: `config/jobs/file_support_ticket.yaml` (writes JSON to a file).
+
+```bash
+./gradlew :cli:run --args="execute --job config/jobs/file_support_ticket.yaml --count 20"
+```
+
+Re-running with the same `--seed` produces byte-for-byte identical output.
+
 ## Contributing
 
 Contributions welcome — bug reports, new generators, destinations, or formats.
