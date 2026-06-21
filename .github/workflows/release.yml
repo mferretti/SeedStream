@@ -37,6 +37,13 @@ jobs:
       id: version
       run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+    - name: Create version-stable asset aliases
+      # Stable, unversioned filenames so README links under /releases/latest/download/
+      # never need bumping per release.
+      run: |
+        cp "cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.zip" cli-latest.zip
+        cp "cli/build/libs/seedstream-${{ steps.version.outputs.VERSION }}.jar" seedstream-latest.jar
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
       with:
@@ -45,5 +52,7 @@ jobs:
         files: |
           cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.zip
           cli/build/libs/seedstream-${{ steps.version.outputs.VERSION }}.jar
+          cli-latest.zip
+          seedstream-latest.jar
         draft: false
         prerelease: false

@@ -9,16 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.1] - 2026-06-21
 
-**Release**: Code-quality pass on the DDL inspector. No behavioural change — same parsing, same output.
-
-### Changed
-- **DDL inspector internals refactored for clarity** — `SqlStatementSplitter` is now a state machine of single-purpose `consume*` handlers instead of one large character loop, and `DdlPreprocessor`'s bracket dequoting and trailing-option truncation are split into focused helpers. Shared low-level scan primitives (comment/quote skipping) moved to a new package-private `SqlScan` utility used by both. The splitter and preprocessor unit-test suites were expanded (multi-line quotes/identifiers, escaped brackets, dollar-quote edge cases, schema-prefix and directive stripping) to lock the behaviour in.
-
----
-
-## [0.6.0] - 2026-06-20
-
 **Release**: Avro + Confluent Schema Registry formats, AES-256-GCM secret encryption with cloud backends (Vault / AWS / Azure), `inspect` subcommand (OpenAPI / DDL / Protobuf → structure YAML) with multi-dialect SQL support, parent-reference FK propagation (`ref[parent.field]`), a determinism fix making output byte-for-byte identical across thread counts, and friendlier CLI error reporting.
+
+> First published cut of these changes. It supersedes the unreleased 0.6.0, whose release build failed before any artifact was published.
 
 ### Added
 
@@ -79,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Queue chunk-batching** — workers now accumulate records into chunks (default 256) before the bounded-queue hand-off instead of one `put`/`take` per record, amortizing the queue lock + signal cost by ~chunkSize. `queueCapacity` stays record-denominated; chunk-queue capacity is derived.
 
 ### Changed
+- **DDL inspector internals refactored for clarity** — `SqlStatementSplitter` is now a state machine of single-purpose `consume*` handlers instead of one large character loop, and `DdlPreprocessor`'s bracket dequoting and trailing-option truncation are split into focused helpers. Shared low-level scan primitives (comment/quote skipping) moved to a new package-private `SqlScan` utility used by both. The splitter and preprocessor unit-test suites were expanded (multi-line quotes/identifiers, escaped brackets, dollar-quote edge cases, schema-prefix and directive stripping) to lock the behaviour in. No behavioural change — same parsing, same output.
 - **`utils/` → `scripts/`** — the shell-script directory was a sibling of the Gradle modules but absent from `settings.gradle.kts`; renamed so it stops masquerading as a module.
 - **Scratch output consolidated to `build/run-output/`** — file-destination job configs, profiling scripts, and the e2e benchmark runner now write under a single `build/`-ignored dir (auto-cleaned by `gradle clean`) instead of four scattered `output/` locations.
 - **Architecture docs reconciled** — `DESIGN.md` and the `GenerationEngine` javadoc now state that serialization runs on the writer thread (ordered/stateful destinations), and document the chunk-batching and worker-serialize pipeline. The previous diagram implied parallel serialization that did not exist.

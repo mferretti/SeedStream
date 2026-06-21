@@ -144,17 +144,17 @@ Download the release JAR and run immediately. You still need the config files, s
 
 ```bash
 git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
-wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-0.5.0.jar
-java -jar seedstream-0.5.0.jar execute --job config/jobs/file_address.yaml --count 100
+wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-latest.jar
+java -jar seedstream-latest.jar execute --job config/jobs/file_address.yaml --count 100
 ```
 
 ### Option 2 — Distribution zip
 
 ```bash
-wget https://github.com/mferretti/SeedStream/releases/latest/download/cli-0.5.0.zip
-unzip cli-0.5.0.zip
+wget https://github.com/mferretti/SeedStream/releases/latest/download/cli-latest.zip
+unzip cli-latest.zip
 # Point to your own job configs or clone the repo for examples
-cli-0.5.0/bin/datagenerator execute --job /path/to/job.yaml --count 100
+cli-*/bin/datagenerator execute --job /path/to/job.yaml --count 100
 ```
 
 ### Option 3 — Build from source
