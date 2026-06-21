@@ -1,0 +1,9 @@
+source: invoice.yaml
+type: file
+structures_path: config/structures/
+seed:
+  type: env
+  name: SEED
+conf:
+  path: build/run-output/invoices
+  format: json

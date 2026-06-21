@@ -1,0 +1,13 @@
+source: invoice.yaml
+type: database
+seed:
+  type: env
+  name: SEED
+conf:
+  jdbc_url: "jdbc:postgresql://postgres:5432/testdb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"
+  table: "invoices"
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch

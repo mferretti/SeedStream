@@ -108,16 +108,31 @@ throttling surprises.)*
 ## Seeds in CI — determinism as a first-class input
 
 Seed resolution: CLI `--seed` > job YAML > default `0`. For pipelines the
-`env` seed type is the natural fit — inject `SEED` as an environment variable
-(a pipeline variable or matrix axis):
+`env` seed type is the natural fit. The job declares it once — `config/jobs/file_invoice_env.yaml`
+uses `seed: {type: env, name: SEED}` — and you inject the value at run time:
 
 ```bash
-docker run --rm -e SEED=42 ... execute --job config/jobs/file_invoice.yaml
+docker run --rm -e SEED=42 ... execute --job config/jobs/file_invoice_env.yaml
 ```
 
 Same seed across a PR's runs ⇒ stable golden data; bump the seed to regenerate
-fixtures deliberately. A seed as a CI **matrix axis** (`seed: [1, 2, 3]`)
-generates several independent-but-reproducible datasets in parallel.
+fixtures deliberately.
+
+**Generating several datasets at once.** SeedStream resolves a *single* seed per
+run — there is no built-in seed list. To produce several
+independent-but-reproducible datasets, let your CI fan out: one run per seed,
+each deterministic on its own. A GitHub Actions matrix is the idiomatic way —
+the matrix launches the job once per value, in parallel:
+
+```yaml
+strategy:
+  matrix:
+    seed: [1, 2, 3]   # 3 parallel jobs, each a different but reproducible dataset
+steps:
+  - run: docker run --rm -e SEED=${{ matrix.seed }} ... execute --job config/jobs/file_invoice_env.yaml
+```
+
+The same effect locally is just a loop: `for s in 1 2 3; do docker run --rm -e SEED=$s ...; done`.
 
 Remote-seed bearer/basic/api_key tokens are **secrets** — inject them from the
 secret store via env, never bake them into the image or job YAML.
@@ -134,8 +149,9 @@ docker run --rm \
   -v "$PWD/config:/work/config:ro" \
   -v "$PWD/drivers:/work/extras:ro" \
   -e DB_PASSWORD \
+  -e SEED=42 \
   ghcr.io/mferretti/seedstream:latest \
-  execute --job config/jobs/db_invoice.yaml --count 100000
+  execute --job config/jobs/db_invoice_env.yaml --count 100000
 ```
 
 Reach the database over the container network
@@ -170,7 +186,7 @@ services:
       - ./config:/work/config:ro
       - ./drivers:/work/extras:ro   # postgres jdbc jar
     command: >
-      execute --job config/jobs/db_invoice.yaml --count 100000
+      execute --job config/jobs/db_invoice_env.yaml --count 100000
     deploy:
       resources:
         limits: { cpus: "4", memory: 512M }
@@ -193,8 +209,8 @@ spec:
       restartPolicy: Never
       containers:
         - name: seedstream
-          image: ghcr.io/mferretti/seedstream:1.0.0   # pin in CI
-          args: ["execute", "--job", "config/jobs/kafka_invoice.yaml",
+          image: ghcr.io/mferretti/seedstream:0.6.1   # pin in CI
+          args: ["execute", "--job", "config/jobs/kafka_invoice_env.yaml",
                  "--count", "1000000"]
           env:
             - { name: JAVA_OPTS, value: "-XX:MaxRAMPercentage=75.0" }
@@ -239,5 +255,5 @@ directory as a build artifact:
 - **Security**: runs as UID 10001; compatible with `readOnlyRootFilesystem: true`
   with only `/work/out` writable.
 - **Logs**: structured logs to stdout; quiet by default, `--verbose` opt-in.
-- **Pin versions in CI** (`:1.0.0`), never `:latest`, so pipelines are
+- **Pin versions in CI** (`:0.6.1`), never `:latest`, so pipelines are
   reproducible.

@@ -1,0 +1,13 @@
+source: invoice.yaml
+type: kafka
+seed:
+  type: env
+  name: SEED
+conf:
+  bootstrap: kafka:9092
+  topic: invoices
+  batch_size: 1000
+  linger_ms: 10
+  compression: gzip
+  acks: "1"
+  sync: false
