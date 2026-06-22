@@ -33,7 +33,7 @@ hikaricp = "7.1.0"
 postgresql = "42.7.11"
 mysql-connector = "8.4.0"
 ojdbc = "23.26.2.0.0"
-mssql-jdbc = "12.8.1.jre11"
+mssql-jdbc = "13.4.0.jre11"
 
 # Testing
 junit = "6.1.0"
