@@ -23,10 +23,10 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 |----------|------------|-------|
 | **Primitive types (in-memory)** | 12-258 M records/sec | Boolean fastest (258M), char slowest (12M) |
 | **Realistic data (Datafaker)** | 13-154 K records/sec | Company names fastest (154K), phones slowest (13K) |
-| **File output (JSON)** | 25,000-50,000 records/sec | With 64KB buffer + batching (E2E validated) |
-| **File output (CSV)** | 25,000-50,000 records/sec | Fastest format for flat data (E2E validated) |
-| **File output (Protobuf)** | 25,000-50,000 records/sec | Binary format, 50-70% smaller than JSON |
-| **Kafka output (JSON/CSV/Protobuf)** | 25,000-33,333 records/sec | Network-bound, all formats similar (E2E validated) |
+| **File output (JSON)** | ~32,000-38,000 records/sec | With 64KB buffer + batching (E2E validated, Jun 2026) |
+| **File output (CSV)** | ~33,000-39,000 records/sec | Fastest format for flat data (E2E validated, Jun 2026) |
+| **File output (Protobuf)** | ~32,000-37,000 records/sec | Binary format, 50-70% smaller than JSON (E2E validated, Jun 2026) |
+| **Kafka output (JSON/Protobuf)** | ~21,000-31,000 records/sec | Network-bound; JSON ~25-31K, Protobuf ~21-26K (E2E validated, Jun 2026) |
 | **Database output (PostgreSQL, flat)** | 57,000-85,000 records/sec | BIGSERIAL PK, JDBC batching, local Docker; see DB section for realistic production estimates |
 | **Database output (PostgreSQL, nested)** | 2,500-3,300 records/sec | 3 INSERTs per logical record (1 parent + 2 children), `per_batch` strategy |
 
@@ -154,7 +154,7 @@ data:
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 100000 --threads 4"
 ```
 
-**Results** (post thread-local Faker cache optimization, March 2026):
+**Results** (100% Datafaker `customer` structure; figures predate the June 2026 E2E refresh — mixed/passport runs measure ~32–39K, see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md)):
 - **Records Generated**: 100,000
 - **Worker Threads**: 4
 - **Time Elapsed**: ~3 seconds
@@ -182,19 +182,19 @@ data:
 
 #### File / Kafka Destinations
 
-Measured with the **Passport** structure (11 fields, mixed Datafaker + primitives) after thread-local Faker cache optimization (March 2026):
+Measured with the **Passport** structure (11 fields, mixed Datafaker + primitives), refreshed by the **June 2026 E2E suite** — file ~32–39K rec/s, Kafka ~21–31K rec/s (see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md)):
 
 | Records | Threads | Time | Throughput | Scaling |
 |---------|---------|------|------------|---------|
 | 100 | 1 | <0.5s | startup-dominated | Baseline |
-| 1,000 | 1 | ~0.03s | ~33,000 rec/s | |
-| 10,000 | 1 | ~0.3s | ~33,000 rec/s | Linear |
-| 100,000 | 1 | ~3s | ~33,333 rec/s | Linear |
-| 100,000 | 4 | ~3s | ~33,333 rec/s | Minimal gain (I/O bound) |
-| 100,000 | 8 | ~3s | ~33,333 rec/s | I/O bound |
+| 1,000 | 1 | ~0.03s | ~35,000 rec/s | |
+| 10,000 | 1 | ~0.3s | ~35,000 rec/s | Linear |
+| 100,000 | 1 | ~3s | ~35,000 rec/s | Linear |
+| 100,000 | 4 | ~3s | ~35,000 rec/s | Minimal gain (I/O bound) |
+| 100,000 | 8 | ~3s | ~35,000 rec/s | I/O bound |
 
 **Key Observations**:
-1. **Single-threaded**: Linear scaling, ~33K rec/s after Faker cache optimization (was 7K before)
+1. **Single-threaded**: Linear scaling, ~35K rec/s after Faker cache optimization (was 7K before)
 2. **Multi-threaded**: Marginal gains — I/O is now the bottleneck, not Datafaker CPU time
 3. **100% Datafaker workloads** (e.g., customer): slightly lower (~20-25K rec/s); same threading behaviour
 

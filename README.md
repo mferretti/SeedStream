@@ -301,7 +301,7 @@ The same `--faker-types` file must be passed to `execute` so those types resolve
 
 ## Performance
 
-Validated throughput from JMH benchmarks (March 2026):
+Validated throughput — JMH component benchmarks plus the June 2026 end-to-end suite ([docs/E2E-TEST-RESULTS.md](docs/E2E-TEST-RESULTS.md)):
 
 | Data type | Throughput |
 |-----------|-----------|
