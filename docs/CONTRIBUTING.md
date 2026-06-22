@@ -54,7 +54,7 @@ is always welcome.
 ### Prerequisites
 
 - **Java 21** or higher (Amazon Corretto, OpenJDK, or GraalVM)
-- **Gradle 9.4+** (wrapper included — no system installation required)
+- **Gradle 9.5+** (wrapper included — no system installation required)
 - **Git** for version control
 - **Docker** (optional, for integration tests with Testcontainers)
 
@@ -68,7 +68,7 @@ source "$HOME/.sdkman/bin/sdkman-init.sh"
 sdk install java 21.0.9-amzn
 
 # Install Gradle (only needed to regenerate the wrapper)
-sdk install gradle 9.4.0
+sdk install gradle 9.6.0
 ```
 
 Once you have the repo cloned, use `./gradlew` for everything — the wrapper handles the correct Gradle version automatically.

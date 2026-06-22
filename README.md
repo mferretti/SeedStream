@@ -63,7 +63,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 
 - 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 32–39K rec/sec for realistic Datafaker data
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
-- 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
+- 🌍 **Locale-Aware**: locale-specific data via Datafaker (Italian names, US addresses, etc.) — pick a locale with `geolocation`; coverage comes from Datafaker
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
 - 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition — integration-tested against Postgres, MySQL, Oracle, and SQL Server)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
@@ -89,7 +89,7 @@ People comparison-shop, so here's an honest cut. The wedge is **determinism that
 | **No-code config** | ✅ YAML | ✅ GUI | ✅ schema | ❌ you write Java |
 | **Bootstrap schema from existing source** | ✅ DDL / OpenAPI / Protobuf | ❌ | ⚠️ live DB only | ❌ |
 | **Self-hosted / offline** | ✅ | ❌ SaaS | ✅ | ✅ |
-| **Locales** | ✅ 62 | ✅ many | ⚠️ limited | ✅ most (built on it) |
+| **Locales** | ✅ via Datafaker | ✅ many | ⚠️ limited | ✅ most (built on it) |
 | **License** | Apache-2.0 | Proprietary (SaaS) | Apache-2.0 | Apache-2.0 |
 
 **Where the others win — honestly:**
@@ -396,7 +396,7 @@ See [config/README.md](config/README.md) for full secret configuration reference
 
 SeedStream was built with AI assistance — `CLAUDE.md` is in the repo and Claude Code is in the stack, openly. Fair question to ask of any such project. The answer is in the verification, not the prose:
 
-- **~100 test classes** — 86 unit + 12 integration + 3 slow (Testcontainers for real Kafka, and Postgres/MySQL/Oracle/SQL Server over JDBC), not smoke tests.
+- **~106 test classes** — 90 unit + 16 integration (Testcontainers for real Kafka, and Postgres/MySQL/Oracle/SQL Server over JDBC; 3 tagged `slow`), not smoke tests.
 - **70% minimum line coverage**, enforced by a JaCoCo gate — the build fails below it.
 - **Static analysis on every build** — SpotBugs (bug patterns) + Spotless (Google Java Style, build fails on drift).
 - **OWASP Dependency-Check on every push** (CVSS ≥ 7.0). Every known CVE is listed below with status and an **expiry date** — no silent, permanent suppressions ([Security](#security)).

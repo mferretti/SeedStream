@@ -700,7 +700,7 @@ name: customer
 geolocation: usa   # drives Datafaker locale for all semantic types
 ```
 
-**Supported locales** (62 total):
+**Recognized `geolocation` names** (each maps to a Datafaker locale; unrecognized values fall back to US English. Locale data itself is provided by Datafaker):
 - **Americas**: `usa`, `canada`, `mexico`, `brazil`, `argentina`, `chile`
 - **Europe**: `uk`, `ireland`, `france`, `germany`, `italy`, `spain`, `portugal`, `netherlands`, `belgium`, `switzerland`, `austria`, `sweden`, `norway`, `denmark`, `finland`, `poland`, `czech_republic`, `slovakia`, `hungary`, `romania`, `ukraine`, `russia`, `greece`, `turkey`
 - **Asia**: `china`, `japan`, `korea`, `india`, `indonesia`, `thailand`, `vietnam`, `malaysia`, `singapore`, `philippines`, `pakistan`, `bangladesh`
