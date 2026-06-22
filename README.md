@@ -70,7 +70,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
 - 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec, SQL DDL, or compiled Protobuf descriptor set — no hand-writing required
-- 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault backends
+- 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, Google Secret Manager backends
 
 ---
 
@@ -279,8 +279,9 @@ datagenerator inspect schema.sql --nest --output config/structures/
 | `<input>` | required | Schema file to inspect (`.sql`, `.yaml`, `.yml`, `.json`) |
 | `--output` | `config/structures/` | Directory to write structure YAML files |
 | `--force` | off | Overwrite existing structure files (default: skip and warn) |
-| `--format openapi\|ddl` | auto-detect | Override format detection (by default inferred from extension) |
+| `--format openapi\|ddl\|protobuf` | auto-detect | Override format detection (by default inferred from extension) |
 | `--faker-types <file>` | unset | YAML config of extra Datafaker types; register before inspection so name hints can target them |
+| `--best-effort` | off | DDL only: emit the parseable subset and warn on tables that fail to parse, instead of aborting the whole inspection |
 | `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]`. `auto` keeps cycles/M:N/shared children flat; `all` errors on a true cycle |
 | `--nest-default-count <min..max>` | `1..10` | DDL only: multiplicity for synthesized nested arrays when the schema gives no hint |
 
@@ -319,10 +320,11 @@ See [PERFORMANCE.md](docs/PERFORMANCE.md) for full benchmarks, tuning guide, and
 
 ```
 cli → destinations → formats → generators → schema → core
+cli → inspector → schema → core
               (benchmarks: JMH harness, depends on core + generators)
 ```
 
-Seven modules — six in the runtime dependency chain plus `benchmarks` (JMH micro-benchmarks, excluded from production artifacts). Each layer is pluggable: add a destination by implementing `DestinationAdapter`, a format by implementing `FormatSerializer`, or a new semantic type by registering it with `DatafakerRegistry`.
+Eight modules — seven in the runtime dependency chain (`inspector` powers the `inspect` subcommand) plus `benchmarks` (JMH micro-benchmarks, excluded from production artifacts). Each layer is pluggable: add a destination by implementing `DestinationAdapter`, a format by implementing `FormatSerializer`, or a new semantic type by registering it with `DatafakerRegistry`.
 
 See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading reproducibility model, and extension points.
 
@@ -379,12 +381,12 @@ conf:
 
 ```yaml
 secrets:
-  type: vault          # or: aws | azure | encrypted-file
-  address: "https://vault.example.com"
-  token: "${ENV:VAULT_TOKEN}"
+  resolver: vault          # env | vault | aws | azure_keyvault | gcp_secretmanager | encrypted_file
+  vault_addr: "https://vault.example.com"
+  # Vault token is read from the VAULT_TOKEN environment variable
 ```
 
-Supported backends: HashiCorp Vault (KV v1/v2), AWS Secrets Manager, Azure Key Vault, encrypted file.
+Supported backends: HashiCorp Vault (KV v1/v2), AWS Secrets Manager, Azure Key Vault, Google Secret Manager, encrypted file.
 
 See [config/README.md](config/README.md) for full secret configuration reference.
 
@@ -401,7 +403,7 @@ SeedStream was built with AI assistance — `CLAUDE.md` is in the repo and Claud
 - **Benchmarked, not guessed** — JMH micro-benchmarks for hot paths plus an end-to-end throughput suite ([Performance](#performance), [benchmarks/](benchmarks/)).
 - **CI you can read** — [build](.github/workflows/build.yml), [security](.github/workflows/security.yml), and [release](.github/workflows/release.yml) workflows run on every push/PR.
 
-The determinism guarantee in particular is locked by a regression test that generates the same data across 1, 2, 4, 8, and 16 threads and asserts byte-for-byte identical output. Claims here are testable — `./gradlew build` runs the lot.
+The determinism guarantee in particular is locked by a regression test that generates the same data across 1, 2, 3, 4, 8, and 16 threads and asserts byte-for-byte identical output. Claims here are testable — `./gradlew build` runs the lot.
 
 ---
 

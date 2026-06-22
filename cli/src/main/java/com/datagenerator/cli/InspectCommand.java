@@ -65,7 +65,11 @@ import picocli.CommandLine.Parameters;
 public class InspectCommand implements Callable<Integer> {
   private static final String FORMAT_PROTOBUF = "protobuf";
 
-  @Parameters(index = "0", description = "Schema file to inspect (OpenAPI 3.x JSON/YAML or .sql)")
+  @Parameters(
+      index = "0",
+      description =
+          "Schema file to inspect: OpenAPI 3.x (.yaml/.yml/.json), SQL DDL (.sql), or compiled"
+              + " Protobuf descriptor set (.desc/.binpb/.protoset)")
   private Path inputFile;
 
   @Option(

@@ -6,9 +6,9 @@ We release security updates for the following versions:
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 0.5.x   | :white_check_mark: | Current stable release |
-| 0.4.x   | :x:                | No longer supported |
-| < 0.4   | :x:                | No longer supported |
+| 0.6.x   | :white_check_mark: | Current stable release |
+| 0.5.x   | :x:                | No longer supported |
+| < 0.5   | :x:                | No longer supported |
 
 **Recommendation**: Always use the latest release for the most up-to-date security fixes.
 
@@ -16,22 +16,19 @@ We release security updates for the following versions:
 
 ## Current Security Posture
 
-**Status as of June 2026:**
-
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Known Vulnerabilities (CVSS 7.0+)** | ✅ **0** | All high-severity CVEs resolved |
-| **Dependency Versions** | ✅ **Latest Stable** | All libraries upgraded to latest stable releases |
-| **OWASP Dependency-Check** | ✅ **Enabled** | Automated scanning in CI/CD pipeline |
-| **Suppressions** | ✅ **Minimal** | Only 1 low-risk suppression (log4j 2.25.2 in benchmarks module, CVSS 4.8) |
-| **Last Full Audit** | ✅ **June 2026** | All modules scanned, 0 vulnerabilities found |
+| **Known open CVEs (CVSS 7.0+)** | ⚠️ tracked | The canonical, time-stamped list of currently-open CVEs and their suppression expiry dates lives in the README's [Security](../README.md#security) section (single source of truth — avoids drift between docs) |
+| **Dependency Versions** | ✅ **Latest Stable** | All libraries pinned in `gradle/libs.versions.toml` |
+| **OWASP Dependency-Check** | ✅ **Enabled** | Automated scanning in CI/CD pipeline (fails build on CVSS ≥ 7.0) |
+| **Suppressions** | ⏳ time-boxed | Every suppression carries an expiry date; CI re-fails on expiry. See README Security section |
 
 **Key Dependency Versions:**
-- Jackson: 2.22.0 (latest)
-- Kafka: 4.2.0 (latest)
-- Protobuf: 4.35.0 (latest)
-- MySQL Connector: 9.6.0 (latest)
-- All other dependencies at latest stable versions
+- Jackson: 2.22.0
+- Kafka: 4.3.0
+- Protobuf: 4.35.1
+- MySQL Connector: 8.4.0
+- All other dependencies pinned in `gradle/libs.versions.toml`
 
 **Dependency Management**: Centralized in `gradle/libs.versions.toml` ([Gradle Version Catalog](https://docs.gradle.org/current/userguide/platforms.html))
 
@@ -126,7 +123,7 @@ We actively monitor dependencies for known vulnerabilities:
 open core/build/reports/dependency-check-report.html
 ```
 
-**Current Status**: ✅ 0 known vulnerabilities (see Current Security Posture section above)
+**Current Status**: open CVEs (with suppression expiry dates) are tracked in the README [Security](../README.md#security) section — the single source of truth.
 
 ### 3. Network Security
 
@@ -163,13 +160,13 @@ Run security checks locally:
   ```yaml
   conf:
     bootstrap: ${KAFKA_BOOTSTRAP}
-    sasl_password: ${KAFKA_PASSWORD}
+    password: ${KAFKA_PASSWORD}
   ```
 - ❌ **DON'T**: Hardcode credentials in YAML files
   ```yaml
   conf:
     bootstrap: kafka.example.com:9092
-    sasl_password: "my-secret-password"  # DON'T DO THIS
+    password: "my-secret-password"  # DON'T DO THIS
   ```
 
 ### 6. Deployment Security

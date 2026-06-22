@@ -242,8 +242,8 @@ conf:
   sync: false
   security_protocol: SASL_SSL
   sasl_mechanism: PLAIN
-  sasl_username: ${KAFKA_USER}
-  sasl_password: ${KAFKA_PASSWORD}
+  username: ${KAFKA_USER}
+  password: ${KAFKA_PASSWORD}
 ```
 
 **Usage**:
@@ -485,8 +485,9 @@ Generate 10 million records with 12 worker threads:
 # In job YAML conf section:
 conf:
   schema_registry_url: "http://localhost:8081"
-  schema_registry_auth_type: "bearer"         # bearer | basic | (omit for none)
+  schema_registry_auth: "bearer"              # bearer | basic | (omit for none)
   schema_registry_token: "${ENV:SR_TOKEN}"
+  # schema_registry_subject: "my-subject"     # optional; defaults to <topic>-value
 ```
 
 ```bash
@@ -643,7 +644,7 @@ iban:        { datatype: iban }           # alias: bic, swift
 credit_card: { datatype: credit_card }
 ```
 
-**48+ types total** with 20+ aliases. Register custom types at runtime via `DatafakerRegistry`.
+**48+ types total** with 20+ aliases. Add more without code via `--faker-types <file>` — map any no-arg Datafaker method chain (e.g. `beer_style: beer.style` → `faker.beer().style()`). Only parameterized providers (ranges, `options`, `regexify`, bounded dates) or non-String formatting need a Java lambda via `DatafakerRegistry.register`.
 See [generators module](../generators/) for the complete list.
 
 ### Composite Types
@@ -764,7 +765,9 @@ conf:
 
 ```yaml
 # invoice.yaml has: issuer: object[company], line_items: array[object[line_item], 1..20]
-# SeedStream inserts into: invoices → company (issuer) → company (recipient) → line_items
+# Each child table is named after the parent FIELD KEY (not the object type), and gets a
+# {parent_table}_id FK. SeedStream inserts into: invoices → issuer → line_items
+# (a field `recipient: object[company]` would likewise insert into a `recipient` table)
 source: invoice.yaml
 type: database
 conf:
@@ -821,9 +824,9 @@ Add a `secrets` block to the job YAML to pull secrets from a remote store:
 
 ```yaml
 secrets:
-  type: vault                           # vault | aws | azure | encrypted-file
-  address: "https://vault.example.com"
-  token: "${ENV:VAULT_TOKEN}"
+  resolver: vault                       # env | vault | aws | azure_keyvault | gcp_secretmanager | encrypted_file
+  vault_addr: "https://vault.example.com"
+  # Vault token is read from the VAULT_TOKEN environment variable
 
 conf:
   password: "${SECRET:secret/db#password}"   # Vault path + optional #field
@@ -832,33 +835,41 @@ conf:
 **HashiCorp Vault** (KV v1 and v2 auto-detected):
 ```yaml
 secrets:
-  type: vault
-  address: "https://vault.example.com"
-  token: "${ENV:VAULT_TOKEN}"
+  resolver: vault
+  vault_addr: "https://vault.example.com"
+  vault_namespace: "admin"   # optional (Vault Enterprise / HCP)
+  # Vault token is read from the VAULT_TOKEN environment variable
 ```
 
 **AWS Secrets Manager**:
 ```yaml
 secrets:
-  type: aws
-  region: "us-east-1"
+  resolver: aws
+  aws_region: "us-east-1"
   # Uses default AWS credential chain (env vars, instance profile, ~/.aws/credentials)
 ```
 
 **Azure Key Vault**:
 ```yaml
 secrets:
-  type: azure
-  vault_url: "https://my-vault.vault.azure.net"
+  resolver: azure_keyvault
+  vault_uri: "https://my-vault.vault.azure.net"
   # Uses DefaultAzureCredential (env vars, managed identity, CLI login)
 ```
 
-**Encrypted file** (for CI secrets committed to repo):
+**Google Secret Manager**:
 ```yaml
 secrets:
-  type: encrypted-file
-  path: "secrets/creds.enc"
-  key_env: "SEEDSTREAM_ENCRYPTION_KEY"
+  resolver: gcp_secretmanager
+  gcp_project_id: "my-gcp-project"
+  # Uses Application Default Credentials (GOOGLE_APPLICATION_CREDENTIALS, metadata server, gcloud login)
+```
+
+**Encrypted file** (AES-256-GCM): decrypts inline `${SECRET:enc:AES256GCM:...}` ciphertext using a key loaded from an env var or file. No separate secrets file — the ciphertext lives in the job YAML.
+```yaml
+secrets:
+  resolver: encrypted_file
+  key_env: "SEEDSTREAM_ENCRYPTION_KEY"   # default; or use key_file: /path/to/key.hex
 ```
 
 ---

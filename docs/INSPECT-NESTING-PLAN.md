@@ -76,9 +76,10 @@ inspect <input> [--nest[=auto|all|none]] [--nest-default-count <min..max>] ...
 5. **Embedding decision**: a child is embedded into **at most one** parent (the first parent in
    declaration order, deterministic). Additional parents referencing the same child keep flat
    `ref[]` to avoid duplicating/contradicting generated data. Warn on the demoted edges.
-6. **Demotion**: a child embedded into a parent is **removed from the top-level output set**
-   (it now only exists nested), unless it is *also* referenced flatly by another parent (then it
-   stays top-level too). Controlled and logged so the file count is explained.
+6. **Demotion** — **[SUPERSEDED, not implemented; see the Implementation note at the top]**: the
+   plan called for removing an embedded child from the top-level output set. The shipped behavior
+   **always writes every structure to disk** (so `object[child]` auto-load resolves); demotion is
+   realized as a warning only, never file suppression.
 7. **Emit**: replace the parent's FK-less view — the parent gains the nested field; the child's
    `parent_id` column is dropped from the embedded copy (redundant once nested) but kept in any
    surviving top-level copy.
@@ -166,6 +167,7 @@ target of this plan.
 
 - Default multiplicity: fixed `1..10`, or derive from anything in the schema? (No reliable DDL
   signal — propose fixed, configurable.)
-- Should embedded children always be demoted from top-level, or keep both by default? (Propose:
-  demote unless also flatly referenced elsewhere; expose `--nest-keep-top-level` later if needed.)
+- ~~Should embedded children always be demoted from top-level, or keep both by default?~~
+  **RESOLVED (shipped):** never demoted — every structure is always written to disk so
+  `object[child]` references resolve. Demotion is a warning only.
 - M:N: future `--nest=all` could pivot a junction into two nested arrays — deferred.

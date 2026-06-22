@@ -73,7 +73,8 @@ The following must be **identical** across runs for output to match:
 - Structure definition
 - SeedStream version
 - Record count (`--count`)
-- Thread count (`--threads`)
+
+Thread count (`--threads`) does **not** affect output — same seed produces byte-for-byte identical data at any thread count.
 
 ---
 
@@ -93,7 +94,7 @@ The following must be **identical** across runs for output to match:
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --verbose" --debug-jvm
 ```
 
-**Verbose output includes**: seed resolution, absolute file paths, progress every 100 records, throughput metrics, worker thread activity.
+**Verbose output includes**: seed resolution, absolute file paths, progress every 10,000 records, throughput metrics, worker thread activity.
 
 ---
 

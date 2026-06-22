@@ -217,7 +217,7 @@ jfr print --events jdk.ObjectAllocationInNewTLAB \
 ```
 
 **Step 4: Optimize based on findings**
-- If generation is slow → Profile component benchmarks (./gradlew :generators:jmh)
+- If generation is slow → Profile component benchmarks (./gradlew :benchmarks:jmh -PjmhSuite=generators)
 - If serialization is slow → Check if streaming is used (avoid buffering entire output)
 - If I/O is slow → Increase buffer sizes, use direct ByteBuffers
 

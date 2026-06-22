@@ -92,7 +92,7 @@ cd SeedStream
 Before making changes, familiarize yourself with:
 - **[DESIGN.md](DESIGN.md)** - Architecture and design decisions
 - **[README.md](../README.md)** - Features and quick start
-- **Module structure**: `cli → destinations → formats → generators → schema → core` (plus the off-graph `benchmarks` JMH module).
+- **Module structure**: `cli → destinations → formats → generators → schema → core` and `cli → inspector → schema → core` (plus the off-graph `benchmarks` JMH module).
 
 The project follows a **dependency-first architecture**: each module only depends on modules to its right — the arrows above point in the direction of the dependency, so `cli` depends on `destinations`, which depends on `formats`, and so on. `core` is the leaf with no project dependencies. No circular dependencies are permitted.
 

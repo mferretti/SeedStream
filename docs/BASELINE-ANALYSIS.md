@@ -372,7 +372,7 @@ Result: 3.5-5× single-thread improvement when we fixed OUR bug
 
 5. **Re-run E2E benchmarks with thread optimization** to validate gains
    ```bash
-   ./benchmarks/run_all_tests.sh --profile
+   ./benchmarks/run_e2e_test.sh --profile
    ```
 
 ### Next Sprint

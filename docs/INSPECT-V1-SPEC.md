@@ -30,6 +30,9 @@ Flags:
 | `--force` | off | overwrite existing files (else skip + warn — never silent clobber) |
 | `--format openapi\|ddl\|protobuf` | auto | input format override; supports all three implemented inspectors |
 | `--faker-types <file>` | unset | optional custom Datafaker types config loaded before inspection |
+| `--best-effort` | off | DDL only: emit the parseable subset and warn on unparseable `CREATE TABLE`s instead of aborting |
+| `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]` — see §9 |
+| `--nest-default-count <min..max>` | `1..10` | DDL only: multiplicity for synthesized nested arrays — see §9 |
 
 ## 2. Module
 
@@ -83,7 +86,8 @@ mappings receive inline review comments (§7a):
 - Applied **only** when no `format` and no `enum`.
 - Match on **word/token boundaries**, not raw substring. Split field name on
   camelCase / `snake_case` / `-` into tokens; match whole tokens.
-  → `email` matches `email`, `userEmail`; does **not** match `email_verified_at`.
+  → `email` matches the `email` token in `email`, `userEmail`, and `email_verified_at`; it does
+  **not** match a bare substring inside a single token such as `emailish`.
 - First matching rule wins; rule order is the table order.
 
 | token(s) | SeedStream |
@@ -162,6 +166,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   - The inspector auto-targets a custom type when a **column name matches its key**
     (e.g. column `beer_style` → `beer_style`).
   - The same config must be passed to `execute` so the referenced types resolve at generation time.
+  - Only **no-arg** method chains resolve from config (each dot-segment is a zero-arg call, result coerced to `String`). Providers needing arguments — `number().numberBetween(...)`, `options().option(...)`, `regexify(...)`, bounded `date()` calls — or non-String formatting still require a Java lambda via `DatafakerRegistry.register`.
 
 ## 7c. DDL specifics
 
