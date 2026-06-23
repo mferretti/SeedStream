@@ -67,3 +67,6 @@ CORE-SECURITY-FINDINGS.md
 
 # Internal planning/process docs — local only
 docs/internal/
+
+# Caveman-compress human-readable backups (local only)
+CLAUDE.original.md
