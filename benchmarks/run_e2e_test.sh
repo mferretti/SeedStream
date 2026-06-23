@@ -11,7 +11,7 @@
 #
 # Outputs:
 #   - benchmarks/e2e_results.csv (raw data)
-#   - benchmarks/E2E-TEST-RESULTS.md (formatted report)
+#   - docs/E2E-TEST-RESULTS.md (formatted report)
 #   - benchmarks/build/jfr/*.jfr (profiling data, if --profile enabled)
 #
 
@@ -586,11 +586,11 @@ run_all_tests() {
 
 # Generate markdown report
 generate_report() {
-    log_info "Generating report: ${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
+    log_info "Generating report: ${PROJECT_ROOT}/docs/E2E-TEST-RESULTS.md"
 
     local date_str
     date_str=$(date +"%B %d, %Y")
-    local report_file="${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
+    local report_file="${PROJECT_ROOT}/docs/E2E-TEST-RESULTS.md"
 
     # Auto-capture host hardware so every report records the machine that produced
     # the numbers (absolute throughput is hardware-bound). Each probe is guarded.
@@ -893,7 +893,7 @@ main() {
     log_success "Benchmark suite complete!"
     log_success "═══════════════════════════════════════════════════════════"
     log_info "Results: ${PROJECT_ROOT}/benchmarks/e2e_results.csv"
-    log_info "Report:  ${PROJECT_ROOT}/benchmarks/E2E-TEST-RESULTS.md"
+    log_info "Report:  ${PROJECT_ROOT}/docs/E2E-TEST-RESULTS.md"
     
     if [[ "$PROFILE_MODE" == true ]]; then
         echo ""

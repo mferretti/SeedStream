@@ -63,14 +63,14 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 
 - 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 32–39K rec/sec for realistic Datafaker data
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
-- 🌍 **Locale-Aware**: 62 locales supported via Datafaker (Italian names, US addresses, etc.)
+- 🌍 **Locale-Aware**: locale-specific data via Datafaker (Italian names, US addresses, etc.) — pick a locale with `geolocation`; coverage comes from Datafaker
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
 - 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition — integration-tested against Postgres, MySQL, Oracle, and SQL Server)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
 - 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec, SQL DDL, or compiled Protobuf descriptor set — no hand-writing required
-- 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault backends
+- 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, Google Secret Manager backends
 
 ---
 
@@ -89,7 +89,7 @@ People comparison-shop, so here's an honest cut. The wedge is **determinism that
 | **No-code config** | ✅ YAML | ✅ GUI | ✅ schema | ❌ you write Java |
 | **Bootstrap schema from existing source** | ✅ DDL / OpenAPI / Protobuf | ❌ | ⚠️ live DB only | ❌ |
 | **Self-hosted / offline** | ✅ | ❌ SaaS | ✅ | ✅ |
-| **Locales** | ✅ 62 | ✅ many | ⚠️ limited | ✅ most (built on it) |
+| **Locales** | ✅ via Datafaker | ✅ many | ⚠️ limited | ✅ most (built on it) |
 | **License** | Apache-2.0 | Proprietary (SaaS) | Apache-2.0 | Apache-2.0 |
 
 **Where the others win — honestly:**
@@ -279,8 +279,9 @@ datagenerator inspect schema.sql --nest --output config/structures/
 | `<input>` | required | Schema file to inspect (`.sql`, `.yaml`, `.yml`, `.json`) |
 | `--output` | `config/structures/` | Directory to write structure YAML files |
 | `--force` | off | Overwrite existing structure files (default: skip and warn) |
-| `--format openapi\|ddl` | auto-detect | Override format detection (by default inferred from extension) |
+| `--format openapi\|ddl\|protobuf` | auto-detect | Override format detection (by default inferred from extension) |
 | `--faker-types <file>` | unset | YAML config of extra Datafaker types; register before inspection so name hints can target them |
+| `--best-effort` | off | DDL only: emit the parseable subset and warn on tables that fail to parse, instead of aborting the whole inspection |
 | `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]`. `auto` keeps cycles/M:N/shared children flat; `all` errors on a true cycle |
 | `--nest-default-count <min..max>` | `1..10` | DDL only: multiplicity for synthesized nested arrays when the schema gives no hint |
 
@@ -300,7 +301,7 @@ The same `--faker-types` file must be passed to `execute` so those types resolve
 
 ## Performance
 
-Validated throughput from JMH benchmarks (March 2026):
+Validated throughput — JMH component benchmarks plus the June 2026 end-to-end suite ([docs/E2E-TEST-RESULTS.md](docs/E2E-TEST-RESULTS.md)):
 
 | Data type | Throughput |
 |-----------|-----------|
@@ -319,10 +320,11 @@ See [PERFORMANCE.md](docs/PERFORMANCE.md) for full benchmarks, tuning guide, and
 
 ```
 cli → destinations → formats → generators → schema → core
+cli → inspector → schema → core
               (benchmarks: JMH harness, depends on core + generators)
 ```
 
-Seven modules — six in the runtime dependency chain plus `benchmarks` (JMH micro-benchmarks, excluded from production artifacts). Each layer is pluggable: add a destination by implementing `DestinationAdapter`, a format by implementing `FormatSerializer`, or a new semantic type by registering it with `DatafakerRegistry`.
+Eight modules — seven in the runtime dependency chain (`inspector` powers the `inspect` subcommand) plus `benchmarks` (JMH micro-benchmarks, excluded from production artifacts). Each layer is pluggable: add a destination by implementing `DestinationAdapter`, a format by implementing `FormatSerializer`, or a new semantic type by registering it with `DatafakerRegistry`.
 
 See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading reproducibility model, and extension points.
 
@@ -379,12 +381,12 @@ conf:
 
 ```yaml
 secrets:
-  type: vault          # or: aws | azure | encrypted-file
-  address: "https://vault.example.com"
-  token: "${ENV:VAULT_TOKEN}"
+  resolver: vault          # env | vault | aws | azure_keyvault | gcp_secretmanager | encrypted_file
+  vault_addr: "https://vault.example.com"
+  # Vault token is read from the VAULT_TOKEN environment variable
 ```
 
-Supported backends: HashiCorp Vault (KV v1/v2), AWS Secrets Manager, Azure Key Vault, encrypted file.
+Supported backends: HashiCorp Vault (KV v1/v2), AWS Secrets Manager, Azure Key Vault, Google Secret Manager, encrypted file.
 
 See [config/README.md](config/README.md) for full secret configuration reference.
 
@@ -394,14 +396,14 @@ See [config/README.md](config/README.md) for full secret configuration reference
 
 SeedStream was built with AI assistance — `CLAUDE.md` is in the repo and Claude Code is in the stack, openly. Fair question to ask of any such project. The answer is in the verification, not the prose:
 
-- **~100 test classes** — 86 unit + 12 integration + 3 slow (Testcontainers for real Kafka, and Postgres/MySQL/Oracle/SQL Server over JDBC), not smoke tests.
+- **~106 test classes** — 90 unit + 16 integration (Testcontainers for real Kafka, and Postgres/MySQL/Oracle/SQL Server over JDBC; 3 tagged `slow`), not smoke tests.
 - **70% minimum line coverage**, enforced by a JaCoCo gate — the build fails below it.
 - **Static analysis on every build** — SpotBugs (bug patterns) + Spotless (Google Java Style, build fails on drift).
 - **OWASP Dependency-Check on every push** (CVSS ≥ 7.0). Every known CVE is listed below with status and an **expiry date** — no silent, permanent suppressions ([Security](#security)).
 - **Benchmarked, not guessed** — JMH micro-benchmarks for hot paths plus an end-to-end throughput suite ([Performance](#performance), [benchmarks/](benchmarks/)).
 - **CI you can read** — [build](.github/workflows/build.yml), [security](.github/workflows/security.yml), and [release](.github/workflows/release.yml) workflows run on every push/PR.
 
-The determinism guarantee in particular is locked by a regression test that generates the same data across 1, 2, 4, 8, and 16 threads and asserts byte-for-byte identical output. Claims here are testable — `./gradlew build` runs the lot.
+The determinism guarantee in particular is locked by a regression test that generates the same data across 1, 2, 3, 4, 8, and 16 threads and asserts byte-for-byte identical output. Claims here are testable — `./gradlew build` runs the lot.
 
 ---
 

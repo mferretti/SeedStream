@@ -269,8 +269,9 @@ sonar.token=<generate at /account/security on your Sonar instance>
 
 Or export as env vars: `SONAR_HOST_URL`, `SONAR_TOKEN`.
 
-The project key/name (`seedstream` / `Seedstream`) live in the committed
-`gradle.properties`.
+The project key/name default to `seedstream` / `Seedstream` (hardcoded fallbacks in
+`build.gradle.kts`); override them via `sonar.projectKey` / `sonar.projectName` in
+`gradle.properties` or `-P` flags if needed.
 
 ### 3. Run analysis
 

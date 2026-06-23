@@ -34,7 +34,7 @@ Once you push commits to the `main` branch:
 3. Codecov action uploads coverage data
 4. Coverage badge in README.md updates automatically with real percentages
 
-### 3. View Coverage Reports
+### 4. View Coverage Reports
 
 - **Badge in README**: Shows overall coverage percentage (updates automatically)
 - **Codecov Dashboard**: Visit `https://codecov.io/gh/mferretti/SeedStream` for detailed reports
@@ -68,7 +68,7 @@ integration-heavy modules look low even though they are well exercised:
 | inspector / generators / schema / core | 90–95% | logic-heavy, unit-testable |
 | formats | ~82% | |
 | cli | ~78% | Picocli command glue, validated mostly via integration/e2e |
-| destinations | ~75% | 6 Testcontainers `*IT` files (Kafka/DB/File adapters) **not counted** |
+| destinations | ~75% | 10 Testcontainers `*IT` files (Kafka/DB/File adapters) **not counted** |
 
 `destinations` and `cli` are the two modules pulling the aggregate down, purely
 because the code paths their integration tests cover are excluded from the

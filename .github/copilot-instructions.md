@@ -16,12 +16,13 @@ datagenerator/
 ├── core/           # Generation engine, type system, seeding, parallel execution
 ├── schema/         # YAML parsers for data structures and job definitions
 ├── generators/     # Data generators (primitives + Datafaker for realistic data)
-├── formats/        # Output serializers (JSON, CSV, Protobuf)
+├── formats/        # Output serializers (JSON, CSV, Protobuf, Avro, Avro+Registry, CBEFF)
 ├── destinations/   # Destination adapters (Kafka, DB with HikariCP, File with NIO)
+├── inspector/      # `inspect` subcommand: OpenAPI / SQL DDL / Protobuf → structure YAML
 └── cli/           # Picocli-based CLI (future: REST/gRPC API module)
 ```
 
-**Module Dependencies:** `cli` → `destinations` → `formats` → `generators` → `schema` → `core`
+**Module Dependencies:** `cli` → `destinations` → `formats` → `generators` → `schema` → `core`; and `cli` → `inspector` → `schema` → `core`
 
 **Configuration Architecture:**
 - **Data Structure Definitions** (`config/structures/*.yaml`): Define schema, field types, ranges, aliases, geolocation
@@ -63,7 +64,7 @@ datagenerator/
 
 **Tech Stack:**
 - Java 21 (toolchain enforced, use virtual threads for I/O-bound operations)
-- Gradle 8.5+ (multi-module build with Kotlin DSL)
+- Gradle 9.5+ (multi-module build with Kotlin DSL)
 - **Gradle Version Catalog** (`gradle/libs.versions.toml` - centralized dependency management)
 - Lombok (reduce boilerplate - enabled in all modules)
 - Enforced by Spotless: Run `./gradlew spotlessApply` before committing
@@ -79,7 +80,7 @@ datagenerator/
   2. Define library in `[libraries]` section
   3. Reference in module's `build.gradle.kts` with `libs.*` syntax
 - **Benefits**: Single source of truth, no version conflicts, IDE autocomplete
-- **Current versions**: All dependencies at latest stable (Jackson 2.21.1, Kafka 4.2.0, Protobuf 4.34.0, etc.)
+- **Current versions**: All dependencies at latest stable (Jackson 2.22.0, Kafka 4.3.0, Protobuf 4.35.1, etc. — see `gradle/libs.versions.toml` for the authoritative list)
 - **Security**: Run `./gradlew dependencyCheckAll` to scan all modules for vulnerabilities
 
 **Code Style:**
@@ -135,12 +136,11 @@ datagenerator/
 - Test naming: `shouldGenerateCorrectDataWhenSeedIsProvided`
 - JMH benchmarks for performance claims
 
-**Iteration Style:**spotlessApply build test`
+**Iteration Style:**
+- Run `./gradlew spotlessApply build test` before committing
 - Mark incomplete work with TODO comments
 - Explain only complex/non-obvious decisions
-- CI/CD: GitHub Actions runs on all PRs (formatting, build, tests)st`
-- Mark incomplete work with TODO comments
-- Explain only complex/non-obvious decisions
+- CI/CD: GitHub Actions runs on all PRs (formatting, build, tests)
 
 **Resource Management:**
 - Always use try-with-resources for I/O
@@ -176,7 +176,7 @@ datagenerator/
 - **Nested structures**: `object[structure_name]` - Auto-loads from `structures_path/structure_name.yaml`
 - **Arrays (variable length)**: `array[inner_type, min..max]`
   - Examples: `array[int[1..100], 5..10]` (5-10 integers), `array[object[line_item], 1..50]` (1-50 nested objects)
-- **Foreign keys**: `ref[other_structure.field]` (references to other generated records)
+- **Foreign keys**: `ref[other_structure.field, min..max]` or `ref[other_structure.field, 1..count]` (range required — bare `ref[s.field]` is rejected)
 - **Circular reference detection**: Fail fast if `object[A]` → `object[B]` → `object[A]`
 
 **Configuration Patterns:**
@@ -193,7 +193,7 @@ datagenerator/
 
 **Databases:** JDBC + HikariCP connection pooling. Support PostgreSQL, MySQL (drivers as `compileOnly`, users provide runtime deps)
 
-**Files:** Java NIO for fast I/O. Support JSON (newline-delimited), CSV, future: Parquet/Avro
+**Files:** Java NIO for fast I/O. Support JSON (newline-delimited), CSV, Protobuf, Avro (OCF + Confluent registry), CBEFF. Future: Parquet
 
 **Data Generation:** Datafaker for realistic locale-specific data. Custom generators for performance-critical primitives.
 
@@ -284,9 +284,8 @@ conf:
 ./gradlew :cli:run --args="execute --job config/jobs/kafka_address.yaml"
 
 # Override all parameters
-./gradlew :cli:run --args="execute --job config/jobs/kafka_address.yaml --format csv --count 50000 --seed 99999
-# Custom: csv format, 50000 records
-./gradlew :cli:run --args="execute --job config/jobs/kafka_address.yaml --format csv --count 50000"
+# Custom: csv format, 50000 records, explicit seed
+./gradlew :cli:run --args="execute --job config/jobs/kafka_address.yaml --format csv --count 50000 --seed 99999"
 ```
 
 ---

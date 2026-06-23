@@ -35,7 +35,7 @@ These are **component benchmarks** that measure isolated performance:
 - **File I/O:** Write throughput to disk
 
 **NOT measured here:**
-- End-to-end pipeline performance (see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md))
+- End-to-end pipeline performance (see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md))
 - Multi-threaded scaling (see E2E tests with 1/4/8 threads)
 - Network I/O with real-world latency (all tests use localhost)
 - Memory pressure under load
@@ -231,4 +231,4 @@ Boolean Generator: 258,431,292 ops/s  (± 25,132,942)
 - ✅ Serializers: CPU-bound (results portable)
 - ⚠️ File I/O: Storage-dependent (your mileage may vary)
 
-**Note:** All measurements are single-threaded component benchmarks. For multi-threaded performance and complete pipeline validation, see [E2E-TEST-RESULTS.md](../benchmarks/E2E-TEST-RESULTS.md).
+**Note:** All measurements are single-threaded component benchmarks. For multi-threaded performance and complete pipeline validation, see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md).

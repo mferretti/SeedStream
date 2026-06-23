@@ -75,9 +75,11 @@ This document captures the architectural decisions, design patterns, issues enco
 ```mermaid
 graph LR
     CLI[cli] --> DEST[destinations]
+    CLI --> INSP[inspector]
     DEST --> FMT[formats]
     FMT --> GEN[generators]
     GEN --> SCHEMA[schema]
+    INSP --> SCHEMA
     SCHEMA --> CORE[core]
     
     CLI -.->|uses| FMT
@@ -92,11 +94,13 @@ graph LR
     style CLI fill:#fff9c4
 ```
 
-**Dependency Summary**: `cli → destinations → formats → generators → schema → core`
+**Dependency Summary**: `cli → destinations → formats → generators → schema → core` and `cli → inspector → schema → core`
 
 **Key Rule**: No circular dependencies. Each module depends only on modules to its right.
 
-**Seventh module — `benchmarks`**: JMH micro-benchmark harness used to validate NFR-1 performance targets. It depends on `core` and `generators` but is intentionally excluded from the runtime distribution and from the diagram above so the dependency flow describes the production graph only. Build it directly with `./gradlew :benchmarks:jmh` (see `benchmarks/README.md`).
+**`inspector` module**: powers the `inspect` subcommand (OpenAPI / SQL DDL / Protobuf → structure YAML). Depends on `schema` + `core`; the parser libs (`swagger-parser`, JSQLParser) stay isolated here and never leak into the generation hot path.
+
+**Eighth module — `benchmarks`**: JMH micro-benchmark harness used to validate NFR-1 performance targets. It depends on `core` and `generators` but is intentionally excluded from the runtime distribution. Build it directly with `./gradlew :benchmarks:jmh` (see `benchmarks/README.md`).
 
 ### Core Module
 
@@ -516,7 +520,7 @@ public class DatafakerRegistry {
     }
 
     static {
-        registerBuiltIns(); // 48 canonical types + 32 aliases
+        registerBuiltIns(); // 48 canonical types + 33 aliases
     }
 
     public static void register(String typeName, DatafakerFunction function);
@@ -1004,7 +1008,7 @@ DatafakerRegistry.register("custom_type", (faker, random) ->
 
 **Pros**:
 - ✅ **Foundation Complete**: Registry pattern established with `DatafakerRegistry`
-- ✅ **Extensibility Proven**: 48+ built-in types, 20+ aliases demonstrate scalability
+- ✅ **Extensibility Proven**: 48 built-in types, 33 aliases demonstrate scalability
 - Community contributions (marketplace of generators)
 - No need to modify core code for new types
 
@@ -1087,7 +1091,7 @@ Processing order:
 
 `{parent_structure_name}_id` — always. No YAML config needed.
 
-The structure name comes from the array field key in the parent YAML (e.g., a field `line_items: array[object[line_item], 1..10]` uses `line_items` as the child table name, producing FK column `invoices_id`). The tester must name their FK columns to match this convention.
+The **child table name is the parent's field key** (e.g. on table `invoices`, a field `line_items: array[object[line_item], 1..10]` inserts into a table named `line_items`), and the injected FK column is `{parent_table_name}_id` (here `invoices_id`). The tester must name their child table and FK column to match this convention.
 
 ---
 
@@ -1156,7 +1160,7 @@ This document is a living record. If you:
 
 ---
 
-## Multi-Threaded Generation
+## Multi-Threaded Generation (quick reference)
 
 Use `--threads` to parallelise generation for large datasets:
 
@@ -1165,38 +1169,17 @@ Use `--threads` to parallelise generation for large datasets:
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --threads 1"   # single-threaded debug
 ```
 
-**Automatic optimisation**:
-- Jobs < 1,000 records: single-threaded (avoids thread pool overhead)
-- Jobs ≥ 1,000 records: worker pool with configurable thread count
-
-**Thread safety guarantees**:
-- Each worker holds its own `Random` instance derived from the master seed
-- `ThreadLocal<GeneratorContext>` isolates nested object generation per thread
-- A single writer thread serialises output, ensuring consistent record ordering
-
-**Scaling characteristics**:
-- Primitive-heavy workloads: near-linear scaling (10M ops/s × N threads)
-- Datafaker-heavy workloads: I/O-bound — 4 threads is typically optimal regardless of core count (thread-local Faker cache eliminates contention)
-
----
-
-## Reproducibility & Determinism
-
-**Guarantee**: Same seed + same config + same count = identical output, byte-for-byte, across JVM restarts, machines, and thread counts.
-
-**How it works**:
-1. Master seed comes from the job config or `--seed` CLI override
-2. Each worker is assigned a **logical ID** (0, 1, 2, ...) — not a JVM thread ID
-3. Worker seed = `deriveSeed(masterSeed, logicalWorkerId)`
-4. Each worker generates a deterministic, non-overlapping subset of records
-
-Using logical IDs rather than JVM thread IDs is the key design decision — JVM thread IDs are non-deterministic across runs, while logical IDs are always assigned in the same order.
+- Jobs < 1,000 records: single-threaded (avoids thread pool overhead); ≥ 1,000: worker pool (default: CPU cores).
+- `ThreadLocal<GeneratorContext>` isolates nested object generation per thread; a single writer thread does ordered I/O.
+- **Determinism**: output is byte-for-byte identical regardless of `--threads`, because each record is
+  seeded by its **global index** (`deriveRecordSeed(i)`), *not* by the worker that produced it. Logical
+  worker IDs only initialise each thread's reusable `Random` instance — they do **not** determine record
+  values. See [Seeding & Reproducibility](#seeding--reproducibility) and the
+  [Determinism Guarantee](#determinism-guarantee) above for the authoritative description.
 
 **Verifying reproducibility**:
 ```bash
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 12345 --count 1000"
 sha256sum cli/output/addresses.json
-# Re-run — hash must be identical
-./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 12345 --count 1000"
-sha256sum cli/output/addresses.json
+# Re-run with any --threads value — hash must be identical
 ```

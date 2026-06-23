@@ -184,7 +184,8 @@ public class ExecuteCommand implements Callable<Integer> {
    */
   @Option(
       names = {"-f", "--format"},
-      description = "Output format: json, csv, protobuf, avro, avro-registry (default: json)",
+      description =
+          "Output format: json, csv, protobuf, avro, avro-registry, cbeff (default: json)",
       defaultValue = "json")
   private String format;
 
