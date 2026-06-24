@@ -3,12 +3,16 @@ name: Publish Container Image
 # Builds the multi-stage Dockerfile and pushes a multi-arch image to GHCR.
 # - version tags (vX.Y.Z) publish :X.Y.Z + :latest
 # - manual dispatch publishes :edge (bootstrap / pre-release testing)
+# - nightly schedule publishes :edge, but only when main has new commits since the last run
 on:
   push:
     tags:
       - 'v*'
   release:
     types: [published]
+  schedule:
+    # 03:00 UTC nightly; the gate job below skips the build if there were no commits in the last day
+    - cron: '0 3 * * *'
   workflow_dispatch:
 
 env:
@@ -16,7 +20,33 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/seedstream
 
 jobs:
+  # Gate: for scheduled runs, build only if main received at least one commit in the last 24h.
+  # Non-scheduled triggers (tags, release, manual dispatch) always proceed.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.decide.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: decide
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$(git log --since='24 hours ago' --oneline)" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Commits found in the last 24h — building nightly :edge."
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "No commits in the last 24h — skipping nightly :edge build."
+          fi
+
   publish:
+    needs: gate
+    if: needs.gate.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,7 +77,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
 
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
