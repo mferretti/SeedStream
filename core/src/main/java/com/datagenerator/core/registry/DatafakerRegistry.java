@@ -142,7 +142,7 @@ public class DatafakerRegistry {
     register("iban", (faker, random) -> faker.finance().iban());
     register("currency", (faker, random) -> faker.money().currencyCode());
     register("price", (faker, random) -> faker.commerce().price());
-    register("bic", (faker, random) -> faker.finance().bic());
+    register("bic", (faker, random) -> conformantBic(faker));
     registerAlias("swift", "bic");
     register("cvv", (faker, random) -> String.valueOf(faker.number().numberBetween(100, 999)));
     registerAlias("cvc", "cvv");
@@ -186,6 +186,22 @@ public class DatafakerRegistry {
     register("uuid", (faker, random) -> faker.internet().uuid());
 
     log.debug("DatafakerRegistry initialized with {} built-in types", registry.size());
+  }
+
+  /**
+   * Generates an ISO 9362-conformant BIC. A BIC must be uppercase letters and digits only.
+   *
+   * <p>Datafaker's {@code Finance.bic()} interpolates the ISO 3166-1 alpha-2 country code
+   * (positions 5-6) from locale YAML, where it is stored lowercase, producing non-conformant BICs
+   * such as {@code "UFMNmzAVSDD"}. We normalize to uppercase here. This is the correct
+   * normalization per ISO 9362 regardless of upstream behavior and is idempotent, so it remains
+   * safe if Datafaker fixes the casing.
+   *
+   * <p>Upstream:
+   * https://github.com/datafaker-net/datafaker/commit/d4267942d61314017cba303f98cd607d071409f4
+   */
+  private static String conformantBic(Faker faker) {
+    return faker.finance().bic().toUpperCase(Locale.ROOT);
   }
 
   /**

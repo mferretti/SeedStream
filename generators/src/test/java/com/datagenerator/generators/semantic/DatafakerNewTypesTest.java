@@ -125,7 +125,11 @@ class DatafakerNewTypesTest {
   @Test
   void shouldGenerateBIC() {
     String bic = (String) generateWithContext("germany", "bic");
-    // BIC/SWIFT code format: 8 or 11 alphanumeric characters
+    // BIC/SWIFT code format per ISO 9362: 8 or 11 UPPERCASE alphanumerics.
+    // Regression guard: datafaker 2.6.0 Finance.bic() emits a lowercase country code
+    // (positions 5-6); DatafakerRegistry.conformantBic() normalizes to uppercase.
+    // Upstream:
+    // https://github.com/datafaker-net/datafaker/commit/d4267942d61314017cba303f98cd607d071409f4
     assertThat(bic).isNotNull().isNotEmpty().matches("^[A-Z0-9]{8,11}$");
   }
 
