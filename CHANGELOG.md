@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **BIC/SWIFT uppercase normalization** — `bic` (and its `swift` alias) now always emits an ISO 9362-conformant uppercase code. Datafaker 2.6.0 changed `Finance.bic()` to interpolate the ISO 3166-1 alpha-2 country code (positions 5–6) from locale data, where it is stored lowercase, producing non-conformant BICs such as `UFMNmzAVSDD`. `DatafakerRegistry.conformantBic()` normalizes the output via `toUpperCase(Locale.ROOT)`; the normalization is idempotent and stays correct if Datafaker fixes the casing upstream
+
+### Changed
+- **Datafaker 2.5.4 → 2.6.0** — picks up new providers and locale fixes; see the BIC normalization above for the one behavioral regression handled on our side
+
+---
+
 ## [0.6.1] - 2026-06-21
 
 **Release**: Avro + Confluent Schema Registry formats, AES-256-GCM secret encryption with cloud backends (Vault / AWS / Azure), `inspect` subcommand (OpenAPI / DDL / Protobuf → structure YAML) with multi-dialect SQL support, parent-reference FK propagation (`ref[parent.field]`), a determinism fix making output byte-for-byte identical across thread counts, and friendlier CLI error reporting.
