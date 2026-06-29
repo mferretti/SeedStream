@@ -129,7 +129,7 @@ subprojects {
 
         // Testing - JUnit 5 (skip for benchmarks module)
         if (project.name != "benchmarks") {
-            testImplementation(platform("org.junit:junit-bom:6.1.0"))
+            testImplementation(platform("org.junit:junit-bom:6.1.1"))
             testImplementation("org.junit.jupiter:junit-jupiter-api")
             testImplementation("org.junit.jupiter:junit-jupiter-params")
             testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
