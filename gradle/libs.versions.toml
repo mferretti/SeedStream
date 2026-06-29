@@ -14,7 +14,7 @@ datafaker = "2.6.0"
 
 # Validation
 jakarta-validation = "3.1.1"
-hibernate-validator = "9.1.0.Final"
+hibernate-validator = "9.1.1.Final"
 jakarta-el = "4.0.2"
 
 # Schema inspection
