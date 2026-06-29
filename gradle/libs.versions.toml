@@ -26,7 +26,7 @@ protobuf = "4.35.1"  # Updated from 3.25.5 (major version upgrade)
 avro = "1.12.1"
 
 # Messaging
-kafka = "4.3.0"
+kafka = "4.3.1"
 
 # Database
 hikaricp = "7.1.0"
