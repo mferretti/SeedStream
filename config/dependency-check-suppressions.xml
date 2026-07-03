@@ -26,18 +26,10 @@
         <cve>CVE-2025-68161</cve>
     </suppress>
 
-    <!-- ── Kafka clients ─────────────────────────────────────────────────────
-         CVE-2026-41115 | kafka-clients 4.3.0 (direct dep)
-         4.3.0 is the latest release as of June 2026; no patched version available.
-         This tool is a producer-only data generator; it does not expose a consumer
-         or broker socket, which limits the attack surface for this CVE.
-         Next review: check for kafka-clients 4.3.1+ or 4.4.x.
-    -->
-    <suppress until="2026-07-05">
-        <notes>kafka-clients 4.3.0 is latest available (June 2026); no patch yet. Producer-only usage limits attack surface. Review: upgrade when 4.3.1+ ships.</notes>
-        <packageUrl regex="true">^pkg:maven/org\.apache\.kafka/kafka\-clients@4\.3\..*$</packageUrl>
-        <cve>CVE-2026-41115</cve>
-    </suppress>
+    <!-- Kafka clients CVE-2026-41115 suppression removed: kafka-clients 4.3.1
+         (the named fix) is now pinned. OWASP DC re-evaluates 4.3.1 with no
+         suppression; if the CVE persists CI fails and this entry is restored,
+         narrowed to the still-vulnerable version. -->
 
     <!-- ── Azure SDK — CVE-2026-33117 ────────────────────────────────────────
          Affects azure-core, azure-core-http-netty, azure-identity, azure-json.

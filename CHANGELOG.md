@@ -12,8 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **BIC/SWIFT uppercase normalization** — `bic` (and its `swift` alias) now always emits an ISO 9362-conformant uppercase code. Datafaker 2.6.0 changed `Finance.bic()` to interpolate the ISO 3166-1 alpha-2 country code (positions 5–6) from locale data, where it is stored lowercase, producing non-conformant BICs such as `UFMNmzAVSDD`. `DatafakerRegistry.conformantBic()` normalizes the output via `toUpperCase(Locale.ROOT)`; the normalization is idempotent and stays correct if Datafaker fixes the casing upstream
 
+### Security
+- **kafka-clients 4.3.0 → 4.3.1** — ships the fix for **CVE-2026-41115**; the OWASP Dependency-Check suppression for that CVE has been removed so the scanner re-verifies the patched version
+
 ### Changed
-- **Datafaker 2.5.4 → 2.6.0** — picks up new providers and locale fixes; see the BIC normalization above for the one behavioral regression handled on our side
+- **Datafaker 2.5.4 → 2.7.0** — picks up new providers and locale fixes; see the BIC normalization above for the one behavioral regression handled on our side
+- **Dependency bumps** — logback-classic 1.5.34 → 1.5.37, hibernate-validator 9.1.0 → 9.1.1, junit-bom 6.1.0 → 6.1.1, aws secretsmanager 2.46.15 → 2.46.17, Gradle wrapper 9.6.0 → 9.6.1, plus CI action bumps (docker/login-action v4.2.0, actions/cache v6, action-gh-release digest)
 
 ---
 

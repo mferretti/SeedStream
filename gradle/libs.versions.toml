@@ -6,15 +6,15 @@
 jackson = "2.22.0"
 lombok = "1.18.46"
 slf4j = "2.0.18"
-logback = "1.5.34"
+logback = "1.5.37"
 picocli = "4.7.7"
 
 # Data Generation
-datafaker = "2.6.0"
+datafaker = "2.7.0"
 
 # Validation
 jakarta-validation = "3.1.1"
-hibernate-validator = "9.1.0.Final"
+hibernate-validator = "9.1.1.Final"
 jakarta-el = "4.0.2"
 
 # Schema inspection
@@ -26,7 +26,7 @@ protobuf = "4.35.1"  # Updated from 3.25.5 (major version upgrade)
 avro = "1.12.1"
 
 # Messaging
-kafka = "4.3.0"
+kafka = "4.3.1"
 
 # Database
 hikaricp = "7.1.0"
@@ -36,7 +36,7 @@ ojdbc = "23.26.2.0.0"
 mssql-jdbc = "13.4.0.jre11"
 
 # Testing
-junit = "6.1.0"
+junit = "6.1.1"
 h2 = "2.4.240"
 mockito = "5.21.0"
 assertj = "3.27.7"
@@ -44,7 +44,7 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.46.15"
+aws-sdk = "2.46.17"
 azure-keyvault-secrets = "4.11.0"
 azure-identity = "1.18.4"
 gcp-secretmanager = "2.93.0"

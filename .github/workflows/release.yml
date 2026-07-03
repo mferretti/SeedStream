@@ -45,7 +45,7 @@ jobs:
         cp "cli/build/libs/seedstream-${{ steps.version.outputs.VERSION }}.jar" seedstream-latest.jar
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
+      uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3
       with:
         name: "SeedStream ${{ github.ref_name }}"
         body_path: CHANGELOG.md
