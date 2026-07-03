@@ -71,20 +71,27 @@ jobs:
     # analysis below then runs against whatever cached data exists.
     - name: Update NVD database (best-effort)
       continue-on-error: true
-      # Cap the refresh: NVD can hang unbounded when its API is slow/rate-limited.
-      # continue-on-error + timeout means a stalled update aborts and the analysis
-      # below falls through to whatever cached DB the previous step restored.
-      timeout-minutes: 10
-      # --no-daemon is REQUIRED, not cosmetic: dependencyCheckUpdate takes OWASP's
-      # exclusive FileChannel lock on odc.update.lock and only releases it via a
-      # JVM-shutdown hook (WriteLockShutdownHook), never at task end. With the
-      # Gradle daemon alive (org.gradle.daemon=true) the lock leaks into the next
-      # step's reused JVM, where the analyze task retries for 160×15s = 40 min and
-      # then fails with "Unable to obtain the update lock". Ending this step's JVM
-      # fires the shutdown hook and frees the lock before analysis runs.
-      run: ./gradlew :core:dependencyCheckUpdate --no-daemon --no-configuration-cache --no-parallel --stacktrace
+      # Cap the refresh so a genuinely hung NVD API can't run to the 6h job limit.
+      # Sized to fit a cold full sync with an API key; if it is still killed, the
+      # "Release stale OWASP write lock" step below cleans up so analysis is never
+      # wedged. Do NOT use --no-daemon here: it forks a single-use daemon that,
+      # when the step is killed on timeout, is orphaned while still holding
+      # odc.update.lock — which then blocks the analyze step for 40 minutes.
+      timeout-minutes: 20
+      run: ./gradlew :core:dependencyCheckUpdate --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+    # If the update above was killed (timeout) or crashed mid-run it can leave
+    # odc.update.lock behind. OWASP DC reads that lock file's timestamp and waits
+    # 160 × 15s = 40 min before giving up, wedging the analysis into a 40-minute
+    # failure ("WriteLockException: Unable to obtain the update lock"). No DC
+    # process runs between steps, so removing a leftover lock here is always safe
+    # and lets analysis start clean. Verified locally: a stale lock file stalls
+    # `dependencyCheckAnalyze`; deleting it makes the same task pass in seconds.
+    - name: Release stale OWASP write lock
+      if: always()
+      run: rm -f ~/.gradle/dependency-check-data/*/odc.update.lock
 
     # Gate the analysis on real data: a populated NVD database is hundreds of MB.
     # If none exists (cold cache + NVD outage), fail loudly instead of running an
@@ -109,10 +116,7 @@ jobs:
       # --no-parallel: dependencyCheckAll fans analyze across modules; with
       #   org.gradle.parallel=true they race on the shared NVD H2 dir
       #   ("connectionPool is null"). Serialize so one pool owns the data store.
-      # --no-daemon: run in a fresh JVM that holds the odc.update.lock only for
-      #   this step and releases it on exit (see the Update step above); avoids
-      #   inheriting or leaking the OWASP write lock across steps.
-      run: ./gradlew dependencyCheckAll --no-daemon --no-configuration-cache --no-parallel --stacktrace
+      run: ./gradlew dependencyCheckAll --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
