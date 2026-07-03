@@ -75,7 +75,14 @@ jobs:
       # continue-on-error + timeout means a stalled update aborts and the analysis
       # below falls through to whatever cached DB the previous step restored.
       timeout-minutes: 10
-      run: ./gradlew :core:dependencyCheckUpdate --no-configuration-cache --no-parallel --stacktrace
+      # --no-daemon is REQUIRED, not cosmetic: dependencyCheckUpdate takes OWASP's
+      # exclusive FileChannel lock on odc.update.lock and only releases it via a
+      # JVM-shutdown hook (WriteLockShutdownHook), never at task end. With the
+      # Gradle daemon alive (org.gradle.daemon=true) the lock leaks into the next
+      # step's reused JVM, where the analyze task retries for 160×15s = 40 min and
+      # then fails with "Unable to obtain the update lock". Ending this step's JVM
+      # fires the shutdown hook and frees the lock before analysis runs.
+      run: ./gradlew :core:dependencyCheckUpdate --no-daemon --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
@@ -102,7 +109,10 @@ jobs:
       # --no-parallel: dependencyCheckAll fans analyze across modules; with
       #   org.gradle.parallel=true they race on the shared NVD H2 dir
       #   ("connectionPool is null"). Serialize so one pool owns the data store.
-      run: ./gradlew dependencyCheckAll --no-configuration-cache --no-parallel --stacktrace
+      # --no-daemon: run in a fresh JVM that holds the odc.update.lock only for
+      #   this step and releases it on exit (see the Update step above); avoids
+      #   inheriting or leaking the OWASP write lock across steps.
+      run: ./gradlew dependencyCheckAll --no-daemon --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
