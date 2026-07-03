@@ -71,6 +71,10 @@ jobs:
     # analysis below then runs against whatever cached data exists.
     - name: Update NVD database (best-effort)
       continue-on-error: true
+      # Cap the refresh: NVD can hang unbounded when its API is slow/rate-limited.
+      # continue-on-error + timeout means a stalled update aborts and the analysis
+      # below falls through to whatever cached DB the previous step restored.
+      timeout-minutes: 10
       run: ./gradlew :core:dependencyCheckUpdate --no-configuration-cache --no-parallel --stacktrace
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
