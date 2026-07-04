@@ -415,7 +415,6 @@ SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS thre
 
 | Dependency | CVE | Status |
 |---|---|---|
-| `kafka-clients 4.3.0` | CVE-2026-41115 | No fix available yet; producer-only usage |
 | `azure-identity 1.18.3` | CVE-2026-33117 | No fix available yet; startup secret resolution only |
 | `azure-core / azure-json` | CVE-2026-33117 | Transitive from azure-identity; no fix yet |
 | `netty 4.1.131–132` | CVE-2026-42xxx, CVE-2026-44248 | Transitive from Azure SDK; no fix yet |
