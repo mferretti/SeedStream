@@ -16,6 +16,7 @@
 
 package com.datagenerator.schema.secret;
 
+import com.datagenerator.core.security.FilePermissionValidator;
 import com.datagenerator.core.security.PathValidator;
 import com.datagenerator.schema.exception.SecretResolutionException;
 import com.datagenerator.schema.model.SecretsConfig;
@@ -47,8 +48,11 @@ public final class SecretResolverFactory {
     if (config.getKeyFile() != null && !config.getKeyFile().isBlank()) {
       try {
         Path keyPath = PathValidator.validate(config.getKeyFile(), null, "encryption key file");
+        new FilePermissionValidator().validateSecretFile(keyPath, "Encryption key file");
         return Files.readString(keyPath).trim();
       } catch (IllegalArgumentException e) {
+        throw new SecretResolutionException(e.getMessage(), e);
+      } catch (SecurityException e) {
         throw new SecretResolutionException(e.getMessage(), e);
       } catch (IOException e) {
         throw new SecretResolutionException(

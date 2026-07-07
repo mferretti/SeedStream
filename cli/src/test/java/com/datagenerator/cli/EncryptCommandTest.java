@@ -20,11 +20,15 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.schema.secret.AesGcmCrypto;
 import com.datagenerator.schema.secret.EncryptedFileResolver;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
@@ -45,9 +49,26 @@ class EncryptCommandTest {
   void exitCode0WhenKeyFileProvided(@TempDir Path tempDir) throws Exception {
     Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
+    restrictPermissions(keyFile);
 
     int code = cmd().execute(OPT_KEY_FILE, keyFile.toString(), SECRET_NAME);
     assertThat(code).isZero();
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void exitCode1WhenKeyFileIsWorldReadable(@TempDir Path tempDir) throws Exception {
+    Path keyFile = tempDir.resolve(KEY_FILE_NAME);
+    Files.writeString(keyFile, VALID_KEY_HEX);
+    Files.setPosixFilePermissions(keyFile, PosixFilePermissions.fromString("rw-r--r--"));
+
+    StringWriter err = new StringWriter();
+    CommandLine cli = cmd();
+    cli.setErr(new PrintWriter(err));
+    int code = cli.execute(OPT_KEY_FILE, keyFile.toString(), SECRET_NAME);
+
+    assertThat(code).isEqualTo(1);
+    assertThat(err.toString()).contains("insecure permissions").contains("chmod 600");
   }
 
   @Test
@@ -81,6 +102,7 @@ class EncryptCommandTest {
   void keyFileWithTrailingNewlineSucceeds(@TempDir Path tempDir) throws Exception {
     Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX + "\n");
+    restrictPermissions(keyFile);
 
     int code = cmd().execute(OPT_KEY_FILE, keyFile.toString(), SECRET_NAME);
     assertThat(code).isZero();
@@ -92,6 +114,7 @@ class EncryptCommandTest {
   void outputStartsWithAes256GcmPrefix(@TempDir Path tempDir) throws Exception {
     Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
+    restrictPermissions(keyFile);
 
     StringWriter out = new StringWriter();
     CommandLine cli = cmd();
@@ -105,6 +128,7 @@ class EncryptCommandTest {
   void outputCanBeDecryptedBack(@TempDir Path tempDir) throws Exception {
     Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
+    restrictPermissions(keyFile);
 
     StringWriter out = new StringWriter();
     CommandLine cli = cmd();
@@ -139,6 +163,7 @@ class EncryptCommandTest {
   void twoCiphertextsForSamePlaintextDiffer(@TempDir Path tempDir) throws Exception {
     Path keyFile = tempDir.resolve(KEY_FILE_NAME);
     Files.writeString(keyFile, VALID_KEY_HEX);
+    restrictPermissions(keyFile);
 
     StringWriter out1 = new StringWriter();
     StringWriter out2 = new StringWriter();
@@ -151,5 +176,18 @@ class EncryptCommandTest {
     c2.execute(OPT_KEY_FILE, keyFile.toString(), "same-value");
 
     assertThat(out1.toString().trim()).isNotEqualTo(out2.toString().trim());
+  }
+
+  /**
+   * Restricts the given file to owner-only permissions on POSIX systems so tests that expect a
+   * successful key-file read aren't tripped up by the umask-dependent default permissions of {@link
+   * Files#writeString}. No-op on Windows, where POSIX permissions are unavailable.
+   */
+  private static void restrictPermissions(Path file) throws IOException {
+    try {
+      Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+    } catch (UnsupportedOperationException e) {
+      // Windows: no POSIX permission model, nothing to restrict.
+    }
   }
 }
