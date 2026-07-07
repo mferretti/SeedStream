@@ -127,4 +127,24 @@ public final class LogUtils {
     // Statistical sampling: generate random number 0-99, check if < sampleRate
     return ThreadLocalRandom.current().nextInt(100) < TRACE_SAMPLE_RATE;
   }
+
+  /**
+   * Truncates a string to at most {@code max} characters, appending an ellipsis marker with the
+   * original length when truncation occurs.
+   *
+   * <p>Intended for embedding untrusted or potentially large external content (e.g. HTTP response
+   * bodies) into exception messages / log lines without risking unbounded log growth or leaking
+   * excessive server-side detail (CWE-209/532).
+   *
+   * @param s the string to truncate; {@code null} is treated as empty
+   * @param max the maximum number of characters to retain from {@code s}
+   * @return {@code s} unchanged if its length is {@code <= max}, otherwise the first {@code max}
+   *     characters followed by a truncation marker noting the total original length
+   */
+  public static String truncate(String s, int max) {
+    if (s == null) {
+      return "";
+    }
+    return s.length() <= max ? s : s.substring(0, max) + "… (" + s.length() + " chars total)";
+  }
 }

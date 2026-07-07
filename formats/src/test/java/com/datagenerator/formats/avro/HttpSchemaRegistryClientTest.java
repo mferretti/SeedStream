@@ -152,6 +152,16 @@ class HttpSchemaRegistryClientTest {
   }
 
   @Test
+  void truncatesLargeResponseBodyOnNon200Response() throws Exception {
+    stubResponse(500, "x".repeat(10_000));
+
+    assertThatThrownBy(() -> client.registerSchema("s", "{}"))
+        .isInstanceOf(SchemaRegistryException.class)
+        .hasMessageContaining("… (10000 chars total)")
+        .satisfies(e -> assertThat(e.getMessage()).hasSizeLessThanOrEqualTo(300));
+  }
+
+  @Test
   void throwsOnMalformedJsonResponse() throws Exception {
     stubResponse(200, "not-json");
 
