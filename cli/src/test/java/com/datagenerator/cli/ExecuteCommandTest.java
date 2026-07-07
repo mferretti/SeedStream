@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -32,6 +34,8 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -379,6 +383,93 @@ class ExecuteCommandTest {
 
     int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     assertThat(code).isZero();
+  }
+
+  // ── Output path validation (T14) ─────────────────────────────────────────────
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void symlinkOutputPathIsRejected() throws Exception {
+    Path realFile = outDir.resolve("real.json");
+    Files.writeString(realFile, "sensitive content");
+    Path symlink = outDir.resolve("output.json");
+    Files.createSymbolicLink(symlink, realFile);
+
+    Path jobFile = tempDir.resolve("symlink_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+
+    assertThat(code).isNotZero();
+    assertThat(Files.readString(realFile)).isEqualTo("sensitive content");
+  }
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void directoryAsOutputPathIsRejected() throws Exception {
+    Path asDir = outDir.resolve("output.json");
+    Files.createDirectories(asDir);
+
+    Path jobFile = tempDir.resolve("dir_target_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    assertThat(code).isNotZero();
+  }
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void existingFileWithAppendFalseLogsWarnAndStillWrites() throws Exception {
+    Path existing = outDir.resolve(OUTPUT_JSON);
+    Files.writeString(existing, "stale data\n");
+
+    Logger appLogger = (Logger) LoggerFactory.getLogger("com.datagenerator");
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    appLogger.addAppender(appender);
+
+    Path jobFile = writeJobFile();
+    int code;
+    try {
+      code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "2");
+    } finally {
+      appLogger.detachAppender(appender);
+      appender.stop();
+    }
+
+    assertThat(code).isZero();
+    assertThat(appender.list)
+        .anyMatch(
+            event ->
+                event.getLevel() == Level.WARN
+                    && event.getFormattedMessage().contains("will be truncated"));
+    List<String> lines = Files.readAllLines(existing);
+    assertThat(lines).hasSize(2); // truncated and rewritten, not appended to stale data
   }
 
   // ── Seed resolution edge cases ───────────────────────────────────────────────

@@ -20,6 +20,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.datagenerator.core.engine.GenerationEngine;
 import com.datagenerator.core.security.FilePermissionValidator;
+import com.datagenerator.core.security.PathValidator;
 import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
@@ -54,6 +55,7 @@ import com.datagenerator.schema.secret.ConfigSubstitutor;
 import com.datagenerator.schema.secret.SecretResolver;
 import com.datagenerator.schema.secret.SecretResolverFactory;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
@@ -662,9 +664,15 @@ public class ExecuteCommand implements Callable<Integer> {
     boolean compress = conf.has("compress") && conf.get("compress").asBoolean();
     boolean append = conf.has("append") && conf.get("append").asBoolean();
 
+    String targetPathStr = pathStr + "." + serializer.getFormatName(); // Add extension
+    Path targetPath = PathValidator.validateOutput(targetPathStr, "file destination output path");
+    if (!append && Files.exists(targetPath)) {
+      log.warn("Output file {} exists and will be truncated", targetPath);
+    }
+
     FileDestinationConfig config =
         FileDestinationConfig.builder()
-            .filePath(Paths.get(pathStr + "." + serializer.getFormatName())) // Add extension
+            .filePath(targetPath)
             .compress(compress)
             .append(append)
             .build();
