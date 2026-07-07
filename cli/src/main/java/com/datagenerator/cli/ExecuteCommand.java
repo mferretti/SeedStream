@@ -445,7 +445,7 @@ public class ExecuteCommand implements Callable<Integer> {
         dataStructure.getData().size());
 
     // 4. Create format serializer
-    FormatSerializer serializer = createSerializer(format, jobConfig);
+    FormatSerializer serializer = createSerializer(format, jobConfig, secretResolver);
     log.info("Created serializer: {}", serializer.getFormatName());
 
     // 5. Create destination adapter
@@ -591,10 +591,12 @@ public class ExecuteCommand implements Callable<Integer> {
    *
    * @param format format name ("json", "csv", "protobuf", "cbeff", case-insensitive)
    * @param jobConfig job configuration (used for cbeff-specific conf values)
+   * @param secretResolver secret resolver for credential substitution
    * @return serializer instance for the specified format
    * @throws IllegalArgumentException if format is unsupported
    */
-  private FormatSerializer createSerializer(String fmt, JobConfig jobConfig) {
+  private FormatSerializer createSerializer(
+      String fmt, JobConfig jobConfig, SecretResolver secretResolver) {
     String normalizedFmt = fmt != null ? fmt.toLowerCase(Locale.ROOT) : "json";
     return switch (normalizedFmt) {
       case "json" -> new JsonSerializer();
@@ -619,7 +621,8 @@ public class ExecuteCommand implements Callable<Integer> {
                 : null;
         String token =
             conf != null && conf.has("schema_registry_token")
-                ? conf.get("schema_registry_token").asText()
+                ? ConfigSubstitutor.substitute(
+                    conf.get("schema_registry_token").asText(), secretResolver)
                 : null;
         yield new SchemaRegistryAvroSerializer(registryUrl, subject, authType, token);
       }
