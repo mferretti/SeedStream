@@ -170,7 +170,7 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
         requireToken(token, normalizedType);
         yield "Basic " + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
       }
-      default ->
+      case null, default ->
           throw new SchemaRegistryException(
               "Unsupported schema_registry_auth: '" + authType + "'; supported: bearer, basic");
     };

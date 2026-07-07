@@ -282,11 +282,12 @@ class HttpSchemaRegistryClientTest {
 
   @Test
   void exceptionMessageNeverContainsTokenValue() {
-    String secretToken = "super-secret-value-12345";
+    // Deliberately NOT named like a credential: static analyzers flag `secretToken = "literal"`
+    // as a hardcoded password. This is a leak probe, not a credential.
+    String leakProbe = "leak-probe-12345";
 
-    assertThatThrownBy(
-            () -> new HttpSchemaRegistryClient(REGISTRY_URL, "unknown-type", secretToken))
-        .hasMessageNotContaining(secretToken);
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "unknown-type", leakProbe))
+        .hasMessageNotContaining(leakProbe);
   }
 
   @Test
