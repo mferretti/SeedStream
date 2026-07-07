@@ -225,6 +225,25 @@ class SeedResolverTest {
   }
 
   @Test
+  void shouldTruncateLargeErrorBodyInExceptionMessage() throws Exception {
+    String hugeBody = "x".repeat(10_000);
+    HttpClient mockClient = mock(HttpClient.class);
+    HttpResponse<String> mockResponse = mock(HttpResponse.class);
+    when(mockResponse.statusCode()).thenReturn(500);
+    when(mockResponse.body()).thenReturn(hugeBody);
+    when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+
+    SeedResolver customResolver = new SeedResolver(mockClient);
+    SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, null);
+
+    assertThatThrownBy(() -> customResolver.resolve(config))
+        .isInstanceOf(SeedResolutionException.class)
+        .hasMessageContaining("… (10000 chars total)")
+        .satisfies(e -> assertThat(e.getMessage()).hasSizeLessThanOrEqualTo(300));
+  }
+
+  @Test
   void shouldFailWhenRemoteThrowsIOException() throws Exception {
     HttpClient mockClient = mock(HttpClient.class);
     when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))

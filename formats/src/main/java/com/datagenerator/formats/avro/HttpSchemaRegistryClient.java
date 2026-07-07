@@ -17,6 +17,7 @@
 package com.datagenerator.formats.avro;
 
 import com.datagenerator.core.security.UrlValidator;
+import com.datagenerator.core.util.LogUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -54,6 +55,12 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String CONTENT_TYPE = "application/vnd.schemaregistry.v1+json";
   private static final HttpClient SHARED_HTTP_CLIENT = HttpClient.newHttpClient();
+
+  /**
+   * Cap on response-body characters embedded in exception messages (CWE-209/532: avoid unbounded
+   * log growth / leaking excessive server-side detail).
+   */
+  private static final int MAX_RESPONSE_BODY_LOG_CHARS = 200;
 
   private final String baseUrl;
   private final String authHeader;
@@ -128,7 +135,7 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
               + " for subject '"
               + subject
               + "': "
-              + response.body());
+              + LogUtils.truncate(response.body(), MAX_RESPONSE_BODY_LOG_CHARS));
     }
 
     int id = parseSchemaId(response.body(), subject);

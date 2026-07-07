@@ -42,6 +42,12 @@ public class SeedResolver {
   /** Hard timeout for a single remote-seed request (Core-2: prevents an indefinite read hang). */
   private static final Duration REMOTE_REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
+  /**
+   * Cap on response-body characters embedded in exception messages (CWE-209/532: avoid unbounded
+   * log growth / leaking excessive server-side detail).
+   */
+  private static final int MAX_RESPONSE_BODY_LOG_CHARS = 200;
+
   // LazyHolder defers HttpClient construction until resolveRemote() is first called
   private static final class HttpClientHolder {
     static final HttpClient INSTANCE =
@@ -180,7 +186,10 @@ public class SeedResolver {
 
       if (response.statusCode() != 200) {
         throw new SeedResolutionException(
-            "Remote seed API returned status " + response.statusCode() + ": " + response.body());
+            "Remote seed API returned status "
+                + response.statusCode()
+                + ": "
+                + LogUtils.truncate(response.body(), MAX_RESPONSE_BODY_LOG_CHARS));
       }
 
       long seed = Long.parseLong(response.body().trim());

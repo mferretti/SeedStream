@@ -159,4 +159,33 @@ class LogUtilsTest {
           .isLessThan(1000);
     }
   }
+
+  @Test
+  void truncateShouldReturnEmptyStringForNullInput() {
+    assertThat(LogUtils.truncate(null, 200)).isEmpty();
+  }
+
+  @Test
+  void truncateShouldReturnShortBodyUnchanged() {
+    String body = "short response body";
+    assertThat(LogUtils.truncate(body, 200)).isEqualTo(body);
+  }
+
+  @Test
+  void truncateShouldReturnStringUnchangedWhenExactlyAtLimit() {
+    String body = "x".repeat(200);
+    assertThat(LogUtils.truncate(body, 200)).isEqualTo(body);
+  }
+
+  @Test
+  void truncateShouldCapLargeBodyAndAppendMarker() {
+    String body = "x".repeat(10_000);
+
+    String result = LogUtils.truncate(body, 200);
+
+    assertThat(result)
+        .hasSizeLessThanOrEqualTo(300)
+        .startsWith("x".repeat(200))
+        .endsWith("… (10000 chars total)");
+  }
 }
