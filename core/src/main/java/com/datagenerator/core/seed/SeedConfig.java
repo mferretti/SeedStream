@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.Value;
 
 /** Base class for seed configuration. Supports embedded, file, env, and remote seed sources. */
@@ -105,11 +106,11 @@ public abstract sealed class SeedConfig {
     public static class AuthConfig {
       @NotNull String type; // bearer, basic, api_key
 
-      String token; // for bearer
+      @ToString.Exclude String token; // for bearer
       String username; // for basic
-      String password; // for basic
+      @ToString.Exclude String password; // for basic
       String key; // for api_key - header name
-      String value; // for api_key - header value
+      @ToString.Exclude String value; // for api_key - header value
 
       @JsonCreator
       @SuppressWarnings("checkstyle:HiddenField")
