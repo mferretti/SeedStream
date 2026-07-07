@@ -681,4 +681,36 @@ class ExecuteCommandTest {
       System.clearProperty("TEST_REGISTRY_TOKEN");
     }
   }
+
+  // ── T10: --debug/--verbose must not elevate third-party loggers ─────────────
+
+  @Test
+  void debugModeScopesTraceToApplicationLoggerOnly() throws Exception {
+    // Third-party libraries (HikariCP, Kafka clients, ...) must not be elevated by --debug —
+    // only com.datagenerator should move to TRACE, ROOT stays at INFO.
+    Logger thirdPartyLogger = (Logger) LoggerFactory.getLogger("com.zaxxer.hikari");
+    thirdPartyLogger.setLevel(Level.INFO);
+
+    Path jobFile = writeJobFile();
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1", "--debug");
+
+    assertThat(code).isZero();
+    Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Logger app = (Logger) LoggerFactory.getLogger("com.datagenerator");
+    assertThat(app.getLevel()).isEqualTo(Level.TRACE);
+    assertThat(root.getLevel()).isEqualTo(Level.INFO);
+    assertThat(thirdPartyLogger.getLevel()).isEqualTo(Level.INFO);
+  }
+
+  @Test
+  void verboseModeScopesDebugToApplicationLoggerOnly() throws Exception {
+    Path jobFile = writeJobFile();
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1", "--verbose");
+
+    assertThat(code).isZero();
+    Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Logger app = (Logger) LoggerFactory.getLogger("com.datagenerator");
+    assertThat(app.getLevel()).isEqualTo(Level.DEBUG);
+    assertThat(root.getLevel()).isEqualTo(Level.INFO);
+  }
 }
