@@ -89,4 +89,45 @@ public final class PathValidator {
 
     return resolved;
   }
+
+  /**
+   * Validates a user-supplied output path before it is opened for writing.
+   *
+   * <p>Unlike {@link #validate}, the target need not already exist — output destinations routinely
+   * create a new file. This method is guardrail-level only (no base-directory confinement, callers
+   * point generated data wherever they choose); it exists to stop the two concrete write-time
+   * hazards:
+   *
+   * <ol>
+   *   <li>Writing through a symlink, which can redirect generated data onto an arbitrary file the
+   *       process can write (e.g. {@code ~/.bashrc}, another job's seed file).
+   *   <li>Writing to a path that resolves to an existing non-regular file (device node, symlink to
+   *       a directory, etc.).
+   * </ol>
+   *
+   * @param rawPath the path string from configuration
+   * @param context human-readable context for the exception message (e.g. "file destination output
+   *     path")
+   * @return the normalized {@link Path}, ready to be opened for writing
+   * @throws IllegalArgumentException if the path is null/blank, resolves through a symlink, or
+   *     resolves to an existing non-regular file
+   */
+  public static Path validateOutput(String rawPath, String context) {
+    if (rawPath == null || rawPath.isBlank()) {
+      throw new IllegalArgumentException(context + " must not be null or blank");
+    }
+
+    Path normalized = Path.of(rawPath).normalize();
+
+    if (Files.isSymbolicLink(normalized)) {
+      throw new IllegalArgumentException(
+          context + " refuses to write through a symlink: '" + normalized + "'");
+    }
+
+    if (Files.exists(normalized) && !Files.isRegularFile(normalized)) {
+      throw new IllegalArgumentException(context + " is not a regular file: '" + normalized + "'");
+    }
+
+    return normalized;
+  }
 }
