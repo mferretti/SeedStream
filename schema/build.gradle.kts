@@ -22,4 +22,7 @@ dependencies {
     // Integration test containers
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.localstack)
+
+    // Logback test appender for asserting on WARN log output
+    testImplementation(libs.logback.classic)
 }

@@ -21,6 +21,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.datagenerator.schema.exception.SecretResolutionException;
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -36,6 +40,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings("unchecked")
@@ -267,5 +272,52 @@ class VaultSecretResolverTest {
     assertThatThrownBy(() -> resolver.resolve("secret/data/app with space#key"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("whitespace");
+  }
+
+  // ── TLS warnings (T07 / CWE-319) ──────────────────────────────────────────
+
+  private ListAppender<ILoggingEvent> attachAppender() {
+    Logger logger = (Logger) LoggerFactory.getLogger(VaultSecretResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    return appender;
+  }
+
+  private void detachAppender(ListAppender<ILoggingEvent> appender) {
+    Logger logger = (Logger) LoggerFactory.getLogger(VaultSecretResolver.class);
+    logger.detachAppender(appender);
+    appender.stop();
+  }
+
+  @Test
+  void shouldWarnWhenVaultAddrIsPlainHttp() {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+
+      assertThat(appender.list)
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getFormattedMessage())
+                    .contains("plain http")
+                    .doesNotContain(TEST_TOKEN);
+              });
+    } finally {
+      detachAppender(appender);
+    }
+  }
+
+  @Test
+  void shouldNotWarnWhenVaultAddrIsHttps() {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      new VaultSecretResolver("https://vault:8200", null, mockClient, TEST_ENV);
+
+      assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.WARN);
+    } finally {
+      detachAppender(appender);
+    }
   }
 }
