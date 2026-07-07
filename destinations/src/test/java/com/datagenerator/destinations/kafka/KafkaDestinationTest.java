@@ -163,6 +163,40 @@ class KafkaDestinationTest {
   }
 
   @Test
+  void shouldAllowSslTruststoreLocationWithoutPassword() {
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
+            .securityProtocol("SSL")
+            .sslTruststoreLocation("/path/to/truststore.pem")
+            .sslTruststorePassword(null)
+            .build();
+
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+    // Should not throw NPE when building properties with null password
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+    assertThat(dest).isNotNull();
+  }
+
+  @Test
+  void shouldAllowSslKeystoreLocationWithoutPassword() {
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder()
+            .bootstrap(BOOTSTRAP)
+            .topic(TOPIC)
+            .securityProtocol("SSL")
+            .sslKeystoreLocation("/path/to/keystore.pem")
+            .sslKeystorePassword(null)
+            .build();
+
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+    // Should not throw NPE when building properties with null password
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+    assertThat(dest).isNotNull();
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   void shouldRetrySyncSendOnTransientFailure() throws Exception {
     Future<RecordMetadata> failedFuture = mock(Future.class);
