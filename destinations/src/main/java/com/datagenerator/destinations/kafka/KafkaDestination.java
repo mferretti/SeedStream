@@ -168,11 +168,15 @@ public class KafkaDestination extends AbstractDestination {
     // SSL properties
     if (config.getSslTruststoreLocation() != null) {
       props.put("ssl.truststore.location", config.getSslTruststoreLocation());
-      props.put("ssl.truststore.password", config.getSslTruststorePassword());
+      if (config.getSslTruststorePassword() != null) {
+        props.put("ssl.truststore.password", config.getSslTruststorePassword());
+      }
     }
     if (config.getSslKeystoreLocation() != null) {
       props.put("ssl.keystore.location", config.getSslKeystoreLocation());
-      props.put("ssl.keystore.password", config.getSslKeystorePassword());
+      if (config.getSslKeystorePassword() != null) {
+        props.put("ssl.keystore.password", config.getSslKeystorePassword());
+      }
     }
 
     return props;
