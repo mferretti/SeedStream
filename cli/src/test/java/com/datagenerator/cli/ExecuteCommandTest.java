@@ -714,26 +714,8 @@ class ExecuteCommandTest {
     assertThat(outDir.resolve(OUTPUT_JSON)).exists();
   }
 
-  @Test
-  void shouldRedactCredentialsInJdbcUrl() {
-    // C1 / CWE-532: userinfo and password query params must be masked before logging.
-    assertThat(ExecuteCommand.redactJdbcCredentials("jdbc:postgresql://user:s3cret@host:5432/db"))
-        .isEqualTo("jdbc:postgresql://****@host:5432/db")
-        .doesNotContain("s3cret");
-    assertThat(
-            ExecuteCommand.redactJdbcCredentials(
-                "jdbc:mysql://host/db?user=admin&password=s3cret&ssl=true"))
-        .doesNotContain("s3cret")
-        .doesNotContain("admin")
-        .contains("ssl=true");
-  }
-
-  @Test
-  void shouldLeaveCleanJdbcUrlUnchanged() {
-    String clean = "jdbc:postgresql://db-host:5432/testdb";
-    assertThat(ExecuteCommand.redactJdbcCredentials(clean)).isEqualTo(clean);
-    assertThat(ExecuteCommand.redactJdbcCredentials(null)).isNull();
-  }
+  // JDBC credential redaction (CWE-532) now lives in JdbcUrlRedactor (destinations module) —
+  // see JdbcUrlRedactorTest for that coverage.
 
   // ── Avro Registry secret substitution ──────────────────────────────────────
 

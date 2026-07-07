@@ -200,7 +200,9 @@ public class DatabaseDestination extends AbstractDestination {
     }
 
     validateTransactionStrategy(config.getTransactionStrategy());
-    retryPolicy.execute("open database connection to " + config.getJdbcUrl(), this::openConnection);
+    retryPolicy.execute(
+        "open database connection to " + JdbcUrlRedactor.redactJdbcCredentials(config.getJdbcUrl()),
+        this::openConnection);
   }
 
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
