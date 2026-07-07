@@ -28,6 +28,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 
@@ -159,15 +160,28 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
 
   private static String buildAuthHeader(String authType, String token) {
     if (authType == null || authType.isBlank()) return null;
-    return switch (authType.toLowerCase(java.util.Locale.ROOT)) {
-      case "bearer" -> token != null ? "Bearer " + token : null;
-      case "basic" ->
-          token != null
-              ? "Basic "
-                  + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8))
-              : null;
-      case null -> null;
-      default -> null;
+    String normalizedType = authType.toLowerCase(Locale.ROOT);
+    return switch (normalizedType) {
+      case "bearer" -> {
+        requireToken(token, normalizedType);
+        yield "Bearer " + token;
+      }
+      case "basic" -> {
+        requireToken(token, normalizedType);
+        yield "Basic " + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
+      }
+      default ->
+          throw new SchemaRegistryException(
+              "Unsupported schema_registry_auth: '" + authType + "'; supported: bearer, basic");
     };
+  }
+
+  private static void requireToken(String token, String normalizedType) {
+    if (token == null || token.isBlank()) {
+      throw new SchemaRegistryException(
+          "schema_registry_token is required when schema_registry_auth is '"
+              + normalizedType
+              + "'");
+    }
   }
 }
