@@ -23,7 +23,10 @@ import com.datagenerator.schema.model.SecretsConfig;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -136,10 +139,28 @@ class SecretResolverFactoryTest {
     String keyHex = "0".repeat(64);
     Path keyFile = tempDir.resolve("key.hex");
     Files.writeString(keyFile, keyHex);
+    restrictPermissions(keyFile);
 
     SecretsConfig config =
         new SecretsConfig(TYPE_ENCRYPTED, null, null, null, null, null, keyFile.toString(), null);
     assertThat(SecretResolverFactory.create(config)).isInstanceOf(EncryptedFileResolver.class);
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldThrowWhenEncryptedFileKeyFileIsGroupReadable(@TempDir Path tempDir)
+      throws IOException {
+    String keyHex = "0".repeat(64);
+    Path keyFile = tempDir.resolve("key.hex");
+    Files.writeString(keyFile, keyHex);
+    Files.setPosixFilePermissions(keyFile, PosixFilePermissions.fromString("rw-r--r--"));
+
+    SecretsConfig config =
+        new SecretsConfig(TYPE_ENCRYPTED, null, null, null, null, null, keyFile.toString(), null);
+    assertThatThrownBy(() -> SecretResolverFactory.create(config))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("insecure permissions")
+        .hasMessageContaining("chmod 600");
   }
 
   @Test
@@ -167,6 +188,7 @@ class SecretResolverFactoryTest {
     byte[] key = new byte[32]; // all-zero 32-byte key → hex "00" * 32
     Path keyFile = tempDir.resolve("key.hex");
     Files.writeString(keyFile, "0".repeat(64));
+    restrictPermissions(keyFile);
 
     String plaintext = "super-secret-value";
     String ciphertext = AesGcmCrypto.encrypt(key, plaintext);
@@ -188,5 +210,18 @@ class SecretResolverFactoryTest {
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("unknown_backend")
         .hasMessageContaining(TYPE_ENCRYPTED);
+  }
+
+  /**
+   * Restricts the given file to owner-only permissions on POSIX systems so tests that expect a
+   * successful key-file read aren't tripped up by the umask-dependent default permissions of {@link
+   * Files#writeString}. No-op on Windows, where POSIX permissions are unavailable.
+   */
+  private static void restrictPermissions(Path file) throws IOException {
+    try {
+      Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+    } catch (UnsupportedOperationException e) {
+      // Windows: no POSIX permission model, nothing to restrict.
+    }
   }
 }

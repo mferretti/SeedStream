@@ -73,26 +73,43 @@ public class FilePermissionValidator {
    * <p>Seed files may contain sensitive values and must be restricted to owner read/write only
    * ({@code chmod 600}).
    *
-   * <p>Opens the file before reading its POSIX attributes to eliminate the TOCTOU race that would
-   * exist if a separate {@code Files.exists()} check preceded the attribute read.
-   *
    * @param seedFile path to the seed file
    * @throws SecurityException if the seed file has insecure permissions
    */
   public void validateSeedFile(Path seedFile) {
+    validateSecretFile(seedFile, "Seed file");
+  }
+
+  /**
+   * Fails fast if the given secret-bearing file is readable by group or others.
+   *
+   * <p>Used for any file that may hold sensitive material (seed files, AES encryption key files,
+   * etc.) which must be restricted to owner read/write only ({@code chmod 600}).
+   *
+   * <p>Opens the file before reading its POSIX attributes to eliminate the TOCTOU race that would
+   * exist if a separate {@code Files.exists()} check preceded the attribute read.
+   *
+   * @param secretFile path to the secret-bearing file
+   * @param description human-readable description of the file, used in the exception message (e.g.
+   *     {@code "Seed file"}, {@code "Encryption key file"})
+   * @throws SecurityException if the file has insecure permissions
+   */
+  public void validateSecretFile(Path secretFile, String description) {
     if (!IS_POSIX) return;
-    try (FileChannel channel = FileChannel.open(seedFile, StandardOpenOption.READ)) {
-      Set<PosixFilePermission> perms = readPermsFromChannel(seedFile);
+    try (FileChannel channel = FileChannel.open(secretFile, StandardOpenOption.READ)) {
+      Set<PosixFilePermission> perms = readPermsFromChannel(secretFile);
       if (!perms.isEmpty() && isWorldReadable(perms)) {
         throw new SecurityException(
-            "Seed file has insecure permissions (readable by group or others). "
+            description
+                + " has insecure permissions (readable by group or others). "
                 + "Restrict to owner-only: chmod 600 "
-                + seedFile);
+                + secretFile);
       }
     } catch (SecurityException e) {
       throw e;
     } catch (IOException e) {
-      log.debug("Could not read permissions for seed file {}: {}", seedFile, e.getMessage());
+      log.debug(
+          "Could not read permissions for {} {}: {}", description, secretFile, e.getMessage());
     }
   }
 

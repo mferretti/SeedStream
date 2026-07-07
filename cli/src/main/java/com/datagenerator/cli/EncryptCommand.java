@@ -16,6 +16,8 @@
 
 package com.datagenerator.cli;
 
+import com.datagenerator.core.security.FilePermissionValidator;
+import com.datagenerator.core.security.PathValidator;
 import com.datagenerator.schema.secret.AesGcmCrypto;
 import java.io.BufferedReader;
 import java.io.Console;
@@ -157,8 +159,10 @@ public class EncryptCommand implements Callable<Integer> {
   private String loadKey() {
     if (keyFile != null && !keyFile.isBlank()) {
       try {
-        return Files.readString(Path.of(keyFile)).trim();
-      } catch (IOException e) {
+        Path keyPath = PathValidator.validate(keyFile, null, "encryption key file");
+        new FilePermissionValidator().validateSecretFile(keyPath, "Encryption key file");
+        return Files.readString(keyPath).trim();
+      } catch (IllegalArgumentException | SecurityException | IOException e) {
         spec.commandLine()
             .getErr()
             .println("Cannot read key file '" + keyFile + "': " + e.getMessage());
