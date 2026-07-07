@@ -201,4 +201,71 @@ class VaultSecretResolverTest {
 
     assertThat(captor.getValue().uri()).hasToString("http://vault:8200/v1/secret/data/app");
   }
+
+  @Test
+  void shouldLeaveOrdinaryPathUnencoded() throws Exception {
+    String body = "{\"data\": {\"data\": {\"key\": \"value\"}}}";
+    when(mockResponse.statusCode()).thenReturn(200);
+    when(mockResponse.body()).thenReturn(body);
+    ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+    doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
+
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    resolver.resolve("secret/data/app#key");
+
+    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + "/v1/secret/data/app");
+  }
+
+  @Test
+  void shouldEncodeQueryStringInjectionAttempt() throws Exception {
+    String body = "{\"data\": {\"data\": {\"key\": \"value\"}}}";
+    when(mockResponse.statusCode()).thenReturn(200);
+    when(mockResponse.body()).thenReturn(body);
+    ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+    doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
+
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    resolver.resolve("secret/data/app?x=y#key");
+
+    // '?' must be percent-encoded so it cannot start a query string on the Vault request.
+    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + "/v1/secret/data/app%3Fx%3Dy");
+  }
+
+  @Test
+  void shouldEncodePathTraversalSegments() throws Exception {
+    String body = "{\"data\": {\"data\": {\"key\": \"value\"}}}";
+    when(mockResponse.statusCode()).thenReturn(200);
+    when(mockResponse.body()).thenReturn(body);
+    ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+    doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
+
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    resolver.resolve("../sys/health#key");
+
+    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + "/v1/../sys/health");
+  }
+
+  @Test
+  void shouldRejectBlankPath() {
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    assertThatThrownBy(() -> resolver.resolve("#key"))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("blank");
+  }
+
+  @Test
+  void shouldRejectLeadingSlash() {
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    assertThatThrownBy(() -> resolver.resolve("/secret/data/app#key"))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("must not start with '/'");
+  }
+
+  @Test
+  void shouldRejectWhitespaceInPath() {
+    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
+    assertThatThrownBy(() -> resolver.resolve("secret/data/app with space#key"))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("whitespace");
+  }
 }

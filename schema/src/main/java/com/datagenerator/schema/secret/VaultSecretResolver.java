@@ -22,10 +22,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -92,9 +96,11 @@ public final class VaultSecretResolver implements SecretResolver {
           "VAULT_TOKEN environment variable not set; required for Vault secret resolver");
     }
 
+    String encodedPath = encodePath(secretPath);
+
     HttpRequest.Builder reqBuilder =
         HttpRequest.newBuilder()
-            .uri(URI.create(vaultAddr + "/v1/" + secretPath))
+            .uri(URI.create(vaultAddr + "/v1/" + encodedPath))
             .header("X-Vault-Token", token)
             .timeout(Duration.ofSeconds(10))
             .GET();
@@ -121,6 +127,28 @@ public final class VaultSecretResolver implements SecretResolver {
     }
 
     return extractValue(response.body(), field, secretPath);
+  }
+
+  /**
+   * URL-encodes each slash-separated segment of a Vault secret path, so a config-derived path
+   * containing {@code ?}, {@code #}, or other reserved characters cannot retarget the request to a
+   * different Vault API endpoint (CWE-88). Slashes are preserved as legitimate path separators.
+   */
+  private static String encodePath(String secretPath) {
+    if (secretPath == null || secretPath.isBlank()) {
+      throw new SecretResolutionException("Vault secret path must not be null or blank");
+    }
+    if (secretPath.startsWith("/")) {
+      throw new SecretResolutionException(
+          "Vault secret path must not start with '/': " + secretPath);
+    }
+    if (secretPath.chars().anyMatch(Character::isWhitespace)) {
+      throw new SecretResolutionException(
+          "Vault secret path must not contain whitespace: " + secretPath);
+    }
+    return Arrays.stream(secretPath.split("/"))
+        .map(segment -> URLEncoder.encode(segment, StandardCharsets.UTF_8))
+        .collect(Collectors.joining("/"));
   }
 
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
