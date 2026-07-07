@@ -443,7 +443,6 @@ class ExecuteCommandTest {
   }
 
   @Test
-  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
   void existingFileWithAppendFalseLogsWarnAndStillWrites() throws Exception {
     Path existing = outDir.resolve(OUTPUT_JSON);
     Files.writeString(existing, "stale data\n");
