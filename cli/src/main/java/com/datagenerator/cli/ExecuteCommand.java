@@ -270,6 +270,12 @@ public class ExecuteCommand implements Callable<Integer> {
    * <p><b>Performance Impact:</b> Minimal on generation speed, but log I/O may slow overall
    * execution depending on sample rate.
    *
+   * <p>TRACE is scoped to the {@code com.datagenerator} application logger only; third-party
+   * libraries (e.g. HikariCP, Kafka clients, HTTP clients, cloud SDKs) remain at INFO to avoid
+   * leaking connection strings, credentials, or other sensitive material they log at TRACE/DEBUG.
+   * To enable deep third-party debugging, configure the relevant logger explicitly in {@code
+   * logback.xml}.
+   *
    * @see #verbose
    * @see #traceSample
    */
@@ -857,8 +863,10 @@ public class ExecuteCommand implements Callable<Integer> {
     Logger appLogger = (Logger) LoggerFactory.getLogger("com.datagenerator");
 
     if (debug) {
-      // Enable TRACE logging
-      rootLogger.setLevel(Level.TRACE);
+      // Enable TRACE logging for the application logger only; third-party libraries (HikariCP,
+      // Kafka clients, HTTP clients, cloud SDKs) can log sensitive material at TRACE/DEBUG, so
+      // ROOT stays at INFO.
+      rootLogger.setLevel(Level.INFO);
       appLogger.setLevel(Level.TRACE);
 
       // Set trace sample rate for LogUtils
@@ -869,7 +877,7 @@ public class ExecuteCommand implements Callable<Integer> {
       log.debug(
           "Debug mode enabled - log level set to TRACE (sample rate: {}%)", validatedSampleRate);
     } else if (verbose) {
-      rootLogger.setLevel(Level.DEBUG);
+      rootLogger.setLevel(Level.INFO);
       appLogger.setLevel(Level.DEBUG);
       log.debug("Verbose mode enabled - log level set to DEBUG");
     } else {
