@@ -235,4 +235,72 @@ class HttpSchemaRegistryClientTest {
         .isInstanceOf(SchemaRegistryException.class)
         .hasMessageContaining("schema_registry_url");
   }
+
+  // ── Auth misconfiguration (fail closed) ──────────────────────────────────
+
+  @Test
+  void throwsWhenAuthTypeIsUnknown() {
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "baerer", "some-token"))
+        .isInstanceOf(SchemaRegistryException.class)
+        .hasMessageContaining("Unsupported schema_registry_auth")
+        .hasMessageContaining("baerer")
+        .hasMessageContaining("bearer, basic")
+        .hasMessageNotContaining("some-token");
+  }
+
+  @Test
+  void throwsWhenBearerAuthConfiguredWithoutToken() {
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "bearer", null))
+        .isInstanceOf(SchemaRegistryException.class)
+        .hasMessageContaining("schema_registry_token is required")
+        .hasMessageContaining("bearer");
+  }
+
+  @Test
+  void throwsWhenBearerAuthConfiguredWithBlankToken() {
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "bearer", "   "))
+        .isInstanceOf(SchemaRegistryException.class)
+        .hasMessageContaining("schema_registry_token is required")
+        .hasMessageContaining("bearer");
+  }
+
+  @Test
+  void throwsWhenBasicAuthConfiguredWithoutToken() {
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "basic", null))
+        .isInstanceOf(SchemaRegistryException.class)
+        .hasMessageContaining("schema_registry_token is required")
+        .hasMessageContaining("basic");
+  }
+
+  @Test
+  void throwsWhenBasicAuthConfiguredWithBlankToken() {
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "basic", ""))
+        .isInstanceOf(SchemaRegistryException.class)
+        .hasMessageContaining("schema_registry_token is required")
+        .hasMessageContaining("basic");
+  }
+
+  @Test
+  void exceptionMessageNeverContainsTokenValue() {
+    // Deliberately NOT named like a credential: static analyzers flag `secretToken = "literal"`
+    // as a hardcoded password. This is a leak probe, not a credential.
+    String leakProbe = "leak-probe-12345";
+
+    assertThatThrownBy(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "unknown-type", leakProbe))
+        .hasMessageNotContaining(leakProbe);
+  }
+
+  @Test
+  void noAuthWhenAuthTypeIsNullEvenWithToken() {
+    // null/blank authType stays "no auth", regardless of token — unchanged behavior.
+    assertThatCode(
+            () -> new HttpSchemaRegistryClient(REGISTRY_URL, (String) null, "irrelevant-token"))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void noAuthWhenAuthTypeIsBlankEvenWithToken() {
+    assertThatCode(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "   ", "irrelevant-token"))
+        .doesNotThrowAnyException();
+  }
 }
