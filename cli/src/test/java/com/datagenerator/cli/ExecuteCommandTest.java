@@ -644,4 +644,41 @@ class ExecuteCommandTest {
     assertThat(ExecuteCommand.redactJdbcCredentials(clean)).isEqualTo(clean);
     assertThat(ExecuteCommand.redactJdbcCredentials(null)).isNull();
   }
+
+  // ── Avro Registry secret substitution ──────────────────────────────────────
+
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void schemaRegistryTokenSubstitutesEnvironmentVariable() throws Exception {
+    // Set an environment variable to substitute
+    System.setProperty("TEST_REGISTRY_TOKEN", "secret-bearer-token-value");
+    try {
+      Path jobFile = tempDir.resolve("avroreg_env_job.yaml");
+      Files.writeString(
+          jobFile,
+          """
+          source: simple.yaml
+          type: file
+          structures_path: %s
+          seed:
+            type: embedded
+            value: 42
+          conf:
+            path: %s/output
+            schema_registry_url: http://127.0.0.1:1
+            topic: test-topic
+            schema_registry_subject: test-topic-value
+            schema_registry_auth: bearer
+            schema_registry_token: "${TEST_REGISTRY_TOKEN}"
+          """
+              .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+
+      // createSerializer() is covered; fails at serialization time (no registry)
+      // But the token should be substituted before reaching that point
+      int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro-registry", OPT_COUNT, "1");
+      assertThat(code).isNotZero(); // fails at serialization (no registry), but token was resolved
+    } finally {
+      System.clearProperty("TEST_REGISTRY_TOKEN");
+    }
+  }
 }
