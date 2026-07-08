@@ -411,18 +411,14 @@ The determinism guarantee in particular is locked by a regression test that gene
 
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
-**Known open issues (as of June 2026):**
+**Known open issues (as of 2026-07-07):** none.
 
-| Dependency | CVE | Status |
-|---|---|---|
-| `azure-identity 1.18.3` | CVE-2026-33117 | No fix available yet; startup secret resolution only |
-| `azure-core / azure-json` | CVE-2026-33117 | Transitive from azure-identity; no fix yet |
-| `netty 4.1.131–132` | CVE-2026-42xxx, CVE-2026-44248 | Transitive from Azure SDK; no fix yet |
-| `netty 4.1.135` | CVE-2026-42582 | Transitive from AWS SDK (netty-nio-client); latest 4.1.x, no fix yet |
-| `azure-identity 1.18.3` | CVE-2023-36415, CVE-2024-35255 | Likely false positive — version post-dates fix |
-| `msal4j 1.23.1` | CVE-2024-35255 | Likely false positive — version post-dates fix |
-
-All suppressions expire **2026-07-05**. CI will re-fail on that date, forcing a review. No permanent suppressions exist in this project. When a patched version ships the dependency is upgraded and the suppression removed.
+The June 2026 list (CVE-2026-33117 on the Azure SDK, transitive Netty CVEs, and two CPE false
+positives) cleared after dependency bumps to `azure-identity 1.18.4` / `netty 4.1.135`: the
+2026-07-07 main-branch scan ran with all suppressions expired (hence inactive) and reported zero
+findings, so every suppression was removed. `config/dependency-check-suppressions.xml` currently
+contains no active entries. No permanent suppressions exist in this project — every entry carries
+an `until` expiry that forces CI to re-fail and trigger a fresh review.
 
 To report a vulnerability, open a [GitHub issue](https://github.com/mferretti/SeedStream/issues) marked **security**.
 
