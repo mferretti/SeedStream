@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.6.2] - 2026-07-08
 
-### Added
-- **`schema_registry_token` supports secret substitution** (#163) — the Confluent Schema Registry token in job YAML now resolves `${SECRET:...}` / `${ENV_VAR}` references through `ConfigSubstitutor`, like every other credential field, so it no longer has to be committed in plaintext
+**Release**: Security-hardening and maintenance release. A whole-codebase security review produced 14 findings, all fixed: JDBC-URL credential redaction in logs, fail-closed Schema Registry auth, HTTPS-awareness warnings for credentialed endpoints, Vault secret-path encoding, owner-only enforcement on encryption key files, file output-path guardrails, response-body truncation in exceptions, scoped debug logging, and SHA-pinned CI Actions. Plus dependency bumps and removal of all now-unnecessary OWASP Dependency-Check suppressions (the current dependency set scans clean). No new features; no breaking changes.
 
 ### Fixed
+- **`schema_registry_token` secret substitution** (#163) — the Confluent Schema Registry token in job YAML now resolves `${SECRET:...}` / `${ENV_VAR}` references through `ConfigSubstitutor`, like every other credential field (`config/README.md` already documented this; the code now matches), so it no longer has to be committed in plaintext
 - **BIC/SWIFT uppercase normalization** — `bic` (and its `swift` alias) now always emits an ISO 9362-conformant uppercase code. Datafaker 2.6.0 changed `Finance.bic()` to interpolate the ISO 3166-1 alpha-2 country code (positions 5–6) from locale data, where it is stored lowercase, producing non-conformant BICs such as `UFMNmzAVSDD`. `DatafakerRegistry.conformantBic()` normalizes the output via `toUpperCase(Locale.ROOT)`; the normalization is idempotent and stays correct if Datafaker fixes the casing upstream
 - **Kafka SSL without a password** (#160) — a `ssl.truststore.location` / `ssl.keystore.location` configured without the corresponding password no longer throws a bare `NullPointerException` (from `Properties.put(key, null)`); the password entry is simply omitted, so PEM truststores and unencrypted stores connect
 
