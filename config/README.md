@@ -872,6 +872,8 @@ secrets:
   key_env: "SEEDSTREAM_ENCRYPTION_KEY"   # default; or use key_file: /path/to/key.hex
 ```
 
+> **Key-file permissions:** when using `key_file` (or `encrypt --key-file`), the key file must be owner-only — SeedStream fails fast if it is group- or world-readable. Restrict it with `chmod 600 /path/to/key.hex`.
+
 ---
 
 ## Troubleshooting
