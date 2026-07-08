@@ -9,15 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`schema_registry_token` supports secret substitution** (#163) — the Confluent Schema Registry token in job YAML now resolves `${SECRET:...}` / `${ENV_VAR}` references through `ConfigSubstitutor`, like every other credential field, so it no longer has to be committed in plaintext
+
 ### Fixed
 - **BIC/SWIFT uppercase normalization** — `bic` (and its `swift` alias) now always emits an ISO 9362-conformant uppercase code. Datafaker 2.6.0 changed `Finance.bic()` to interpolate the ISO 3166-1 alpha-2 country code (positions 5–6) from locale data, where it is stored lowercase, producing non-conformant BICs such as `UFMNmzAVSDD`. `DatafakerRegistry.conformantBic()` normalizes the output via `toUpperCase(Locale.ROOT)`; the normalization is idempotent and stays correct if Datafaker fixes the casing upstream
+- **Kafka SSL without a password** (#160) — a `ssl.truststore.location` / `ssl.keystore.location` configured without the corresponding password no longer throws a bare `NullPointerException` (from `Properties.put(key, null)`); the password entry is simply omitted, so PEM truststores and unencrypted stores connect
 
 ### Security
+
+*Whole-codebase security review (findings T01–T14, all fixed):*
+
+- **JDBC URL credential redaction** (#162, CWE-532) — `DatabaseDestination` connection failures previously logged the raw `jdbc_url` — which can carry a resolved secret as URI userinfo or a `password=` query param — in retry WARN lines and the final exception. Credentials are now masked via a shared `JdbcUrlRedactor` before any logging
+- **HTTP response bodies truncated in exceptions** (#170, CWE-209) — remote-seed and Schema Registry error paths capped server response bodies at 200 chars instead of embedding the full body in exception messages that reach logs
+- **Credentials excluded from `AuthConfig` toString** (#159, CWE-532) — the remote-seed `AuthConfig` (`@Value`) no longer exposes `token`, `password`, or the api-key `value` through its generated `toString()`
+- **Encryption key files require owner-only permissions** (#164) — AES-256 key files loaded via `secrets.key_file` or `encrypt --key-file` are now permission-checked (fail fast on group/other-readable, `chmod 600`), matching the existing seed-file guard, and go through `PathValidator`
+- **Schema Registry auth fails closed** (#158) — an unknown `schema_registry_auth` value or a missing token now throws instead of silently sending the request unauthenticated
+- **TLS-awareness for credentialed endpoints** (#171, CWE-319) — new `UrlValidator.validate(url, context, httpsOnly)` overload and `isHttps` helper; remote-seed, Vault, and Schema Registry clients now emit a WARN (never logging the credential) when auth material is sent over plain `http`. Plain `http` without credentials stays allowed for internal deployments
+- **Vault secret path encoding** (#161, CWE-88) — each slash-separated segment of a Vault secret path is URL-encoded before building the request URI, so a config-derived path containing `?`, `#`, or `..` cannot retarget the API call; blank / leading-slash / whitespace paths are rejected
+- **Output path guardrails** (#167) — the file destination refuses symlink targets and non-regular files and WARN-logs before truncating an existing file (write paths were previously unvalidated while read paths were not)
+- **`--debug` scoped to application loggers** (#165) — verbose/debug modes now elevate only `com.datagenerator`, keeping the ROOT logger at INFO so third-party libraries (HikariCP, Kafka client, cloud SDKs) don't dump connection/config detail at TRACE
+- **GitHub Actions pinned to commit SHAs** (#168) — all `actions/*` workflow references are pinned to full commit SHAs (with `# vX` comments; Dependabot-compatible); `docker/*` actions were already SHA-pinned
+- **Honest advisory-check docs in `FilePermissionValidator`** (#169) — dropped a no-op `FileChannel` open and corrected javadoc that overclaimed TOCTOU elimination; the permission check is documented as best-effort advisory (behavior unchanged)
+- **Expired CVE suppressions removed** (#166) — all OWASP Dependency-Check suppressions expired 2026-07-05; the 2026-07-07 scan reported zero findings against the current dependency set (`azure-identity 1.18.4`, `netty 4.1.135`), so every suppression was dropped and the README security section refreshed to a no-open-CVE status
 - **kafka-clients 4.3.0 → 4.3.1** — ships the fix for **CVE-2026-41115**; the OWASP Dependency-Check suppression for that CVE has been removed so the scanner re-verifies the patched version
 
 ### Changed
 - **Datafaker 2.5.4 → 2.7.0** — picks up new providers and locale fixes; see the BIC normalization above for the one behavioral regression handled on our side
-- **Dependency bumps** — logback-classic 1.5.34 → 1.5.37, hibernate-validator 9.1.0 → 9.1.1, junit-bom 6.1.0 → 6.1.1, aws secretsmanager 2.46.15 → 2.46.17, Gradle wrapper 9.6.0 → 9.6.1, plus CI action bumps (docker/login-action v4.2.0, actions/cache v6, action-gh-release digest)
+- **Dependency bumps** — logback-classic 1.5.34 → 1.5.37, hibernate-validator 9.1.0 → 9.1.2, junit-bom 6.1.0 → 6.1.1, aws secretsmanager 2.46.15 → 2.46.21, postgresql 42.7.11 → 42.7.12, azure-security-keyvault-secrets 4.11.0 → 4.11.1, spotless 8.7.0 → 8.8.0, Gradle wrapper 9.6.0 → 9.6.1, plus CI action bumps (docker/login-action → 4.4.0, docker/build-push-action → 7.3.0, docker/setup-qemu-action → 4.2.0, docker/setup-buildx-action → 4.2.0, docker/metadata-action → 6.2.0, actions/cache v6, action-gh-release digest)
 
 ---
 
