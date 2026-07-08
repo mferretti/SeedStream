@@ -74,6 +74,12 @@ public final class HttpSchemaRegistryClient implements SchemaRegistryClient {
     UrlValidator.validate(url, "Schema Registry URL");
     this.baseUrl = normalizeUrl(url);
     this.authHeader = buildAuthHeader(authType, token);
+    if (this.authHeader != null && !UrlValidator.isHttps(url)) {
+      log.warn(
+          "Sending Schema Registry credentials over plain http to {} — use https to protect "
+              + "credentials in transit",
+          url);
+    }
     this.httpClient = SHARED_HTTP_CLIENT;
   }
 

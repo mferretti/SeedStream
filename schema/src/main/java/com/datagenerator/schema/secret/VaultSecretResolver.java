@@ -78,6 +78,12 @@ public final class VaultSecretResolver implements SecretResolver {
       throw new SecretResolutionException("vault_addr must not be null or blank");
     }
     UrlValidator.validate(addr, "Vault address");
+    if (!UrlValidator.isHttps(addr)) {
+      log.warn(
+          "Sending the Vault token over plain http to {} — use https to protect the token in "
+              + "transit",
+          addr);
+    }
     this.vaultAddr = addr.endsWith("/") ? addr.substring(0, addr.length() - 1) : addr;
     this.namespace = namespace;
     this.httpClient = client;

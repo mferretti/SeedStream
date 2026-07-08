@@ -174,6 +174,12 @@ public class SeedResolver {
   private long resolveRemote(SeedConfig.RemoteSeed remoteSeed) {
     String url = remoteSeed.getUrl();
     UrlValidator.validate(url, "remote seed URL");
+    if (remoteSeed.getAuth() != null && !UrlValidator.isHttps(url)) {
+      log.warn(
+          "Sending credentials over plain http to {} — use https to protect credentials in "
+              + "transit",
+          url);
+    }
     HttpClient client = injectedHttpClient != null ? injectedHttpClient : HttpClientHolder.INSTANCE;
     HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder().uri(URI.create(url)).timeout(REMOTE_REQUEST_TIMEOUT).GET();

@@ -20,6 +20,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -30,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 class HttpSchemaRegistryClientTest {
@@ -312,5 +317,64 @@ class HttpSchemaRegistryClientTest {
   void noAuthWhenAuthTypeIsBlankEvenWithToken() {
     assertThatCode(() -> new HttpSchemaRegistryClient(REGISTRY_URL, "   ", "irrelevant-token"))
         .doesNotThrowAnyException();
+  }
+
+  // ── TLS warnings (T07 / CWE-319) ──────────────────────────────────────────
+
+  private ListAppender<ILoggingEvent> attachAppender() {
+    Logger logger = (Logger) LoggerFactory.getLogger(HttpSchemaRegistryClient.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    return appender;
+  }
+
+  private void detachAppender(ListAppender<ILoggingEvent> appender) {
+    Logger logger = (Logger) LoggerFactory.getLogger(HttpSchemaRegistryClient.class);
+    logger.detachAppender(appender);
+    appender.stop();
+  }
+
+  @Test
+  void shouldWarnWhenAuthConfiguredOverPlainHttp() {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      new HttpSchemaRegistryClient(REGISTRY_URL, "bearer", "super-secret-token");
+
+      assertThat(appender.list)
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getFormattedMessage())
+                    .contains("plain http")
+                    .doesNotContain("super-secret-token");
+              });
+    } finally {
+      detachAppender(appender);
+    }
+  }
+
+  @Test
+  void shouldNotWarnWhenNoAuthConfiguredOverPlainHttp() {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      new HttpSchemaRegistryClient(REGISTRY_URL, (String) null, null);
+
+      assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.WARN);
+    } finally {
+      detachAppender(appender);
+    }
+  }
+
+  @Test
+  void shouldNotWarnWhenAuthConfiguredOverHttps() {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      new HttpSchemaRegistryClient("https://registry:8081", "bearer", "super-secret-token");
+
+      assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.WARN);
+    } finally {
+      detachAppender(appender);
+    }
   }
 }

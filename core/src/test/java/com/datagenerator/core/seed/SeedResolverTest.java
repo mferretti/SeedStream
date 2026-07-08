@@ -20,6 +20,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.datagenerator.core.exception.SeedResolutionException;
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -34,10 +38,12 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.LoggerFactory;
 
 class SeedResolverTest {
   private static final String TYPE_REMOTE = "remote";
   private static final String REMOTE_URL = "https://api.example.com/seed";
+  private static final String HTTP_REMOTE_URL = "http://api.example.com/seed";
   private static final String API_KEY_HEADER = "X-API-Key";
   private static final String ENV_SEED_KEY = "SEEDSTREAM_TEST_ENV_SEED_42";
 
@@ -328,5 +334,94 @@ class SeedResolverTest {
     assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
         .hasMessageContaining("empty");
+  }
+
+  // ── TLS warnings (T07 / CWE-319) ──────────────────────────────────────────
+
+  private ListAppender<ILoggingEvent> attachAppender() {
+    Logger logger = (Logger) LoggerFactory.getLogger(SeedResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    return appender;
+  }
+
+  private void detachAppender(ListAppender<ILoggingEvent> appender) {
+    Logger logger = (Logger) LoggerFactory.getLogger(SeedResolver.class);
+    logger.detachAppender(appender);
+    appender.stop();
+  }
+
+  @Test
+  void shouldWarnWhenSendingCredentialsOverPlainHttp() throws Exception {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      HttpClient mockClient = mock(HttpClient.class);
+      HttpResponse<String> mockResponse = mock(HttpResponse.class);
+      when(mockResponse.statusCode()).thenReturn(200);
+      when(mockResponse.body()).thenReturn("123");
+      when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+          .thenReturn(mockResponse);
+
+      SeedConfig.RemoteSeed.AuthConfig auth =
+          new SeedConfig.RemoteSeed.AuthConfig(
+              "bearer", "super-secret-token", null, null, null, null);
+      SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, HTTP_REMOTE_URL, auth);
+      new SeedResolver(mockClient).resolve(config);
+
+      assertThat(appender.list)
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getFormattedMessage())
+                    .contains("plain http")
+                    .doesNotContain("super-secret-token");
+              });
+    } finally {
+      detachAppender(appender);
+    }
+  }
+
+  @Test
+  void shouldNotWarnWhenRemoteSeedHasNoAuth() throws Exception {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      HttpClient mockClient = mock(HttpClient.class);
+      HttpResponse<String> mockResponse = mock(HttpResponse.class);
+      when(mockResponse.statusCode()).thenReturn(200);
+      when(mockResponse.body()).thenReturn("123");
+      when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+          .thenReturn(mockResponse);
+
+      SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, HTTP_REMOTE_URL, null);
+      new SeedResolver(mockClient).resolve(config);
+
+      assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.WARN);
+    } finally {
+      detachAppender(appender);
+    }
+  }
+
+  @Test
+  void shouldNotWarnWhenRemoteSeedWithAuthUsesHttps() throws Exception {
+    ListAppender<ILoggingEvent> appender = attachAppender();
+    try {
+      HttpClient mockClient = mock(HttpClient.class);
+      HttpResponse<String> mockResponse = mock(HttpResponse.class);
+      when(mockResponse.statusCode()).thenReturn(200);
+      when(mockResponse.body()).thenReturn("123");
+      when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+          .thenReturn(mockResponse);
+
+      SeedConfig.RemoteSeed.AuthConfig auth =
+          new SeedConfig.RemoteSeed.AuthConfig(
+              "bearer", "super-secret-token", null, null, null, null);
+      SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, REMOTE_URL, auth);
+      new SeedResolver(mockClient).resolve(config);
+
+      assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.WARN);
+    } finally {
+      detachAppender(appender);
+    }
   }
 }
