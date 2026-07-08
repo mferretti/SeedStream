@@ -227,6 +227,31 @@ class DatabaseDestinationTest {
   }
 
   @Test
+  void shouldRedactCredentialsInRetryFailureMessage() {
+    // T01 / CWE-532: a failed open() must not leak the resolved JDBC credentials via the retry
+    // operation name embedded in the final DestinationException message. Wrong password is the
+    // most common real-world trigger for this path. (The nested cause here is HikariCP's own
+    // driver-lookup error, which is outside this fix's scope — we only assert on the operation
+    // name that DatabaseDestination itself builds.)
+    DatabaseDestinationConfig badConfig =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl("jdbc:unknown-driver://host/db?user=u&password=p")
+            .username(USERNAME)
+            .password(PASSWORD)
+            .tableName(TABLE_USERS)
+            .maxRetries(1)
+            .retryDelayMs(0)
+            .build();
+
+    DatabaseDestination dest = new DatabaseDestination(badConfig);
+    assertThatThrownBy(dest::open)
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining(
+            "open database connection to jdbc:unknown-driver://host/db?user=****&password=****");
+    dest.close();
+  }
+
+  @Test
   void shouldWorkWithPerJobTransactionStrategy() throws SQLException {
     DatabaseDestinationConfig perJobConfig =
         DatabaseDestinationConfig.builder()

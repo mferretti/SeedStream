@@ -30,6 +30,7 @@ import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.database.DatabaseDestination;
 import com.datagenerator.destinations.database.DatabaseDestinationConfig;
+import com.datagenerator.destinations.database.JdbcUrlRedactor;
 import com.datagenerator.destinations.file.FileDestination;
 import com.datagenerator.destinations.file.FileDestinationConfig;
 import com.datagenerator.destinations.kafka.KafkaDestination;
@@ -795,7 +796,7 @@ public class ExecuteCommand implements Callable<Integer> {
     DatabaseDestinationConfig dbConfig = builder.build();
     log.info(
         "Created database destination: url={}, table={}, strategy={}",
-        redactJdbcCredentials(dbConfig.getJdbcUrl()),
+        JdbcUrlRedactor.redactJdbcCredentials(dbConfig.getJdbcUrl()),
         dbConfig.getTableName(),
         dbConfig.getTransactionStrategy());
 
@@ -806,26 +807,6 @@ public class ExecuteCommand implements Callable<Integer> {
             .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype()));
 
     return new DatabaseDestination(dbConfig, rawFieldTypes);
-  }
-
-  /**
-   * Redacts credentials from a JDBC URL for safe logging (CWE-532). {@code jdbc_url} is run through
-   * {@link ConfigSubstitutor}, so it can contain a resolved secret as URI userinfo ({@code
-   * //user:pass@host}) or as a {@code password}/{@code user} query parameter. Both are masked with
-   * {@code ****}; the host and database remain visible.
-   *
-   * @param url the (possibly secret-bearing) JDBC URL
-   * @return the URL with any embedded credentials masked, or {@code null} if {@code url} is null
-   */
-  static String redactJdbcCredentials(String url) {
-    if (url == null) {
-      return null;
-    }
-    // Mask URI userinfo: scheme://user:pass@host -> scheme://****@host
-    String redacted = url.replaceAll("(//)[^/@]*@", "$1****@");
-    // Mask sensitive query-parameter values: ?password=... / &user=... etc.
-    redacted = redacted.replaceAll("(?i)([?&;](?:password|pwd|user|username)=)[^&;]*", "$1****");
-    return redacted;
   }
 
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
