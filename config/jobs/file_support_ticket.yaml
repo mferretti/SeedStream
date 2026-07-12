@@ -1,0 +1,9 @@
+source: support_ticket.yaml
+type: file
+structures_path: config/structures/
+seed:
+  type: embedded
+  value: 102
+conf:
+  path: build/run-output/support_tickets
+  format: json

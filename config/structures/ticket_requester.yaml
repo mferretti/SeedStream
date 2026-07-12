@@ -1,0 +1,11 @@
+name: ticket_requester
+geolocation: usa
+data:
+  requester_id:
+    datatype: uuid
+  full_name:
+    datatype: name
+  email:
+    datatype: email
+  department:
+    datatype: enum[sales,support,engineering,finance,operations,hr]
