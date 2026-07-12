@@ -81,8 +81,9 @@ class PathValidatorTest {
   void shouldRejectDirectoryAsOutputTarget() throws IOException {
     Path dir = tempDir.resolve("a-directory");
     Files.createDirectory(dir);
+    String dirPath = dir.toString();
 
-    assertThatThrownBy(() -> PathValidator.validateOutput(dir.toString(), CONTEXT))
+    assertThatThrownBy(() -> PathValidator.validateOutput(dirPath, CONTEXT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("not a regular file");
   }
@@ -94,8 +95,9 @@ class PathValidatorTest {
     Files.writeString(realFile, "sensitive content");
     Path symlink = tempDir.resolve("link.json");
     Files.createSymbolicLink(symlink, realFile);
+    String symlinkPath = symlink.toString();
 
-    assertThatThrownBy(() -> PathValidator.validateOutput(symlink.toString(), CONTEXT))
+    assertThatThrownBy(() -> PathValidator.validateOutput(symlinkPath, CONTEXT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("symlink");
   }
@@ -107,8 +109,9 @@ class PathValidatorTest {
     Files.createDirectory(realDir);
     Path symlink = tempDir.resolve("dir-link");
     Files.createSymbolicLink(symlink, realDir);
+    String symlinkPath = symlink.toString();
 
-    assertThatThrownBy(() -> PathValidator.validateOutput(symlink.toString(), CONTEXT))
+    assertThatThrownBy(() -> PathValidator.validateOutput(symlinkPath, CONTEXT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("symlink");
   }

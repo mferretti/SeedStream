@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -207,8 +208,13 @@ class VaultSecretResolverTest {
     assertThat(captor.getValue().uri()).hasToString("http://vault:8200/v1/secret/data/app");
   }
 
-  @Test
-  void shouldLeaveOrdinaryPathUnencoded() throws Exception {
+  @ParameterizedTest
+  @CsvSource({
+    "secret/data/app#key, /v1/secret/data/app",
+    "'secret/data/app?x=y#key', /v1/secret/data/app%3Fx%3Dy",
+    "../sys/health#key, /v1/../sys/health"
+  })
+  void shouldEncodePathSegmentsCorrectly(String path, String expectedSuffix) throws Exception {
     String body = "{\"data\": {\"data\": {\"key\": \"value\"}}}";
     when(mockResponse.statusCode()).thenReturn(200);
     when(mockResponse.body()).thenReturn(body);
@@ -216,38 +222,9 @@ class VaultSecretResolverTest {
     doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
 
     VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
-    resolver.resolve("secret/data/app#key");
+    resolver.resolve(path);
 
-    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + "/v1/secret/data/app");
-  }
-
-  @Test
-  void shouldEncodeQueryStringInjectionAttempt() throws Exception {
-    String body = "{\"data\": {\"data\": {\"key\": \"value\"}}}";
-    when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn(body);
-    ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-    doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
-
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
-    resolver.resolve("secret/data/app?x=y#key");
-
-    // '?' must be percent-encoded so it cannot start a query string on the Vault request.
-    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + "/v1/secret/data/app%3Fx%3Dy");
-  }
-
-  @Test
-  void shouldEncodePathTraversalSegments() throws Exception {
-    String body = "{\"data\": {\"data\": {\"key\": \"value\"}}}";
-    when(mockResponse.statusCode()).thenReturn(200);
-    when(mockResponse.body()).thenReturn(body);
-    ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-    doReturn(mockResponse).when(mockClient).send(captor.capture(), any());
-
-    VaultSecretResolver resolver = new VaultSecretResolver(VAULT_ADDR, null, mockClient, TEST_ENV);
-    resolver.resolve("../sys/health#key");
-
-    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + "/v1/../sys/health");
+    assertThat(captor.getValue().uri()).hasToString(VAULT_ADDR + expectedSuffix);
   }
 
   @Test

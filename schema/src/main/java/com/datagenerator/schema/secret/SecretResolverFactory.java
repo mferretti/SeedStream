@@ -50,9 +50,7 @@ public final class SecretResolverFactory {
         Path keyPath = PathValidator.validate(config.getKeyFile(), null, "encryption key file");
         new FilePermissionValidator().validateSecretFile(keyPath, "Encryption key file");
         return Files.readString(keyPath).trim();
-      } catch (IllegalArgumentException e) {
-        throw new SecretResolutionException(e.getMessage(), e);
-      } catch (SecurityException e) {
+      } catch (IllegalArgumentException | SecurityException e) {
         throw new SecretResolutionException(e.getMessage(), e);
       } catch (IOException e) {
         throw new SecretResolutionException(
