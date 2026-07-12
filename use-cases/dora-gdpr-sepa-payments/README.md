@@ -66,6 +66,10 @@ they must equal the batch contents, and a per-row generator cannot correlate the
 `ACSP` AcceptedSettlementInProcess · `ACSC` AcceptedSettlementCompleted · `ACWC` AcceptedWithChange ·
 `PDNG` Pending · `RJCT` Rejected.
 
+Under `geolocation: italy` the `iban` type emits locale-correct Italian (`IT…`) IBANs, matching the
+Italian names, `country`, and BIC. For deliberately foreign/cross-border destination accounts, use
+the `random_iban` type instead (random-country IBAN).
+
 ## Run it
 
 No infrastructure required — writes JSON to a file. **Run from the repository root** (the output
@@ -93,10 +97,6 @@ millions of rows into a real test database instead of a file.
 
 - **Models the payment *data*, not the `pain.001` XML envelope.** SeedStream emits JSON/CSV/Avro,
   not ISO 20022 XML. A `pain.001` XML serializer would be a separate feature.
-- **IBANs are valid IBANs but not restricted to the SEPA zone / Italy.** Datafaker's no-arg
-  `iban()` returns IBANs from a random country (e.g. `DE`, `ES`, but also non-SEPA ones), regardless
-  of `geolocation`. Names, `country`, and BIC do honour the Italian locale. Tracked as a bug
-  ([#173](https://github.com/mferretti/SeedStream/issues/173)).
 - **`msg_id` / `end_to_end_id` are random alphanumeric** (`char`), not structured ISO references.
   Config-declarable regex/patterned generators
   ([#174](https://github.com/mferretti/SeedStream/issues/174)) would let these match real reference

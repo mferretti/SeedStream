@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`random_iban` semantic type** (alias `random_locale_iban`) — emits an IBAN from a random country, preserving the previous locale-independent `iban` behavior for use cases such as foreign/cross-border destination accounts
+
+### Fixed
+- **`iban` now honours geolocation** (#173) — the `iban` type emitted IBANs from a random country regardless of `geolocation` (e.g. non-SEPA `KM`/`AO` IBANs under `geolocation: italy`), inconsistent with the locale-aware name/address/BIC. It now derives the ISO country from the resolved locale and uses Datafaker's country-scoped `finance().iban(country)` when supported (so `italy` → `IT…`), falling back to a random-country IBAN when the locale has no country or Datafaker has no format for it. Deterministic as before
+
 ### Security
 - **httpcore5-h2 5.4 → 5.4.3** — the Azure Key Vault seed chain (`azure-identity` → `msal4j`) pulled `httpcore5` 5.4.3 but left its `httpcore5-h2` sibling at 5.4, vulnerable to **CVE-2026-54428** (HPackDecoder unbounded header list) and **CVE-2026-54399** (unbounded HTTP header length). Both are fixed in 5.4.3; a `resolutionStrategy.force` now aligns `httpcore5-h2` with the patched core artifact across all configurations
 - **Four CPE false positives suppressed** (expiry 2026-10-10) after the 2026-07-12 scan re-flagged the Azure chain — CVE-2026-33117 (flaw is in keyvault-*keys* local crypto; this project uses keyvault-*secrets*), CVE-2026-54428/CVE-2026-54399 against classic `httpcore` 4.4.16 (HTTP/2 issue, 4.x has no HTTP/2), and CVE-2023-36415/CVE-2024-35255 (over-broad Azure/msal4j CPE match, confirmed in the 2026-07-07 review). README security section updated to match
