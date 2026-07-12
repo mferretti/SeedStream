@@ -411,14 +411,22 @@ The determinism guarantee in particular is locked by a regression test that gene
 
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
-**Known open issues (as of 2026-07-07):** none.
+**Known open issues (as of 2026-07-12):** none exploitable. One transitive fix applied; four
+CPE false positives suppressed with a 2026-10-10 expiry.
 
-The June 2026 list (CVE-2026-33117 on the Azure SDK, transitive Netty CVEs, and two CPE false
-positives) cleared after dependency bumps to `azure-identity 1.18.4` / `netty 4.1.135`: the
-2026-07-07 main-branch scan ran with all suppressions expired (hence inactive) and reported zero
-findings, so every suppression was removed. `config/dependency-check-suppressions.xml` currently
-contains no active entries. No permanent suppressions exist in this project — every entry carries
-an `until` expiry that forces CI to re-fail and trigger a fresh review.
+The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive via
+`azure-security-keyvault-secrets`). Triage against upstream CVE records:
+
+| CVE | Component | Resolution |
+|-----|-----------|------------|
+| CVE-2026-54428, CVE-2026-54399 | `httpcore5-h2` 5.4 | **Fixed** — forced to `5.4.3` (patched) in `build.gradle.kts` |
+| CVE-2026-54428, CVE-2026-54399 | `httpcore` 4.4.16 (classic) | False positive — HTTP/2 issue in 5.x only; 4.x has no HTTP/2. Suppressed |
+| CVE-2026-33117 | azure-core / identity / json | False positive — flaw is in keyvault-*keys* local crypto; we use keyvault-*secrets*. Suppressed |
+| CVE-2023-36415, CVE-2024-35255 | azure-identity / msal4j | CPE false positives (confirmed 2026-07-07). Suppressed |
+
+No permanent suppressions exist in this project — every entry in
+`config/dependency-check-suppressions.xml` carries an `until` expiry that forces CI to re-fail and
+trigger a fresh review.
 
 To report a vulnerability, open a [GitHub issue](https://github.com/mferretti/SeedStream/issues) marked **security**.
 

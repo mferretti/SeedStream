@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Security
+- **httpcore5-h2 5.4 → 5.4.3** — the Azure Key Vault seed chain (`azure-identity` → `msal4j`) pulled `httpcore5` 5.4.3 but left its `httpcore5-h2` sibling at 5.4, vulnerable to **CVE-2026-54428** (HPackDecoder unbounded header list) and **CVE-2026-54399** (unbounded HTTP header length). Both are fixed in 5.4.3; a `resolutionStrategy.force` now aligns `httpcore5-h2` with the patched core artifact across all configurations
+- **Four CPE false positives suppressed** (expiry 2026-10-10) after the 2026-07-12 scan re-flagged the Azure chain — CVE-2026-33117 (flaw is in keyvault-*keys* local crypto; this project uses keyvault-*secrets*), CVE-2026-54428/CVE-2026-54399 against classic `httpcore` 4.4.16 (HTTP/2 issue, 4.x has no HTTP/2), and CVE-2023-36415/CVE-2024-35255 (over-broad Azure/msal4j CPE match, confirmed in the 2026-07-07 review). README security section updated to match
+
+---
+
 ## [0.6.2] - 2026-07-08
 
 **Release**: Security-hardening and maintenance release. A whole-codebase security review produced 14 findings, all fixed: JDBC-URL credential redaction in logs, fail-closed Schema Registry auth, HTTPS-awareness warnings for credentialed endpoints, Vault secret-path encoding, owner-only enforcement on encryption key files, file output-path guardrails, response-body truncation in exceptions, scoped debug logging, and SHA-pinned CI Actions. Plus dependency bumps and removal of all now-unnecessary OWASP Dependency-Check suppressions (the current dependency set scans clean). No new features; no breaking changes.

@@ -17,7 +17,66 @@
       expired on 2026-07-05 and were removed. The 2026-07-07 main-branch Security Scan ran
       dependencyCheckAll with the expired (hence inactive) suppressions and reported zero
       findings against azure-identity 1.18.4 / netty 4.1.135 — every entry was dead weight.
-      This file intentionally contains no active suppressions.
+
+      2026-07-12 (Sunday cron): Security Scan #29177879526 failed the CVSS>=7.0 gate on
+      :benchmarks:dependencyCheckAnalyze. All findings are transitive via
+      azure-security-keyvault-secrets (:schema, Azure Key Vault remote-seed source). NB the
+      NVD "Update" step timed out at 20 min in that run, so analysis used the restored cache
+      rather than a same-day NVD refresh.
+
+      Triage against upstream CVE docs (OSV + NVD):
+        - CVE-2026-54428 / CVE-2026-54399 (httpcore5-h2 5.4): REAL, fixed in 5.4.3. Handled by
+          forcing httpcore5-h2:5.4.3 in build.gradle.kts — NOT suppressed.
+        - CVE-2026-54428 / CVE-2026-54399 vs httpcore 4.4.16 (classic): false positive. The
+          HPACK/HTTP2 issue is httpcore5-h2 only; OSV lists only 5.x affected versions; 4.4.16
+          is the EOL final 4.x release with no fix and no HTTP/2 support.
+        - CVE-2026-33117: false positive. NVD scopes the flaw to the Azure Key Vault *Keys*
+          local-crypto path (azure-security-keyvault-keys < 4.10.6). This project uses
+          keyvault-*secrets*, not keys; the umbrella cpe:microsoft:azure_sdk_for_java match
+          over-matches azure-core/identity/json by their own artifact versions.
+        - CVE-2023-36415 / CVE-2024-35255: CPE false positives (confirmed in 2026-07-07 review).
+
+      Suppressions below are all false positives, time-boxed to 2026-10-10.
     -->
+
+    <suppress until="2026-10-10Z">
+        <notes>CVE-2023-36415 / CVE-2024-35255: over-broad NVD CPE match against
+        cpe:microsoft:azure_identity_sdk and cpe:microsoft:authentication_library. Confirmed
+        CPE false positives in the 2026-07-07 review — azure-identity 1.18.4 and msal4j 1.23.1
+        are past the affected ranges. Re-verify the CPE mapping at expiry.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure-identity@.*$</packageUrl>
+        <cve>CVE-2023-36415</cve>
+        <cve>CVE-2024-35255</cve>
+    </suppress>
+
+    <suppress until="2026-10-10Z">
+        <notes>CVE-2024-35255: same CPE false positive as above, matched on msal4j
+        (cpe:microsoft:authentication_library). msal4j 1.23.1 is past the affected range.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.microsoft\.azure/msal4j@.*$</packageUrl>
+        <cve>CVE-2024-35255</cve>
+    </suppress>
+
+    <suppress until="2026-10-10Z">
+        <notes>CVE-2026-33117: false positive. NVD scopes this to the Azure Key Vault *Keys*
+        local cryptographic verification path (azure-security-keyvault-keys, fixed &lt; 4.10.6).
+        This project depends on azure-security-keyvault-*secrets*, not keys, so the vulnerable
+        code path is never present. The finding comes from the umbrella
+        cpe:microsoft:azure_sdk_for_java match flagging azure-core/identity/json by their own
+        (unrelated) artifact versions. Re-verify component + CPE at expiry.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure-(core|core-http-netty|identity|json)@.*$</packageUrl>
+        <cve>CVE-2026-33117</cve>
+    </suppress>
+
+    <suppress until="2026-10-10Z">
+        <notes>CVE-2026-54428 / CVE-2026-54399: false positive on Apache HttpComponents httpcore
+        4.4.16 (classic 4.x, transitive via azure-identity -> msal4j). Both CVEs are HTTP/2 /
+        header-parsing hardening in httpcomponents-core 5.x (fixed 5.4.3); OSV lists only 5.x
+        affected versions. httpcore 4.4.16 is the EOL final 4.x release, has no HTTP/2 support,
+        and no fix exists or is needed. The genuinely-affected httpcore5-h2 is upgraded to 5.4.3
+        via resolutionStrategy.force in build.gradle.kts (not suppressed).</notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpcore@.*$</packageUrl>
+        <cve>CVE-2026-54399</cve>
+        <cve>CVE-2026-54428</cve>
+    </suppress>
 
 </suppressions>
