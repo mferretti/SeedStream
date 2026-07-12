@@ -109,6 +109,56 @@ class DatafakerGeolocationTest {
   }
 
   // ==================================================================================
+  // IBAN LOCALE AWARENESS (issue #173)
+  // ==================================================================================
+
+  private static final String IBAN_PATTERN = "^[A-Z]{2}\\d{2}[A-Z0-9]+$";
+
+  @ParameterizedTest
+  @CsvSource({"italy, IT", "germany, DE", "france, FR"})
+  void shouldGenerateIbanForLocaleCountry(String geolocation, String expectedCountry) {
+    String iban = (String) generateWithContext(geolocation, new CustomDatafakerType("iban"));
+    assertThat(iban).isNotNull().matches(IBAN_PATTERN).startsWith(expectedCountry);
+  }
+
+  @Test
+  void shouldFallBackToValidIbanWhenLocaleCountryHasNoIbanFormat() {
+    // Japan (Locale.JAPAN, country JP) has no IBAN format in Datafaker → falls back to a
+    // random-country IBAN rather than throwing. Still a structurally valid IBAN.
+    String iban = (String) generateWithContext("japan", new CustomDatafakerType("iban"));
+    assertThat(iban).isNotNull().matches(IBAN_PATTERN);
+  }
+
+  @Test
+  void shouldGenerateValidRandomIbanIndependentOfLocale() {
+    String iban = (String) generateWithContext("italy", new CustomDatafakerType("random_iban"));
+    assertThat(iban).isNotNull().matches(IBAN_PATTERN);
+  }
+
+  @Test
+  void shouldResolveRandomIbanAlias() {
+    String iban =
+        (String) generateWithContext("italy", new CustomDatafakerType("random_locale_iban"));
+    assertThat(iban).isNotNull().matches(IBAN_PATTERN);
+  }
+
+  @Test
+  void shouldGenerateIbanDeterministicallyForSameLocaleAndSeed() {
+    String first = (String) generateWithContext("italy", new CustomDatafakerType("iban"));
+    FakerCache.clear();
+    String second = (String) generateWithContext("italy", new CustomDatafakerType("iban"));
+    assertThat(second).isEqualTo(first);
+  }
+
+  @Test
+  void shouldGenerateRandomIbanDeterministicallyForSameSeed() {
+    String first = (String) generateWithContext("italy", new CustomDatafakerType("random_iban"));
+    FakerCache.clear();
+    String second = (String) generateWithContext("italy", new CustomDatafakerType("random_iban"));
+    assertThat(second).isEqualTo(first);
+  }
+
+  // ==================================================================================
   // ALL SEMANTIC TYPES COVERAGE - Test every semantic type we support
   // ==================================================================================
 

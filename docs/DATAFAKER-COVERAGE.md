@@ -6,7 +6,7 @@
 
 ---
 
-## Currently Implemented Types (48 canonical types + 33 aliases)
+## Currently Implemented Types (49 canonical types + 34 aliases)
 
 All types are registered in `DatafakerRegistry` (`core/src/main/java/.../registry/DatafakerRegistry.java`).
 Aliases are case-insensitive and normalized at lookup time.
@@ -50,13 +50,14 @@ Aliases are case-insensitive and normalized at lookup time.
 | `email` | `faker.internet().emailAddress()` | — |
 | `phone_number` | `faker.phoneNumber().phoneNumber()` | `phonenumber`, `phone` |
 
-### Finance & Business (9 types)
+### Finance & Business (10 types)
 
 | Type | Datafaker call | Aliases |
 |---|---|---|
 | `company` | `faker.company().name()` | — |
 | `credit_card` | `faker.finance().creditCard()` | `creditcard` |
-| `iban` | `faker.finance().iban()` | — |
+| `iban` | `faker.finance().iban(country)` — locale-aware: uses the locale's country when Datafaker supports it, else random-country | — |
+| `random_iban` | `faker.finance().iban()` — explicit random-country IBAN (e.g. cross-border destination accounts) | `random_locale_iban` |
 | `currency` | `faker.money().currencyCode()` | — |
 | `price` | `faker.commerce().price()` | — |
 | `bic` | `faker.finance().bic()` | `swift` |
@@ -254,7 +255,7 @@ can produce.
 | **Person & Identity** | 11 | ~13 | 85% |
 | **Address** | 11 | ~16 | 69% |
 | **Contact** | 2 | ~2 | 100% |
-| **Finance & Business** | 9 | ~17 | 53% |
+| **Finance & Business** | 10 | ~17 | 59% |
 | **Internet** | 5 | ~13 | 38% |
 | **Codes & Identifiers** | 2 | ~7 | 29% |
 | **Commerce** | 5 | ~5 | 100% |

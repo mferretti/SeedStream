@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import net.datafaker.Faker;
+import net.datafaker.providers.base.Finance;
 
 /**
  * Thread-safe registry for custom Datafaker types. Allows runtime registration of new semantic data
@@ -139,7 +140,9 @@ public class DatafakerRegistry {
     register("company", (faker, random) -> faker.company().name());
     register("credit_card", (faker, random) -> faker.finance().creditCard());
     registerAlias("creditcard", "credit_card");
-    register("iban", (faker, random) -> faker.finance().iban());
+    register("iban", (faker, random) -> localeAwareIban(faker));
+    register("random_iban", (faker, random) -> faker.finance().iban());
+    registerAlias("random_locale_iban", "random_iban");
     register("currency", (faker, random) -> faker.money().currencyCode());
     register("price", (faker, random) -> faker.commerce().price());
     register("bic", (faker, random) -> conformantBic(faker));
@@ -202,6 +205,24 @@ public class DatafakerRegistry {
    */
   private static String conformantBic(Faker faker) {
     return faker.finance().bic().toUpperCase(Locale.ROOT);
+  }
+
+  /**
+   * Generate an IBAN for the Faker's configured locale.
+   *
+   * <p>Datafaker's no-arg {@code finance().iban()} returns an IBAN from a random country, ignoring
+   * the Faker locale. We derive the ISO country from the locale and use the country-scoped overload
+   * when Datafaker supports it, so {@code geolocation: italy} yields an {@code IT...} IBAN
+   * consistent with the locale-aware name/address/BIC. Falls back to the random-country form when
+   * the locale carries no country (language-only) or Datafaker has no IBAN format for it. The
+   * {@code random_iban} type preserves the deliberate random-country behavior.
+   */
+  private static String localeAwareIban(Faker faker) {
+    String country = faker.getContext().getLocale().getCountry().toUpperCase(Locale.ROOT);
+    if (!country.isBlank() && Finance.ibanSupportedCountries().contains(country)) {
+      return faker.finance().iban(country);
+    }
+    return faker.finance().iban();
   }
 
   /**
