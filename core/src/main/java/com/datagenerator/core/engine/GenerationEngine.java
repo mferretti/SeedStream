@@ -245,7 +245,7 @@ public class GenerationEngine {
     // count,
     // with bounded memory and no reorder buffer.
     long totalChunks = (count + chunkSize - 1) / chunkSize;
-    int activeWorkers = (int) Math.min(workerThreads, Math.max(1L, totalChunks));
+    int activeWorkers = (int) Math.clamp(totalChunks, 1L, workerThreads);
 
     // Per-worker bounded queues provide backpressure: a worker blocks once it runs queueCapacity
     // ahead of the writer. queueCapacity is in records; convert to chunks and split across workers,
@@ -384,7 +384,7 @@ public class GenerationEngine {
 
     for (long c = workerId; c < totalChunks; c += activeWorkers) {
       long start = c * chunkSize;
-      long end = Math.min(start + (long) chunkSize, totalRecords);
+      long end = Math.min(start + chunkSize, totalRecords);
       List<P> chunk = new ArrayList<>((int) (end - start));
 
       for (long globalIndex = start; globalIndex < end; globalIndex++) {
