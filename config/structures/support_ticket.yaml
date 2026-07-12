@@ -1,0 +1,27 @@
+name: support_ticket
+geolocation: usa
+data:
+  ticket_id:
+    datatype: uuid
+  ticket_number:
+    datatype: char[8..12]
+  subject:
+    datatype: char[15..80]
+  description:
+    datatype: char[40..240]
+  category:
+    datatype: enum[billing,technical,account,feature_request,bug,other]
+  priority:
+    datatype: enum[low,medium,high,urgent]
+  status:
+    datatype: enum[open,in_progress,waiting_on_customer,resolved,closed]
+  channel:
+    datatype: enum[email,web,phone,chat]
+  opened_date:
+    datatype: date[2024-01-01..2026-06-30]
+  reopened:
+    datatype: boolean
+  comment_count:
+    datatype: int[0..40]
+  requester:
+    datatype: object[ticket_requester]
