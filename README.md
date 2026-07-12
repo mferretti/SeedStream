@@ -51,6 +51,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - [Performance](#performance)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
+- [Use Cases](#use-cases)
 - [Secret Management](#secret-management)
 - [Is This AI Slop?](#is-this-ai-slop)
 - [Security](#security)
@@ -343,6 +344,20 @@ See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading 
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Setup, development workflow, code standards |
 | [docs/QUALITY.md](docs/QUALITY.md) | Coverage, SpotBugs, Spotless configuration |
 | [CHANGELOG.md](CHANGELOG.md) | Release history and roadmap |
+
+---
+
+## Use Cases
+
+Runnable, self-contained examples mapping SeedStream to a concrete business problem — each folder is
+a "scenario README + config" unit you can copy, run in one command, and forward to a colleague.
+
+| Use case | Persona | Status |
+|----------|---------|--------|
+| [DORA / GDPR resilience testing (ISO 20022 SEPA)](use-cases/dora-gdpr-sepa-payments/) | Regulated finance | **Ready** |
+| Dev bootstrapping · CI DB seeding · load testing · SaaS demos | Various | *Planned* |
+
+See [use-cases/](use-cases/) for the full index.
 
 ---
 

@@ -1,0 +1,33 @@
+# ISO 20022 SEPA Credit Transfer (pain.001) — one row per credit transfer (CdtTrfTxInf).
+# Field names map to real ISO 20022 / EPC SEPA rulebook elements (see README.md in this dir).
+name: sepa_credit_transfer
+geolocation: italy
+data:
+  msg_id: # GrpHdr/MsgId (max 35)
+    datatype: char[10..35]
+  end_to_end_id: # CdtTrfTxInf/PmtId/EndToEndId (max 35)
+    datatype: char[10..35]
+  creation_date_time: # GrpHdr/CreDtTm
+    datatype: timestamp[2025-01-01T00:00:00..2026-06-30T23:59:59]
+  requested_execution_date: # PmtInf/ReqdExctnDt
+    datatype: date[2025-01-01..2026-06-30]
+  payment_method: # PmtInf/PmtMtd — SEPA allows TRF only
+    datatype: enum[TRF]
+  charge_bearer: # PmtInf/ChrgBr — SEPA is always SLEV
+    datatype: enum[SLEV]
+  instructed_amount: # Amt/InstdAmt (EUR, 2 dp)
+    datatype: decimal[0.01..50000.00]
+  currency: # Amt/InstdAmt@Ccy — SEPA is EUR
+    datatype: enum[EUR]
+  purpose_code: # Purp/Cd — ISO ExternalPurpose
+    datatype: enum[SALA,SUPP,TAXS,TRAD,RENT,LOAN,PENS,SSBE]
+  category_purpose_code: # CtgyPurp/Cd — ISO ExternalCategoryPurpose
+    datatype: enum[SALA,SUPP,TAXS,TRAD,CASH]
+  remittance_info: # RmtInf/Ustrd — unstructured, max 140 chars
+    datatype: lorem_sentence
+  status: # pain.002 TxSts — ISO ExternalPaymentTransactionStatus
+    datatype: enum[ACTC,ACCP,ACSP,ACSC,ACWC,PDNG,RJCT]
+  debtor: # Dbtr + DbtrAcct + DbtrAgt
+    datatype: object[sct_party]
+  creditor: # Cdtr + CdtrAcct + CdtrAgt
+    datatype: object[sct_party]
