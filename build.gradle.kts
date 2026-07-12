@@ -111,7 +111,12 @@ subprojects {
             // httpcore5-h2 sibling lags at 5.4, which is vulnerable to CVE-2026-54428
             // (HPackDecoder unbounded header list) and CVE-2026-54399 (unbounded header
             // length). Both are fixed in 5.4.3. Align h2 with the core artifact everywhere.
-            "org.apache.httpcomponents.core5:httpcore5-h2:5.4.3"
+            "org.apache.httpcomponents.core5:httpcore5-h2:5.4.3",
+            // jackson-databind: :destinations compileClasspath resolves 2.20.0 (transitive
+            // constraint) while runtimeClasspath correctly overrides to 2.22.0. 2.20.0 carries
+            // CVE-2026-54512/54513 (CVSS > 7) + 54514; force the catalog version everywhere so
+            // OWASP DC never sees 2.20.0 on any configuration.
+            "com.fasterxml.jackson.core:jackson-databind:2.22.0"
         )
     }
 

@@ -100,11 +100,18 @@ jobs:
           echo "NVD API key honored ($ok/10 succeeded)."
         fi
 
+    # Cache key MUST be unique per run: actions/cache only saves on an exact-key
+    # miss, so a key derived from file hashes freezes the NVD snapshot until that
+    # file changes. Every run then re-downloads an ever-growing delta and throws
+    # it away — until the delta exceeds the 20-min update cap (the 2026-07-12
+    # timeout). run_id guarantees a miss, so every run persists its (possibly
+    # partial) sync progress; restore-keys picks up the newest snapshot. GitHub's
+    # 10 GB cache budget + LRU eviction handles the accumulation.
     - name: Cache NVD Database
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gradle/dependency-check-data
-        key: nvd-${{ hashFiles('**/build.gradle.kts') }}
+        key: nvd-${{ github.run_id }}
         restore-keys: |
           nvd-
 
