@@ -95,11 +95,12 @@ millions of rows into a real test database instead of a file.
   not ISO 20022 XML. A `pain.001` XML serializer would be a separate feature.
 - **IBANs are valid IBANs but not restricted to the SEPA zone / Italy.** Datafaker's no-arg
   `iban()` returns IBANs from a random country (e.g. `DE`, `ES`, but also non-SEPA ones), regardless
-  of `geolocation`. Names, `country`, and BIC do honour the Italian locale. Forcing IBAN country
-  needs a parameterized generator — tracked as a follow-up enhancement.
+  of `geolocation`. Names, `country`, and BIC do honour the Italian locale. Tracked as a bug
+  ([#173](https://github.com/mferretti/SeedStream/issues/173)).
 - **`msg_id` / `end_to_end_id` are random alphanumeric** (`char`), not structured ISO references.
-  Same follow-up (config-declarable regex/patterned generators) would let these match real
-  reference formats. `remittance_info` uses `lorem_sentence` placeholder text, not real remittance
-  wording.
+  Config-declarable regex/patterned generators
+  ([#174](https://github.com/mferretti/SeedStream/issues/174)) would let these match real reference
+  formats ([#175](https://github.com/mferretti/SeedStream/issues/175)). `remittance_info` uses
+  `lorem_sentence` placeholder text, not real remittance wording.
 - **Fields are independent** — there is no cross-field correlation (e.g. `requested_execution_date`
   is not guaranteed ≥ `creation_date_time`).
