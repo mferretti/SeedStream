@@ -55,6 +55,51 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    # A deactivated NVD key is indistinguishable from an NVD outage in the update
+    # step: per NVD docs an invalid/deactivated key gets HTTP 404; some states
+    # instead silently fall back to the anonymous 5-req/30s budget, turning the
+    # sync into a crawl that hits the 20-min cap. Probe both signals before the
+    # expensive step: (a) any 404 on a known-valid URL = key rejected; (b) a
+    # 10-request burst (over the anonymous budget, within the keyed 50/30s
+    # budget) must not be throttled. 503s = NVD outage -> warn, not fail (the
+    # cached-DB path below handles outages).
+    - name: Verify NVD API key is honored
+      env:
+        NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      run: |
+        if [ -z "$NVD_API_KEY" ]; then
+          echo "::error::NVD_API_KEY secret is empty/unset — NVD updates would run at the anonymous 5-req/30s rate and time out. Set the secret."
+          exit 1
+        fi
+        url="https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1"
+        ok=0; rejected=0; throttled=0; other=0
+        for i in $(seq 1 10); do
+          code=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' -H "apiKey: $NVD_API_KEY" "$url")
+          case "$code" in
+            200) ok=$((ok+1)) ;;
+            404) rejected=$((rejected+1)) ;;      # invalid/deactivated key (NVD-documented)
+            403|429) throttled=$((throttled+1)) ;; # anonymous-budget throttle = key not honored
+            *) other=$((other+1)) ;;               # 503/000: NVD-side, not the key
+          esac
+        done
+        echo "NVD key probe: ok=$ok rejected=$rejected throttled=$throttled other=$other (of 10)"
+        if [ "$rejected" -gt 0 ]; then
+          echo "::error::NVD returned 404 for a valid query with the API key set — the key is invalid or deactivated. Recover/rotate NVD_API_KEY (https://nvd.nist.gov/developers/request-an-api-key)."
+          exit 1
+        fi
+        if [ "$throttled" -ge 2 ]; then
+          echo "::error::NVD throttled a 10-request burst within the keyed 50/30s budget — the key is not being honored (likely deactivated for inactivity). Recover/rotate NVD_API_KEY."
+          exit 1
+        fi
+        if [ "$throttled" -eq 1 ]; then
+          echo "::warning::One throttled response in the burst — possibly transient NVD-side throttling; key not conclusively at fault."
+        fi
+        if [ "$ok" -eq 0 ]; then
+          echo "::warning::No 200s from NVD (other=$other — likely a transient outage). Key not confirmed; continuing to the cached-DB path."
+        else
+          echo "NVD API key honored ($ok/10 succeeded)."
+        fi
+
     - name: Cache NVD Database
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
