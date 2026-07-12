@@ -1,0 +1,11 @@
+# Runnable demo: synthetic SEPA credit transfers → JSON file. No infra required.
+# structures_path is omitted on purpose — the CLI auto-resolves the sibling ../structures/ dir
+# because this job lives in a directory ending in "jobs" (ExecuteCommand resolution rule).
+source: sepa_credit_transfer.yaml
+type: file
+seed:
+  type: embedded
+  value: 83
+conf:
+  path: build/run-output/sepa_credit_transfers
+  format: json

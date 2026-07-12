@@ -1,0 +1,16 @@
+# Production-scale variant: load synthetic SEPA credit transfers into a Postgres `payments` table
+# — the real DORA resilience-test target. Seed comes from the SEED env var so CI can vary datasets
+# while keeping each run reproducible. structures_path omitted (auto-resolves ../structures/).
+source: sepa_credit_transfer.yaml
+type: database
+seed:
+  type: env
+  name: SEED
+conf:
+  jdbc_url: "jdbc:postgresql://postgres:5432/testdb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"
+  table: "payments"
+  batch_size: 1000
+  pool_size: 5
+  transaction_strategy: per_batch
