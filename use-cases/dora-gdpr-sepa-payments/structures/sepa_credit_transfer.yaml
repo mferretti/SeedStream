@@ -27,7 +27,7 @@ data:
     datatype: lorem_sentence
   status: # pain.002 TxSts — ISO ExternalPaymentTransactionStatus
     datatype: enum[ACTC,ACCP,ACSP,ACSC,ACWC,PDNG,RJCT]
-  debtor: # Dbtr + DbtrAcct + DbtrAgt
+  debtor: # Dbtr + DbtrAcct + DbtrAgt — Italian originator (locale IBAN → IT)
     datatype: object[sct_party]
-  creditor: # Cdtr + CdtrAcct + CdtrAgt
-    datatype: object[sct_party]
+  creditor: # Cdtr + CdtrAcct + CdtrAgt — SEPA-wide destination (sepa_iban)
+    datatype: object[sct_creditor]

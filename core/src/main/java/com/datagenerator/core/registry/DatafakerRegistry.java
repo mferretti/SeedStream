@@ -66,6 +66,9 @@ public class DatafakerRegistry {
   private static final String TYPE_PRODUCT_NAME = "product_name";
   private static final String TYPE_PROMOTION_CODE = "promotion_code";
 
+  /** SEPA-zone countries (ISO 3166-1 alpha-2) that Datafaker can emit an IBAN for. */
+  private static final List<String> SEPA_SUPPORTED = sepaSupported();
+
   /** Functional interface for Datafaker type generators. */
   @FunctionalInterface
   public interface DatafakerFunction {
@@ -143,6 +146,7 @@ public class DatafakerRegistry {
     register("iban", (faker, random) -> localeAwareIban(faker));
     register("random_iban", (faker, random) -> faker.finance().iban());
     registerAlias("random_locale_iban", "random_iban");
+    register("sepa_iban", DatafakerRegistry::sepaIban);
     register("currency", (faker, random) -> faker.money().currencyCode());
     register("price", (faker, random) -> faker.commerce().price());
     register("bic", (faker, random) -> conformantBic(faker));
@@ -223,6 +227,37 @@ public class DatafakerRegistry {
       return faker.finance().iban(country);
     }
     return faker.finance().iban();
+  }
+
+  /**
+   * Generate an IBAN from a random SEPA-zone country, independent of the Faker locale.
+   *
+   * <p>Unlike {@code iban} (locale country) and {@code random_iban} (any country worldwide), this
+   * restricts the country to the SEPA zone — the correct scope for a SEPA credit-transfer
+   * destination account. The country is picked from {@link #SEPA_SUPPORTED} via the seeded {@code
+   * random}, keeping generation deterministic. Falls back to a random-country IBAN only in the
+   * unlikely case Datafaker supports none of the SEPA countries.
+   */
+  private static String sepaIban(Faker faker, Random random) {
+    if (SEPA_SUPPORTED.isEmpty()) {
+      return faker.finance().iban();
+    }
+    String country = SEPA_SUPPORTED.get(random.nextInt(SEPA_SUPPORTED.size()));
+    return faker.finance().iban(country);
+  }
+
+  /**
+   * SEPA member countries (ISO 3166-1 alpha-2) intersected with the countries Datafaker can emit an
+   * IBAN for, so {@link #sepaIban} never calls an unsupported country.
+   */
+  private static List<String> sepaSupported() {
+    Set<String> sepa =
+        Set.of(
+            "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+            "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", // EU27
+            "IS", "LI", "NO", // EEA
+            "CH", "MC", "SM", "GB", "GI", "AD", "VA"); // other SEPA participants
+    return sepa.stream().filter(Finance.ibanSupportedCountries()::contains).sorted().toList();
   }
 
   /**

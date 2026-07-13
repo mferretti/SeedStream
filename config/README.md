@@ -640,11 +640,17 @@ username:   { datatype: username }
 
 **Finance**
 ```yaml
-iban:        { datatype: iban }           # alias: bic, swift
+iban:        { datatype: iban }           # locale-aware IBAN: geolocation country (italy → IT…)
+random_iban: { datatype: random_iban }    # IBAN from any country worldwide (alias: random_locale_iban)
+sepa_iban:   { datatype: sepa_iban }      # IBAN from a random SEPA-zone country
+bic:         { datatype: bic }            # ISO 9362 bank identifier (alias: swift)
 credit_card: { datatype: credit_card }
 ```
 
-**48+ types total** with 20+ aliases. Add more without code via `--faker-types <file>` — map any no-arg Datafaker method chain (e.g. `beer_style: beer.style` → `faker.beer().style()`). Only parameterized providers (ranges, `options`, `regexify`, bounded dates) or non-String formatting need a Java lambda via `DatafakerRegistry.register`.
+`iban` honours `geolocation` (like names/addresses). `random_iban` and `sepa_iban` are
+locale-independent — use them for foreign or SEPA-wide counterparty accounts respectively.
+
+**50+ types total** with 20+ aliases. Add more without code via `--faker-types <file>` — map any no-arg Datafaker method chain (e.g. `beer_style: beer.style` → `faker.beer().style()`). Only parameterized providers (ranges, `options`, `regexify`, bounded dates) or non-String formatting need a Java lambda via `DatafakerRegistry.register`.
 See [generators module](../generators/) for the complete list.
 
 ### Composite Types

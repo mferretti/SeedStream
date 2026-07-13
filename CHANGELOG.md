@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **`random_iban` semantic type** (alias `random_locale_iban`) — emits an IBAN from a random country, preserving the previous locale-independent `iban` behavior for use cases such as foreign/cross-border destination accounts
+- **`sepa_iban` semantic type** — emits an IBAN from a random SEPA-zone country (locale-independent). Used by the SEPA use case for the creditor (destination) account, where the counterparty can be any SEPA country while the debtor stays domestic
 
 ### Fixed
 - **`iban` now honours geolocation** (#173) — the `iban` type emitted IBANs from a random country regardless of `geolocation` (e.g. non-SEPA `KM`/`AO` IBANs under `geolocation: italy`), inconsistent with the locale-aware name/address/BIC. It now derives the ISO country from the resolved locale and uses Datafaker's country-scoped `finance().iban(country)` when supported (so `italy` → `IT…`), falling back to a random-country IBAN when the locale has no country or Datafaker has no format for it. Deterministic as before
