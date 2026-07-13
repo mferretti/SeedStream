@@ -18,6 +18,7 @@ package com.datagenerator.core.registry;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -247,12 +248,28 @@ class DatafakerRegistryTest {
     assertThat(DatafakerRegistry.generate("company", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("credit_card", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("iban", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("random_iban", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("sepa_iban", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("currency", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("price", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("bic", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("cvv", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("credit_card_type", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("stock_market", FAKER, RANDOM)).isNotBlank();
+  }
+
+  @Test
+  void shouldGenerateSepaIbanFromProvidedCountries() {
+    String iban = DatafakerRegistry.sepaIban(FAKER, RANDOM, List.of("IT", "DE", "FR"));
+    assertThat(iban).matches("^[A-Z]{2}\\d{2}[A-Z0-9]+$");
+    assertThat(iban.substring(0, 2)).isIn("IT", "DE", "FR");
+  }
+
+  @Test
+  void shouldFallBackToRandomIbanWhenNoSepaCountries() {
+    // Defensive branch: empty SEPA∩supported set → random-country IBAN, not an exception.
+    String iban = DatafakerRegistry.sepaIban(FAKER, RANDOM, List.of());
+    assertThat(iban).matches("^[A-Z]{2}\\d{2}[A-Z0-9]+$");
   }
 
   @Test

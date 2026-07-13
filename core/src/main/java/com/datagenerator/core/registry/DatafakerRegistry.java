@@ -239,11 +239,18 @@ public class DatafakerRegistry {
    * unlikely case Datafaker supports none of the SEPA countries.
    */
   private static String sepaIban(Faker faker, Random random) {
-    if (SEPA_SUPPORTED.isEmpty()) {
+    return sepaIban(faker, random, SEPA_SUPPORTED);
+  }
+
+  /**
+   * Pick a random SEPA-zone IBAN from {@code sepaCountries}. Package-private with the country list
+   * injected so both branches (normal + the defensive empty fallback) are testable.
+   */
+  static String sepaIban(Faker faker, Random random, List<String> sepaCountries) {
+    if (sepaCountries.isEmpty()) {
       return faker.finance().iban();
     }
-    String country = SEPA_SUPPORTED.get(random.nextInt(SEPA_SUPPORTED.size()));
-    return faker.finance().iban(country);
+    return faker.finance().iban(sepaCountries.get(random.nextInt(sepaCountries.size())));
   }
 
   /**
