@@ -11,6 +11,10 @@ picocli = "4.7.7"
 
 # Data Generation
 datafaker = "2.7.0"
+# Regex string generator (the library Datafaker shades for regexify); used directly for the
+# `regex:` --faker-types so we avoid depending on Datafaker's shaded internal copy. Kept in sync
+# with the version Datafaker bundles.
+rgxgen = "3.1"
 
 # Validation
 jakarta-validation = "3.1.1"
@@ -80,6 +84,7 @@ jakarta-el = { module = "org.glassfish:jakarta.el", version.ref = "jakarta-el" }
 
 # Data Generation
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
+rgxgen = { module = "com.github.curious-odd-man:rgxgen", version.ref = "rgxgen" }
 
 # CLI
 picocli = { module = "info.picocli:picocli", version.ref = "picocli" }

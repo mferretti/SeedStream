@@ -271,8 +271,8 @@ class DatafakerRegistryTest {
   void shouldGenerateRegexValueDeterministicallyForSameSeed() {
     String typeName = "test_regex_det_" + System.nanoTime();
     DatafakerRegistry.registerRegex(typeName, "[A-Z]{5}-\\d{4}");
-    String first = DatafakerRegistry.generate(typeName, new Faker(Locale.US, new Random(7)), null);
-    String second = DatafakerRegistry.generate(typeName, new Faker(Locale.US, new Random(7)), null);
+    String first = DatafakerRegistry.generate(typeName, FAKER, new Random(7));
+    String second = DatafakerRegistry.generate(typeName, FAKER, new Random(7));
     assertThat(second).isEqualTo(first);
   }
 
@@ -287,7 +287,7 @@ class DatafakerRegistryTest {
   void shouldThrowWhenRegexPatternIsInvalid() {
     assertThatThrownBy(() -> DatafakerRegistry.registerRegex("test_bad_regex", "[unterminated"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Invalid Datafaker regex pattern");
+        .hasMessageContaining("Invalid regex pattern");
   }
 
   @Test

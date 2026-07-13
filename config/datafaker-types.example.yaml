@@ -18,11 +18,13 @@ types:
   job_title: job.title                   # faker.job().title()
   company_industry: company.industry     # faker.company().industry()
 
-  # A `regex:`-prefixed value always maps to faker.regexify(<pattern>) — the text after `regex:` is
-  # the pattern. Use it for structured IDs/references. Invalid patterns fail fast at load; generation
-  # is deterministic (regexify draws from the seeded Faker).
-  iso_msg_id: "regex:[A-Z0-9]{10,35}"    # regexify("[A-Z0-9]{10,35}") → e.g. R7ZK9444J9
-  order_ref: "regex:ORD-\\d{8}"          # regexify("ORD-\\d{8}")       → e.g. ORD-40021785
+  # A `regex:`-prefixed value generates strings matching the regex after `regex:` (via RgxGen, the
+  # engine Datafaker uses). Use it for structured IDs/references. Invalid patterns fail fast at load;
+  # generation is deterministic under the seed.
+  # Quirks: `.` matches any printable ASCII (incl. punctuation) — prefer explicit classes like
+  # [A-Za-z0-9]; unbounded quantifiers (+ * {n,}) are capped at 100 reps. See config/README.md.
+  iso_msg_id: "regex:[A-Z0-9]{10,35}"    # e.g. R7ZK9444J9
+  order_ref: "regex:ORD-\\d{8}"          # e.g. ORD-40021785
 
 aliases:
   beerstyle: beer_style

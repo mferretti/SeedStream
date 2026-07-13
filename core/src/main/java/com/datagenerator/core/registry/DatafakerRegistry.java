@@ -16,6 +16,8 @@
 
 package com.datagenerator.core.registry;
 
+import com.github.curiousoddman.rgxgen.RgxGen;
+import com.github.curiousoddman.rgxgen.parsing.dflt.RgxGenParseException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -26,8 +28,6 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import lombok.extern.slf4j.Slf4j;
 import net.datafaker.Faker;
 import net.datafaker.providers.base.Finance;
@@ -313,11 +313,17 @@ public class DatafakerRegistry {
   }
 
   /**
-   * Register a type that generates values from a regex pattern via Datafaker's {@code
-   * regexify(pattern)}. Lets structures declare patterned fields (structured IDs, ISO references)
-   * without code. The pattern's syntax is validated once at registration via {@link
-   * Pattern#compile} so a malformed pattern fails fast. Generation is deterministic — {@code
-   * regexify} draws from the seeded Faker.
+   * Register a type that generates values from a regex pattern. Lets structures declare patterned
+   * fields (structured IDs, ISO references) without code. The pattern is parsed once at
+   * registration with {@link RgxGen} — the same engine Datafaker's {@code regexify} uses, but
+   * depended on directly rather than through Datafaker's shaded copy — so a malformed pattern fails
+   * fast and the compiled generator is reused. Generation is deterministic: it draws from the
+   * seeded {@link Random} passed to {@link #generate}.
+   *
+   * <p><b>RgxGen limitations</b> (matter when authoring patterns): {@code .} matches any printable
+   * ASCII (space..{@code ~}), so prefer explicit classes like {@code [A-Za-z0-9]}; unbounded
+   * quantifiers ({@code +}, {@code *}, {@code {n,}}) are capped at 100 repetitions; lookaround and
+   * {@code \p{...}} Unicode categories are only partially supported.
    *
    * @param typeName the SeedStream type key (e.g. {@code iso_msg_id})
    * @param pattern a regex pattern (e.g. {@code [A-Z0-9]{10,35}})
@@ -325,15 +331,16 @@ public class DatafakerRegistry {
    */
   public static void registerRegex(String typeName, String pattern) {
     if (pattern == null || pattern.isBlank()) {
-      throw new IllegalArgumentException("Datafaker regex pattern cannot be null or empty");
+      throw new IllegalArgumentException("Regex pattern cannot be null or empty");
     }
+    RgxGen compiled;
     try {
-      Pattern.compile(pattern); // fail fast on malformed pattern syntax
-    } catch (PatternSyntaxException e) {
+      compiled = RgxGen.parse(pattern); // parse + validate once with the runtime engine
+    } catch (RgxGenParseException e) {
       throw new IllegalArgumentException(
-          "Invalid Datafaker regex pattern '" + pattern + "': " + e.getMessage(), e);
+          "Invalid regex pattern '" + pattern + "': " + e.getMessage(), e);
     }
-    register(typeName, (faker, random) -> faker.regexify(pattern));
+    register(typeName, (faker, random) -> compiled.generate(random));
   }
 
   private static List<Method> resolveChain(String expression) {
