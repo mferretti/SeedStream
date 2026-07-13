@@ -116,7 +116,7 @@ subprojects {
             // constraint) while runtimeClasspath correctly overrides to 2.22.0. 2.20.0 carries
             // CVE-2026-54512/54513 (CVSS > 7) + 54514; force the catalog version everywhere so
             // OWASP DC never sees 2.20.0 on any configuration.
-            "com.fasterxml.jackson.core:jackson-databind:2.22.0"
+            "com.fasterxml.jackson.core:jackson-databind:2.22.1"
         )
     }
 

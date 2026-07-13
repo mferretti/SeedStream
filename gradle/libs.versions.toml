@@ -3,10 +3,10 @@
 
 [versions]
 # Core Libraries
-jackson = "2.22.0"
+jackson = "2.22.1"
 lombok = "1.18.46"
 slf4j = "2.0.18"
-logback = "1.5.37"
+logback = "1.5.38"
 picocli = "4.7.7"
 
 # Data Generation
@@ -34,13 +34,13 @@ kafka = "4.3.1"
 
 # Database
 hikaricp = "7.1.0"
-postgresql = "42.7.12"
+postgresql = "42.7.13"
 mysql-connector = "8.4.0"
 ojdbc = "23.26.2.0.0"
 mssql-jdbc = "13.4.0.jre11"
 
 # Testing
-junit = "6.1.1"
+junit = "6.1.2"
 h2 = "2.4.240"
 mockito = "5.21.0"
 assertj = "3.27.7"
@@ -48,10 +48,10 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.47.1"
+aws-sdk = "2.47.5"
 azure-keyvault-secrets = "4.11.1"
 azure-identity = "1.18.4"
-gcp-secretmanager = "2.93.0"
+gcp-secretmanager = "2.94.0"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.0"
@@ -60,7 +60,7 @@ log4j = "2.26.0"
 jmh-plugin = "0.7.3"
 lombok-plugin = "9.5.0"
 spotless-plugin = "8.8.0"
-spotbugs-plugin = "6.5.8"
+spotbugs-plugin = "6.5.9"
 dependency-check-plugin = "12.2.2"
 sonarqube-plugin = "7.3.1.8318"
 
