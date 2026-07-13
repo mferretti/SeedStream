@@ -35,15 +35,22 @@ import lombok.extern.slf4j.Slf4j;
  * <pre>
  * # datafaker-types.yaml
  * types:
- *   beer_style: beer.style          # faker.beer().style()
- *   pokemon:    pokemon.name         # faker.pokemon().name()
- *   full_addr:  address.fullAddress  # faker.address().fullAddress()
+ *   beer_style: beer.style             # faker.beer().style()
+ *   pokemon:    pokemon.name            # faker.pokemon().name()
+ *   full_addr:  address.fullAddress     # faker.address().fullAddress()
+ *   iso_msg_id: "regex:[A-Z0-9]{10,35}" # faker.regexify("[A-Z0-9]{10,35}")
  * aliases:
  *   beerstyle:  beer_style
  * </pre>
+ *
+ * <p>A value prefixed with {@code regex:} is registered as a Datafaker {@code regexify(pattern)}
+ * generator, letting structures declare patterned fields (structured IDs, ISO references) without
+ * code. All other values are dot-separated no-arg method chains.
  */
 @Slf4j
 public class CustomTypeConfigLoader {
+
+  private static final String REGEX_PREFIX = "regex:";
 
   private final YAMLMapper yaml = new YAMLMapper();
 
@@ -68,18 +75,7 @@ public class CustomTypeConfigLoader {
     JsonNode types = root.path("types");
     if (types.isObject()) {
       for (Map.Entry<String, JsonNode> entry : types.properties()) {
-        try {
-          DatafakerRegistry.registerExpression(entry.getKey(), entry.getValue().asText());
-        } catch (IllegalArgumentException e) {
-          throw new SchemaParseException(
-              "Invalid Datafaker type '"
-                  + entry.getKey()
-                  + "' in "
-                  + configFile
-                  + ": "
-                  + e.getMessage(),
-              e);
-        }
+        registerType(entry.getKey(), entry.getValue().asText(), configFile);
         registered++;
       }
     }
@@ -93,5 +89,23 @@ public class CustomTypeConfigLoader {
 
     log.info("Registered {} custom Datafaker type(s) from {}", registered, configFile);
     return registered;
+  }
+
+  /**
+   * Register a single type. A {@code regex:}-prefixed value becomes a {@code regexify} generator;
+   * anything else is a no-arg method chain.
+   */
+  private void registerType(String key, String rawValue, Path configFile) {
+    String value = rawValue.trim();
+    try {
+      if (value.startsWith(REGEX_PREFIX)) {
+        DatafakerRegistry.registerRegex(key, value.substring(REGEX_PREFIX.length()).trim());
+      } else {
+        DatafakerRegistry.registerExpression(key, value);
+      }
+    } catch (IllegalArgumentException e) {
+      throw new SchemaParseException(
+          "Invalid Datafaker type '" + key + "' in " + configFile + ": " + e.getMessage(), e);
+    }
   }
 }
