@@ -18,5 +18,10 @@ types:
   job_title: job.title                   # faker.job().title()
   company_industry: company.industry     # faker.company().industry()
 
+  # A `regex:`-prefixed value registers a regexify(pattern) generator for structured IDs/references.
+  # Invalid patterns fail fast at load. Determinism holds (regexify draws from the seeded Faker).
+  iso_msg_id: "regex:[A-Z0-9]{10,35}"    # faker.regexify("[A-Z0-9]{10,35}")
+  order_ref: "regex:ORD-\\d{8}"          # e.g. ORD-40021785
+
 aliases:
   beerstyle: beer_style

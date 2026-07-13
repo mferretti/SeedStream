@@ -650,7 +650,14 @@ credit_card: { datatype: credit_card }
 `iban` honours `geolocation` (like names/addresses). `random_iban` and `sepa_iban` are
 locale-independent — use them for foreign or SEPA-wide counterparty accounts respectively.
 
-**50+ types total** with 20+ aliases. Add more without code via `--faker-types <file>` — map any no-arg Datafaker method chain (e.g. `beer_style: beer.style` → `faker.beer().style()`). Only parameterized providers (ranges, `options`, `regexify`, bounded dates) or non-String formatting need a Java lambda via `DatafakerRegistry.register`.
+**50+ types total** with 20+ aliases. Add more without code via `--faker-types <file>`:
+- **Method chains** — any no-arg Datafaker chain, e.g. `beer_style: beer.style` → `faker.beer().style()`.
+- **Regex patterns** — a `regex:`-prefixed value registers a `regexify(pattern)` generator for
+  structured IDs / references, e.g. `iso_msg_id: "regex:[A-Z0-9]{10,35}"`. Invalid patterns fail
+  fast at load.
+
+Only other parameterized providers (ranges, `options`, bounded dates) or non-String formatting still
+need a Java lambda via `DatafakerRegistry.register`.
 See [generators module](../generators/) for the complete list.
 
 ### Composite Types

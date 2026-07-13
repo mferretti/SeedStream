@@ -51,6 +51,36 @@ class CustomTypeConfigLoaderTest {
   }
 
   @Test
+  void shouldRegisterRegexType(@TempDir Path dir) throws IOException {
+    Path config = dir.resolve("regex-types.yaml");
+    Files.writeString(
+        config,
+        """
+        types:
+          loadertest_msg_id: "regex:[A-Z0-9]{10,35}"
+        """);
+
+    // A regex: value routed to registerExpression would fail chain resolution, so a clean load
+    // proves it was registered as a regexify pattern. Generation is covered in
+    // DatafakerRegistryTest.
+    int registered = new CustomTypeConfigLoader().load(config);
+
+    assertThat(registered).isEqualTo(1);
+    assertThat(DatafakerRegistry.isRegistered("loadertest_msg_id")).isTrue();
+  }
+
+  @Test
+  void shouldFailOnInvalidRegexPattern(@TempDir Path dir) throws IOException {
+    Path config = dir.resolve("bad-regex.yaml");
+    Files.writeString(config, "types:\n  broken_regex: \"regex:[unterminated\"\n");
+    CustomTypeConfigLoader loader = new CustomTypeConfigLoader();
+
+    assertThatThrownBy(() -> loader.load(config))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("broken_regex");
+  }
+
+  @Test
   void shouldFailOnInvalidExpression(@TempDir Path dir) throws IOException {
     Path config = dir.resolve("bad.yaml");
     Files.writeString(config, "types:\n  broken: no.suchMethodHere\n");

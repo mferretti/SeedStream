@@ -258,6 +258,38 @@ class DatafakerRegistryTest {
     assertThat(DatafakerRegistry.generate("stock_market", FAKER, RANDOM)).isNotBlank();
   }
 
+  // ── Regex patterns (regexify) ──────────────────────────────────────────────
+
+  @Test
+  void shouldRegisterRegexTypeAndGenerateMatchingValue() {
+    String typeName = "test_regex_" + System.nanoTime();
+    DatafakerRegistry.registerRegex(typeName, "[A-Z0-9]{10,35}");
+    assertThat(DatafakerRegistry.generate(typeName, FAKER, RANDOM)).matches("[A-Z0-9]{10,35}");
+  }
+
+  @Test
+  void shouldGenerateRegexValueDeterministicallyForSameSeed() {
+    String typeName = "test_regex_det_" + System.nanoTime();
+    DatafakerRegistry.registerRegex(typeName, "[A-Z]{5}-\\d{4}");
+    String first = DatafakerRegistry.generate(typeName, new Faker(Locale.US, new Random(7)), null);
+    String second = DatafakerRegistry.generate(typeName, new Faker(Locale.US, new Random(7)), null);
+    assertThat(second).isEqualTo(first);
+  }
+
+  @Test
+  void shouldThrowWhenRegexPatternIsBlank() {
+    assertThatThrownBy(() -> DatafakerRegistry.registerRegex("test_blank_regex", "  "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("cannot be null or empty");
+  }
+
+  @Test
+  void shouldThrowWhenRegexPatternIsInvalid() {
+    assertThatThrownBy(() -> DatafakerRegistry.registerRegex("test_bad_regex", "[unterminated"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid Datafaker regex pattern");
+  }
+
   @Test
   void shouldGenerateSepaIbanFromProvidedCountries() {
     String iban = DatafakerRegistry.sepaIban(FAKER, RANDOM, List.of("IT", "DE", "FR"));

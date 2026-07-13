@@ -125,11 +125,13 @@ The list below is therefore a **convenience backlog** (types worth promoting to 
 auto-targeting in `inspect`), not a set of features that are unavailable today.
 
 > **The real code-required gap** is *not* in this list. A `--faker-types` chain can only call **no-arg**
-> methods, and the result is coerced to `String` via `String.valueOf`. Providers that need **arguments**
-> — `number().numberBetween(min,max)`, `options().option(a,b,c)`, `regexify("[A-Z]{3}")`, bounded
-> `date().past(n, UNIT)` / `date().future(...)` — or that need **non-String formatting** (e.g. a date
-> rendered to a pattern instead of `Timestamp.toString()`) cannot be expressed in config. Those still
-> require a Java lambda via `DatafakerRegistry.register(name, fn)`. See
+> methods, and the result is coerced to `String` via `String.valueOf`. One parameterized provider is
+> also config-declarable: a `regex:`-prefixed value maps to `regexify(pattern)` (e.g.
+> `iso_msg_id: "regex:[A-Z0-9]{10,35}"`). The remaining providers that need **arguments** —
+> `number().numberBetween(min,max)`, `options().option(a,b,c)`, bounded `date().past(n, UNIT)` /
+> `date().future(...)` — or that need **non-String formatting** (e.g. a date rendered to a pattern
+> instead of `Timestamp.toString()`) cannot be expressed in config. Those still require a Java lambda
+> via `DatafakerRegistry.register(name, fn)`. See
 > [Genuinely code-required generators](#genuinely-code-required-generators) below.
 
 ### Person & Identity Extensions
@@ -228,13 +230,14 @@ auto-targeting in `inspect`), not a set of features that are unavailable today.
 
 A `--faker-types` chain calls **no-arg** Datafaker methods only and stringifies the result with
 `String.valueOf` (`DatafakerRegistry.resolveChain` / `invokeChain`). Everything Datafaker exposes as a
-plain no-arg provider is therefore reachable from config. Only two classes of generator still need a
-Java lambda via `DatafakerRegistry.register(name, fn)`:
+plain no-arg provider is therefore reachable from config, plus `regexify` via the `regex:` prefix
+(`DatafakerRegistry.registerRegex`). Only two classes of generator still need a Java lambda via
+`DatafakerRegistry.register(name, fn)`:
 
-1. **Parameterized providers** — the method takes arguments, so it can't be named as a bare chain:
+1. **Parameterized providers** — the method takes arguments, so it can't be named as a bare chain
+   (except `regexify`, now config-declarable via `regex:`):
    - `faker.number().numberBetween(min, max)`, `faker.number().randomDouble(dec, min, max)`
    - `faker.options().option("A", "B", "C")`
-   - `faker.regexify("[A-Z]{3}-\\d{4}")`
    - bounded dates: `faker.date().past(n, UNIT)`, `faker.date().future(n, UNIT)`, `faker.date().between(a, b)`
 2. **Non-String / formatted returns** — the provider returns a non-String (e.g. `Timestamp`, `BigDecimal`)
    and you want a specific format or range rather than its raw `toString()`. `birthday()` is the common
