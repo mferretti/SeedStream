@@ -50,25 +50,28 @@ they must equal the batch contents, and a per-row generator cannot correlate the
 | `category_purpose_code` | `enum[SALA,SUPP,TAXS,TRAD,CASH]` | `CtgyPurp/Cd` | ISO ExternalCategoryPurpose |
 | `remittance_info` | `lorem_sentence` | `RmtInf/Ustrd` | readable text, ≤ 140 chars |
 | `status` | `enum[ACTC,ACCP,ACSP,ACSC,ACWC,PDNG,RJCT]` | `pain.002` `TxSts` | ISO ExternalPaymentTransactionStatus |
-| `debtor` | `object[sct_party]` | `Dbtr` + `DbtrAcct` + `DbtrAgt` | nested |
-| `creditor` | `object[sct_party]` | `Cdtr` + `CdtrAcct` + `CdtrAgt` | nested |
+| `debtor` | `object[sct_party]` | `Dbtr` + `DbtrAcct` + `DbtrAgt` | Italian originator |
+| `creditor` | `object[sct_creditor]` | `Cdtr` + `CdtrAcct` + `CdtrAgt` | SEPA-wide destination |
 
-`structures/sct_party.yaml` (nested party):
+`structures/sct_party.yaml` (debtor / originator) and `structures/sct_creditor.yaml` (creditor /
+destination) share the same fields; they differ only in the IBAN scope:
 
-| field | datatype | ISO 20022 element |
-|---|---|---|
-| `name` | `full_name` | `Dbtr/Cdtr` `Nm` (max 70) |
-| `iban` | `iban` | `{Dbtr,Cdtr}Acct/Id/IBAN` |
-| `bic` | `bic` | `{Dbtr,Cdtr}Agt/FinInstnId/BICFI` (8 or 11 chars) |
-| `country` | `country_code` | `PstlAdr/Ctry` (ISO 3166 alpha-2) |
+| field | debtor `datatype` | creditor `datatype` | ISO 20022 element |
+|---|---|---|---|
+| `name` | `full_name` | `full_name` | `Nm` (max 70) |
+| `iban` | `iban` (locale → `IT`) | `sepa_iban` (random SEPA country) | `Acct/Id/IBAN` |
+| `bic` | `bic` | `bic` | `Agt/FinInstnId/BICFI` (8 or 11 chars) |
+| `country` | `country_code` | `country_code` | `PstlAdr/Ctry` (ISO 3166 alpha-2) |
 
 **`pain.002` status codes:** `ACTC` AcceptedTechnicalValidation · `ACCP` AcceptedCustomerProfile ·
 `ACSP` AcceptedSettlementInProcess · `ACSC` AcceptedSettlementCompleted · `ACWC` AcceptedWithChange ·
 `PDNG` Pending · `RJCT` Rejected.
 
-Under `geolocation: italy` the `iban` type emits locale-correct Italian (`IT…`) IBANs, matching the
-Italian names, `country`, and BIC. For deliberately foreign/cross-border destination accounts, use
-the `random_iban` type instead (random-country IBAN).
+A SEPA credit transfer originates domestically but can settle anywhere in the SEPA zone. The
+**debtor** uses the locale-aware `iban` type (`geolocation: italy` → Italian `IT…` account,
+matching the Italian name/BIC). The **creditor** uses `sepa_iban` — a random IBAN from a SEPA-zone
+country (DE, FR, ES, NL, …, occasionally IT for a domestic transfer). For accounts *outside* SEPA,
+the `random_iban` type (any country worldwide) is also available.
 
 ## Run it
 
@@ -103,4 +106,5 @@ millions of rows into a real test database instead of a file.
   formats ([#175](https://github.com/mferretti/SeedStream/issues/175)). `remittance_info` uses
   `lorem_sentence` placeholder text, not real remittance wording.
 - **Fields are independent** — there is no cross-field correlation (e.g. `requested_execution_date`
-  is not guaranteed ≥ `creation_date_time`).
+  is not guaranteed ≥ `creation_date_time`; the creditor's `name`/`country` are Italian-locale and
+  need not match its `sepa_iban` country).

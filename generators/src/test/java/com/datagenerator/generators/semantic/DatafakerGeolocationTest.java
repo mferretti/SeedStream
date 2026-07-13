@@ -25,9 +25,11 @@ import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -142,20 +144,35 @@ class DatafakerGeolocationTest {
     assertThat(iban).isNotNull().matches(IBAN_PATTERN);
   }
 
-  @Test
-  void shouldGenerateIbanDeterministicallyForSameLocaleAndSeed() {
-    String first = (String) generateWithContext("italy", new CustomDatafakerType("iban"));
+  @ParameterizedTest
+  @ValueSource(strings = {"iban", "random_iban", "sepa_iban"})
+  void shouldGenerateIbanTypeDeterministicallyForSameSeed(String ibanType) {
+    String first = (String) generateWithContext("italy", new CustomDatafakerType(ibanType));
     FakerCache.clear();
-    String second = (String) generateWithContext("italy", new CustomDatafakerType("iban"));
+    String second = (String) generateWithContext("italy", new CustomDatafakerType(ibanType));
     assertThat(second).isEqualTo(first);
   }
 
+  private static final Set<String> SEPA_COUNTRIES =
+      Set.of(
+          "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT",
+          "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO",
+          "CH", "MC", "SM", "GB", "GI", "AD", "VA");
+
   @Test
-  void shouldGenerateRandomIbanDeterministicallyForSameSeed() {
-    String first = (String) generateWithContext("italy", new CustomDatafakerType("random_iban"));
-    FakerCache.clear();
-    String second = (String) generateWithContext("italy", new CustomDatafakerType("random_iban"));
-    assertThat(second).isEqualTo(first);
+  void shouldGenerateSepaIbanWithinSepaZone() {
+    // Multiple draws under one context (seeded Random advances) → varied SEPA countries.
+    Set<String> countries = new HashSet<>();
+    try (var ctx = GeneratorContext.enter(factory, "italy")) {
+      Random random = new Random(12345L);
+      CustomDatafakerType type = new CustomDatafakerType("sepa_iban");
+      for (int i = 0; i < 50; i++) {
+        String iban = (String) generator.generate(random, type);
+        assertThat(iban).matches(IBAN_PATTERN);
+        countries.add(iban.substring(0, 2));
+      }
+    }
+    assertThat(countries).isSubsetOf(SEPA_COUNTRIES).hasSizeGreaterThan(1);
   }
 
   // ==================================================================================

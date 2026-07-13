@@ -1,10 +1,12 @@
-# ISO 20022 SEPA party (debtor / creditor) — name + account IBAN + agent BIC + country.
+# ISO 20022 SEPA debtor (originator) party — name + account IBAN + agent BIC + country.
+# The originator is the Italian bank's customer, so `iban` is the locale IBAN (IT). The creditor
+# (destination) uses sct_creditor with sepa_iban instead.
 name: sct_party
 geolocation: italy
 data:
-  name: # Dbtr/Cdtr Nm (max 70) — Italian names under geolocation italy
+  name: # Dbtr Nm (max 70) — Italian names under geolocation italy
     datatype: full_name
-  iban: # {Dbtr,Cdtr}Acct/Id/IBAN — IT-format IBAN under Locale.ITALY
+  iban: # DbtrAcct/Id/IBAN — IT-format IBAN under Locale.ITALY
     datatype: iban
   bic: # {Dbtr,Cdtr}Agt/FinInstnId/BICFI — 8 or 11 chars
     datatype: bic

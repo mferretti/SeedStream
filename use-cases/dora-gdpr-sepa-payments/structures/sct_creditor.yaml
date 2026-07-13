@@ -1,0 +1,14 @@
+# ISO 20022 SEPA creditor (destination) party — name + account IBAN + agent BIC + country.
+# Unlike the debtor (sct_party, Italian originator), the creditor account can be anywhere in the
+# SEPA zone, so `iban` uses `sepa_iban` (random SEPA-zone country) rather than the locale IBAN.
+name: sct_creditor
+geolocation: italy
+data:
+  name: # Cdtr Nm (max 70)
+    datatype: full_name
+  iban: # CdtrAcct/Id/IBAN — random SEPA-zone IBAN (destination may be any SEPA country)
+    datatype: sepa_iban
+  bic: # CdtrAgt/FinInstnId/BICFI — 8 or 11 chars
+    datatype: bic
+  country: # PstlAdr/Ctry — ISO 3166 alpha-2
+    datatype: country_code
