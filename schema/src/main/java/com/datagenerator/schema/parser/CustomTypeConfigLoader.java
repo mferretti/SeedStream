@@ -38,14 +38,14 @@ import lombok.extern.slf4j.Slf4j;
  *   beer_style: beer.style             # faker.beer().style()
  *   pokemon:    pokemon.name            # faker.pokemon().name()
  *   full_addr:  address.fullAddress     # faker.address().fullAddress()
- *   iso_msg_id: "regex:[A-Z0-9]{10,35}" # faker.regexify("[A-Z0-9]{10,35}")
+ *   iso_msg_id: "regex:[A-Z0-9]{10,35}" # generates strings matching the regex
  * aliases:
  *   beerstyle:  beer_style
  * </pre>
  *
- * <p>A value prefixed with {@code regex:} is registered as a Datafaker {@code regexify(pattern)}
- * generator, letting structures declare patterned fields (structured IDs, ISO references) without
- * code. All other values are dot-separated no-arg method chains.
+ * <p>A value prefixed with {@code regex:} is registered as a regex-pattern generator (see {@link
+ * DatafakerRegistry#registerRegex}), letting structures declare patterned fields (structured IDs,
+ * ISO references) without code. All other values are dot-separated no-arg method chains.
  */
 @Slf4j
 public class CustomTypeConfigLoader {
@@ -97,15 +97,21 @@ public class CustomTypeConfigLoader {
    */
   private void registerType(String key, String rawValue, Path configFile) {
     String value = rawValue.trim();
+    boolean isRegex = value.startsWith(REGEX_PREFIX);
     try {
-      if (value.startsWith(REGEX_PREFIX)) {
+      if (isRegex) {
         DatafakerRegistry.registerRegex(key, value.substring(REGEX_PREFIX.length()).trim());
       } else {
         DatafakerRegistry.registerExpression(key, value);
       }
     } catch (IllegalArgumentException e) {
+      String hint =
+          isRegex
+              ? " (see the 'Regex patterns' notes in config/README.md for supported syntax)"
+              : "";
       throw new SchemaParseException(
-          "Invalid Datafaker type '" + key + "' in " + configFile + ": " + e.getMessage(), e);
+          "Invalid Datafaker type '" + key + "' in " + configFile + ": " + e.getMessage() + hint,
+          e);
     }
   }
 }
