@@ -26,6 +26,8 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import lombok.extern.slf4j.Slf4j;
 import net.datafaker.Faker;
 import net.datafaker.providers.base.Finance;
@@ -313,21 +315,21 @@ public class DatafakerRegistry {
   /**
    * Register a type that generates values from a regex pattern via Datafaker's {@code
    * regexify(pattern)}. Lets structures declare patterned fields (structured IDs, ISO references)
-   * without code. The pattern is validated once at registration by a trial generation so a
-   * malformed pattern fails fast. Generation is deterministic — {@code regexify} draws from the
-   * seeded Faker.
+   * without code. The pattern's syntax is validated once at registration via {@link
+   * Pattern#compile} so a malformed pattern fails fast. Generation is deterministic — {@code
+   * regexify} draws from the seeded Faker.
    *
    * @param typeName the SeedStream type key (e.g. {@code iso_msg_id})
-   * @param pattern a Datafaker regex pattern (e.g. {@code [A-Z0-9]{10,35}})
-   * @throws IllegalArgumentException if the pattern is blank or cannot be evaluated
+   * @param pattern a regex pattern (e.g. {@code [A-Z0-9]{10,35}})
+   * @throws IllegalArgumentException if the pattern is blank or malformed
    */
   public static void registerRegex(String typeName, String pattern) {
     if (pattern == null || pattern.isBlank()) {
       throw new IllegalArgumentException("Datafaker regex pattern cannot be null or empty");
     }
     try {
-      new Faker().regexify(pattern); // fail fast on invalid patterns
-    } catch (RuntimeException e) {
+      Pattern.compile(pattern); // fail fast on malformed pattern syntax
+    } catch (PatternSyntaxException e) {
       throw new IllegalArgumentException(
           "Invalid Datafaker regex pattern '" + pattern + "': " + e.getMessage(), e);
     }
