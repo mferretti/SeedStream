@@ -1,0 +1,28 @@
+# Custom Datafaker types for the SEPA Credit Transfer use case.
+#
+# These give the ISO 20022 payment/end-to-end identifiers a recognizable *structured* shape instead
+# of plain random alphanumeric. Pass this file to the CLI so the structure's `sepa_*` datatypes
+# resolve:
+#
+#   ./cli/build/install/cli/bin/cli execute \
+#     --job use-cases/dora-gdpr-sepa-payments/jobs/file_sepa_credit_transfer.yaml \
+#     --faker-types use-cases/dora-gdpr-sepa-payments/faker-types.yaml --count 20
+#
+# A `regex:` value generates strings matching the pattern (via RgxGen, the engine Datafaker uses).
+# Output is deterministic under the run seed. Note on fidelity: ISO 20022 does NOT mandate a format
+# for these identifiers beyond a max length + character set + uniqueness — the *format is set by the
+# initiating party*. The patterns below are therefore ONE plausible issuer scheme, not a standard.
+# Because they are generated independently they can (with negligible probability at these entropies)
+# collide; ISO expects them unique per initiating party for a period.
+
+types:
+  # GrpHdr/MsgId — issuer-defined reference, max 35. "SEPA" + 8 digits (date-like batch) + 6 alnum.
+  sepa_msg_id: "regex:SEPA[0-9]{8}[A-Z0-9]{6}"     # e.g. SEPA20260713A7K9Q1  (18 chars)
+
+  # CdtTrfTxInf/PmtId/EndToEndId — debtor-supplied reference, max 35. Often the debtor's own ref.
+  sepa_e2e_id: "regex:E2E-[0-9]{6}-[A-Z0-9]{8}"    # e.g. E2E-004821-7ZK9J4CD  (19 chars)
+
+  # RmtInf/Ustrd — UNSTRUCTURED remittance text (max 140). Invoice-style free text; makes NO claim
+  # to be a checksum-valid ISO 11649 "RF" creditor reference (that needs a real mod-97 generator —
+  # see issue #191). This is legitimate Ustrd content, not a structured CdtrRefInf.
+  sepa_remittance: "regex:Invoice [0-9]{6}/202[0-9]"    # e.g. Invoice 048213/2026

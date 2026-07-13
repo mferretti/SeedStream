@@ -3,10 +3,10 @@
 name: sepa_credit_transfer
 geolocation: italy
 data:
-  msg_id: # GrpHdr/MsgId (max 35)
-    datatype: char[10..35]
-  end_to_end_id: # CdtTrfTxInf/PmtId/EndToEndId (max 35)
-    datatype: char[10..35]
+  msg_id: # GrpHdr/MsgId (max 35) — structured issuer scheme (see faker-types.yaml)
+    datatype: sepa_msg_id
+  end_to_end_id: # CdtTrfTxInf/PmtId/EndToEndId (max 35) — structured debtor reference
+    datatype: sepa_e2e_id
   creation_date_time: # GrpHdr/CreDtTm
     datatype: timestamp[2025-01-01T00:00:00..2026-06-30T23:59:59]
   requested_execution_date: # PmtInf/ReqdExctnDt
@@ -23,8 +23,8 @@ data:
     datatype: enum[SALA,SUPP,TAXS,TRAD,RENT,LOAN,PENS,SSBE]
   category_purpose_code: # CtgyPurp/Cd — ISO ExternalCategoryPurpose
     datatype: enum[SALA,SUPP,TAXS,TRAD,CASH]
-  remittance_info: # RmtInf/Ustrd — unstructured, max 140 chars
-    datatype: lorem_sentence
+  remittance_info: # RmtInf/Ustrd — unstructured invoice-style text, max 140 chars (not an RF ref)
+    datatype: sepa_remittance
   status: # pain.002 TxSts — ISO ExternalPaymentTransactionStatus
     datatype: enum[ACTC,ACCP,ACSP,ACSC,ACWC,PDNG,RJCT]
   debtor: # Dbtr + DbtrAcct + DbtrAgt — Italian originator (locale IBAN → IT)
