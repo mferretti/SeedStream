@@ -47,7 +47,7 @@ awaitility = "4.3.0"  # Updated from 4.2.2
 aws-sdk = "2.47.1"
 azure-keyvault-secrets = "4.11.1"
 azure-identity = "1.18.4"
-gcp-secretmanager = "2.93.0"
+gcp-secretmanager = "2.94.0"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.0"
