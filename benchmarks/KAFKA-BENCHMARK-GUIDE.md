@@ -78,16 +78,16 @@ KAFKA_TOPIC=my-benchmark-topic ./benchmarks/run_kafka_benchmark.sh
 
 ```bash
 # Run all Kafka benchmarks
-./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*KafkaBenchmark.*"
 
 # Run only async producer tests
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkAsyncProducer.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkAsyncProducer.*"
 
 # Run only sync producer tests
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkSyncProducer.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkSyncProducer.*"
 
 # Custom Kafka settings
-./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*" \
+./gradlew :benchmarks:jmh -PjmhInclude=".*KafkaBenchmark.*" \
   -Dkafka.bootstrap=broker1:9092 \
   -Dkafka.topic=my-topic
 ```
@@ -97,7 +97,7 @@ KAFKA_TOPIC=my-benchmark-topic ./benchmarks/run_kafka_benchmark.sh
 If you want to run other benchmarks but skip Kafka (when Kafka is not available):
 
 ```bash
-./gradlew :benchmarks:jmh -Pjmh.excludes=".*KafkaBenchmark.*"
+./gradlew :benchmarks:jmh -PjmhExclude=".*KafkaBenchmark.*"
 ```
 
 ## What Gets Tested
@@ -295,7 +295,7 @@ Then rebuild:
 Increase JVM heap size:
 ```bash
 export GRADLE_OPTS="-Xmx4g"
-./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*KafkaBenchmark.*"
 ```
 
 ## Advanced Usage
@@ -306,7 +306,7 @@ Avoid running all 24 combinations by filtering:
 
 ```bash
 # Only test async mode
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkAsyncProducer.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkAsyncProducer.*"
 
 # Only test no compression
 # (This requires editing the @Param annotation in KafkaBenchmark.java)
@@ -317,7 +317,7 @@ Avoid running all 24 combinations by filtering:
 Override via system properties:
 
 ```bash
-./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*" \
+./gradlew :benchmarks:jmh -PjmhInclude=".*KafkaBenchmark.*" \
   -Dkafka.bootstrap=production-broker1:9092,production-broker2:9092 \
   -Dkafka.topic=production-benchmark
 ```
@@ -325,7 +325,7 @@ Override via system properties:
 ### Profile with JFR (Java Flight Recorder)
 
 ```bash
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkAsyncProducer.*" \
+./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkAsyncProducer.*" \
   -Pjmh.jvmArgs="-XX:StartFlightRecording=filename=kafka-benchmark.jfr,duration=60s"
 ```
 

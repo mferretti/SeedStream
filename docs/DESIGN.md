@@ -6,7 +6,7 @@ This document captures the architectural decisions, design patterns, issues enco
 
 **Status**: Core architecture complete. All destinations implemented: File, Kafka, Database (Stage 1 flat tables + Stage 2 nested auto-decomposition). Plugin/registry architecture for Datafaker types complete, extensible from config via `--faker-types` (including `regex:` patterns). Foreign key reference generator (`ref[]`) implemented in v0.5.0.
 
-**Known gap**: NFR-1's 500 MB/s file-write target is **not met** — the write path measures 223 MB/s, bounded by Jackson serialization rather than disk. See [Issue #5](#issue-5-file-io-performance-bottleneck).
+**Known gap**: NFR-1's 500 MB/s file-write target is **not met on the reference hardware** — the full pipeline measures 306 MB/s, bounded by **CPU** (generation + serialization, both already parallel and already streaming), not by disk (2.3 GB/s) or by the writer thread (~930 MB/s). Recorded as *expected but unverified*, with a falsifiable prediction. See [Issue #5](#issue-5-file-io-performance-bottleneck).
 
 ---
 

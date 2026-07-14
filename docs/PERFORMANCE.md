@@ -670,8 +670,11 @@ Use `-PjmhSuite`:
 
 ⚠️ **`-Pjmh.includes` and `-Pjmh.excludes` do not work.** With `me.champeau.jmh` 0.7.3 they are silently
 ignored and the *entire* suite runs regardless — which, if you were expecting a filtered run, wastes hours
-and re-measures things you didn't intend to touch. `-PjmhSuite` is applied inside
-`benchmarks/build.gradle.kts` and does take effect. Use it.
+and re-measures things you didn't intend to touch.
+
+Use `-PjmhSuite=database|kafka|generators|regex` for a named group, `-PjmhInclude=<regex>` for anything
+finer (a single method), or `-PjmhExclude=<regex>` to skip a family. All three are applied inside
+`benchmarks/build.gradle.kts` and do take effect.
 
 ### Benchmark Configuration
 

@@ -102,9 +102,10 @@ import org.openjdk.jmh.annotations.Warmup;
  * <p><b>Note:</b> {@code -Pjmh.includes} and {@code -Pjmh.excludes} are silently ignored by
  * me.champeau.jmh 0.7.3 — passing them runs the FULL suite anyway. Earlier revisions of this
  * javadoc documented {@code -Pjmh.excludes=".*DatabaseBenchmark.*"} as a way to skip these
- * benchmarks when PostgreSQL is unavailable; it does not work. Use {@code -PjmhSuite} to select a
- * suite instead. With no database reachable, this class fails fast on connection and the rest of
- * the run proceeds.
+ * benchmarks when PostgreSQL is unavailable; it does not work. Use {@code -PjmhSuite=database},
+ * {@code -PjmhInclude=<regex>} or {@code -PjmhExclude=".*DatabaseBenchmark.*"} — these are applied
+ * inside {@code benchmarks/build.gradle.kts} and do take effect. With no database reachable, this
+ * class fails fast on connection and the rest of the run proceeds.
  *
  * <p><b>Cleanup Docker container:</b>
  *

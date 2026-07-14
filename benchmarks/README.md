@@ -67,9 +67,11 @@ JFR profiles saved to: `build/jfr/*.jfr`
 
 > ⚠️ **`-Pjmh.includes` / `-Pjmh.excludes` DO NOT WORK.** With `me.champeau.jmh` 0.7.3 both are silently
 > ignored and the **entire** suite runs regardless — so a "filtered" run quietly becomes a multi-hour full
-> run that also re-measures benchmarks you didn't intend to touch. Earlier revisions of this README (and
-> `DatabaseBenchmark`'s javadoc) documented them as working; they are not. Use `-PjmhSuite`, which is
-> applied inside `build.gradle.kts` and does take effect.
+> run that also re-measures benchmarks you didn't intend to touch.
+>
+> Use **`-PjmhSuite=database|kafka|generators|regex`** for a named group, **`-PjmhInclude=<regex>`** for
+> anything finer (a single method), or **`-PjmhExclude=<regex>`** to skip a family. All three are applied
+> inside `build.gradle.kts` and do take effect.
 
 ### Higher-Confidence Runs
 

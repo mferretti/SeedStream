@@ -17,7 +17,7 @@ docker run -d --name pg-benchmark \
   postgres:17-alpine
 
 # 2. Run all database benchmarks
-./gradlew :benchmarks:jmh -Pjmh.includes=".*DatabaseBenchmark.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*DatabaseBenchmark.*"
 
 # 3. View results
 cat benchmarks/build/reports/jmh/results.json | python3 benchmarks/format_results.py
@@ -57,7 +57,7 @@ Override connection settings via system properties:
 
 ```bash
 ./gradlew :benchmarks:jmh \
-  -Pjmh.includes=".*DatabaseBenchmark.*" \
+  -PjmhInclude=".*DatabaseBenchmark.*" \
   -Djvm.args="-Ddb.url=jdbc:postgresql://myhost:5432/mydb \
               -Ddb.user=myuser \
               -Ddb.password=secret"
@@ -89,19 +89,19 @@ The benchmark runs a **4 × 2 × 2 matrix** = 16 configurations:
 
 ```bash
 # Flat inserts only
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkFlatInsert.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkFlatInsert.*"
 
 # Nested inserts only
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkNestedInsert.*"
+./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkNestedInsert.*"
 
 # Single strategy
 ./gradlew :benchmarks:jmh \
-  -Pjmh.includes=".*DatabaseBenchmark.*" \
+  -PjmhInclude=".*DatabaseBenchmark.*" \
   -Pjmh.params="transactionStrategy=per_batch"
 
 # Single batch size
 ./gradlew :benchmarks:jmh \
-  -Pjmh.includes=".*DatabaseBenchmark.*" \
+  -PjmhInclude=".*DatabaseBenchmark.*" \
   -Pjmh.params="batchSize=1000"
 ```
 
@@ -110,7 +110,7 @@ The benchmark runs a **4 × 2 × 2 matrix** = 16 configurations:
 When PostgreSQL is unavailable, exclude the suite entirely:
 
 ```bash
-./gradlew :benchmarks:jmh -Pjmh.excludes=".*DatabaseBenchmark.*"
+./gradlew :benchmarks:jmh -PjmhExclude=".*DatabaseBenchmark.*"
 ```
 
 ---
@@ -274,7 +274,7 @@ Add Java Flight Recorder to isolate bottlenecks:
 
 ```bash
 ./gradlew :benchmarks:jmh \
-  -Pjmh.includes=".*DatabaseBenchmark.*" \
+  -PjmhInclude=".*DatabaseBenchmark.*" \
   "-Djvm.args=-XX:+FlightRecorder \
     -XX:StartFlightRecording=filename=db_bench.jfr,duration=60s,settings=profile"
 ```

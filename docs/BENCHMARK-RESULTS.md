@@ -250,7 +250,7 @@ Nothing regressed. Changes vs the March 2026 run:
 | Protobuf serializer | previously **estimated**, now measured — and 2× slower than the estimate | estimates were wrong |
 | Primitives, JSON/CSV serializers | unchanged (1.0×) | control — confirms the above are real |
 | **Thread scaling** | structure-dependent (8 threads, 1M records): **3.6×** (nested invoice → file), **2.1×** (passport → file), **2.1×** (primitives), **1.7×** (Kafka) | only generation + serialization are parallel; the writer thread is serial |
-| **File write path** | **223 MB/s** — NFR-1's 500 MB/s target is **not met** | the docs claimed 600–800 MB/s; that was a projection, never measured. Gap is Jackson serialization, not disk (raw writer: 1,261 MB/s) |
+| **File write path** | **306 MB/s** (8 threads, 526-byte records) — NFR-1's 500 MB/s target **not met on this hardware** | the limit is **CPU**, not disk (2.3 GB/s) and not the writer thread (~930 MB/s). Generation + serialization are already parallel and already streaming. Recorded as *expected but unverified*; predicted met at ~10–12 cores. The old "600–800 MB/s" was a projection, never measured |
 
 ---
 
@@ -292,8 +292,10 @@ python3 benchmarks/format_results.py
 ```
 
 ⚠️ **`-Pjmh.includes` and `-Pjmh.excludes` do not work** with `me.champeau.jmh` 0.7.3 — they are silently
-ignored and the full suite runs anyway. (`DatabaseBenchmark`'s javadoc documents `-Pjmh.excludes` as an
-escape hatch; it is not one.) Use `-PjmhSuite`, which is applied inside `benchmarks/build.gradle.kts` and
-does take effect.
+ignored and the full suite runs anyway.
+
+Use `-PjmhSuite=database|kafka|generators|regex` for a named group, `-PjmhInclude=<regex>` for anything
+finer (a single method), or `-PjmhExclude=<regex>` to skip a family. All three are applied inside
+`benchmarks/build.gradle.kts` and do take effect.
 
 ⚠️ Each run **overwrites** `benchmarks/build/reports/jmh/results.json`. Archive it before the next run.

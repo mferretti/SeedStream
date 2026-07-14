@@ -103,12 +103,16 @@ import org.openjdk.jmh.annotations.Warmup;
  *
  * <p><b>Run Benchmarks:</b>
  *
+ * <p>⚠️ Use {@code -PjmhSuite} / {@code -PjmhInclude} / {@code -PjmhExclude}. Do <b>not</b> use
+ * {@code -Pjmh.includes} or {@code -Pjmh.excludes}: {@code me.champeau.jmh} 0.7.x silently ignores
+ * them, so a "filtered" run quietly becomes a full multi-hour run of every benchmark.
+ *
  * <pre>
  * # All Kafka benchmarks
- * ./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*"
+ * ./gradlew :benchmarks:jmh -PjmhSuite=kafka
  *
  * # Specific scenario (e.g., async only)
- * ./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkAsyncProducer.*"
+ * ./gradlew :benchmarks:jmh -PjmhInclude=".*benchmarkAsyncProducer.*"
  * </pre>
  *
  * <p><b>Skip Kafka Benchmarks:</b>
@@ -116,7 +120,7 @@ import org.openjdk.jmh.annotations.Warmup;
  * <p>To run benchmarks WITHOUT Kafka tests (useful when Kafka is not available):
  *
  * <pre>
- * ./gradlew :benchmarks:jmh -Pjmh.excludes=".*KafkaBenchmark.*"
+ * ./gradlew :benchmarks:jmh -PjmhExclude=".*KafkaBenchmark.*"
  * </pre>
  *
  * <p><b>Monitor Kafka Throughput:</b>

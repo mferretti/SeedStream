@@ -68,8 +68,18 @@ jmh {
     resultFormat.set("JSON")
     resultsFile.set(project.file("${project.layout.buildDirectory.get()}/reports/jmh/results.json"))
 
-    // Suite filter: ./gradlew :benchmarks:jmh -PjmhSuite=database|kafka|generators|regex
-    // Without -PjmhSuite, all benchmarks run (default JMH behaviour — match everything).
+    // Benchmark selection. Use these — NOT `-Pjmh.includes` / `-Pjmh.excludes`, which
+    // me.champeau.jmh 0.7.x silently ignores: a "filtered" run quietly becomes a full
+    // multi-hour run of every benchmark. These properties are applied here, so they work.
+    //
+    //   ./gradlew :benchmarks:jmh -PjmhSuite=database|kafka|generators|regex   (named group)
+    //   ./gradlew :benchmarks:jmh -PjmhInclude='.*benchmarkAsyncProducer.*'     (any regex)
+    //   ./gradlew :benchmarks:jmh -PjmhExclude='.*KafkaBenchmark.*'             (skip a family)
+    //
+    // Without any of them, all benchmarks run (default JMH behaviour — match everything).
+    if (project.hasProperty("jmhExclude")) {
+        excludes.set(listOf(project.property("jmhExclude") as String))
+    }
     if (project.hasProperty("jmhSuite")) {
         val suite = project.property("jmhSuite") as String
         val pattern = when (suite) {
@@ -80,7 +90,9 @@ jmh {
             else         -> throw GradleException("Unknown jmhSuite '$suite'. Valid values: database, kafka, generators, regex")
         }
         includes.set(pattern)
+    } else if (project.hasProperty("jmhInclude")) {
+        includes.set(listOf(project.property("jmhInclude") as String))
     }
-    // Do NOT set includes unconditionally here — me.champeau.jmh 0.7.x: an explicit
-    // includes.set(...) overrides -Pjmh.includes from the command line.
+    // Do NOT set includes unconditionally outside these branches — an explicit
+    // includes.set(...) would pin the filter and make the properties above inert.
 }

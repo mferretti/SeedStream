@@ -310,12 +310,18 @@ Validated throughput — JMH component benchmarks plus the July 2026 end-to-end 
 | Regex types (`regex:` patterns) | 1.2–5.1M records/sec |
 | Datafaker (names, emails, etc.) | 108K–1.1M records/sec |
 | Real-world (10-field record, E2E) | ~32–39K records/sec |
-| File I/O | 600–800 MB/s |
+| File write path (8 threads, 526-byte records) | **306 MB/s** |
 
 **Scaling**: worker threads parallelize generation and serialization; a single writer thread then drains to the
 destination. Speedup depends on how generation-heavy your structure is — measured on 1M records, 8 threads vs 1:
 a nested `invoice` scales **3.6×** (file), a flatter `passport` **2.1×**. Kafka scales worst (**1.7×**) because
 record compression runs on the single writer thread; `compression: none` is **+45% at 4 threads** and scales 2.2×.
+
+> **On the 500 MB/s design target**: not met on our reference machine, and the limit is **CPU, not I/O** — the
+> disk absorbs 2.3 GB/s and the writer thread sustains ~930 MB/s, but generation + serialization saturate
+> 6 cores at 306 MB/s. We predict the target is met at ~10–12 cores and would like to be proven right or wrong:
+> [one command, in docs/PERFORMANCE.md](docs/PERFORMANCE.md#file-io). Earlier versions of this table claimed
+> "600–800 MB/s" — that was a projection from an optimisation plan, never a measurement.
 
 > The E2E table above measures a **whole CLI process**, which carries ~1.5s of fixed JVM + locale startup — about
 > half the wall clock of a 100K-record run. Engine-only throughput is 2–3× higher (passport 258K rec/s, nested
