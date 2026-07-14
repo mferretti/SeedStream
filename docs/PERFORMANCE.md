@@ -169,22 +169,52 @@ pipeline cost.
 - Batch writes (1000 records per batch)
 - Eliminated redundant newLine() calls
 
-**Result**: ⚠️ **NFR-1's 500 MB/s file target is NOT met.** This document previously claimed "600-800 MB/s,
-exceeding the 500 MB/s target" — that figure was a *projection* from the optimization plan, never a
-measurement. Measured 14 Jul 2026:
+**Result**: ⚠️ **NFR-1's 500 MB/s file target is NOT met on the reference hardware, and cannot be — the limit
+is CPU, not I/O.** This document previously claimed "600-800 MB/s, exceeding the 500 MB/s target"; that figure
+was a *projection* from the optimization plan, never a measurement. Measured 14 Jul 2026, 1M records:
 
 | Path | Throughput | MB/s |
 |------|-----------:|-----:|
-| Raw `BufferedWriter` (no serialization) | 5,442,992 ops/s | **1,261 MB/s** |
-| `FileDestination` (serialize + 64KB buffer + batch) | 961,828 ops/s | **223 MB/s** |
-| Full pipeline, 8 workers, 526-byte records | 602,409 rec/s | **302 MB/s** |
+| Full pipeline, 8 workers, 526-byte records | 610,500 rec/s | **306 MB/s** |
+| Single writer thread ceiling (44-byte records) | 1,845,018 rec/s | (~930 MB/s at 526 B) |
+| Disk, buffered no-fsync (the path we use) | — | **2,300 MB/s** |
 | **NFR-1 target** | — | **500 MB/s** |
 
-The optimizations did work (`benchmarkFileDestinationWrite` 761K → 962K ops/s, **+26%**), but nowhere near
-the projected 3×. The remaining gap is **serialization, not disk**: raw buffered writing hits 1,261 MB/s on
-the same hardware, so Jackson's per-record `String` construction is the bottleneck. That is exactly what
-"Phase 3: Jackson streaming" was meant to fix — and it was deferred on the false premise that the target had
-already been met. See [DESIGN.md Issue #5](DESIGN.md).
+**Neither the disk nor the writer thread binds before 500 MB/s does.** Generation + Jackson serialization —
+both already parallel, both already streaming (see [Custom & Regex Types](DESIGN.md)) — saturate the CPU
+first. Per-record cost is ~5.7 µs single-threaded; 500 MB/s at 526 B/record needs ~996K rec/s, roughly
+**1.6× more CPU than a 6-core 15 W mobile Ryzen has**.
+
+> ⚠️ **`benchmarkRawFileWrite` is not a stable reference.** It measured 5.4M ops/s on 13 Jul and 3.7M on
+> 14 Jul (**-28%**) on an idle-vs-thermally-loaded machine, with no code change in between. An earlier
+> revision of this document quoted it as "1,261 MB/s" to four significant figures. Do not do that. It is a
+> rough ceiling indicator, nothing more.
+
+#### NFR-1 status: expected, not verified
+
+We believe NFR-1 is achievable and we cannot prove it, because we do not own hardware that can reach it. That
+is a hardware limit, not a design limit, and the numbers above locate it precisely:
+
+- The **disk** sustains 1.0–1.2 GB/s and absorbs 2.3 GB/s buffered — 4.6× the target.
+- The **single writer thread** tops out at ~1.85M rec/s ≈ 930 MB/s at 526 B — 1.9× the target.
+- **CPU** delivers 306 MB/s on 6 cores. This is the binding constraint.
+
+**Prediction (falsifiable):** at the measured per-core cost, NFR-1 should be met at roughly **10–12 physical
+cores** of this class — fewer with faster desktop/server cores — and the architecture should not get in the
+way until ~930 MB/s, where the writer thread becomes the next ceiling.
+
+**If you have better hardware, please falsify this.** One command:
+
+```bash
+./gradlew :cli:installDist
+./cli/build/install/cli/bin/cli execute \
+    --job config/jobs/perf_probe_wide_file_json.yaml \
+    --count 1000000 --threads $(nproc)
+```
+
+Read the `Time elapsed: … (N records/sec)` line. The record is 526 bytes, so
+`MB/s = N × 526 / 1048576`. Open an issue with your core count, CPU model and the number — whether it
+confirms the prediction or blows it up. Both are useful; the second is more useful.
 
 #### Is 500 MB/s even reachable on this hardware?
 
@@ -207,9 +237,9 @@ Two consequences worth stating plainly:
 
 - **The disk has never been the constraint.** A 100K-record run writes ~24 MB, which never leaves page cache.
   Every file-destination number in this document is CPU-bound, not I/O-bound.
-- **Phase 3 is not blocked by hardware.** Raw Java `BufferedWriter` reaches 1,261 MB/s, consistent with the
-  2.3 GB/s `dd` figure once String encoding is added. The serializer gives up roughly 4–5× between what the
-  JVM can push to this disk and what SeedStream currently ships.
+- **Nor is the writer thread, yet.** It sustains ~1.85M rec/s (~930 MB/s at 526 B), well clear of the target.
+  It only becomes the ceiling on hardware fast enough to meet NFR-1 in the first place — which is why the
+  worker-side chunk coalescing landed (see CHANGELOG): it raises that ceiling for machines we cannot test.
 
 Caveat: this is one drive on one laptop. A CI runner on a throttled cloud volume or spinning disk could
 genuinely be disk-bound at 500 MB/s. The claim is "achievable on the reference hardware", not "disk never

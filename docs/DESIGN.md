@@ -895,13 +895,29 @@ Target: 500 MB/s (2.3x gap)
 - ✅ Automatic batch flush on `flush()` and `close()` to prevent data loss
 - **Expected Result**: 600-800 MB/s (3x improvement, exceeds 500 MB/s target)
 
-**Phase 3: Jackson Streaming** (DEFERRED - Low Priority):
-- ❌ Use `JsonGenerator` to write directly to OutputStream (eliminates String allocation)
-- **Expected Gain**: +10-20% (marginal improvement given Phase 1 & 2 results)
-- **Effort**: High (4-6 hours - requires interface refactoring, extensive testing)
-- **Decision**: Deferred to TASK-039 (low priority) - target already met with Phase 1 & 2
-  ⚠️ **This premise was wrong.** The target was *not* met (223 MB/s vs 500 MB/s — see Result below), and
-  serialization is precisely the remaining bottleneck. Phase 3 is the fix, not a marginal +10-20%.
+**Phase 3: Jackson Streaming** — ✅ **DONE** (this section is kept for history; the "DEFERRED" note below was
+wrong twice over):
+- ✅ `JsonSerializer.createStreamWriter` holds one `JsonGenerator` open for the session and writes bytes
+  straight to the `OutputStream` via a flush-suppressing proxy. No intermediate `String`.
+- ✅ `JsonSerializer.serializeToBytes` uses `writeValueAsBytes`. No intermediate `String`.
+- ✅ `ExecuteCommand` runs serialization on the **parallel workers** (`supportsSerializedWrite()`), not the
+  writer thread.
+
+  ⚠️ **Two corrections worth keeping visible.** The original decision here — *"Deferred, low priority: target
+  already met with Phase 1 & 2"* — was false: the target was never met. But the correction *to* that
+  correction was also false: a July 2026 review claimed "serialization is precisely the remaining bottleneck,
+  Phase 3 is the fix", **without reading the code** — Phase 3 had already shipped. Both errors came from
+  trusting this document over the source. The bottleneck is neither disk nor String allocation; it is CPU
+  (see Result).
+
+**Phase 4: Worker-side chunk coalescing** — ✅ **DONE**:
+- ✅ Workers fold a chunk of serialized payloads into one `byte[]`; the writer issues one `write()` per chunk
+  instead of two per record. Gated on `supportsWriteCoalescing()` so Kafka (one message per payload, no
+  newline) is unaffected.
+- **Measured**: writer-thread ceiling 1.64M → **1.85M rec/s (+12.5%)** on 44-byte records; **no significant
+  effect** on 526-byte records, where the saved call overhead is offset by the cost of building the blob.
+  It raises a ceiling that only binds on hardware faster than ours — see NFR-1 status in
+  [PERFORMANCE.md](PERFORMANCE.md).
 
 **Implementation Details**:
 
@@ -934,34 +950,42 @@ private void flushBatch() throws IOException {
 }
 ```
 
-**Result**: ⚠️ **The 600-800 MB/s figure was a projection, and it was never achieved. NFR-1's 500 MB/s
-file target is NOT met.**
+**Result**: ⚠️ **The 600-800 MB/s figure was a projection and was never achieved. NFR-1's 500 MB/s target is
+not met on the reference hardware — and the limit is CPU, not I/O.**
 
-Measured 14 July 2026 (`DestinationBenchmark`, 243-byte JSON record, high-fidelity JMH config):
+Measured 14 July 2026, 1M records, 526-byte JSON record (Ryzen 5 PRO 4650U, 6 cores / 12 threads, 15 W):
 
-| Path | Throughput | MB/s |
-|------|-----------:|-----:|
-| Raw `BufferedWriter` (no serialization) | 5,442,992 ops/s | **1,261 MB/s** |
-| `FileDestination` (serialize + 64KB buffer + 1000-record batch) | 961,828 ops/s | **223 MB/s** |
-| Full pipeline, 8 workers, 526-byte records | 602,409 rec/s | **302 MB/s** |
-| **NFR-1 target** | — | **500 MB/s** |
+| Threads | Throughput | MB/s |
+|--------:|-----------:|-----:|
+| 1 | 170,386 rec/s | 85 |
+| 4 | 506,072 rec/s | 254 |
+| 8 | 610,500 rec/s | **306** |
+| **NFR-1 target** | ~996K rec/s | **500** |
 
-The Phase 1 + Phase 2 optimisations *did* work — `benchmarkFileDestinationWrite` went from 761K to
-962K ops/s (**+26%**) — but that is a long way from the projected 3×, and the write path still sits at
-roughly **half the NFR-1 target** and ~5× below the raw `BufferedWriter` ceiling on the same hardware.
+**The three candidate bottlenecks, measured:**
 
-The gap is **serialization, not I/O**: raw buffered writing reaches 1,261 MB/s on this disk, so the
-remaining cost is Jackson turning each record into a `String`. That is exactly what **Phase 3 (Jackson
-streaming, deferred above as "target already met")** was meant to address — and the premise for
-deferring it was false. Phase 3 should be reconsidered if the 500 MB/s target is still wanted.
+| Layer | Measured ceiling | Binds before 500 MB/s? |
+|-------|-----------------:|:----------------------:|
+| Disk (buffered, no fsync — the path we use) | 2,300 MB/s | no (4.6× headroom) |
+| Single writer thread | ~1.85M rec/s ≈ 930 MB/s @ 526 B | no (1.9× headroom) |
+| **CPU — generation + serialization** | **306 MB/s @ 6 cores** | **yes** |
 
-**The hardware is not the limit.** Direct measurement of the reference disk (14 July 2026, SK Hynix
-HFS512GDE9X081N NVMe, ext4): 1.2 GB/s `O_DIRECT` sequential, **1.0–1.2 GB/s sustained across 64 GB with no
-SLC-cache cliff**, and **2.3 GB/s** on the buffered no-fsync path that `FileDestination` actually uses.
-NFR-1's 500 MB/s is 22% of that path. Note also that a 100K-record benchmark writes ~24 MB and never
-leaves page cache — so no file-destination measurement in this project has ever touched the disk. The
-target is reachable; the work is in the serializer. See
-[PERFORMANCE.md → File I/O](PERFORMANCE.md#file-io) for the full disk characterisation.
+Generation and Jackson serialization already run **in parallel on the workers** and already stream without
+an intermediate `String` (Phase 3, above). They saturate the CPU first. Per-record cost is ~5.7 µs
+single-threaded; 500 MB/s needs ~996K rec/s, about **1.6× more CPU than this laptop has**.
+
+So NFR-1 is **expected but unverified**: we believe the design meets it and we cannot prove it, because we do
+not own hardware fast enough. The prediction — met at ~10–12 physical cores of this class, with the writer
+thread as the next ceiling around 930 MB/s — is falsifiable, and
+[PERFORMANCE.md → NFR-1 status](PERFORMANCE.md#file-io) gives a one-command reproduction for anyone with
+bigger iron. Contributions of numbers, confirming or refuting, are welcome.
+
+**Two lessons, recorded because they cost real time:**
+1. `DestinationBenchmark`'s 962K ops/s (the source of the widely-quoted "223 MB/s") measures
+   `FileDestination.write()` → the `streamWriter` path. **The CLI never takes that path for JSON** — it takes
+   the serialized-write path. The benchmark was measuring dead code relative to the real pipeline.
+2. Every wrong turn in this section came from trusting this document instead of the source or a profiler.
+   Measure, then write.
 
 **Trade-offs**:
 - **Memory**: +300KB per FileDestination instance (1000 records × 300 bytes batch buffer)

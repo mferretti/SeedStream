@@ -31,12 +31,14 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 >   *on the calling thread* — i.e. on the single writer thread. `compression: none` is **+45% at 4 threads**
 >   (103.5K vs 71.6K rec/s) and scales 2.2×. `KafkaProducer` is thread-safe, so letting workers send directly
 >   would likely recover most of the gap.
-> - **NFR-1's 500 MB/s file target is NOT met**: `FileDestination` measures **223 MB/s** (raw `BufferedWriter`
->   on the same disk: 1,261 MB/s). The "600–800 MB/s achieved" in the docs was a projection, never a
->   measurement. The gap is Jackson serialization, not disk — the reference NVMe sustains 1.0–1.2 GB/s with
->   no SLC cliff and absorbs 2.3 GB/s on the buffered path `FileDestination` uses, so the target sits at 22%
->   of available bandwidth. A 100K-record run writes ~24 MB and never leaves page cache: **no file benchmark
->   in this project has ever touched the disk.**
+> - **NFR-1's 500 MB/s file target is not met on this hardware, and the limit is CPU.** The full pipeline
+>   reaches **306 MB/s** (8 threads, 526-byte records, 1M records). Neither the disk (2.3 GB/s buffered) nor
+>   the single writer thread (~1.85M rec/s ≈ 930 MB/s) binds first — generation + Jackson serialization
+>   saturate the CPU. Both already run in parallel on the workers and already stream without an intermediate
+>   `String`; there is no cheap fix left. NFR-1 is now recorded as **expected but unverified**, with a
+>   falsifiable prediction (~10–12 cores) and a one-command reproduction for anyone with better hardware.
+> - A 100K-record run writes ~24 MB and never leaves page cache: **no file benchmark in this project has ever
+>   touched the disk.** Every file number here is a CPU measurement.
 > - **Protobuf serialization was measured for the first time** and is the *slowest* format, ~2× slower than
 >   JSON — the previous "~2.5M ops/s (est.)" figures were optimistic guesses.
 >
@@ -56,8 +58,9 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 | **Datafaker Generation (isolated)** | 108K-1.1M ops/s | ✅ 7-65× faster since `FakerCache` |
 | **Regex Types (isolated)** | 1.2-5.1M ops/s | ✅ Cheaper than a Datafaker name |
 | **Thread Efficiency (8 threads, 1M records)** | 1.7×–3.6× (structure-dependent) | ✅ Only generation is parallel; writer is serial |
-| **File write path** | 223 MB/s | ❌ NFR-1 target is 500 MB/s — not met (CPU-bound, not disk) |
-| **Disk ceiling (reference NVMe)** | 2.3 GB/s buffered / 1.1 GB/s sustained | ✅ Hardware is not the limit |
+| **File write path (8T, 526 B, 1M records)** | 306 MB/s | ⚠️ NFR-1 target is 500 MB/s — CPU-bound; expected but unverified |
+| **Single writer thread ceiling** | ~1.85M rec/s (~930 MB/s @ 526 B) | ✅ Not the binding constraint |
+| **Disk ceiling (reference NVMe)** | 2.3 GB/s buffered / 1.1 GB/s sustained | ✅ Not the binding constraint |
 | **Memory Usage** | 22-70MB typical | ✅ Efficient |
 | **GC Overhead** | <2.63% | ✅ Healthy |
 
