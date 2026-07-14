@@ -493,35 +493,7 @@ public class ExecuteCommand implements Callable<Integer> {
             .workerThreads(workerThreads)
             .workerCleanup(FakerCache::clear);
 
-    // When the destination can append independently-encoded records, serialize on the worker
-    // threads (parallel) and leave the single writer thread to perform ordered I/O only. Otherwise
-    // serialize on the writer thread via destination::write (e.g. Avro OCF, CSV header handling).
-    if (destination.supportsSerializedWrite()) {
-      log.info(
-          "Parallel serialization enabled for {}/{}",
-          destination.getDestinationType(),
-          serializer.getFormatName());
-      engineBuilder.recordSerializer(serializer::serializeToBytes);
-
-      // When the destination can also coalesce a chunk of independently-serialized payloads into
-      // one write (e.g. newline-delimited files), fold on the worker side and hand the writer a
-      // pre-coalesced blob per chunk instead of chunkSize individual payloads. Destinations where
-      // each payload must stay its own write (e.g. Kafka: one payload = one message) opt out via
-      // supportsWriteCoalescing() and keep the per-record writeSerialized path.
-      if (destination.supportsWriteCoalescing()) {
-        log.info(
-            "Write coalescing enabled for {}/{}",
-            destination.getDestinationType(),
-            serializer.getFormatName());
-        engineBuilder
-            .serializedWriter(destination::writeSerializedChunk)
-            .chunkFolder(destination::coalesce);
-      } else {
-        engineBuilder.serializedWriter(destination::writeSerialized);
-      }
-    } else {
-      engineBuilder.recordWriter(destination::write);
-    }
+    configureWritePath(engineBuilder, destination, serializer);
 
     GenerationEngine engine = engineBuilder.build();
 
@@ -846,6 +818,52 @@ public class ExecuteCommand implements Callable<Integer> {
         };
 
     return new StructureRegistry(loader);
+  }
+
+  /**
+   * Wire the engine's write path to the destination's capabilities.
+   *
+   * <p>Three cases, most parallel first:
+   *
+   * <ul>
+   *   <li><b>Serialize + coalesce</b> — the destination appends independently-encoded records
+   *       <i>and</i> can take a whole chunk as one write (newline-delimited files). Serialization
+   *       and chunk folding both run on the worker threads; the writer issues one {@code write()}
+   *       per chunk.
+   *   <li><b>Serialize only</b> — each payload must stay its own write (Kafka: one payload = one
+   *       message, no newline framing), so the destination opts out of coalescing via {@link
+   *       DestinationAdapter#supportsWriteCoalescing()}. Serialization is still parallel.
+   *   <li><b>Neither</b> — the writer thread serializes via {@code destination::write} (Avro OCF
+   *       needs its ordered container; CSV needs the record's keys to emit a header).
+   * </ul>
+   */
+  private void configureWritePath(
+      GenerationEngine.GenerationEngineBuilder engineBuilder,
+      DestinationAdapter destination,
+      FormatSerializer serializer) {
+
+    if (!destination.supportsSerializedWrite()) {
+      engineBuilder.recordWriter(destination::write);
+      return;
+    }
+
+    log.info(
+        "Parallel serialization enabled for {}/{}",
+        destination.getDestinationType(),
+        serializer.getFormatName());
+    engineBuilder.recordSerializer(serializer::serializeToBytes);
+
+    if (destination.supportsWriteCoalescing()) {
+      log.info(
+          "Write coalescing enabled for {}/{}",
+          destination.getDestinationType(),
+          serializer.getFormatName());
+      engineBuilder
+          .serializedWriter(destination::writeSerializedChunk)
+          .chunkFolder(destination::coalesce);
+    } else {
+      engineBuilder.serializedWriter(destination::writeSerialized);
+    }
   }
 
   /**

@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -189,7 +190,7 @@ public class GenerationEngine {
       // into a singleton list so the writer's per-item loop (see generateWorkerRecords/
       // runSingleThreaded) still applies unchanged — it just iterates once instead of chunkSize
       // times.
-      Function<List<byte[]>, List<byte[]>> chunkTransform =
+      UnaryOperator<List<byte[]>> chunkTransform =
           chunkFolder == null ? null : payloads -> List.of(chunkFolder.fold(payloads));
       runPipeline(
           count,
@@ -216,7 +217,7 @@ public class GenerationEngine {
       long count,
       Function<Random, P> produce,
       Consumer<P> consume,
-      Function<List<P>, List<P>> chunkTransform)
+      UnaryOperator<List<P>> chunkTransform)
       throws InterruptedException {
     if (count < singleThreadedThreshold) {
       log.info("Small job ({} records), using single thread", count);
@@ -232,7 +233,7 @@ public class GenerationEngine {
       long count,
       Function<Random, P> produce,
       Consumer<P> consume,
-      Function<List<P>, List<P>> chunkTransform) {
+      UnaryOperator<List<P>> chunkTransform) {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
     Random random = randomProvider.getRandom();
 
@@ -279,7 +280,7 @@ public class GenerationEngine {
       long count,
       Function<Random, P> produce,
       Consumer<P> consume,
-      Function<List<P>, List<P>> chunkTransform)
+      UnaryOperator<List<P>> chunkTransform)
       throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
@@ -425,7 +426,7 @@ public class GenerationEngine {
       long totalChunks,
       RandomProvider randomProvider,
       Function<Random, P> produce,
-      Function<List<P>, List<P>> chunkTransform,
+      UnaryOperator<List<P>> chunkTransform,
       BlockingQueue<List<P>> queue,
       ProgressTracker progress)
       throws InterruptedException {
