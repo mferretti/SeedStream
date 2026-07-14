@@ -764,12 +764,13 @@ For more troubleshooting, see [README.md](../README.md#troubleshooting) or open 
 
 ## Performance Roadmap
 
-**Completed** (March 2026):
-- ✅ Primitive generators: 12-258M ops/s
-- ✅ Datafaker integration: 13-154K ops/s
+**Completed** (figures refreshed from the 14 July 2026 re-run — the March numbers below were stale by up to 65×):
+- ✅ Primitive generators: 4–252M ops/s
+- ✅ Datafaker integration: 108K–1.1M ops/s (was recorded as 13–154K; the thread-local `FakerCache` landed after that run)
+- ✅ Regex types (`regex:` via RgxGen): 1.2–5.1M ops/s
 - ✅ File I/O optimization: 25K-50K records/sec per format
 - ✅ Kafka destination: 25K-33K records/sec (JSON/CSV/Protobuf)
-- ✅ Protobuf serialization: ~2.5M ops/s, 50-70% smaller output
+- ✅ Protobuf serialization: 307K–1.5M ops/s, 50-70% smaller output — **the slowest format, ~2× behind JSON**, not the "~2.5M ops/s" previously estimated here
 - ✅ E2E benchmarks: 54 tests across 2 destinations × 3 formats × 3 threads × 3 memory configs
 - ✅ Database E2E benchmarking: invoice nested structure (invoices → issuer, recipient, line_items)
 - ✅ Database JMH component benchmarks: flat (57K–85K ops/s) and nested (2.5K–3.3K ops/s), 16-configuration matrix (4 batch sizes × 2 transaction strategies)
@@ -778,6 +779,38 @@ For more troubleshooting, see [README.md](../README.md#troubleshooting) or open 
 **Planned**:
 - 📋 Distributed generation (external orchestrator assigning non-overlapping seeds and record ranges across multiple instances)
 - 📋 GPU acceleration for primitives (experimental)
+
+---
+
+## Lessons Learned
+
+Kept because this project has now paid for each of these twice.
+
+1. **Verify how the library is actually used before blaming its performance.** The original analysis blamed
+   Datafaker's YAML parsing. The real cause was *our* code defeating Datafaker's internal caching by
+   constructing a new `Faker` per field. A thread-local cache produced a **7–65×** improvement with a trivial
+   change — no library was at fault.
+
+2. **Profile before optimising; a hot method is not automatically a bug.** JFR showed 98% of CPU inside
+   Datafaker. That was normal operation, not a defect. The bug was the *call pattern* around it.
+
+3. **Component benchmarks do not predict end-to-end throughput** — and worse, they can measure a code path
+   the product never takes. `DestinationBenchmark` measures `FileDestination.write()` → the `streamWriter`
+   path, but the CLI takes the *serialized-write* path for JSON. Every "223 MB/s" claim derived from it was
+   describing dead code.
+
+4. **Benchmark this engine with 1M+ records.** At 100–200K, fixed JVM + locale startup (~1.5 s) and JIT
+   warmup dominate, understating throughput and *hiding thread scaling entirely*. Conclusions drawn at 100K
+   have been overturned at 1M more than once.
+
+5. **A number that swings run-to-run is not a number.** `benchmarkRawFileWrite` moved **-28%** between two
+   runs with no code change, on thermals alone. It had been quoted in the docs to four significant figures.
+
+6. **Never write a measurement you have not taken.** The "600–800 MB/s" file-I/O figure lived in the README,
+   DESIGN.md and PERFORMANCE.md for months. It was an *Expected Result* from an optimisation plan that was
+   never run. It then caused a real fix (Jackson streaming) to be deferred as "unnecessary — target already
+   met", and later caused that same fix to be *re-proposed* by someone who trusted the doc instead of reading
+   the code, by which time it had already shipped. Two wasted efforts from one unmeasured number.
 
 ---
 

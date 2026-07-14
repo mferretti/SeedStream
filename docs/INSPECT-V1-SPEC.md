@@ -248,4 +248,41 @@ datagenerator inspect schema.sql --nest --output config/structures/
 - OpenAPI already nests natively (`$ref` → `object`, `array` of `$ref` → `array[object[…]]`), so
   `--nest` is **ignored** for OpenAPI input (a warning is logged). DDL is the sole target.
 
-See [INSPECT-NESTING-PLAN.md](INSPECT-NESTING-PLAN.md) for the full algorithm and edge-case table.
+#### Algorithm (DDL)
+
+1. **Parse** all `CREATE TABLE` → structures + collect FK edges `edge(childTable, childCol, parentTable, parentCol)`
+   (gathered by `tableForeignKeys` / `inlineForeignKey` in `DdlInspector`).
+2. **Build a directed graph** parent → child, inverting each FK edge.
+3. **Classify each relation**:
+   - `1:1` if the child FK column is also `UNIQUE`/PK → emit `object[child]`.
+   - `1:n` otherwise → emit `array[object[child], <count>]`.
+   - **M:N** if the table is a pure junction (PK = exactly its two FK columns, no other non-FK payload
+     columns) → do **not** nest; keep both refs flat; warn.
+4. **Cycle detection** (DFS / Tarjan SCC). Any back-edge → leave that FK flat `ref[]`, warn (`auto`) or
+   error (`all`).
+5. **Embedding decision**: a child is embedded into **at most one** parent (first in declaration order —
+   deterministic). Additional parents referencing the same child keep a flat `ref[]`, so generated data is
+   never duplicated or contradictory. Warn on the demoted edges.
+6. **Emit**: the parent gains the nested field; the child's FK column to that parent is dropped from the
+   embedded copy (redundant once nested) but kept in any surviving top-level copy.
+
+Note the shipped behaviour deliberately departs from the original design on one point: **every structure is
+still written to disk**, even when embedded, because `object[child]` auto-loads `child.yaml` and suppressing
+the file would break the reference. "Demotion" is a warning, never file suppression.
+
+#### Edge cases
+
+| Case | Handling |
+|---|---|
+| Self-referencing FK (`employee.manager_id → employee`) | cycle → stay flat `ref[]`, warn |
+| Cycle A→B→A | break at the back-edge, flat `ref[]` on that edge; warn (`auto`) / error (`all`) |
+| Composite FK (multi-column) | SeedStream `ref`/nesting is single-field → stay flat, warn |
+| M:N junction table | keep both refs flat, do not nest, warn |
+| Child referenced by 2+ parents | embed into the first parent only; others flat `ref[]`, warn |
+| 1:1 (`UNIQUE`/PK FK) | `object[child]` instead of an array |
+| Orphan table (no FK either way) | unchanged, top-level |
+
+All warnings flow through the existing `Inspection.warnings` channel and the CLI summary.
+
+**Implementation:** `NestingOptions`, `NestingPlanner`, `Pluralizer`; entry point
+`DdlInspector.inspect(Path, NestingOptions)`.

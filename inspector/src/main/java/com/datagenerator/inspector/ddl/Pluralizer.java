@@ -24,7 +24,7 @@ import java.util.Set;
  * {@code invoice_item} becomes the parent field {@code invoice_items}. Only the final word of a
  * {@code snake_case} name is inflected so {@code invoice_item -> invoice_items}, not {@code
  * invoices_item}. This is heuristic, not linguistically complete — irregular plurals are out of
- * scope (the user can rename the field). See {@code docs/INSPECT-NESTING-PLAN.md} §5.
+ * scope (the user can rename the field). See {@code docs/INSPECT-V1-SPEC.md} §9.
  */
 public final class Pluralizer {
 

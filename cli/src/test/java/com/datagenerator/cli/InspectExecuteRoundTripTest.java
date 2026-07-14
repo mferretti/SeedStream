@@ -31,9 +31,9 @@ import picocli.CommandLine;
 
 /**
  * End-to-end round trip for the {@code inspect --nest} pipeline that {@code
- * docs/INSPECT-NESTING-PLAN.md} §9 calls for but the unit tests stop short of: inspect a DDL, write
- * the structure YAML, then actually {@code execute} a job against it and assert the generated
- * output has the expected embedded shape.
+ * docs/INSPECT-V1-SPEC.md} §9 calls for but the unit tests stop short of: inspect a DDL, write the
+ * structure YAML, then actually {@code execute} a job against it and assert the generated output
+ * has the expected embedded shape.
  *
  * <p>Unlike the {@code *IT} tests this needs no Testcontainers — it is pure in-process file I/O —
  * so it lives in the default {@code test} task (untagged) and runs in CI, not in {@code

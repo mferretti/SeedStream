@@ -40,7 +40,7 @@ This benchmark measures **real-world, end-to-end performance** using the complet
 
 ## Complete Results
 
-_Showing first 5 rows — full data in [`benchmarks/e2e_results.csv`](e2e_results.csv)_
+_Showing first 5 rows — full data in [`benchmarks/e2e_results.csv`](../benchmarks/e2e_results.csv)_
 
 ```csv
 destination,format,threads,memory_mb,record_count,duration_ms,throughput_rps,heap_used_mb,heap_max_mb,gc_time_ms,gc_count,gc_time_percent,status,error

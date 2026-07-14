@@ -22,7 +22,7 @@ import java.util.Locale;
 /**
  * Controls DDL foreign-key inversion: whether {@code 1:n}/{@code 1:1} FKs are turned into nested
  * {@code array[object[child], min..max]} / {@code object[child]} fields on the parent structure
- * instead of the default flat {@code ref[parent.col]}. See {@code docs/INSPECT-NESTING-PLAN.md}.
+ * instead of the default flat {@code ref[parent.col]}. See {@code docs/INSPECT-V1-SPEC.md} §9.
  *
  * @param mode nesting strategy
  * @param defaultMin lower bound for a synthesized array when the source gives no hint

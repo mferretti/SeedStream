@@ -18,7 +18,7 @@ We release security updates for the following versions:
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Known open CVEs (CVSS 7.0+)** | ⚠️ tracked | The canonical, time-stamped list of currently-open CVEs and their suppression expiry dates lives in the README's [Security](../README.md#security) section (single source of truth — avoids drift between docs) |
+| **Known open CVEs (CVSS 7.0+)** | ⚠️ tracked | The canonical, time-stamped list of currently-open CVEs and their suppression expiry dates lives in the README's [Security](README.md#security) section (single source of truth — avoids drift between docs) |
 | **Dependency Versions** | ✅ **Latest Stable** | All libraries pinned in `gradle/libs.versions.toml` |
 | **OWASP Dependency-Check** | ✅ **Enabled** | Automated scanning in CI/CD pipeline (fails build on CVSS ≥ 7.0) |
 | **Suppressions** | ⏳ time-boxed | Every suppression carries an expiry date; CI re-fails on expiry. See README Security section |
@@ -123,7 +123,7 @@ We actively monitor dependencies for known vulnerabilities:
 open core/build/reports/dependency-check-report.html
 ```
 
-**Current Status**: open CVEs (with suppression expiry dates) are tracked in the README [Security](../README.md#security) section — the single source of truth.
+**Current Status**: open CVEs (with suppression expiry dates) are tracked in the README [Security](README.md#security) section — the single source of truth.
 
 ### 3. Network Security
 

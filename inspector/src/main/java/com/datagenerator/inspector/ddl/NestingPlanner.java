@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  * array[object[child]]} / {@code object[child]} fields on the parent structure, the direction
  * SeedStream nests (parent embeds child) versus the direction a DB declares them (child references
  * parent). Pure and unit-testable: it takes neutral {@link TableInfo} records, not JSQLParser
- * types. See {@code docs/INSPECT-NESTING-PLAN.md}.
+ * types. See {@code docs/INSPECT-V1-SPEC.md} §9.
  *
  * <p>Safety: cycles (incl. self-references), composite FKs, and M:N junction tables are never
  * nested — they keep their flat {@code ref[]} and emit a warning ({@code AUTO}) or error ({@code

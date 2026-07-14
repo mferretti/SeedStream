@@ -269,7 +269,7 @@ datagenerator inspect schema.sql --nest --output config/structures/
 # array multiplicity defaults to 1..10; override with --nest-default-count 2..5
 ```
 
-`--nest` (= `--nest=auto`) keeps cycles, composite FKs, and M:N junction tables flat (with a warning); `--nest=all` errors on a true cycle instead. A `UNIQUE`/PK foreign key nests as `object[child]` (1:1). OpenAPI specs already declare their own nesting (`$ref` → `object[...]`, `array` of `$ref` → `array[object[...], min..max]`), so `--nest` is ignored for OpenAPI input. See [docs/INSPECT-NESTING-PLAN.md](docs/INSPECT-NESTING-PLAN.md) and spec §9.
+`--nest` (= `--nest=auto`) keeps cycles, composite FKs, and M:N junction tables flat (with a warning); `--nest=all` errors on a true cycle instead. A `UNIQUE`/PK foreign key nests as `object[child]` (1:1). OpenAPI specs already declare their own nesting (`$ref` → `object[...]`, `array` of `$ref` → `array[object[...], min..max]`), so `--nest` is ignored for OpenAPI input. See [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) §9.
 
 **After inspection**: review and adjust any commented fields, then create a job YAML pointing at the output directory and run `execute` as normal.
 

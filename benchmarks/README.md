@@ -3,7 +3,7 @@
 This guide explains **how to run** SeedStream benchmarks to measure performance.
 
 **For performance results, analysis, and tuning guidance**, see:
-- **[../docs/PERFORMANCE-STATUS.md](../docs/PERFORMANCE-STATUS.md)** - Current performance status
+- **[../docs/PERFORMANCE.md](../docs/PERFORMANCE.md)** - Current performance status, tuning and hardware guidance
 - **[../docs/E2E-TEST-RESULTS.md](../docs/E2E-TEST-RESULTS.md)** - Full E2E test results
 - **[../docs/BENCHMARK-RESULTS.md](../docs/BENCHMARK-RESULTS.md)** - JMH component results
 - **[../docs/PERFORMANCE.md](../docs/PERFORMANCE.md)** - Performance guide and tuning
@@ -201,10 +201,10 @@ MEMORY_CONFIGS="512m" ./run_e2e_test.sh   # Default: 256m 512m 1024m
 - `build/reports/jmh/results.json` - JMH component results (JSON format)
 
 **Analysis & Results:** See `../docs/` directory
-- [PERFORMANCE-STATUS.md](../docs/PERFORMANCE-STATUS.md) - Current performance summary
+- [PERFORMANCE.md](../docs/PERFORMANCE.md) - Current performance summary
 - [E2E-TEST-RESULTS.md](../docs/E2E-TEST-RESULTS.md) - Full E2E results
 - [BENCHMARK-RESULTS.md](../docs/BENCHMARK-RESULTS.md) - JMH component results
-- [BASELINE-ANALYSIS.md](../docs/BASELINE-ANALYSIS.md) - Performance baseline analysis
+- [BENCHMARK-RESULTS.md](../docs/BENCHMARK-RESULTS.md) - Latest JMH results (14 Jul 2026)
 
 ---
 
@@ -246,7 +246,7 @@ docker exec kafka-benchmark kafka-broker-api-versions.sh \
 ## Related Documentation
 
 **Performance:**
-- [../docs/PERFORMANCE-STATUS.md](../docs/PERFORMANCE-STATUS.md) - Current status & key metrics
+- [../docs/PERFORMANCE.md](../docs/PERFORMANCE.md) - Current status & key metrics
 - [../docs/PERFORMANCE.md](../docs/PERFORMANCE.md) - Performance guide & tuning
 - [../docs/E2E-TEST-RESULTS.md](../docs/E2E-TEST-RESULTS.md) - Full E2E results
 - [../docs/BENCHMARK-RESULTS.md](../docs/BENCHMARK-RESULTS.md) - Component results
