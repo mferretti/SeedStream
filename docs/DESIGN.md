@@ -955,6 +955,14 @@ remaining cost is Jackson turning each record into a `String`. That is exactly w
 streaming, deferred above as "target already met")** was meant to address — and the premise for
 deferring it was false. Phase 3 should be reconsidered if the 500 MB/s target is still wanted.
 
+**The hardware is not the limit.** Direct measurement of the reference disk (14 July 2026, SK Hynix
+HFS512GDE9X081N NVMe, ext4): 1.2 GB/s `O_DIRECT` sequential, **1.0–1.2 GB/s sustained across 64 GB with no
+SLC-cache cliff**, and **2.3 GB/s** on the buffered no-fsync path that `FileDestination` actually uses.
+NFR-1's 500 MB/s is 22% of that path. Note also that a 100K-record benchmark writes ~24 MB and never
+leaves page cache — so no file-destination measurement in this project has ever touched the disk. The
+target is reachable; the work is in the serializer. See
+[PERFORMANCE.md → File I/O](PERFORMANCE.md#file-io) for the full disk characterisation.
+
 **Trade-offs**:
 - **Memory**: +300KB per FileDestination instance (1000 records × 300 bytes batch buffer)
 - **Latency**: Records buffered until batch full (acceptable for bulk generation)

@@ -186,6 +186,37 @@ the same hardware, so Jackson's per-record `String` construction is the bottlene
 "Phase 3: Jackson streaming" was meant to fix — and it was deferred on the false premise that the target had
 already been met. See [DESIGN.md Issue #5](DESIGN.md).
 
+#### Is 500 MB/s even reachable on this hardware?
+
+Yes, with ~2× headroom. Measured 14 Jul 2026 on the reference laptop (SK Hynix HFS512GDE9X081N NVMe,
+ext4 on `/dev/nvme0n1p2`):
+
+| Disk test | Result |
+|-----------|-------:|
+| `O_DIRECT` sequential write, 1 MB blocks | 1.2 GB/s |
+| Sustained 64 GB (SLC-cache exhaustion check) | **1.0–1.2 GB/s, flat — no cliff** |
+| Buffered + `fdatasync` | 886 MB/s |
+| **Buffered, no fsync — the path `FileDestination` uses** | **2.3 GB/s** |
+
+`FileDestination` writes through a `BufferedWriter` with no per-record fsync, so records land in page cache
+and the kernel drains them in the background. The relevant ceiling is therefore the **2.3 GB/s** page-cache
+figure, with a 1.1 GB/s sustained background drain. Against that, the full pipeline (302 MB/s) uses 13% of
+available write bandwidth and the NFR-1 target (500 MB/s) would use 22%.
+
+Two consequences worth stating plainly:
+
+- **The disk has never been the constraint.** A 100K-record run writes ~24 MB, which never leaves page cache.
+  Every file-destination number in this document is CPU-bound, not I/O-bound.
+- **Phase 3 is not blocked by hardware.** Raw Java `BufferedWriter` reaches 1,261 MB/s, consistent with the
+  2.3 GB/s `dd` figure once String encoding is added. The serializer gives up roughly 4–5× between what the
+  JVM can push to this disk and what SeedStream currently ships.
+
+Caveat: this is one drive on one laptop. A CI runner on a throttled cloud volume or spinning disk could
+genuinely be disk-bound at 500 MB/s. The claim is "achievable on the reference hardware", not "disk never
+matters". Small-block `O_DIRECT` does collapse (132 MB/s at 4K, 452 MB/s at 16K, 1.1 GB/s at 64K), but that
+is a single-queue-depth artifact of `dd` — buffering means SeedStream hands the kernel large batches
+regardless of record size, so it is not a constraint the generator can hit.
+
 ---
 
 ## Real-World Performance
