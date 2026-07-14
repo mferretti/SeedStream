@@ -1,12 +1,32 @@
-# Keep the build context small — the build stage only needs sources + Gradle.
-.git
-.gradle
+# Deny by default. The build context is an allowlist, not a blocklist.
+#
+# The old blocklist could only exclude the noise we happened to think of, which
+# meant the image was a function of whatever was lying around in a developer's
+# working tree. Anything new — a scratch dir, a log, a local tool's output, an
+# editor's dotfiles — silently joined the build context. Now nothing enters
+# unless it is named below, and the Dockerfile names again, explicitly, what it
+# copies out of it.
+*
+
+# Build definition
+!gradlew
+!gradlew.bat
+!settings.gradle.kts
+!build.gradle.kts
+!gradle.properties
+!gradle
+
+# Sources + the config the image ships (the Dockerfile picks the exact files)
+!config
+!core
+!schema
+!generators
+!formats
+!destinations
+!inspector
+!cli
+
+# ...minus generated output inside those directories
 **/build
-benchmarks/build
-profiling-output
-output
-out
-.scannerwork
-*.log
-.idea
-.vscode
+**/bin
+**/.gradle
