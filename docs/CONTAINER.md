@@ -209,7 +209,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: seedstream
-          image: ghcr.io/mferretti/seedstream:0.6.1   # pin in CI
+          image: ghcr.io/mferretti/seedstream:0.7.0   # pin in CI
           args: ["execute", "--job", "config/jobs/kafka_invoice_env.yaml",
                  "--count", "1000000"]
           env:
@@ -255,5 +255,5 @@ directory as a build artifact:
 - **Security**: runs as UID 10001; compatible with `readOnlyRootFilesystem: true`
   with only `/work/out` writable.
 - **Logs**: structured logs to stdout; quiet by default, `--verbose` opt-in.
-- **Pin versions in CI** (`:0.6.1`), never `:latest`, so pipelines are
+- **Pin versions in CI** (`:0.7.0`), never `:latest`, so pipelines are
   reproducible.

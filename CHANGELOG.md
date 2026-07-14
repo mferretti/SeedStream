@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.7.0] - 2026-07-14
+
+> ### ⚠️ Generated data changes when you upgrade
+>
+> **`iban` now honours `geolocation`** (#173). Before 0.7.0 it emitted an IBAN from a **random country**, ignoring the structure's locale — so `geolocation: italy` could yield a non-SEPA `KM` or `AO` IBAN. It now derives the ISO country from the resolved locale (`italy` → `IT…`).
+>
+> **This means the same seed produces different IBANs than 0.6.2 did**, for any structure that sets `geolocation` and uses `iban`. If you rely on byte-identical output across versions — golden files, recorded fixtures, contract tests — regenerate them, or switch the field to the new **`random_iban`** type, which preserves the old locale-independent behaviour exactly.
+>
+> Determinism *within* a version is unchanged: a given seed still produces byte-identical output, on any thread count.
+
 ### Changed
 - **Docker image contents are now opt-in** (#194). The build previously did `COPY . .` behind a blocklist `.dockerignore`, so the image was a function of whatever happened to be in the builder's working tree — a blocklist can only exclude the noise you thought of in advance. Both the build context and the image now declare what goes *in*: `.dockerignore` denies by default, and the Dockerfile copies each path by name. Verified by building with a deliberately polluted working tree (stray blobs, an `.env.local`, private notes, leftover output) and confirming a **byte-identical image digest**. Build context drops from **91 MB to 611 kB**, and the Gradle layer no longer rebuilds when a `.md` file changes
 - **The image ships a curated config instead of the whole `config/` tree** (#194). It previously baked in all 87 files — including 23 benchmark-harness jobs (`e2e_*`, `perf_probe_*`) and our own build tooling (`spotbugs-exclude.xml`, `dependency-check-suppressions.xml`, `license-header.txt`). It now ships exactly the 9 jobs the documentation tells users to run, plus the 8 structures they resolve. `benchmarks/` (the JMH harness) is no longer copied into the build stage at all
@@ -27,7 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`-PjmhFidelity=high`** — opt-in JMH config (5 warmup / 10 iterations / 2 forks) for publishable error bars. The default config (2/3/1) is retained unchanged so historical comparisons stay valid, but it is noisy enough to report error margins larger than the value itself
 - **`-PjmhSuite=regex`** suite filter, and a `Regex` grouping in `benchmarks/format_results.py` (which previously would have silently dropped any benchmark class whose name didn't match a hardcoded substring)
 
-### Changed
 - **Full performance re-run (14 Jul 2026)** — every JMH and E2E benchmark re-measured against current `main`; all perf docs refreshed from the raw results, archived in `benchmarks/results-2026-07-14/`. End-to-end throughput is unchanged (~32–39K rec/s file, ~21–31K Kafka), but several published claims did not survive:
   - **Datafaker generators are 7–65× faster** than the recorded figures (name 23K → 863K ops/s, city 14K → 921K). Cause: the thread-local `FakerCache` (`cf3492d`, Mar 2026) landed *after* the last benchmark run. Primitives and serializers are unchanged over the same period, which is the control confirming this is real. The "Datafaker is ~1,000× slower than primitives" rule of thumb is retired
   - **`DateGenerator` is 9.1× faster** (2.4M → 22M ops/s) and now clears NFR-1. Cause: commit `137caba`, whose subject is about the *inspector* but which bundles a perf pass caching parsed min/max bounds per type — previously every `generate()` call re-ran `LocalDate.parse()` on the same two range strings. Integer/Char got the same caching but barely moved (1.1×/1.0×), because their parse was already cheap
@@ -38,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SEPA use case: structured ISO 20022 references** (#175) — `msg_id`, `end_to_end_id` and `remittance_info` in `use-cases/dora-gdpr-sepa-payments` move from random `char[10..35]` / `lorem_sentence` placeholders to structured `regex:` types (`sepa_msg_id`, `sepa_e2e_id`, `sepa_remittance`) declared in the new `use-cases/dora-gdpr-sepa-payments/faker-types.yaml`. Run the demo with `--faker-types use-cases/dora-gdpr-sepa-payments/faker-types.yaml`. ISO 20022 leaves these identifier formats to the initiating party, so the patterns are one plausible issuer scheme, documented as such. `remittance_info` stays unstructured (`RmtInf/Ustrd`) invoice-style text — a checksum-valid ISO 11649 "RF" creditor reference needs a mod-97 generator, which a regex cannot compute (#191)
 
 ### Fixed
-- **NFR-1's 500 MB/s file-write target is NOT met, and the docs claimed it was** — `docs/PERFORMANCE.md` and `docs/DESIGN.md` (Issue #5) both reported "600–800 MB/s, exceeding the 500 MB/s target". That figure was a *projection* from the optimization plan, never a measurement. Measured: `FileDestination` **223 MB/s** (961,828 ops/s × 243-byte record); best-case full pipeline 302 MB/s. The Phase 1+2 optimizations did work (761K → 962K ops/s, **+26%**) but nowhere near the projected 3×. The remaining gap is **Jackson serialization, not disk** — a raw `BufferedWriter` reaches 1,261 MB/s on the same hardware. "Phase 3: Jackson streaming" was deferred on the explicit premise that the target was already met; that premise was false, and Phase 3 is the actual fix
+- **NFR-1's 500 MB/s file-write target was reported as met when it never was** — `docs/PERFORMANCE.md` and `docs/DESIGN.md` (Issue #5) both claimed "600–800 MB/s, exceeding the 500 MB/s target". That figure was a *projection* from an optimization plan, never a measurement. See the NFR-1 entry under **Changed** for what the target actually costs and why it is now recorded as *expected but unverified*
 - **`docs/DESIGN.md` was stale or silent on several points** — its performance section reported ~30K rec/s single-threaded (pre-`FakerCache`; now 122K) and 3.7× scaling; it named a `DataTypeGenerator` interface that does not exist (it is `DataGenerator`); and it documented **nothing** about custom `--faker-types` or `regex:` types. All corrected, and a new "Custom & Regex Types" section added covering the RgxGen design, its cost, and its authoring constraints
 - **Benchmark docs: `-Pjmh.includes` / `-Pjmh.excludes` documented as working when they are not** — `me.champeau.jmh` 0.7.3 silently ignores both, so a "filtered" run quietly becomes a full multi-hour run. They were documented as the way to select or skip benchmarks in `benchmarks/README.md`, `docs/PERFORMANCE.md` and `DatabaseBenchmark`'s javadoc. All now point at `-PjmhSuite`, which is applied inside `build.gradle.kts` and does take effect
 - **`docs/PERFORMANCE.md` "Running Benchmarks" section was stale** — it documented a `--args='.*Benchmark'` invocation form and a `benchmarks/src/main/java/.../BenchmarkConfig.java` file, neither of which exists
