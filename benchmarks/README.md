@@ -59,15 +59,32 @@ JFR profiles saved to: `build/jfr/*.jfr`
 ### Run Specific Components
 
 ```bash
-# Primitive generators only
-./gradlew :benchmarks:jmh -Pjmh.includes=".*PrimitiveGenerators.*"
-
-# Datafaker generators only
-./gradlew :benchmarks:jmh -Pjmh.includes=".*DatafakerGenerators.*"
-
-# Specific method
-./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkIntegerGenerator"
+./gradlew :benchmarks:jmh -PjmhSuite=generators   # primitives, datafaker, composite, serializer, destination
+./gradlew :benchmarks:jmh -PjmhSuite=regex        # regex types + Datafaker regexify comparison
+./gradlew :benchmarks:jmh -PjmhSuite=kafka        # needs Kafka on localhost:9092
+./gradlew :benchmarks:jmh -PjmhSuite=database     # needs PostgreSQL on localhost:5432
 ```
+
+> ⚠️ **`-Pjmh.includes` / `-Pjmh.excludes` DO NOT WORK.** With `me.champeau.jmh` 0.7.3 both are silently
+> ignored and the **entire** suite runs regardless — so a "filtered" run quietly becomes a multi-hour full
+> run that also re-measures benchmarks you didn't intend to touch. Earlier revisions of this README (and
+> `DatabaseBenchmark`'s javadoc) documented them as working; they are not. Use `-PjmhSuite`, which is
+> applied inside `build.gradle.kts` and does take effect.
+
+### Higher-Confidence Runs
+
+The default config (2 warmup / 3 iterations / 1 fork) is fast but noisy — it can report error margins larger
+than the value itself. For numbers you intend to publish:
+
+```bash
+./gradlew :benchmarks:jmh -PjmhSuite=generators -PjmhFidelity=high   # 5 warmup / 10 iterations / 2 forks
+```
+
+High-fidelity results are **not** comparable with default-config results. Label them when publishing, and
+don't mix the two in one table.
+
+⚠️ Every run **overwrites** `build/reports/jmh/results.json`. Archive it before the next run — see
+`benchmarks/results-2026-07-14/` for the layout.
 
 ### Generate Report
 
@@ -122,7 +139,7 @@ cd benchmarks && ./run_e2e_test.sh
 
 **Component Kafka benchmark:**
 ```bash
-./gradlew :benchmarks:jmh -Pjmh.includes=".*KafkaBenchmark.*"
+./gradlew :benchmarks:jmh -PjmhSuite=kafka
 ```
 
 **Cleanup:**

@@ -1,0 +1,13 @@
+# Diagnostic structure — NOT an example. Used by the pipeline-ceiling probe.
+#
+# Three primitive fields, no Datafaker, no nesting. Generation cost is ~nothing
+# (primitives run at 12M-252M ops/s), so any throughput ceiling observed with this
+# structure belongs to the engine pipeline or the destination, not to generation.
+name: perf_probe_primitive
+data:
+  id:
+    datatype: int[1..999999]
+  flag:
+    datatype: boolean
+  code:
+    datatype: char[8..8]

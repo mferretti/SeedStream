@@ -1,0 +1,8 @@
+# Diagnostic job — pipeline ceiling probe (primitives only, file/json).
+source: perf_probe_primitive.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: build/run-output/perf_probe_file_json

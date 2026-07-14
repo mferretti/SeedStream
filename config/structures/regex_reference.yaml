@@ -1,0 +1,33 @@
+# E2E regex benchmark — 10-field payment-reference record, 4 of them regex types.
+#
+# Pair with regex_reference_baseline.yaml, which is field-for-field identical except the 4 regex
+# fields are plain char[] of the same length. The delta between the two IS the regex tax; neither
+# number means much on its own.
+#
+# Requires: --faker-types config/datafaker-types.regex-bench.yaml
+name: regex_reference
+geolocation: usa
+data:
+  # --- regex fields (the thing under test) ---
+  msg_id:
+    datatype: bench_msg_id
+  order_ref:
+    datatype: bench_order_ref
+  doc_type:
+    datatype: bench_doc_type
+  creditor_ref:
+    datatype: bench_creditor_ref
+
+  # --- ordinary fields (hold the pipeline realistic) ---
+  debtor_name:
+    datatype: full_name
+  debtor_city:
+    datatype: city
+  amount:
+    datatype: decimal[0.01..99999.99]
+  currency:
+    datatype: enum[EUR,USD,GBP,CHF]
+  booking_date:
+    datatype: date[2024-01-01..2026-12-31]
+  settled:
+    datatype: boolean

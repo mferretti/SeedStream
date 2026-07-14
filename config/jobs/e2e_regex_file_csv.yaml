@@ -1,0 +1,11 @@
+# End-to-End Regex Benchmark: regex_reference → File → CSV
+# Requires: --faker-types config/datafaker-types.regex-bench.yaml
+# Driven by benchmarks/run_regex_e2e.sh
+
+source: regex_reference.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: build/run-output/e2e_regex_file_csv

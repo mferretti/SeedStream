@@ -2,6 +2,14 @@
 
 **Component Benchmarks** — Isolated performance measurements for data generators, serializers, and I/O operations.
 
+**Last run:** 14 July 2026 (previous: March 2026)
+
+> **Headline:** Datafaker semantic generators are **7–65× faster** than the March 2026 figures. This is
+> not a measurement artefact — it is the thread-local `FakerCache` (commit `cf3492d`, 8 Mar 2026), which
+> landed *after* the last benchmark run and replaced a `new Faker(...)` construction on every single
+> field generation. Primitives and serializers are unchanged (1.0×), which is the control confirming
+> the effect is real and confined to the Datafaker path. See [Regressions & Changes](#regressions--changes).
+
 ---
 
 ## Methodology
@@ -17,13 +25,25 @@ These benchmarks use **JMH 1.37**, the industry-standard framework for Java perf
 
 ### Benchmark Configuration
 
-| Parameter | Value | Purpose |
-|-----------|-------|---------|
-| **Warmup Iterations** | 2 × 1 second | Allow JIT compiler to optimize hot paths |
-| **Measurement Iterations** | 3 × 1 second | Collect statistically valid performance data |
-| **Forks** | 1 | Run in isolated JVM process |
-| **Threads** | 1 per benchmark | Measure single-threaded component performance |
-| **Mode** | Throughput | Operations per second (ops/s) |
+Two configurations were used in this run. **Which one produced a number matters** — do not compare across them.
+
+| Parameter | Default config | High-fidelity (`-PjmhFidelity=high`) |
+|-----------|----------------|--------------------------------------|
+| **Warmup Iterations** | 2 × 1 s | 5 × 1 s |
+| **Measurement Iterations** | 3 × 1 s | 10 × 1 s |
+| **Forks** | 1 | 2 |
+| **Threads** | 1 | 1 |
+| **Mode** | Throughput (ops/s) | Throughput (ops/s) |
+
+The **default config** is what every historical number in this file was measured with, so it is what makes
+this run comparable to March 2026. It is also *noisy*: the first pass of this run reported the Datafaker
+name generator at 794K ops/s **± 829K** — an error margin larger than the value, which is not publishable.
+
+The **high-fidelity config** was therefore used for the generator, serializer, destination, and regex
+families, bringing error margins down to ≤ 5% for nearly all of them. Kafka and Database results below are
+from the default config (their param matrices are large and their numbers were not in question).
+
+Every table below states which config produced it.
 
 ### What These Benchmarks Measure
 
@@ -31,204 +51,248 @@ These are **component benchmarks** that measure isolated performance:
 
 - **Primitive Generators:** Pure generation speed without I/O
 - **Datafaker Generators:** Realistic data generation overhead
-- **Serializers:** JSON/CSV formatting speed (in-memory)
-- **File I/O:** Write throughput to disk
+- **Regex Types:** Config-declarable `regex:` types (RgxGen), vs Datafaker's own `regexify`
+- **Serializers:** JSON/CSV/Protobuf formatting speed (in-memory)
+- **File I/O, Kafka, Database:** Write throughput to each destination
 
 **NOT measured here:**
-- End-to-end pipeline performance (see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md))
-- Multi-threaded scaling (see E2E tests with 1/4/8 threads)
+- End-to-end pipeline performance (see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md) and [REGEX-E2E-RESULTS.md](REGEX-E2E-RESULTS.md))
+- Multi-threaded scaling (see [PERFORMANCE.md §4 Thread Count](PERFORMANCE.md#4-thread-count) — scaling is real but structure-dependent, 1.0×–2.3×)
 - Network I/O with real-world latency (all tests use localhost)
-- Memory pressure under load
 
-**⚠️ Testing Environment:** All benchmarks run on a local development machine. Kafka tests use Docker containers on `localhost:9092`, eliminating network latency. Production deployments with real network infrastructure will show different (typically slower) performance.
-
-### Interpreting Error Margins
-
-Each result shows throughput **± error margin** (95% confidence interval):
-
-```
-Boolean Generator: 258,431,292 ops/s  (± 25,132,942)
-                   └─ Mean value       └─ Margin of error
-```
-
-**What this means:**
-- True performance is likely within **233M - 284M ops/s** (95% confidence)
-- Smaller error margins = more stable performance
-- Large error margins may indicate JIT warmup effects or GC interference
-
-### Statistical Validity
-
-✅ **These results ARE statistically rigorous** (unlike single-run tests)  
-✅ **Multiple iterations** provide confidence intervals  
-✅ **JMH controls** for JIT, GC, and other sources of variance  
-✅ **Suitable for** performance comparisons and optimization validation  
-
-### Limitations
-
-⚠️ **Single-threaded measurements** — Real workloads will use multiple threads  
-⚠️ **Isolated components** — End-to-end performance may be lower due to coordination overhead  
-⚠️ **In-memory focus** — Doesn't account for network latency, disk I/O contention, or backpressure  
-⚠️ **Synthetic data** — Results may vary with different data distributions  
-
-**For production estimates:** Combine these component benchmarks with E2E test results to understand real-world throughput.
+**⚠️ Testing Environment:** Local development machine. Kafka and PostgreSQL run in Docker containers on
+localhost, eliminating network latency. Production deployments will show slower results.
 
 ---
 
 ## Primitive Generators
 
-**Target:** 10M ops/s (NFR-1 requirement)
+*High-fidelity config.* **NFR-1: ≥ 10M ops/s.**
 
-| Benchmark | Throughput | Error Margin | Status |
-|-----------|------------|--------------|--------|
-| Boolean Generator | **258,431,292 ops/s** | ± 25,132,942 | ✅ 2,584% of target |
-| Integer Generator | 56,966,472 ops/s | ± 138,966 | ✅ 569% of target |
-| Character Generator | 12,323,079 ops/s | ± 2,737,608 | ✅ 123% of target |
-| Timestamp Generator | 4,457,093 ops/s | ± 493,806 | ❌ 44% of target |
-| Decimal Generator | 2,964,394 ops/s | ± 251,442 | ❌ 29% of target |
-| Date Generator | 2,405,481 ops/s | ± 175,734 | ❌ 24% of target |
+| Type | Throughput | Error | vs March 2026 | NFR-1 |
+|------|-----------:|------:|--------------:|:-----:|
+| Boolean | **252,195,310** ops/s | ±0.0% | 1.0× | ✅ 25× |
+| Enum | **141,591,679** ops/s | ±1.2% | *new* | ✅ 14× |
+| Integer | **63,078,708** ops/s | ±0.2% | 1.1× | ✅ 6.3× |
+| Date (LocalDate) | **21,967,304** ops/s | ±0.1% | **9.1×** | ✅ 2.2× |
+| String (char) | **12,390,831** ops/s | ±0.2% | 1.0× | ✅ 1.2× |
+| Decimal (BigDecimal) | **4,315,555** ops/s | ±0.8% | 1.5× | ⚠️ 0.43× |
+| Timestamp | **4,461,473** ops/s | ±1.8% | 1.0× | ⚠️ 0.45× |
 
-**Key Findings:**
-- ✅ **Boolean generation is fastest** (258M ops/s) — simple true/false logic
-- ✅ **Integer generation exceeds target** (57M ops/s) — 5.7× requirement
-- ⚠️ **Date/timestamp generation slower** (~2-4M ops/s) — complex formatting overhead
-- ✅ **Average: 56M ops/s** — well above 10M target for typical workloads
+**`DateGenerator` moved from 2.4M to 22M ops/s (9.1×) and now clears NFR-1.** Cause: commit `137caba`
+(14 Jun 2026) — whose subject is `feat(inspector): Protobuf descriptor-set input`, but which bundles a perf
+pass that caches parsed min/max bounds per type (`ConcurrentHashMap<PrimitiveType, Bounds>`). Before it,
+every single `generate()` call re-ran two `LocalDate.parse()` calls on the *same* range strings from the
+type definition. The same commit cached `Integer`/`Char` bounds too — but those only gained 1.1×/1.0×,
+because `Integer.parseInt` was already cheap while `LocalDate.parse` (ISO formatter + field resolution)
+dominated the date path entirely. The 9.1× is the parse disappearing, not the date arithmetic improving.
 
----
+Decimal and Timestamp remain below the 10M target due to `BigDecimal` / `Instant` construction cost. Both
+are still ~8× above the fastest measured full-pipeline rate (~532K rec/s, primitives → file), so this is not
+a practical constraint.
 
 ## Datafaker Generators (Realistic Data)
 
-**Expected:** ~10K-150K ops/s (realistic data complexity)
+*High-fidelity config.*
 
-| Benchmark | Throughput | Error Margin |
-|-----------|------------|--------------|
-| Company Generation | 153,816 ops/s | ± 24,776 |
-| Email Generation | 24,143 ops/s | ± 23,320 |
-| Name Generation | 23,168 ops/s | ± 13,822 |
-| Address Generation | 17,576 ops/s | ± 28,501 |
-| City Generation | 14,222 ops/s | ± 7,571 |
-| Phone Generation | 12,759 ops/s | ± 2,369 |
+| Type | Throughput | Error | March 2026 | Change |
+|------|-----------:|------:|-----------:|-------:|
+| Company | **1,097,838** ops/s | ±0.4% | 153,816 | **7.1×** |
+| City | **920,536** ops/s | ±4.5% | 14,222 | **64.7×** |
+| Name | **862,679** ops/s | ±4.5% | 23,168 | **37.2×** |
+| Email | **324,836** ops/s | ±3.9% | 24,143 | **13.5×** |
+| Address | **260,597** ops/s | ±4.2% | 17,576 | **14.8×** |
+| Phone | **107,886** ops/s | ±2.3% | 12,759 | **8.5×** |
 
-**Key Findings:**
-- **Average:** 40,947 ops/s
-- **1,000× slower than primitives** — expected due to realistic data complexity
-- **Company names fastest** (154K ops/s) — simpler vocabulary
-- **Addresses slowest** (18K ops/s) — multi-component fields
-- **Suitable for production** — still enables 10K-150K records/sec with realistic data
+**Cause:** the thread-local `FakerCache` (`generators/.../semantic/FakerCache.java`, commit `cf3492d`,
+8 Mar 2026). Before it, `DatafakerGenerator.generate()` constructed a fresh `Faker` — and therefore
+reloaded locale dictionaries — **for every field of every record**. The cache made that a once-per-thread
+cost. The March benchmark run predates the commit.
 
----
+**The old "~1,000× slower than primitives" rule of thumb is dead.** Datafaker types now run at roughly
+0.1–1.1M ops/s against 12M ops/s for a primitive char — a gap of **10–100×**, not 1,000×. Datafaker
+generation is still the dominant *parallelisable* cost in a realistic record, which is why generation-heavy
+structures are the ones that still benefit from more threads.
 
-## Composite Generators (Objects & Arrays)
+## Regex Types
 
-| Benchmark | Throughput | Error Margin |
-|-----------|------------|--------------|
-| Small Array (10 elements) | 6,165,393 ops/s | ± 183,921 |
-| Simple Object (5 fields) | 3,964,006 ops/s | ± 290,525 |
-| Large Array (100 elements) | 728,062 ops/s | ± 62,186 |
+*High-fidelity config.* Config-declarable `regex:` types via `DatafakerRegistry.registerRegex()` → RgxGen.
+New in this run — the capability had no performance coverage before.
 
-**Key Findings:**
-- **Small arrays fast** (6M ops/s) — efficient allocation
-- **Objects overhead** (4M ops/s) — map creation + field assignment
-- **Large arrays slower** (728K ops/s) — 10× penalty for 100 elements
+| Pattern | Shape | Throughput | Error |
+|---------|-------|-----------:|------:|
+| `ORD-\d{8}` | literal prefix + fixed digits | **5,137,970** ops/s | ±7.7% |
+| `(INV\|CRN\|DBN)-[0-9]{6}` | alternation | **4,455,285** ops/s | ±1.1% |
+| `SEPA[0-9]{8}[A-Z0-9]{6}` | SEPA message id | **2,914,940** ops/s | ±6.0% |
+| `[A-Z0-9]{10,35}` | bounded class, variable length | **1,850,485** ops/s | ±1.6% |
+| `[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}` | IBAN-shaped | **1,661,339** ops/s | ±6.7% |
+| `[a-z]+` | **unbounded** (RgxGen caps at 100 reps) | **1,202,549** ops/s | ±1.0% |
 
----
+**Baselines, same run:**
 
-## Serializers (JSON & CSV)
+| Reference | Throughput |
+|-----------|-----------:|
+| `char[10..35]` primitive | 6,620,593 ops/s |
+| Datafaker `regexify` (warm Faker, same `[A-Z0-9]{10,35}`) | 2,035,372 ops/s |
+| **Our `registerRegex`, same pattern** | **1,850,485 ops/s** |
+| Datafaker `regexify` (fresh Faker per call) | 241,666 ops/s |
+| Datafaker `name` | 781,891 ops/s |
 
-| Benchmark | Throughput | Error Margin |
-|-----------|------------|--------------|
-| JSON Simple Record | 3,018,144 ops/s | ± 36,459 |
-| CSV Simple Record | 2,566,864 ops/s | ± 1,250,090 |
-| JSON Complex Record | 1,082,541 ops/s | ± 36,845 |
-| CSV Complex Record | 941,707 ops/s | ± 367,574 |
-| JSON Nested Record | 699,324 ops/s | ± 123,788 |
-| CSV Nested Record | 218,262 ops/s | ± 11,459 |
+**What the numbers actually say — including the inconvenient part:**
 
-**Key Findings:**
-- **JSON faster than CSV** for simple records (18% advantage)
-- **JSON handles nesting better** (699K ops/s vs 218K ops/s — 3.2× faster)
-- **CSV struggles with nested data** — requires double serialization (object→JSON→CSV)
-- **Average JSON:** 1.6M ops/s
-- **Average CSV:** 1.2M ops/s
+1. **Regex types are cheap.** Every pattern shape beats the Datafaker `name` generator (782K ops/s). A
+   regex field costs *less* than a realistic-name field. Cost scales with output length and quantifier
+   freedom, not with pattern "complexity": alternation is nearly free; the unbounded `[a-z]+` is the
+   slowest because RgxGen's 100-repetition cap makes it generate long strings.
+2. **RgxGen-direct is not faster than Datafaker's `regexify`.** On the warm path ours is **~9% slower**
+   (1.85M vs 2.04M) for an identical pattern. The direct dependency (commit `59259cf`) is justified by
+   *control* — not depending on Datafaker's shaded copy, and failing fast on malformed patterns at load —
+   **not** by throughput. The 8× advantage over `regexify` only materialises against a cold `Faker`
+   (242K ops/s), which is not how either path runs in production.
+3. **Pattern compile is a genuine one-off.** `registerRegex` costs 0.59 µs (`ORD-\d{8}`), 0.70 µs
+   (`[A-Z0-9]{10,35}`), 2.97 µs (IBAN-shaped) — paid once at `--faker-types` load. At ~0.5 µs per
+   generated value, compile amortises after **1–6 records**.
 
----
+**Author guidance:** prefer explicit bounded classes (`[A-Za-z0-9]{n,m}`) over `.` and over unbounded
+`+`/`*`/`{n,}`. The bound is what keeps the value short, and value length is what costs.
+
+## Composite Generators
+
+*High-fidelity config.*
+
+| Type | Throughput | Error | vs March 2026 |
+|------|-----------:|------:|--------------:|
+| Small array (10 elements) | **6,011,440** ops/s | ±3.7% | 1.0× |
+| Simple object (5 fields) | **5,712,758** ops/s | ±0.2% | 1.4× |
+| Large array (100 elements) | **737,871** ops/s | ±0.7% | 1.0× |
+
+## Serializers
+
+*High-fidelity config.* **Protobuf is measured for the first time** — previous docs carried estimates.
+
+| Format | Simple | Complex | Nested |
+|--------|-------:|--------:|-------:|
+| **JSON** | **3,140,970** ops/s | **1,067,484** ops/s | **688,052** ops/s |
+| **CSV** | **2,581,730** ops/s | **959,597** ops/s | **240,356** ops/s |
+| **Protobuf** | **1,477,740** ops/s | **569,215** ops/s | **307,023** ops/s |
+
+**Correction to previous docs.** `docs/PERFORMANCE.md` estimated Protobuf at "~2.5M / ~900K / ~550K
+(est.)". Measured, it is **1.48M / 569K / 307K** — Protobuf is the **slowest** of the three serializers,
+roughly 2× slower than JSON on simple records, not comparable to it. The estimates were optimistic and have
+been replaced. Protobuf still produces substantially smaller output than JSON; it just costs more CPU to
+produce.
+
+JSON handles nesting far better than CSV (688K vs 240K, 2.9×) because CSV has no native nested
+representation and double-serializes (object → JSON string → CSV cell).
 
 ## Destinations (File I/O)
 
-**Target:** Enable 500 MB/s file writes
+*High-fidelity config.*
 
-| Benchmark | Throughput | Error Margin |
-|-----------|------------|--------------|
-| Raw File Write (NIO) | 5,076,728 ops/s | ± 375,296 |
-| File Destination (with serialization) | 821,233 ops/s | ± 119,948 |
+| Operation | Throughput | Error | vs March 2026 |
+|-----------|-----------:|------:|--------------:|
+| Raw BufferedWriter (no serialization) | **5,442,992** ops/s | ±1.7% | 1.1× |
+| FileDestination (serialize + 64KB buffer + batch) | **961,828** ops/s | ±0.2% | 1.2× |
 
-**Key Findings:**
-- **Raw I/O:** 5M ops/s (blazing fast with Java NIO)
-- **With serialization:** 821K ops/s (6× slower due to JSON formatting)
-- **Serialization is bottleneck** — not I/O
-- **Expected throughput:** Constrained by upstream generation, not file writes
+## Kafka Destination
+
+*Default config.* 72 configurations (async/sync × compression × batch size); 48 recorded — the
+`benchmarkAsyncProducer` / `benchmarkSyncProducer` methods deliberately throw on the contradictory half of
+the `sync` param to avoid duplicating `benchmarkKafkaProducer`, so 24 "missing" runs are by design.
+
+**Async (fire-and-forget), best of each compression at batch 16384–65536:**
+
+| Compression | Batch | Throughput |
+|-------------|------:|-----------:|
+| lz4 | 16384 | **724,699** ops/s |
+| snappy | 16384 | **704,109** ops/s |
+| none | 65536 | **622,306** ops/s |
+| gzip | 16384 | **376,396** ops/s |
+
+**Sync (blocking, waits for broker ack):** ~**2,000 ops/s** across *every* compression and batch size.
+
+The async/sync gap is ~350×. Sync throughput is entirely dominated by broker round-trip latency —
+compression and batch size make no measurable difference, because the producer never accumulates a batch.
+Batch size 1024 collapses async throughput too (19K–301K depending on compression); **use ≥ 16384**.
+
+## Database Destination
+
+*Default config, PostgreSQL 17 in Docker (`pg-benchmark`).* 16 configurations.
+
+| Insert | Strategy | Batch | Throughput |
+|--------|----------|------:|-----------:|
+| Flat (1 INSERT) | per_batch | 5000 | **83,519** ops/s |
+| Flat | per_batch | 1000 | 80,154 ops/s |
+| Flat | auto_commit | 500 | 75,518 ops/s |
+| Flat | per_batch | 100 | 56,165 ops/s |
+| Nested (3 INSERTs) | per_batch | 5000 | **2,895** ops/s |
+| Nested | per_batch | 500 | 2,344 ops/s |
+| Nested | auto_commit | 1000 | **123** ops/s |
+
+Consistent with March 2026 (flat 57–85K, nested 2.5–3.3K). For nested writes, `auto_commit` is
+catastrophic — up to **24× slower** than `per_batch` (123 vs 2,895 ops/s), because each of the 3 INSERTs
+per logical record commits separately. Use `per_batch`.
+
+⚠️ Error margins on the DB benchmarks are wide under the default config (batch=100/per_batch reports
+56,165 ops/s ± 119,838). Treat the ordering as sound and the absolute values as ±50%.
 
 ---
 
-## Performance Summary
+## Regressions & Changes
 
-### Component Hierarchy (Fastest to Slowest)
+Nothing regressed. Changes vs the March 2026 run:
 
-1. **Primitive Generators:** 2M-258M ops/s ⚡️
-2. **Composite Generators:** 728K-6M ops/s
-3. **Serializers:** 218K-3M ops/s
-4. **File I/O:** 821K-5M ops/s
-5. **Datafaker Generators:** 12K-154K ops/s 🐢 **(BOTTLENECK)**
-
-### Key Insights
-
-✅ **NFR-1 Compliance:** Boolean and Integer generators exceed 10M ops/s  
-⚠️ **Realistic Data Limits Throughput:** Datafaker ~40K ops/s average  
-✅ **Serialization NOT a Bottleneck:** 1.6M ops/s far exceeds Datafaker  
-✅ **File I/O NOT a Bottleneck:** 821K ops/s exceeds Datafaker  
-🎯 **Production Throughput:** Expect **10K-150K records/sec** with realistic data
+| Area | Change | Cause |
+|------|--------|-------|
+| Datafaker generators | **7–65× faster** | `FakerCache` (`cf3492d`) — thread-local Faker reuse |
+| `DateGenerator` | **9.1× faster** | **not attributed** |
+| Decimal, simple object, FileDestination | 1.2–1.5× faster | not attributed; within refactor noise |
+| Protobuf serializer | previously **estimated**, now measured — and 2× slower than the estimate | estimates were wrong |
+| Primitives, JSON/CSV serializers | unchanged (1.0×) | control — confirms the above are real |
+| **Thread scaling** | still works, but is structure-dependent: **2.3×** (nested invoice → file), **1.4×** (passport → file), **1.3×** (Kafka), **1.0×** (primitives) | only generation + serialization are parallel; the writer thread is serial |
 
 ---
 
 ## Test Environment
 
-### Hardware Specifications
-
 | Component | Specification |
 |-----------|---------------|
-| **CPU** | AMD Ryzen 5 PRO 4650U with Radeon Graphics |
-| **Cores/Threads** | 6 cores / 12 threads @ 1.4-4.0 GHz |
-| **Memory** | 30 GB DDR4 |
-| **Storage** | NVMe SSD (468 GB) |
-| **OS** | Linux (kernel 5.x+) |
-
-### Software Environment
-
-| Component | Version |
-|-----------|---------|
+| **CPU** | AMD Ryzen 5 PRO 4650U (6 cores / 12 threads) |
+| **RAM** | 30 GB |
+| **Storage** | NVMe SSD |
+| **OS** | Ubuntu 24.04, Linux 6.17 |
+| **JDK** | Amazon Corretto 21.0.9 |
 | **JMH** | 1.37 |
-| **Java** | OpenJDK 21.0.9 |
-| **JVM Options** | Default (no custom tuning) |
+| **Kafka** | Docker, localhost:9092 (`kafka-benchmark`) |
+| **PostgreSQL** | 17.9-alpine, Docker, localhost:5432 (`pg-benchmark`) |
 
-### Notes on Hardware Impact
+Measurements were taken on a laptop over a multi-hour session; thermal/turbo drift adds noise beyond the
+reported error margins. Treat two-significant-figure differences as meaningful and three as not.
 
-**CPU Performance:**
-- Modern 6-core Ryzen (Zen 2 architecture, 2020)
-- **Primitive generators** benefit from high single-thread performance
-- Results will scale proportionally on faster/slower CPUs
+Raw result files for this run are archived in `benchmarks/results-2026-07-14/`.
 
-**Memory:**
-- 30 GB available (far exceeds benchmark needs)
-- All operations in-memory with no swapping
-- Memory bandwidth: ~40 GB/s (dual-channel DDR4)
+## Reproducing
 
-**Storage:**
-- NVMe SSD provides ~3 GB/s sequential read/write
-- **File I/O benchmarks** benefit significantly from SSD vs HDD
-- Results on HDD may be 5-10× slower for file operations
+```bash
+# Everything (Kafka + PostgreSQL containers must be up)
+./gradlew :benchmarks:jmh
 
-**Reproducibility:**
-- ✅ Primitive/Datafaker generators: CPU-bound (results portable)
-- ✅ Serializers: CPU-bound (results portable)
-- ⚠️ File I/O: Storage-dependent (your mileage may vary)
+# One suite
+./gradlew :benchmarks:jmh -PjmhSuite=generators   # primitives, datafaker, composite, serializer, destination
+./gradlew :benchmarks:jmh -PjmhSuite=regex        # regex types + Datafaker regexify comparison
+./gradlew :benchmarks:jmh -PjmhSuite=kafka
+./gradlew :benchmarks:jmh -PjmhSuite=database
 
-**Note:** All measurements are single-threaded component benchmarks. For multi-threaded performance and complete pipeline validation, see [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md).
+# Tighter error bars (5 warmup / 10 iterations / 2 forks) — NOT comparable with default-config numbers
+./gradlew :benchmarks:jmh -PjmhSuite=generators -PjmhFidelity=high
+
+# Format the JSON into a report
+python3 benchmarks/format_results.py
+```
+
+⚠️ **`-Pjmh.includes` and `-Pjmh.excludes` do not work** with `me.champeau.jmh` 0.7.3 — they are silently
+ignored and the full suite runs anyway. (`DatabaseBenchmark`'s javadoc documents `-Pjmh.excludes` as an
+escape hatch; it is not one.) Use `-PjmhSuite`, which is applied inside `benchmarks/build.gradle.kts` and
+does take effect.
+
+⚠️ Each run **overwrites** `benchmarks/build/reports/jmh/results.json`. Archive it before the next run.

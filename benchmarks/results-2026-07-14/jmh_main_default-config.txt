@@ -1,0 +1,166 @@
+====================================================================================================
+JMH BENCHMARK RESULTS - SeedStream Data Generator
+====================================================================================================
+
+
+PRIMITIVE GENERATORS
+----------------------------------------------------------------------------------------------------
+Target: Target: 10M ops/s (10,000,000)
+
+  benchmarkBooleanGenerator                               252,149,608.263 ops/s  (± 3,990,284.282)
+  benchmarkEnumGenerator                                  143,446,217.409 ops/s  (± 1,257,715.574)
+  benchmarkIntegerGenerator                                62,886,123.718 ops/s  (± 4,483,201.385)
+  benchmarkDateGenerator                                   21,978,693.832 ops/s  (± 871,431.844)
+  benchmarkCharGenerator                                   12,315,027.276 ops/s  (± 2,610,524.432)
+  benchmarkDecimalGenerator                                 4,325,731.372 ops/s  (± 1,344,182.571)
+  benchmarkTimestampGenerator                               4,246,115.449 ops/s  (± 127,680.027)
+
+
+DATAFAKER GENERATORS (Realistic Data)
+----------------------------------------------------------------------------------------------------
+Target: Expected: ~10K ops/s
+
+  benchmarkCompanyGeneration                                1,023,119.789 ops/s  (± 1,425,632.046)
+  benchmarkCityGeneration                                     808,806.866 ops/s  (± 1,179,846.345)
+  benchmarkNameGeneration                                     794,463.325 ops/s  (± 829,744.363)
+  benchmarkEmailGeneration                                    336,474.559 ops/s  (± 73,211.631)
+  benchmarkAddressGeneration                                  243,081.947 ops/s  (± 139,661.751)
+  benchmarkPhoneGeneration                                    109,947.068 ops/s  (± 18,393.422)
+
+
+REGEX TYPES (registerRegex / RgxGen vs Datafaker regexify)
+----------------------------------------------------------------------------------------------------
+  regexifyWarmShort                                         8,135,168.268 ops/s  (± 74,251.828)
+  primitiveCharBaseline                                     6,608,612.540 ops/s  (± 195,415.017)
+  expressionWarmRegexify                                    5,481,513.655 ops/s  (± 246,325.646)
+  regexLiteralPlusDigits                                    5,260,728.188 ops/s  (± 464,444.003)
+  regexifyWarmMedium                                        5,133,861.638 ops/s  (± 754,929.610)
+  regexAlternation                                          4,524,842.128 ops/s  (± 144,772.971)
+  regexSepaMsgId                                            3,257,264.346 ops/s  (± 4,921,706.800)
+  expressionWarmName                                        3,079,626.494 ops/s  (± 792,112.889)
+  regexifyBaseline                                          1,985,567.175 ops/s  (± 1,279,547.219)
+  regexBoundedCharClass                                     1,830,980.991 ops/s  (± 1,343,901.494)
+  regexLongStructured                                       1,740,636.110 ops/s  (± 83,237.756)
+  regexifyWarmUuidLike                                      1,358,008.461 ops/s  (± 53,324.346)
+  regexUnboundedCapped                                      1,253,577.954 ops/s  (± 1,482,792.948)
+  datafakerNameBaseline                                       805,794.185 ops/s  (± 570,370.785)
+  regexifyFreshShort                                          684,884.554 ops/s  (± 63,121.220)
+  expressionFreshName                                         504,102.993 ops/s  (± 43,625.774)
+  expressionFreshRegexify                                     413,818.706 ops/s  (± 335,858.141)
+  regexifyFreshMedium                                         333,407.748 ops/s  (± 247,171.742)
+  regexifyFreshUuidLike                                       227,932.007 ops/s  (± 13,274.939)
+  jsonComplexWithRegexpWarmFaker                               52,570.495 ops/s  (± 7,097.697)
+  jsonComplexWithRegexpFreshFaker                               8,338.750 ops/s  (± 14,607.638)
+
+
+REGEX PATTERN COMPILE (one-off, at --faker-types load)
+----------------------------------------------------------------------------------------------------
+  compileLiteralPlusDigits                                          0.580 us/op  (± 0.023)
+  compileBoundedCharClass                                           0.735 us/op  (± 0.070)
+  compileLongStructured                                             2.966 us/op  (± 1.752)
+
+
+COMPOSITE GENERATORS (Objects & Arrays)
+----------------------------------------------------------------------------------------------------
+  benchmarkSmallArray                                       6,224,658.334 ops/s  (± 252,916.131)
+  benchmarkSimpleObject                                     5,500,342.604 ops/s  (± 770,751.410)
+  benchmarkLargeArray                                         734,518.405 ops/s  (± 9,320.558)
+
+
+SERIALIZERS (JSON, CSV & Protobuf)
+----------------------------------------------------------------------------------------------------
+  benchmarkJsonSimpleRecord                                 2,956,447.755 ops/s  (± 1,275,550.751)
+  benchmarkCsvSimpleRecord                                  2,599,927.983 ops/s  (± 66,772.048)
+  benchmarkProtobufSimpleRecord                             1,557,159.694 ops/s  (± 67,216.472)
+  benchmarkJsonComplexRecord                                1,089,912.379 ops/s  (± 42,328.788)
+  benchmarkCsvComplexRecord                                   968,176.303 ops/s  (± 49,717.229)
+  benchmarkJsonNestedRecord                                   647,777.308 ops/s  (± 36,617.909)
+  benchmarkProtobufComplexRecord                              567,353.291 ops/s  (± 30,864.655)
+  benchmarkProtobufNestedRecord                               311,012.141 ops/s  (± 48,431.522)
+  benchmarkCsvNestedRecord                                    203,842.464 ops/s  (± 7,383.649)
+
+
+DESTINATIONS (File I/O)
+----------------------------------------------------------------------------------------------------
+Target: Target: Enable 500 MB/s file writes
+
+  benchmarkRawFileWrite                                     5,124,339.605 ops/s  (± 8,765,688.542)
+  benchmarkFileDestinationWrite                               962,392.792 ops/s  (± 177,744.847)
+
+
+KAFKA DESTINATION (async x compression x batch size)
+----------------------------------------------------------------------------------------------------
+  benchmarkKafkaProducer [batchSize=16384, compression=lz4, sync=false]     724,698.924 ops/s  (± 39,253.326)
+  benchmarkKafkaProducer [batchSize=65536, compression=lz4, sync=false]     719,724.407 ops/s  (± 72,246.489)
+  benchmarkAsyncProducer [batchSize=65536, compression=snappy, sync=false]     706,963.276 ops/s  (± 166,202.339)
+  benchmarkKafkaProducer [batchSize=16384, compression=snappy, sync=false]     704,108.943 ops/s  (± 76,237.482)
+  benchmarkKafkaProducer [batchSize=65536, compression=snappy, sync=false]     697,565.987 ops/s  (± 104,585.308)
+  benchmarkAsyncProducer [batchSize=16384, compression=lz4, sync=false]     693,637.318 ops/s  (± 150,947.825)
+  benchmarkAsyncProducer [batchSize=65536, compression=lz4, sync=false]     682,494.933 ops/s  (± 38,078.712)
+  benchmarkAsyncProducer [batchSize=16384, compression=snappy, sync=false]     675,708.724 ops/s  (± 311,503.097)
+  benchmarkKafkaProducer [batchSize=65536, compression=none, sync=false]     622,306.209 ops/s  (± 70,558.737)
+  benchmarkAsyncProducer [batchSize=65536, compression=none, sync=false]     617,819.184 ops/s  (± 222,268.365)
+  benchmarkKafkaProducer [batchSize=16384, compression=gzip, sync=false]     376,395.909 ops/s  (± 41,113.635)
+  benchmarkAsyncProducer [batchSize=65536, compression=gzip, sync=false]     374,449.063 ops/s  (± 85,334.299)
+  benchmarkKafkaProducer [batchSize=65536, compression=gzip, sync=false]     369,298.876 ops/s  (± 13,381.981)
+  benchmarkAsyncProducer [batchSize=16384, compression=none, sync=false]     359,532.069 ops/s  (± 499,623.163)
+  benchmarkAsyncProducer [batchSize=16384, compression=gzip, sync=false]     358,977.314 ops/s  (± 62,263.358)
+  benchmarkKafkaProducer [batchSize=16384, compression=none, sync=false]     347,162.518 ops/s  (± 523,244.151)
+  benchmarkKafkaProducer [batchSize=1024, compression=lz4, sync=false]     301,268.951 ops/s  (± 119,368.083)
+  benchmarkAsyncProducer [batchSize=1024, compression=lz4, sync=false]     290,372.973 ops/s  (± 268,122.357)
+  benchmarkKafkaProducer [batchSize=1024, compression=gzip, sync=false]     276,492.518 ops/s  (± 356,545.890)
+  benchmarkAsyncProducer [batchSize=1024, compression=gzip, sync=false]     254,266.894 ops/s  (± 104,025.954)
+  benchmarkAsyncProducer [batchSize=1024, compression=snappy, sync=false]     128,422.413 ops/s  (± 169,274.802)
+  benchmarkKafkaProducer [batchSize=1024, compression=snappy, sync=false]     122,761.647 ops/s  (± 204,483.016)
+  benchmarkKafkaProducer [batchSize=1024, compression=none, sync=false]      24,872.380 ops/s  (± 38,403.296)
+  benchmarkAsyncProducer [batchSize=1024, compression=none, sync=false]      19,092.828 ops/s  (± 87,614.025)
+  benchmarkSyncProducer [batchSize=65536, compression=none, sync=true]       2,182.832 ops/s  (± 881.552)
+  benchmarkKafkaProducer [batchSize=16384, compression=none, sync=true]       2,152.430 ops/s  (± 1,456.434)
+  benchmarkKafkaProducer [batchSize=65536, compression=none, sync=true]       2,151.265 ops/s  (± 1,448.709)
+  benchmarkSyncProducer [batchSize=16384, compression=none, sync=true]       2,088.530 ops/s  (± 1,831.132)
+  benchmarkKafkaProducer [batchSize=1024, compression=none, sync=true]       2,064.467 ops/s  (± 4,012.591)
+  benchmarkSyncProducer [batchSize=1024, compression=none, sync=true]       2,060.101 ops/s  (± 3,186.336)
+  benchmarkSyncProducer [batchSize=1024, compression=snappy, sync=true]       2,053.913 ops/s  (± 4,267.263)
+  benchmarkSyncProducer [batchSize=1024, compression=lz4, sync=true]       2,033.664 ops/s  (± 3,840.485)
+  benchmarkKafkaProducer [batchSize=16384, compression=snappy, sync=true]       2,027.040 ops/s  (± 3,363.903)
+  benchmarkSyncProducer [batchSize=65536, compression=snappy, sync=true]       1,994.564 ops/s  (± 3,731.968)
+  benchmarkKafkaProducer [batchSize=65536, compression=snappy, sync=true]       1,993.807 ops/s  (± 2,994.879)
+  benchmarkKafkaProducer [batchSize=1024, compression=snappy, sync=true]       1,992.228 ops/s  (± 2,776.087)
+  benchmarkKafkaProducer [batchSize=1024, compression=lz4, sync=true]       1,966.927 ops/s  (± 2,847.047)
+  benchmarkSyncProducer [batchSize=16384, compression=snappy, sync=true]       1,959.019 ops/s  (± 3,731.443)
+  benchmarkKafkaProducer [batchSize=16384, compression=lz4, sync=true]       1,944.191 ops/s  (± 2,987.892)
+  benchmarkKafkaProducer [batchSize=65536, compression=lz4, sync=true]       1,941.594 ops/s  (± 3,416.841)
+  benchmarkSyncProducer [batchSize=16384, compression=lz4, sync=true]       1,914.728 ops/s  (± 4,110.428)
+  benchmarkSyncProducer [batchSize=65536, compression=lz4, sync=true]       1,853.120 ops/s  (± 3,144.367)
+  benchmarkSyncProducer [batchSize=1024, compression=gzip, sync=true]       1,775.881 ops/s  (± 2,691.262)
+  benchmarkKafkaProducer [batchSize=1024, compression=gzip, sync=true]       1,723.308 ops/s  (± 1,149.280)
+  benchmarkSyncProducer [batchSize=16384, compression=gzip, sync=true]       1,721.152 ops/s  (± 1,715.550)
+  benchmarkKafkaProducer [batchSize=65536, compression=gzip, sync=true]       1,668.988 ops/s  (± 3,105.164)
+  benchmarkKafkaProducer [batchSize=16384, compression=gzip, sync=true]       1,663.432 ops/s  (± 1,811.807)
+  benchmarkSyncProducer [batchSize=65536, compression=gzip, sync=true]       1,640.368 ops/s  (± 3,757.085)
+
+
+====================================================================================================
+ANALYSIS SUMMARY
+====================================================================================================
+
+✓ Fastest primitive generator: 252,149,608 ops/s
+  ✓ PASSED NFR-1 requirement (10M ops/s)
+
+✓ Average Datafaker throughput: 552,649 ops/s
+  (Expected: Lower than primitives due to realistic data generation overhead)
+
+✓ Average JSON serialization: 1,564,712 ops/s
+
+✓ File I/O benchmarks completed: 2 tests
+  (Results show raw I/O vs serialization+I/O comparison)
+
+====================================================================================================
+NOTES
+====================================================================================================
+• All measurements in ops/s (operations per second)
+• Higher is better
+• Error margins shown as ± value
+• Hardware: Development machine (specific specs may vary)
+• JMH configuration: 2 warmup iterations, 3 measurement iterations, 1 fork
+====================================================================================================

@@ -89,28 +89,22 @@ import org.openjdk.jmh.annotations.Warmup;
  * <p><b>Run all database benchmarks:</b>
  *
  * <pre>
- * ./gradlew :benchmarks:jmh -Pjmh.includes=".*DatabaseBenchmark.*"
+ * ./gradlew :benchmarks:jmh -PjmhSuite=database
  * </pre>
  *
  * <p><b>Run with custom connection settings:</b>
  *
  * <pre>
- * ./gradlew :benchmarks:jmh \
- *   -Pjmh.includes=".*DatabaseBenchmark.*" \
+ * ./gradlew :benchmarks:jmh -PjmhSuite=database \
  *   -Djvm.args="-Ddb.url=jdbc:postgresql://myhost:5432/mydb -Ddb.user=myuser -Ddb.password=secret"
  * </pre>
  *
- * <p><b>Run flat inserts only (skip nested decomposition overhead):</b>
- *
- * <pre>
- * ./gradlew :benchmarks:jmh -Pjmh.includes=".*benchmarkFlatInsert.*"
- * </pre>
- *
- * <p><b>Skip database benchmarks (when PostgreSQL is unavailable):</b>
- *
- * <pre>
- * ./gradlew :benchmarks:jmh -Pjmh.excludes=".*DatabaseBenchmark.*"
- * </pre>
+ * <p><b>Note:</b> {@code -Pjmh.includes} and {@code -Pjmh.excludes} are silently ignored by
+ * me.champeau.jmh 0.7.3 — passing them runs the FULL suite anyway. Earlier revisions of this
+ * javadoc documented {@code -Pjmh.excludes=".*DatabaseBenchmark.*"} as a way to skip these
+ * benchmarks when PostgreSQL is unavailable; it does not work. Use {@code -PjmhSuite} to select a
+ * suite instead. With no database reachable, this class fails fast on connection and the rest of
+ * the run proceeds.
  *
  * <p><b>Cleanup Docker container:</b>
  *
@@ -118,14 +112,19 @@ import org.openjdk.jmh.annotations.Warmup;
  * docker stop pg-benchmark &amp;&amp; docker rm pg-benchmark
  * </pre>
  *
- * <p><b>Expected results (local PostgreSQL on developer hardware):</b>
+ * <p><b>Measured results</b> (14 Jul 2026, PostgreSQL 17.9-alpine in Docker on localhost —
+ * shared-memory socket, so effectively zero network latency; a remote DB will be far slower):
  *
  * <ul>
- *   <li>Flat, per_batch, batchSize=1000: ~3,000–5,000 records/sec
- *   <li>Flat, auto_commit: ~500–1,500 records/sec (commit-per-data overhead)
- *   <li>Nested, per_batch, batchSize=1000: ~1,200–2,000 records/sec (3× INSERT fanout)
- *   <li>Nested, auto_commit: ~200–600 records/sec
+ *   <li>Flat, per_batch, batchSize=5000: ~83,500 ops/sec (batchSize=100: ~56,000)
+ *   <li>Flat, auto_commit: ~55,000–75,000 ops/sec — barely worse than per_batch for single INSERTs
+ *   <li>Nested, per_batch, batchSize=5000: ~2,900 ops/sec (3× INSERT fanout + decomposition)
+ *   <li>Nested, auto_commit: ~120–770 ops/sec — up to <b>24× slower</b> than per_batch. Do not use
+ *       it for nested writes
  * </ul>
+ *
+ * <p>Error margins are wide at the default JMH config (batch=100/per_batch reports ±119,838 on
+ * 56,165). Trust the ordering, not the third significant figure.
  *
  * <p>See {@code docs/PERFORMANCE.md} for measured results on reference hardware.
  */

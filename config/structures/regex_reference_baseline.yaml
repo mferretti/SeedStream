@@ -1,0 +1,37 @@
+# E2E regex benchmark — BASELINE for regex_reference.yaml.
+#
+# Field-for-field identical to regex_reference.yaml, except the 4 regex fields are plain char[] of
+# the same value lengths. Running both and diffing gives the cost of the regex types alone, with the
+# rest of the pipeline (Datafaker fields, serialization, file I/O) held constant.
+#
+# Lengths mirror the patterns in config/datafaker-types.regex-bench.yaml:
+#   bench_msg_id        [A-Z0-9]{10,35}                                  -> 10..35
+#   bench_order_ref     ORD-\d{8}                                        -> 12
+#   bench_doc_type      (INV|CRN|DBN)-[0-9]{6}                           -> 10
+#   bench_creditor_ref  [A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}   -> 15..31
+name: regex_reference_baseline
+geolocation: usa
+data:
+  # --- char[] stand-ins for the regex fields ---
+  msg_id:
+    datatype: char[10..35]
+  order_ref:
+    datatype: char[12..12]
+  doc_type:
+    datatype: char[10..10]
+  creditor_ref:
+    datatype: char[15..31]
+
+  # --- ordinary fields (identical to regex_reference.yaml) ---
+  debtor_name:
+    datatype: full_name
+  debtor_city:
+    datatype: city
+  amount:
+    datatype: decimal[0.01..99999.99]
+  currency:
+    datatype: enum[EUR,USD,GBP,CHF]
+  booking_date:
+    datatype: date[2024-01-01..2026-12-31]
+  settled:
+    datatype: boolean

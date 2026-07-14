@@ -62,7 +62,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 
 ## Features
 
-- 🚀 **High Performance**: Multi-threaded generation — 12–258M records/sec for primitives, 32–39K rec/sec for realistic Datafaker data
+- 🚀 **High Performance**: 4–252M records/sec for primitives, 108K–1.1M for realistic Datafaker data; ~32–39K rec/sec end-to-end through a real destination
 - 🔄 **Reproducible**: Same seed → identical output, byte-for-byte, across machines and thread counts
 - 🌍 **Locale-Aware**: locale-specific data via Datafaker (Italian names, US addresses, etc.) — pick a locale with `geolocation`; coverage comes from Datafaker
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
@@ -302,16 +302,25 @@ The same `--faker-types` file must be passed to `execute` so those types resolve
 
 ## Performance
 
-Validated throughput — JMH component benchmarks plus the June 2026 end-to-end suite ([docs/E2E-TEST-RESULTS.md](docs/E2E-TEST-RESULTS.md)):
+Validated throughput — JMH component benchmarks plus the July 2026 end-to-end suite ([docs/E2E-TEST-RESULTS.md](docs/E2E-TEST-RESULTS.md)):
 
 | Data type | Throughput |
 |-----------|-----------|
-| Primitive (int, boolean) | 12–258M records/sec |
-| Datafaker (names, emails, etc.) | 13–154K records/sec |
-| Real-world (10-field customer, E2E) | ~32–39K records/sec |
+| Primitive (int, boolean) | 4–252M records/sec |
+| Regex types (`regex:` patterns) | 1.2–5.1M records/sec |
+| Datafaker (names, emails, etc.) | 108K–1.1M records/sec |
+| Real-world (10-field record, E2E) | ~32–39K records/sec |
 | File I/O | 600–800 MB/s |
 
-**Scaling**: 3.7× speedup with 4 workers (92% efficiency). Datafaker workloads are I/O-bound — 4 threads is usually optimal regardless of core count.
+**Scaling**: worker threads parallelize generation and serialization; a single writer thread then drains to the
+destination. Speedup therefore depends on how generation-heavy your structure is — a nested `invoice` scales
+**2.3× on 8 threads** (file), a flatter `passport` **~1.4×**, and a primitives-only record not at all (it is
+already writer-bound at ~530K rec/s). Kafka scales worst (**~1.3×**): record compression happens on the single
+writer thread, so `compression: none` is **+66% faster at 4 threads** than `snappy`.
+
+> The E2E table above measures a **whole CLI process**, which carries ~1.5s of fixed JVM + locale startup.
+> For 100K-record runs that overhead dominates and hides the scaling. Engine-only throughput is much higher
+> (passport ~106K rec/s, invoice→file ~90K rec/s). See [PERFORMANCE.md](docs/PERFORMANCE.md#thread-count).
 
 See [PERFORMANCE.md](docs/PERFORMANCE.md) for full benchmarks, tuning guide, and hardware recommendations.
 

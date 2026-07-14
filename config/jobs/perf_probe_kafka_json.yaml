@@ -1,0 +1,15 @@
+# Diagnostic job — pipeline ceiling probe (primitives only, kafka/json).
+# Producer settings mirror e2e_invoice_kafka_json.yaml so the only difference is the structure.
+source: perf_probe_primitive.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 42
+conf:
+  bootstrap: localhost:9092
+  topic: benchmark-topic
+  sync: false
+  acks: "1"
+  batch_size: 65536
+  linger_ms: 20
+  compression: snappy

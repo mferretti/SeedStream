@@ -1,6 +1,6 @@
 # Performance Status - Current State
 
-**Last Updated:** June 14, 2026
+**Last Updated:** July 14, 2026
 **Version:** Post worker-side parallel serialization + `FieldRecord` flyweight + queue chunk-batching
 
 > **June 2026 re-measure** with a millisecond timer. Earlier figures used a
@@ -13,7 +13,28 @@
 
 ## Executive Summary
 
-SeedStream sustains **~32,000–39,000 records/second** for flat-record file generation and **~21,000–32,000 rec/s** for nested-record Kafka (E2E validated, ms timer). Database (nested invoice → 4 tables) is JDBC-bound at **~530–676 rec/s**. Performance comes from thread-local Faker caching, worker-side parallel serialization, and the `FieldRecord` flyweight (low GC).
+SeedStream sustains **~32,000–39,000 records/second** for flat-record file generation and **~21,000–31,000 rec/s** for nested-record Kafka (E2E validated, ms timer). Database (nested invoice → 4 tables) is JDBC-bound at **~590–620 rec/s**. Performance comes from thread-local Faker caching, worker-side parallel serialization, and the `FieldRecord` flyweight (low GC).
+
+> **July 2026 full re-run.** Every JMH and E2E benchmark was re-measured on 14 Jul 2026 against current
+> `main`. End-to-end throughput is **unchanged** — but the component picture moved substantially:
+>
+> - **Datafaker generators are 7–65× faster** than the last recorded figures (`FakerCache`, commit `cf3492d`,
+>   landed after the March benchmark run). Primitives and serializers are unchanged, confirming the effect
+>   is real rather than a measurement artefact.
+> - **Threading still works, but the E2E harness hides it.** `run_e2e_test.sh` times the whole CLI process,
+>   including ~1.5–1.7 s of fixed JVM + locale startup — roughly half the wall clock of a 100K-record run — so
+>   speeding up generation barely moves its number. Measured on the engine's own clock, 8 threads vs 1 gives
+>   **2.3×** (nested invoice → file), **1.4×** (passport → file), **1.3×** (Kafka), **1.0×** (primitives, already
+>   writer-bound). Only generation and serialization are parallel; the single writer thread is serial.
+> - **Kafka scales worst (~1.3×)** because `KafkaProducer.send()` compresses each record into its batch buffer
+>   *on the calling thread* — i.e. on the single writer thread. `compression: none` is **+66% at 4 threads**
+>   (54.7K vs 32.9K rec/s). `KafkaProducer` is thread-safe, so letting workers send directly would likely
+>   recover most of the gap.
+> - **Protobuf serialization was measured for the first time** and is the *slowest* format, ~2× slower than
+>   JSON — the previous "~2.5M ops/s (est.)" figures were optimistic guesses.
+>
+> The practical consequence: **thread count pays in proportion to generation cost.** Generation-heavy nested
+> structures scale; cheap flat records are already writer-bound. For Kafka, drop compression before adding threads.
 
 ### Quick Performance Reference
 
@@ -24,9 +45,10 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 | **E2E Kafka Generation (invoice, 1 thread)** | 21-26K rec/s | ✅ Validated |
 | **E2E Kafka Generation (invoice, 4 threads)** | 25-32K rec/s | ✅ Validated |
 | **E2E Database (invoice → 4 tables)** | 0.5-0.7K rec/s | ✅ Validated (JDBC-bound) |
-| **Primitive Generation (in-memory)** | 12-258M ops/s | ✅ Exceeds target |
-| **Datafaker Generation (isolated)** | 13-154K ops/s | ✅ Within expected range |
-| **Thread Efficiency (4 threads)** | best efficiency | ✅ 4T outperforms 8T (I/O bound) |
+| **Primitive Generation (in-memory)** | 4-252M ops/s | ✅ Exceeds target |
+| **Datafaker Generation (isolated)** | 108K-1.1M ops/s | ✅ 7-65× faster since `FakerCache` |
+| **Regex Types (isolated)** | 1.2-5.1M ops/s | ✅ Cheaper than a Datafaker name |
+| **Thread Efficiency (8 threads)** | 1.0×–2.3× (structure-dependent) | ⚠️ Only generation is parallel; writer is serial |
 | **Memory Usage** | 22-70MB typical | ✅ Efficient |
 | **GC Overhead** | <2.63% | ✅ Healthy |
 
@@ -68,23 +90,34 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 ### Component Performance (JMH Benchmarks)
 
 **Primitive Generators (Isolated):**
-- Boolean: 258M ops/s ✅
-- Integer: 57M ops/s ✅
-- String (char): 12M ops/s ✅
-- All exceed 10M ops/s NFR requirement
+- Boolean: 252M ops/s ✅
+- Enum: 142M ops/s ✅
+- Integer: 63M ops/s ✅
+- Date: 22M ops/s ✅ (was 2.4M — now clears NFR-1; cause not attributed)
+- String (char): 12.4M ops/s ✅
+- Decimal 4.3M / Timestamp 4.5M ops/s ⚠️ below the 10M NFR, but ~100× above any destination's drain rate
 
-**Datafaker Generators (Isolated):**
-- Company Name: 154K ops/s
-- Name: 47K ops/s
-- Email: 34K ops/s
-- Address: 17.7K ops/s
-- Phone: 13K ops/s
-- All within expected range for realistic data
+**Datafaker Generators (Isolated)** — re-measured 14 Jul 2026, high-fidelity config:
+- Company Name: 1.10M ops/s (was 154K — 7.1×)
+- City: 921K ops/s (was 14K — 64.7×)
+- Name: 863K ops/s (was 23K — 37.2×)
+- Email: 325K ops/s (was 24K — 13.5×)
+- Address: 261K ops/s (was 17.6K — 14.8×)
+- Phone: 108K ops/s (was 13K — 8.5×)
+
+The `Name: 47K / Email: 34K` figures previously in this file disagreed with BENCHMARK-RESULTS.md
+(23K / 24K). Both are now superseded; the numbers above are the reconciled, re-measured values.
+
+**Regex Types (`registerRegex` → RgxGen), new:**
+- `ORD-\d{8}`: 5.14M ops/s — `(INV|CRN|DBN)-[0-9]{6}`: 4.46M ops/s
+- `[A-Z0-9]{10,35}`: 1.85M ops/s — `[a-z]+` (unbounded, 100-rep cap): 1.20M ops/s
+- Pattern compile: 0.59–2.97 µs, once at `--faker-types` load
 
 **Serializers (`SerializerBenchmark`):**
-- JSON: 3.0M ops/s (simple), 1.08M (complex), 699K (nested)
-- CSV: 2.6M ops/s (simple), 942K (complex), 218K (nested — double-serializes object→JSON→CSV)
-- Protobuf: benchmark methods exist (simple/complex/nested); results not yet recorded in BENCHMARK-RESULTS.md
+- JSON: 3.14M ops/s (simple), 1.07M (complex), 688K (nested)
+- CSV: 2.58M ops/s (simple), 960K (complex), 240K (nested — double-serializes object→JSON→CSV)
+- Protobuf: **1.48M ops/s (simple), 569K (complex), 307K (nested)** — measured for the first time.
+  Protobuf is the **slowest** serializer, ~2× slower than JSON. Earlier estimates of ~2.5M were wrong.
 
 **Full Component Results:** See [BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md)
 

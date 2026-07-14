@@ -1,0 +1,5590 @@
+[
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.CompositeGeneratorsBenchmark.benchmarkLargeArray",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 734518.4048541366,
+            "scoreError" : 9320.55752502546,
+            "scoreConfidence" : [
+                725197.8473291112,
+                743838.9623791621
+            ],
+            "scorePercentiles" : {
+                "0.0" : 733929.7267512574,
+                "50.0" : 734779.5265068162,
+                "90.0" : 734845.9613043367,
+                "95.0" : 734845.9613043367,
+                "99.0" : 734845.9613043367,
+                "99.9" : 734845.9613043367,
+                "99.99" : 734845.9613043367,
+                "99.999" : 734845.9613043367,
+                "99.9999" : 734845.9613043367,
+                "100.0" : 734845.9613043367
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    734845.9613043367,
+                    733929.7267512574,
+                    734779.5265068162
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.CompositeGeneratorsBenchmark.benchmarkSimpleObject",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 5500342.603632702,
+            "scoreError" : 770751.4102953101,
+            "scoreConfidence" : [
+                4729591.193337391,
+                6271094.013928012
+            ],
+            "scorePercentiles" : {
+                "0.0" : 5451580.529960244,
+                "50.0" : 5523480.593241661,
+                "90.0" : 5525966.6876962,
+                "95.0" : 5525966.6876962,
+                "99.0" : 5525966.6876962,
+                "99.9" : 5525966.6876962,
+                "99.99" : 5525966.6876962,
+                "99.999" : 5525966.6876962,
+                "99.9999" : 5525966.6876962,
+                "100.0" : 5525966.6876962
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    5523480.593241661,
+                    5451580.529960244,
+                    5525966.6876962
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.CompositeGeneratorsBenchmark.benchmarkSmallArray",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 6224658.333761019,
+            "scoreError" : 252916.131183782,
+            "scoreConfidence" : [
+                5971742.202577237,
+                6477574.4649448
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6209940.517035908,
+                "50.0" : 6226564.96322246,
+                "90.0" : 6237469.521024689,
+                "95.0" : 6237469.521024689,
+                "99.0" : 6237469.521024689,
+                "99.9" : 6237469.521024689,
+                "99.99" : 6237469.521024689,
+                "99.999" : 6237469.521024689,
+                "99.9999" : 6237469.521024689,
+                "100.0" : 6237469.521024689
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    6209940.517035908,
+                    6226564.96322246,
+                    6237469.521024689
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerGeneratorsBenchmark.benchmarkAddressGeneration",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 243081.94729933832,
+            "scoreError" : 139661.7514321658,
+            "scoreConfidence" : [
+                103420.19586717253,
+                382743.69873150415
+            ],
+            "scorePercentiles" : {
+                "0.0" : 234273.00233603816,
+                "50.0" : 246849.26013457932,
+                "90.0" : 248123.57942739758,
+                "95.0" : 248123.57942739758,
+                "99.0" : 248123.57942739758,
+                "99.9" : 248123.57942739758,
+                "99.99" : 248123.57942739758,
+                "99.999" : 248123.57942739758,
+                "99.9999" : 248123.57942739758,
+                "100.0" : 248123.57942739758
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    234273.00233603816,
+                    248123.57942739758,
+                    246849.26013457932
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerGeneratorsBenchmark.benchmarkCityGeneration",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 808806.8656402949,
+            "scoreError" : 1179846.3445113762,
+            "scoreConfidence" : [
+                -371039.4788710814,
+                1988653.210151671
+            ],
+            "scorePercentiles" : {
+                "0.0" : 734181.805337914,
+                "50.0" : 843729.8347267696,
+                "90.0" : 848508.9568562013,
+                "95.0" : 848508.9568562013,
+                "99.0" : 848508.9568562013,
+                "99.9" : 848508.9568562013,
+                "99.99" : 848508.9568562013,
+                "99.999" : 848508.9568562013,
+                "99.9999" : 848508.9568562013,
+                "100.0" : 848508.9568562013
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    734181.805337914,
+                    848508.9568562013,
+                    843729.8347267696
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerGeneratorsBenchmark.benchmarkCompanyGeneration",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1023119.7891224227,
+            "scoreError" : 1425632.046368116,
+            "scoreConfidence" : [
+                -402512.25724569336,
+                2448751.8354905387
+            ],
+            "scorePercentiles" : {
+                "0.0" : 933078.0004987047,
+                "50.0" : 1063061.7513525926,
+                "90.0" : 1073219.6155159706,
+                "95.0" : 1073219.6155159706,
+                "99.0" : 1073219.6155159706,
+                "99.9" : 1073219.6155159706,
+                "99.99" : 1073219.6155159706,
+                "99.999" : 1073219.6155159706,
+                "99.9999" : 1073219.6155159706,
+                "100.0" : 1073219.6155159706
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    933078.0004987047,
+                    1063061.7513525926,
+                    1073219.6155159706
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerGeneratorsBenchmark.benchmarkEmailGeneration",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 336474.55913539696,
+            "scoreError" : 73211.63086687027,
+            "scoreConfidence" : [
+                263262.9282685267,
+                409686.19000226725
+            ],
+            "scorePercentiles" : {
+                "0.0" : 332162.4472092594,
+                "50.0" : 337161.51718551526,
+                "90.0" : 340099.7130114162,
+                "95.0" : 340099.7130114162,
+                "99.0" : 340099.7130114162,
+                "99.9" : 340099.7130114162,
+                "99.99" : 340099.7130114162,
+                "99.999" : 340099.7130114162,
+                "99.9999" : 340099.7130114162,
+                "100.0" : 340099.7130114162
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    332162.4472092594,
+                    337161.51718551526,
+                    340099.7130114162
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerGeneratorsBenchmark.benchmarkNameGeneration",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 794463.3252686379,
+            "scoreError" : 829744.3631553504,
+            "scoreConfidence" : [
+                -35281.037886712584,
+                1624207.6884239884
+            ],
+            "scorePercentiles" : {
+                "0.0" : 741965.889173327,
+                "50.0" : 819469.5442864951,
+                "90.0" : 821954.5423460916,
+                "95.0" : 821954.5423460916,
+                "99.0" : 821954.5423460916,
+                "99.9" : 821954.5423460916,
+                "99.99" : 821954.5423460916,
+                "99.999" : 821954.5423460916,
+                "99.9999" : 821954.5423460916,
+                "100.0" : 821954.5423460916
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    741965.889173327,
+                    819469.5442864951,
+                    821954.5423460916
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerGeneratorsBenchmark.benchmarkPhoneGeneration",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 109947.0679287119,
+            "scoreError" : 18393.42195629598,
+            "scoreConfidence" : [
+                91553.64597241592,
+                128340.48988500788
+            ],
+            "scorePercentiles" : {
+                "0.0" : 108962.86480764089,
+                "50.0" : 109900.66550647523,
+                "90.0" : 110977.67347201958,
+                "95.0" : 110977.67347201958,
+                "99.0" : 110977.67347201958,
+                "99.9" : 110977.67347201958,
+                "99.99" : 110977.67347201958,
+                "99.999" : 110977.67347201958,
+                "99.9999" : 110977.67347201958,
+                "100.0" : 110977.67347201958
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    110977.67347201958,
+                    109900.66550647523,
+                    108962.86480764089
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.datafakerNameBaseline",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 805794.1847194778,
+            "scoreError" : 570370.7847009789,
+            "scoreConfidence" : [
+                235423.40001849888,
+                1376164.9694204568
+            ],
+            "scorePercentiles" : {
+                "0.0" : 769696.5763924557,
+                "50.0" : 823447.5043107424,
+                "90.0" : 824238.4734552352,
+                "95.0" : 824238.4734552352,
+                "99.0" : 824238.4734552352,
+                "99.9" : 824238.4734552352,
+                "99.99" : 824238.4734552352,
+                "99.999" : 824238.4734552352,
+                "99.9999" : 824238.4734552352,
+                "100.0" : 824238.4734552352
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    769696.5763924557,
+                    823447.5043107424,
+                    824238.4734552352
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.primitiveCharBaseline",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 6608612.5396771105,
+            "scoreError" : 195415.016988855,
+            "scoreConfidence" : [
+                6413197.522688256,
+                6804027.556665965
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6596367.354623901,
+                "50.0" : 6613226.908118064,
+                "90.0" : 6616243.356289369,
+                "95.0" : 6616243.356289369,
+                "99.0" : 6616243.356289369,
+                "99.9" : 6616243.356289369,
+                "99.99" : 6616243.356289369,
+                "99.999" : 6616243.356289369,
+                "99.9999" : 6616243.356289369,
+                "100.0" : 6616243.356289369
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    6613226.908118064,
+                    6596367.354623901,
+                    6616243.356289369
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexAlternation",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 4524842.127724453,
+            "scoreError" : 144772.97064475282,
+            "scoreConfidence" : [
+                4380069.1570797,
+                4669615.098369205
+            ],
+            "scorePercentiles" : {
+                "0.0" : 4516474.1177802365,
+                "50.0" : 4525792.807992897,
+                "90.0" : 4532259.457400226,
+                "95.0" : 4532259.457400226,
+                "99.0" : 4532259.457400226,
+                "99.9" : 4532259.457400226,
+                "99.99" : 4532259.457400226,
+                "99.999" : 4532259.457400226,
+                "99.9999" : 4532259.457400226,
+                "100.0" : 4532259.457400226
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    4525792.807992897,
+                    4516474.1177802365,
+                    4532259.457400226
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexBoundedCharClass",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1830980.9909005647,
+            "scoreError" : 1343901.4939791888,
+            "scoreConfidence" : [
+                487079.49692137586,
+                3174882.4848797536
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1748800.8242130692,
+                "50.0" : 1853066.6800294525,
+                "90.0" : 1891075.468459172,
+                "95.0" : 1891075.468459172,
+                "99.0" : 1891075.468459172,
+                "99.9" : 1891075.468459172,
+                "99.99" : 1891075.468459172,
+                "99.999" : 1891075.468459172,
+                "99.9999" : 1891075.468459172,
+                "100.0" : 1891075.468459172
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1891075.468459172,
+                    1853066.6800294525,
+                    1748800.8242130692
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexLiteralPlusDigits",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 5260728.187657408,
+            "scoreError" : 464444.0030727514,
+            "scoreConfidence" : [
+                4796284.184584657,
+                5725172.19073016
+            ],
+            "scorePercentiles" : {
+                "0.0" : 5242687.8316555675,
+                "50.0" : 5249648.4690073775,
+                "90.0" : 5289848.26230928,
+                "95.0" : 5289848.26230928,
+                "99.0" : 5289848.26230928,
+                "99.9" : 5289848.26230928,
+                "99.99" : 5289848.26230928,
+                "99.999" : 5289848.26230928,
+                "99.9999" : 5289848.26230928,
+                "100.0" : 5289848.26230928
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    5289848.26230928,
+                    5249648.4690073775,
+                    5242687.8316555675
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexLongStructured",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1740636.1097024567,
+            "scoreError" : 83237.75619344309,
+            "scoreConfidence" : [
+                1657398.3535090135,
+                1823873.8658959
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1735587.8144477669,
+                "50.0" : 1741855.3326515593,
+                "90.0" : 1744465.182008044,
+                "95.0" : 1744465.182008044,
+                "99.0" : 1744465.182008044,
+                "99.9" : 1744465.182008044,
+                "99.99" : 1744465.182008044,
+                "99.999" : 1744465.182008044,
+                "99.9999" : 1744465.182008044,
+                "100.0" : 1744465.182008044
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1735587.8144477669,
+                    1744465.182008044,
+                    1741855.3326515593
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexSepaMsgId",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 3257264.3457455286,
+            "scoreError" : 4921706.800105377,
+            "scoreConfidence" : [
+                -1664442.4543598485,
+                8178971.145850906
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2990339.3216702146,
+                "50.0" : 3251651.277497867,
+                "90.0" : 3529802.4380685054,
+                "95.0" : 3529802.4380685054,
+                "99.0" : 3529802.4380685054,
+                "99.9" : 3529802.4380685054,
+                "99.99" : 3529802.4380685054,
+                "99.999" : 3529802.4380685054,
+                "99.9999" : 3529802.4380685054,
+                "100.0" : 3529802.4380685054
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    3529802.4380685054,
+                    3251651.277497867,
+                    2990339.3216702146
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexUnboundedCapped",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1253577.9541532618,
+            "scoreError" : 1482792.947715776,
+            "scoreConfidence" : [
+                -229214.9935625142,
+                2736370.901869038
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1169111.9085718195,
+                "50.0" : 1260384.3290502378,
+                "90.0" : 1331237.6248377275,
+                "95.0" : 1331237.6248377275,
+                "99.0" : 1331237.6248377275,
+                "99.9" : 1331237.6248377275,
+                "99.99" : 1331237.6248377275,
+                "99.999" : 1331237.6248377275,
+                "99.9999" : 1331237.6248377275,
+                "100.0" : 1331237.6248377275
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1331237.6248377275,
+                    1260384.3290502378,
+                    1169111.9085718195
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexTypeBenchmark.regexifyBaseline",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1985567.1749909658,
+            "scoreError" : 1279547.218842952,
+            "scoreConfidence" : [
+                706019.9561480137,
+                3265114.3938339176
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1914367.7165531092,
+                "50.0" : 1987744.1796802115,
+                "90.0" : 2054589.628739577,
+                "95.0" : 2054589.628739577,
+                "99.0" : 2054589.628739577,
+                "99.9" : 2054589.628739577,
+                "99.99" : 2054589.628739577,
+                "99.999" : 2054589.628739577,
+                "99.9999" : 2054589.628739577,
+                "100.0" : 2054589.628739577
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2054589.628739577,
+                    1987744.1796802115,
+                    1914367.7165531092
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.expressionFreshName",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 504102.9927422014,
+            "scoreError" : 43625.774357978116,
+            "scoreConfidence" : [
+                460477.21838422323,
+                547728.7671001795
+            ],
+            "scorePercentiles" : {
+                "0.0" : 501647.01367110945,
+                "50.0" : 504238.1302579587,
+                "90.0" : 506423.83429753594,
+                "95.0" : 506423.83429753594,
+                "99.0" : 506423.83429753594,
+                "99.9" : 506423.83429753594,
+                "99.99" : 506423.83429753594,
+                "99.999" : 506423.83429753594,
+                "99.9999" : 506423.83429753594,
+                "100.0" : 506423.83429753594
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    504238.1302579587,
+                    506423.83429753594,
+                    501647.01367110945
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.expressionFreshRegexify",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 413818.70607771445,
+            "scoreError" : 335858.14080867835,
+            "scoreConfidence" : [
+                77960.5652690361,
+                749676.8468863928
+            ],
+            "scorePercentiles" : {
+                "0.0" : 392691.4392162444,
+                "50.0" : 422347.8127268447,
+                "90.0" : 426416.8662900544,
+                "95.0" : 426416.8662900544,
+                "99.0" : 426416.8662900544,
+                "99.9" : 426416.8662900544,
+                "99.99" : 426416.8662900544,
+                "99.999" : 426416.8662900544,
+                "99.9999" : 426416.8662900544,
+                "100.0" : 426416.8662900544
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    392691.4392162444,
+                    422347.8127268447,
+                    426416.8662900544
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.expressionWarmName",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 3079626.494085423,
+            "scoreError" : 792112.8885403812,
+            "scoreConfidence" : [
+                2287513.605545042,
+                3871739.3826258043
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3050606.6884675776,
+                "50.0" : 3058730.9748788206,
+                "90.0" : 3129541.8189098705,
+                "95.0" : 3129541.8189098705,
+                "99.0" : 3129541.8189098705,
+                "99.9" : 3129541.8189098705,
+                "99.99" : 3129541.8189098705,
+                "99.999" : 3129541.8189098705,
+                "99.9999" : 3129541.8189098705,
+                "100.0" : 3129541.8189098705
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    3050606.6884675776,
+                    3058730.9748788206,
+                    3129541.8189098705
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.expressionWarmRegexify",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 5481513.655088394,
+            "scoreError" : 246325.64624833112,
+            "scoreConfidence" : [
+                5235188.008840063,
+                5727839.301336725
+            ],
+            "scorePercentiles" : {
+                "0.0" : 5466929.491588016,
+                "50.0" : 5484033.0005986225,
+                "90.0" : 5493578.473078541,
+                "95.0" : 5493578.473078541,
+                "99.0" : 5493578.473078541,
+                "99.9" : 5493578.473078541,
+                "99.99" : 5493578.473078541,
+                "99.999" : 5493578.473078541,
+                "99.9999" : 5493578.473078541,
+                "100.0" : 5493578.473078541
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    5466929.491588016,
+                    5484033.0005986225,
+                    5493578.473078541
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.jsonComplexWithRegexpFreshFaker",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 8338.749612767047,
+            "scoreError" : 14607.638424336019,
+            "scoreConfidence" : [
+                -6268.8888115689715,
+                22946.38803710307
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7418.555562720605,
+                "50.0" : 8721.109969768462,
+                "90.0" : 8876.583305812077,
+                "95.0" : 8876.583305812077,
+                "99.0" : 8876.583305812077,
+                "99.9" : 8876.583305812077,
+                "99.99" : 8876.583305812077,
+                "99.999" : 8876.583305812077,
+                "99.9999" : 8876.583305812077,
+                "100.0" : 8876.583305812077
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    7418.555562720605,
+                    8721.109969768462,
+                    8876.583305812077
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.jsonComplexWithRegexpWarmFaker",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 52570.4949016826,
+            "scoreError" : 7097.696925619987,
+            "scoreConfidence" : [
+                45472.79797606261,
+                59668.19182730259
+            ],
+            "scorePercentiles" : {
+                "0.0" : 52127.03805388456,
+                "50.0" : 52730.02667334748,
+                "90.0" : 52854.41997781576,
+                "95.0" : 52854.41997781576,
+                "99.0" : 52854.41997781576,
+                "99.9" : 52854.41997781576,
+                "99.99" : 52854.41997781576,
+                "99.999" : 52854.41997781576,
+                "99.9999" : 52854.41997781576,
+                "100.0" : 52854.41997781576
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    52127.03805388456,
+                    52730.02667334748,
+                    52854.41997781576
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.regexifyFreshMedium",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 333407.74793162243,
+            "scoreError" : 247171.7424588542,
+            "scoreConfidence" : [
+                86236.00547276824,
+                580579.4903904767
+            ],
+            "scorePercentiles" : {
+                "0.0" : 317763.5629417531,
+                "50.0" : 341191.01710007415,
+                "90.0" : 341268.66375304013,
+                "95.0" : 341268.66375304013,
+                "99.0" : 341268.66375304013,
+                "99.9" : 341268.66375304013,
+                "99.99" : 341268.66375304013,
+                "99.999" : 341268.66375304013,
+                "99.9999" : 341268.66375304013,
+                "100.0" : 341268.66375304013
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    317763.5629417531,
+                    341268.66375304013,
+                    341191.01710007415
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.regexifyFreshShort",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 684884.5544084912,
+            "scoreError" : 63121.219782978296,
+            "scoreConfidence" : [
+                621763.334625513,
+                748005.7741914695
+            ],
+            "scorePercentiles" : {
+                "0.0" : 682543.3963904904,
+                "50.0" : 683251.5548569509,
+                "90.0" : 688858.7119780326,
+                "95.0" : 688858.7119780326,
+                "99.0" : 688858.7119780326,
+                "99.9" : 688858.7119780326,
+                "99.99" : 688858.7119780326,
+                "99.999" : 688858.7119780326,
+                "99.9999" : 688858.7119780326,
+                "100.0" : 688858.7119780326
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    688858.7119780326,
+                    683251.5548569509,
+                    682543.3963904904
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.regexifyFreshUuidLike",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 227932.0071550676,
+            "scoreError" : 13274.939016385055,
+            "scoreConfidence" : [
+                214657.06813868255,
+                241206.94617145267
+            ],
+            "scorePercentiles" : {
+                "0.0" : 227260.84001908737,
+                "50.0" : 227829.84982818374,
+                "90.0" : 228705.3316179317,
+                "95.0" : 228705.3316179317,
+                "99.0" : 228705.3316179317,
+                "99.9" : 228705.3316179317,
+                "99.99" : 228705.3316179317,
+                "99.999" : 228705.3316179317,
+                "99.9999" : 228705.3316179317,
+                "100.0" : 228705.3316179317
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    228705.3316179317,
+                    227260.84001908737,
+                    227829.84982818374
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.regexifyWarmMedium",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 5133861.637999506,
+            "scoreError" : 754929.6096708096,
+            "scoreConfidence" : [
+                4378932.028328696,
+                5888791.247670315
+            ],
+            "scorePercentiles" : {
+                "0.0" : 5087135.929369596,
+                "50.0" : 5148572.595443861,
+                "90.0" : 5165876.38918506,
+                "95.0" : 5165876.38918506,
+                "99.0" : 5165876.38918506,
+                "99.9" : 5165876.38918506,
+                "99.99" : 5165876.38918506,
+                "99.999" : 5165876.38918506,
+                "99.9999" : 5165876.38918506,
+                "100.0" : 5165876.38918506
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    5087135.929369596,
+                    5148572.595443861,
+                    5165876.38918506
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.regexifyWarmShort",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 8135168.267689184,
+            "scoreError" : 74251.8278259672,
+            "scoreConfidence" : [
+                8060916.439863217,
+                8209420.0955151515
+            ],
+            "scorePercentiles" : {
+                "0.0" : 8131394.399591061,
+                "50.0" : 8134629.653426198,
+                "90.0" : 8139480.750050294,
+                "95.0" : 8139480.750050294,
+                "99.0" : 8139480.750050294,
+                "99.9" : 8139480.750050294,
+                "99.99" : 8139480.750050294,
+                "99.999" : 8139480.750050294,
+                "99.9999" : 8139480.750050294,
+                "100.0" : 8139480.750050294
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    8131394.399591061,
+                    8134629.653426198,
+                    8139480.750050294
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexpBenchmark.regexifyWarmUuidLike",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1358008.4613931852,
+            "scoreError" : 53324.34639453118,
+            "scoreConfidence" : [
+                1304684.114998654,
+                1411332.8077877164
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1354653.824546437,
+                "50.0" : 1359364.7202520855,
+                "90.0" : 1360006.8393810336,
+                "95.0" : 1360006.8393810336,
+                "99.0" : 1360006.8393810336,
+                "99.9" : 1360006.8393810336,
+                "99.99" : 1360006.8393810336,
+                "99.999" : 1360006.8393810336,
+                "99.9999" : 1360006.8393810336,
+                "100.0" : 1360006.8393810336
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1360006.8393810336,
+                    1359364.7202520855,
+                    1354653.824546437
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DestinationBenchmark.benchmarkFileDestinationWrite",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 962392.792254814,
+            "scoreError" : 177744.8466990374,
+            "scoreConfidence" : [
+                784647.9455557766,
+                1140137.6389538513
+            ],
+            "scorePercentiles" : {
+                "0.0" : 955583.5502096405,
+                "50.0" : 958041.9172909491,
+                "90.0" : 973552.9092638519,
+                "95.0" : 973552.9092638519,
+                "99.0" : 973552.9092638519,
+                "99.9" : 973552.9092638519,
+                "99.99" : 973552.9092638519,
+                "99.999" : 973552.9092638519,
+                "99.9999" : 973552.9092638519,
+                "100.0" : 973552.9092638519
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    958041.9172909491,
+                    955583.5502096405,
+                    973552.9092638519
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DestinationBenchmark.benchmarkRawFileWrite",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 5124339.605260828,
+            "scoreError" : 8765688.542266883,
+            "scoreConfidence" : [
+                -3641348.9370060554,
+                1.389002814752771E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 4574259.757069267,
+                "50.0" : 5336791.697062526,
+                "90.0" : 5461967.36165069,
+                "95.0" : 5461967.36165069,
+                "99.0" : 5461967.36165069,
+                "99.9" : 5461967.36165069,
+                "99.99" : 5461967.36165069,
+                "99.999" : 5461967.36165069,
+                "99.9999" : 5461967.36165069,
+                "100.0" : 5461967.36165069
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    5461967.36165069,
+                    5336791.697062526,
+                    4574259.757069267
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "none",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 19092.82760856151,
+            "scoreError" : 87614.02481048499,
+            "scoreConfidence" : [
+                -68521.19720192348,
+                106706.8524190465
+            ],
+            "scorePercentiles" : {
+                "0.0" : 14132.255177423767,
+                "50.0" : 19426.53934602735,
+                "90.0" : 23719.688302233408,
+                "95.0" : 23719.688302233408,
+                "99.0" : 23719.688302233408,
+                "99.9" : 23719.688302233408,
+                "99.99" : 23719.688302233408,
+                "99.999" : 23719.688302233408,
+                "99.9999" : 23719.688302233408,
+                "100.0" : 23719.688302233408
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    14132.255177423767,
+                    19426.53934602735,
+                    23719.688302233408
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "gzip",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 254266.89411019173,
+            "scoreError" : 104025.95354168593,
+            "scoreConfidence" : [
+                150240.9405685058,
+                358292.8476518777
+            ],
+            "scorePercentiles" : {
+                "0.0" : 250746.41592143735,
+                "50.0" : 251208.66526051806,
+                "90.0" : 260845.6011486198,
+                "95.0" : 260845.6011486198,
+                "99.0" : 260845.6011486198,
+                "99.9" : 260845.6011486198,
+                "99.99" : 260845.6011486198,
+                "99.999" : 260845.6011486198,
+                "99.9999" : 260845.6011486198,
+                "100.0" : 260845.6011486198
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    251208.66526051806,
+                    260845.6011486198,
+                    250746.41592143735
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "snappy",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 128422.41259974883,
+            "scoreError" : 169274.80186670367,
+            "scoreConfidence" : [
+                -40852.38926695484,
+                297697.2144664525
+            ],
+            "scorePercentiles" : {
+                "0.0" : 120760.75213328021,
+                "50.0" : 125767.47304321876,
+                "90.0" : 138739.0126227475,
+                "95.0" : 138739.0126227475,
+                "99.0" : 138739.0126227475,
+                "99.9" : 138739.0126227475,
+                "99.99" : 138739.0126227475,
+                "99.999" : 138739.0126227475,
+                "99.9999" : 138739.0126227475,
+                "100.0" : 138739.0126227475
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    125767.47304321876,
+                    120760.75213328021,
+                    138739.0126227475
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "lz4",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 290372.97262782993,
+            "scoreError" : 268122.3571810075,
+            "scoreConfidence" : [
+                22250.615446822427,
+                558495.3298088375
+            ],
+            "scorePercentiles" : {
+                "0.0" : 275238.6791113349,
+                "50.0" : 291291.2397700352,
+                "90.0" : 304588.99900211964,
+                "95.0" : 304588.99900211964,
+                "99.0" : 304588.99900211964,
+                "99.9" : 304588.99900211964,
+                "99.99" : 304588.99900211964,
+                "99.999" : 304588.99900211964,
+                "99.9999" : 304588.99900211964,
+                "100.0" : 304588.99900211964
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    275238.6791113349,
+                    291291.2397700352,
+                    304588.99900211964
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "none",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 359532.0691312007,
+            "scoreError" : 499623.16259674495,
+            "scoreConfidence" : [
+                -140091.09346554423,
+                859155.2317279456
+            ],
+            "scorePercentiles" : {
+                "0.0" : 328421.1466600303,
+                "50.0" : 370180.63771062734,
+                "90.0" : 379994.4230229445,
+                "95.0" : 379994.4230229445,
+                "99.0" : 379994.4230229445,
+                "99.9" : 379994.4230229445,
+                "99.99" : 379994.4230229445,
+                "99.999" : 379994.4230229445,
+                "99.9999" : 379994.4230229445,
+                "100.0" : 379994.4230229445
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    379994.4230229445,
+                    370180.63771062734,
+                    328421.1466600303
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "gzip",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 358977.31399278896,
+            "scoreError" : 62263.358304853085,
+            "scoreConfidence" : [
+                296713.9556879359,
+                421240.67229764204
+            ],
+            "scorePercentiles" : {
+                "0.0" : 356509.40516113007,
+                "50.0" : 357550.4949465085,
+                "90.0" : 362872.0418707283,
+                "95.0" : 362872.0418707283,
+                "99.0" : 362872.0418707283,
+                "99.9" : 362872.0418707283,
+                "99.99" : 362872.0418707283,
+                "99.999" : 362872.0418707283,
+                "99.9999" : 362872.0418707283,
+                "100.0" : 362872.0418707283
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    356509.40516113007,
+                    357550.4949465085,
+                    362872.0418707283
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "snappy",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 675708.7240662774,
+            "scoreError" : 311503.0969112322,
+            "scoreConfidence" : [
+                364205.62715504516,
+                987211.8209775096
+            ],
+            "scorePercentiles" : {
+                "0.0" : 656910.2044852292,
+                "50.0" : 679960.0210492921,
+                "90.0" : 690255.946664311,
+                "95.0" : 690255.946664311,
+                "99.0" : 690255.946664311,
+                "99.9" : 690255.946664311,
+                "99.99" : 690255.946664311,
+                "99.999" : 690255.946664311,
+                "99.9999" : 690255.946664311,
+                "100.0" : 690255.946664311
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    656910.2044852292,
+                    679960.0210492921,
+                    690255.946664311
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "lz4",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 693637.3181605766,
+            "scoreError" : 150947.8249933401,
+            "scoreConfidence" : [
+                542689.4931672366,
+                844585.1431539167
+            ],
+            "scorePercentiles" : {
+                "0.0" : 686008.3575163657,
+                "50.0" : 692471.0728612033,
+                "90.0" : 702432.5241041606,
+                "95.0" : 702432.5241041606,
+                "99.0" : 702432.5241041606,
+                "99.9" : 702432.5241041606,
+                "99.99" : 702432.5241041606,
+                "99.999" : 702432.5241041606,
+                "99.9999" : 702432.5241041606,
+                "100.0" : 702432.5241041606
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    686008.3575163657,
+                    692471.0728612033,
+                    702432.5241041606
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "none",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 617819.1844887774,
+            "scoreError" : 222268.36490650865,
+            "scoreConfidence" : [
+                395550.81958226877,
+                840087.549395286
+            ],
+            "scorePercentiles" : {
+                "0.0" : 609762.1324407689,
+                "50.0" : 611860.4574548139,
+                "90.0" : 631834.9635707496,
+                "95.0" : 631834.9635707496,
+                "99.0" : 631834.9635707496,
+                "99.9" : 631834.9635707496,
+                "99.99" : 631834.9635707496,
+                "99.999" : 631834.9635707496,
+                "99.9999" : 631834.9635707496,
+                "100.0" : 631834.9635707496
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    609762.1324407689,
+                    611860.4574548139,
+                    631834.9635707496
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "gzip",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 374449.06329052144,
+            "scoreError" : 85334.29903000902,
+            "scoreConfidence" : [
+                289114.7642605124,
+                459783.36232053046
+            ],
+            "scorePercentiles" : {
+                "0.0" : 369377.99473160284,
+                "50.0" : 375374.6789341848,
+                "90.0" : 378594.5162057767,
+                "95.0" : 378594.5162057767,
+                "99.0" : 378594.5162057767,
+                "99.9" : 378594.5162057767,
+                "99.99" : 378594.5162057767,
+                "99.999" : 378594.5162057767,
+                "99.9999" : 378594.5162057767,
+                "100.0" : 378594.5162057767
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    369377.99473160284,
+                    375374.6789341848,
+                    378594.5162057767
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "snappy",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 706963.2756386126,
+            "scoreError" : 166202.33890468805,
+            "scoreConfidence" : [
+                540760.9367339246,
+                873165.6145433006
+            ],
+            "scorePercentiles" : {
+                "0.0" : 696531.2655578199,
+                "50.0" : 711007.1044750501,
+                "90.0" : 713351.4568829677,
+                "95.0" : 713351.4568829677,
+                "99.0" : 713351.4568829677,
+                "99.9" : 713351.4568829677,
+                "99.99" : 713351.4568829677,
+                "99.999" : 713351.4568829677,
+                "99.9999" : 713351.4568829677,
+                "100.0" : 713351.4568829677
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    696531.2655578199,
+                    711007.1044750501,
+                    713351.4568829677
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkAsyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "lz4",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 682494.9332590676,
+            "scoreError" : 38078.71174045787,
+            "scoreConfidence" : [
+                644416.2215186097,
+                720573.6449995255
+            ],
+            "scorePercentiles" : {
+                "0.0" : 681162.1221882761,
+                "50.0" : 681422.3133464801,
+                "90.0" : 684900.3642424465,
+                "95.0" : 684900.3642424465,
+                "99.0" : 684900.3642424465,
+                "99.9" : 684900.3642424465,
+                "99.99" : 684900.3642424465,
+                "99.999" : 684900.3642424465,
+                "99.9999" : 684900.3642424465,
+                "100.0" : 684900.3642424465
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    681162.1221882761,
+                    684900.3642424465,
+                    681422.3133464801
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "none",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 24872.380026449086,
+            "scoreError" : 38403.2961372322,
+            "scoreConfidence" : [
+                -13530.916110783117,
+                63275.67616368129
+            ],
+            "scorePercentiles" : {
+                "0.0" : 22723.8944098205,
+                "50.0" : 24962.198054440425,
+                "90.0" : 26931.04761508634,
+                "95.0" : 26931.04761508634,
+                "99.0" : 26931.04761508634,
+                "99.9" : 26931.04761508634,
+                "99.99" : 26931.04761508634,
+                "99.999" : 26931.04761508634,
+                "99.9999" : 26931.04761508634,
+                "100.0" : 26931.04761508634
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    24962.198054440425,
+                    26931.04761508634,
+                    22723.8944098205
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "none",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2064.4672984262456,
+            "scoreError" : 4012.590635243721,
+            "scoreConfidence" : [
+                -1948.1233368174753,
+                6077.057933669967
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1856.5301183498152,
+                "50.0" : 2042.155255044442,
+                "90.0" : 2294.7165218844802,
+                "95.0" : 2294.7165218844802,
+                "99.0" : 2294.7165218844802,
+                "99.9" : 2294.7165218844802,
+                "99.99" : 2294.7165218844802,
+                "99.999" : 2294.7165218844802,
+                "99.9999" : 2294.7165218844802,
+                "100.0" : 2294.7165218844802
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1856.5301183498152,
+                    2294.7165218844802,
+                    2042.155255044442
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "gzip",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 276492.5184859395,
+            "scoreError" : 356545.88969729544,
+            "scoreConfidence" : [
+                -80053.37121135596,
+                633038.408183235
+            ],
+            "scorePercentiles" : {
+                "0.0" : 258161.26765335316,
+                "50.0" : 274259.8250507234,
+                "90.0" : 297056.4627537419,
+                "95.0" : 297056.4627537419,
+                "99.0" : 297056.4627537419,
+                "99.9" : 297056.4627537419,
+                "99.99" : 297056.4627537419,
+                "99.999" : 297056.4627537419,
+                "99.9999" : 297056.4627537419,
+                "100.0" : 297056.4627537419
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    258161.26765335316,
+                    274259.8250507234,
+                    297056.4627537419
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "gzip",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1723.3083518585308,
+            "scoreError" : 1149.2797093438774,
+            "scoreConfidence" : [
+                574.0286425146535,
+                2872.5880612024084
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1667.697024144993,
+                "50.0" : 1710.5059074647386,
+                "90.0" : 1791.7221239658606,
+                "95.0" : 1791.7221239658606,
+                "99.0" : 1791.7221239658606,
+                "99.9" : 1791.7221239658606,
+                "99.99" : 1791.7221239658606,
+                "99.999" : 1791.7221239658606,
+                "99.9999" : 1791.7221239658606,
+                "100.0" : 1791.7221239658606
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1667.697024144993,
+                    1791.7221239658606,
+                    1710.5059074647386
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "snappy",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 122761.6473206088,
+            "scoreError" : 204483.01629157644,
+            "scoreConfidence" : [
+                -81721.36897096764,
+                327244.6636121852
+            ],
+            "scorePercentiles" : {
+                "0.0" : 114557.99904794747,
+                "50.0" : 118194.36313021263,
+                "90.0" : 135532.57978366633,
+                "95.0" : 135532.57978366633,
+                "99.0" : 135532.57978366633,
+                "99.9" : 135532.57978366633,
+                "99.99" : 135532.57978366633,
+                "99.999" : 135532.57978366633,
+                "99.9999" : 135532.57978366633,
+                "100.0" : 135532.57978366633
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    114557.99904794747,
+                    118194.36313021263,
+                    135532.57978366633
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "snappy",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1992.227501418871,
+            "scoreError" : 2776.0873924302696,
+            "scoreConfidence" : [
+                -783.8598910113985,
+                4768.31489384914
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1817.961601968918,
+                "50.0" : 2059.911617729288,
+                "90.0" : 2098.809284558407,
+                "95.0" : 2098.809284558407,
+                "99.0" : 2098.809284558407,
+                "99.9" : 2098.809284558407,
+                "99.99" : 2098.809284558407,
+                "99.999" : 2098.809284558407,
+                "99.9999" : 2098.809284558407,
+                "100.0" : 2098.809284558407
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1817.961601968918,
+                    2098.809284558407,
+                    2059.911617729288
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "lz4",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 301268.95084530395,
+            "scoreError" : 119368.08312130613,
+            "scoreConfidence" : [
+                181900.8677239978,
+                420637.0339666101
+            ],
+            "scorePercentiles" : {
+                "0.0" : 293721.72867814166,
+                "50.0" : 304742.5604290226,
+                "90.0" : 305342.56342874747,
+                "95.0" : 305342.56342874747,
+                "99.0" : 305342.56342874747,
+                "99.9" : 305342.56342874747,
+                "99.99" : 305342.56342874747,
+                "99.999" : 305342.56342874747,
+                "99.9999" : 305342.56342874747,
+                "100.0" : 305342.56342874747
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    304742.5604290226,
+                    305342.56342874747,
+                    293721.72867814166
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "lz4",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1966.9265019728366,
+            "scoreError" : 2847.0474174615165,
+            "scoreConfidence" : [
+                -880.1209154886799,
+                4813.973919434353
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1787.0830840208107,
+                "50.0" : 2047.0594415293306,
+                "90.0" : 2066.636980368369,
+                "95.0" : 2066.636980368369,
+                "99.0" : 2066.636980368369,
+                "99.9" : 2066.636980368369,
+                "99.99" : 2066.636980368369,
+                "99.999" : 2066.636980368369,
+                "99.9999" : 2066.636980368369,
+                "100.0" : 2066.636980368369
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1787.0830840208107,
+                    2047.0594415293306,
+                    2066.636980368369
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "none",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 347162.5183524843,
+            "scoreError" : 523244.15141810494,
+            "scoreConfidence" : [
+                -176081.63306562067,
+                870406.6697705892
+            ],
+            "scorePercentiles" : {
+                "0.0" : 317727.52577434335,
+                "50.0" : 348735.70371725067,
+                "90.0" : 375024.3255658587,
+                "95.0" : 375024.3255658587,
+                "99.0" : 375024.3255658587,
+                "99.9" : 375024.3255658587,
+                "99.99" : 375024.3255658587,
+                "99.999" : 375024.3255658587,
+                "99.9999" : 375024.3255658587,
+                "100.0" : 375024.3255658587
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    317727.52577434335,
+                    348735.70371725067,
+                    375024.3255658587
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "none",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2152.429655479727,
+            "scoreError" : 1456.434382683043,
+            "scoreConfidence" : [
+                695.995272796684,
+                3608.86403816277
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2094.3925583757846,
+                "50.0" : 2119.4245553069663,
+                "90.0" : 2243.4718527564296,
+                "95.0" : 2243.4718527564296,
+                "99.0" : 2243.4718527564296,
+                "99.9" : 2243.4718527564296,
+                "99.99" : 2243.4718527564296,
+                "99.999" : 2243.4718527564296,
+                "99.9999" : 2243.4718527564296,
+                "100.0" : 2243.4718527564296
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2119.4245553069663,
+                    2094.3925583757846,
+                    2243.4718527564296
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "gzip",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 376395.9092316598,
+            "scoreError" : 41113.634909229426,
+            "scoreConfidence" : [
+                335282.27432243037,
+                417509.5441408892
+            ],
+            "scorePercentiles" : {
+                "0.0" : 374041.6558772727,
+                "50.0" : 376612.96928203315,
+                "90.0" : 378533.10253567353,
+                "95.0" : 378533.10253567353,
+                "99.0" : 378533.10253567353,
+                "99.9" : 378533.10253567353,
+                "99.99" : 378533.10253567353,
+                "99.999" : 378533.10253567353,
+                "99.9999" : 378533.10253567353,
+                "100.0" : 378533.10253567353
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    374041.6558772727,
+                    376612.96928203315,
+                    378533.10253567353
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "gzip",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1663.4323226952008,
+            "scoreError" : 1811.806924876442,
+            "scoreConfidence" : [
+                -148.37460218124124,
+                3475.239247571643
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1548.787985173679,
+                "50.0" : 1718.4672387823875,
+                "90.0" : 1723.0417441295353,
+                "95.0" : 1723.0417441295353,
+                "99.0" : 1723.0417441295353,
+                "99.9" : 1723.0417441295353,
+                "99.99" : 1723.0417441295353,
+                "99.999" : 1723.0417441295353,
+                "99.9999" : 1723.0417441295353,
+                "100.0" : 1723.0417441295353
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1548.787985173679,
+                    1723.0417441295353,
+                    1718.4672387823875
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "snappy",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 704108.9433923716,
+            "scoreError" : 76237.48150809243,
+            "scoreConfidence" : [
+                627871.4618842793,
+                780346.424900464
+            ],
+            "scorePercentiles" : {
+                "0.0" : 699801.1432704764,
+                "50.0" : 704380.08113424,
+                "90.0" : 708145.6057723983,
+                "95.0" : 708145.6057723983,
+                "99.0" : 708145.6057723983,
+                "99.9" : 708145.6057723983,
+                "99.99" : 708145.6057723983,
+                "99.999" : 708145.6057723983,
+                "99.9999" : 708145.6057723983,
+                "100.0" : 708145.6057723983
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    704380.08113424,
+                    708145.6057723983,
+                    699801.1432704764
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "snappy",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2027.0399842649076,
+            "scoreError" : 3363.9025571349584,
+            "scoreConfidence" : [
+                -1336.8625728700508,
+                5390.942541399866
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1855.5457056254452,
+                "50.0" : 2003.5131797598683,
+                "90.0" : 2222.061067409409,
+                "95.0" : 2222.061067409409,
+                "99.0" : 2222.061067409409,
+                "99.9" : 2222.061067409409,
+                "99.99" : 2222.061067409409,
+                "99.999" : 2222.061067409409,
+                "99.9999" : 2222.061067409409,
+                "100.0" : 2222.061067409409
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1855.5457056254452,
+                    2003.5131797598683,
+                    2222.061067409409
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "lz4",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 724698.9241311791,
+            "scoreError" : 39253.32557379071,
+            "scoreConfidence" : [
+                685445.5985573884,
+                763952.2497049698
+            ],
+            "scorePercentiles" : {
+                "0.0" : 722245.077426943,
+                "50.0" : 725589.1117821039,
+                "90.0" : 726262.5831844904,
+                "95.0" : 726262.5831844904,
+                "99.0" : 726262.5831844904,
+                "99.9" : 726262.5831844904,
+                "99.99" : 726262.5831844904,
+                "99.999" : 726262.5831844904,
+                "99.9999" : 726262.5831844904,
+                "100.0" : 726262.5831844904
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    722245.077426943,
+                    725589.1117821039,
+                    726262.5831844904
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "lz4",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1944.1907081108304,
+            "scoreError" : 2987.891908887678,
+            "scoreConfidence" : [
+                -1043.7012007768474,
+                4932.0826169985085
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1760.5670843691198,
+                "50.0" : 1996.829887266342,
+                "90.0" : 2075.17515269703,
+                "95.0" : 2075.17515269703,
+                "99.0" : 2075.17515269703,
+                "99.9" : 2075.17515269703,
+                "99.99" : 2075.17515269703,
+                "99.999" : 2075.17515269703,
+                "99.9999" : 2075.17515269703,
+                "100.0" : 2075.17515269703
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1760.5670843691198,
+                    1996.829887266342,
+                    2075.17515269703
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "none",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 622306.2089512754,
+            "scoreError" : 70558.73677468693,
+            "scoreConfidence" : [
+                551747.4721765885,
+                692864.9457259624
+            ],
+            "scorePercentiles" : {
+                "0.0" : 618130.8737009263,
+                "50.0" : 623021.6626777754,
+                "90.0" : 625766.0904751248,
+                "95.0" : 625766.0904751248,
+                "99.0" : 625766.0904751248,
+                "99.9" : 625766.0904751248,
+                "99.99" : 625766.0904751248,
+                "99.999" : 625766.0904751248,
+                "99.9999" : 625766.0904751248,
+                "100.0" : 625766.0904751248
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    625766.0904751248,
+                    618130.8737009263,
+                    623021.6626777754
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "none",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2151.265450419761,
+            "scoreError" : 1448.7089496833134,
+            "scoreConfidence" : [
+                702.5565007364473,
+                3599.974400103074
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2059.6396541694276,
+                "50.0" : 2194.034506171234,
+                "90.0" : 2200.1221909186206,
+                "95.0" : 2200.1221909186206,
+                "99.0" : 2200.1221909186206,
+                "99.9" : 2200.1221909186206,
+                "99.99" : 2200.1221909186206,
+                "99.999" : 2200.1221909186206,
+                "99.9999" : 2200.1221909186206,
+                "100.0" : 2200.1221909186206
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2059.6396541694276,
+                    2200.1221909186206,
+                    2194.034506171234
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "gzip",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 369298.87612840213,
+            "scoreError" : 13381.981472924412,
+            "scoreConfidence" : [
+                355916.8946554777,
+                382680.85760132654
+            ],
+            "scorePercentiles" : {
+                "0.0" : 368479.5664355597,
+                "50.0" : 369522.5526721326,
+                "90.0" : 369894.5092775142,
+                "95.0" : 369894.5092775142,
+                "99.0" : 369894.5092775142,
+                "99.9" : 369894.5092775142,
+                "99.99" : 369894.5092775142,
+                "99.999" : 369894.5092775142,
+                "99.9999" : 369894.5092775142,
+                "100.0" : 369894.5092775142
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    369894.5092775142,
+                    368479.5664355597,
+                    369522.5526721326
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "gzip",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1668.9884011105626,
+            "scoreError" : 3105.1644928209103,
+            "scoreConfidence" : [
+                -1436.1760917103477,
+                4774.152893931473
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1521.0743425274895,
+                "50.0" : 1630.871079315006,
+                "90.0" : 1855.0197814891926,
+                "95.0" : 1855.0197814891926,
+                "99.0" : 1855.0197814891926,
+                "99.9" : 1855.0197814891926,
+                "99.99" : 1855.0197814891926,
+                "99.999" : 1855.0197814891926,
+                "99.9999" : 1855.0197814891926,
+                "100.0" : 1855.0197814891926
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1521.0743425274895,
+                    1630.871079315006,
+                    1855.0197814891926
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "snappy",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 697565.986599294,
+            "scoreError" : 104585.30771514935,
+            "scoreConfidence" : [
+                592980.6788841446,
+                802151.2943144434
+            ],
+            "scorePercentiles" : {
+                "0.0" : 693560.6299682921,
+                "50.0" : 695004.5236413691,
+                "90.0" : 704132.806188221,
+                "95.0" : 704132.806188221,
+                "99.0" : 704132.806188221,
+                "99.9" : 704132.806188221,
+                "99.99" : 704132.806188221,
+                "99.999" : 704132.806188221,
+                "99.9999" : 704132.806188221,
+                "100.0" : 704132.806188221
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    695004.5236413691,
+                    693560.6299682921,
+                    704132.806188221
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "snappy",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1993.8068736051828,
+            "scoreError" : 2994.878636029218,
+            "scoreConfidence" : [
+                -1001.0717624240351,
+                4988.685509634401
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1805.3332333610306,
+                "50.0" : 2070.5344088244183,
+                "90.0" : 2105.5529786301,
+                "95.0" : 2105.5529786301,
+                "99.0" : 2105.5529786301,
+                "99.9" : 2105.5529786301,
+                "99.99" : 2105.5529786301,
+                "99.999" : 2105.5529786301,
+                "99.9999" : 2105.5529786301,
+                "100.0" : 2105.5529786301
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1805.3332333610306,
+                    2070.5344088244183,
+                    2105.5529786301
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "lz4",
+            "sync" : "false"
+        },
+        "primaryMetric" : {
+            "score" : 719724.4065934694,
+            "scoreError" : 72246.48892546169,
+            "scoreConfidence" : [
+                647477.9176680078,
+                791970.8955189311
+            ],
+            "scorePercentiles" : {
+                "0.0" : 715243.4083231915,
+                "50.0" : 721175.8076882816,
+                "90.0" : 722754.0037689353,
+                "95.0" : 722754.0037689353,
+                "99.0" : 722754.0037689353,
+                "99.9" : 722754.0037689353,
+                "99.99" : 722754.0037689353,
+                "99.999" : 722754.0037689353,
+                "99.9999" : 722754.0037689353,
+                "100.0" : 722754.0037689353
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    722754.0037689353,
+                    721175.8076882816,
+                    715243.4083231915
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkKafkaProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "lz4",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1941.5939366643204,
+            "scoreError" : 3416.840525012715,
+            "scoreConfidence" : [
+                -1475.2465883483944,
+                5358.434461677035
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1727.8421657649785,
+                "50.0" : 2020.015655795271,
+                "90.0" : 2076.9239884327117,
+                "95.0" : 2076.9239884327117,
+                "99.0" : 2076.9239884327117,
+                "99.9" : 2076.9239884327117,
+                "99.99" : 2076.9239884327117,
+                "99.999" : 2076.9239884327117,
+                "99.9999" : 2076.9239884327117,
+                "100.0" : 2076.9239884327117
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1727.8421657649785,
+                    2020.015655795271,
+                    2076.9239884327117
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "none",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2060.101421798387,
+            "scoreError" : 3186.335892258156,
+            "scoreConfidence" : [
+                -1126.234470459769,
+                5246.437314056543
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1863.1903500954265,
+                "50.0" : 2120.8279245055173,
+                "90.0" : 2196.285990794218,
+                "95.0" : 2196.285990794218,
+                "99.0" : 2196.285990794218,
+                "99.9" : 2196.285990794218,
+                "99.99" : 2196.285990794218,
+                "99.999" : 2196.285990794218,
+                "99.9999" : 2196.285990794218,
+                "100.0" : 2196.285990794218
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1863.1903500954265,
+                    2120.8279245055173,
+                    2196.285990794218
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "gzip",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1775.8809598155933,
+            "scoreError" : 2691.2620344810875,
+            "scoreConfidence" : [
+                -915.3810746654942,
+                4467.142994296681
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1609.857450342487,
+                "50.0" : 1825.90095400275,
+                "90.0" : 1891.884475101543,
+                "95.0" : 1891.884475101543,
+                "99.0" : 1891.884475101543,
+                "99.9" : 1891.884475101543,
+                "99.99" : 1891.884475101543,
+                "99.999" : 1891.884475101543,
+                "99.9999" : 1891.884475101543,
+                "100.0" : 1891.884475101543
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1609.857450342487,
+                    1891.884475101543,
+                    1825.90095400275
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "snappy",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2053.9129764892273,
+            "scoreError" : 4267.263011746749,
+            "scoreConfidence" : [
+                -2213.3500352575215,
+                6321.175988235977
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1819.777861172309,
+                "50.0" : 2054.3777298885193,
+                "90.0" : 2287.583338406853,
+                "95.0" : 2287.583338406853,
+                "99.0" : 2287.583338406853,
+                "99.9" : 2287.583338406853,
+                "99.99" : 2287.583338406853,
+                "99.999" : 2287.583338406853,
+                "99.9999" : 2287.583338406853,
+                "100.0" : 2287.583338406853
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1819.777861172309,
+                    2287.583338406853,
+                    2054.3777298885193
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "1024",
+            "compression" : "lz4",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2033.6635125034297,
+            "scoreError" : 3840.484571373531,
+            "scoreConfidence" : [
+                -1806.821058870101,
+                5874.14808387696
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1791.6070711508646,
+                "50.0" : 2135.4320555293016,
+                "90.0" : 2173.9514108301228,
+                "95.0" : 2173.9514108301228,
+                "99.0" : 2173.9514108301228,
+                "99.9" : 2173.9514108301228,
+                "99.99" : 2173.9514108301228,
+                "99.999" : 2173.9514108301228,
+                "99.9999" : 2173.9514108301228,
+                "100.0" : 2173.9514108301228
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1791.6070711508646,
+                    2173.9514108301228,
+                    2135.4320555293016
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "none",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2088.530287478428,
+            "scoreError" : 1831.131796553834,
+            "scoreConfidence" : [
+                257.39849092459394,
+                3919.662084032262
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1974.3123243434381,
+                "50.0" : 2128.611865194629,
+                "90.0" : 2162.666672897216,
+                "95.0" : 2162.666672897216,
+                "99.0" : 2162.666672897216,
+                "99.9" : 2162.666672897216,
+                "99.99" : 2162.666672897216,
+                "99.999" : 2162.666672897216,
+                "99.9999" : 2162.666672897216,
+                "100.0" : 2162.666672897216
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1974.3123243434381,
+                    2162.666672897216,
+                    2128.611865194629
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "gzip",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1721.1517280278931,
+            "scoreError" : 1715.5504560632276,
+            "scoreConfidence" : [
+                5.601271964665557,
+                3436.7021840911207
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1612.5995699994448,
+                "50.0" : 1773.2089034043308,
+                "90.0" : 1777.6467106799034,
+                "95.0" : 1777.6467106799034,
+                "99.0" : 1777.6467106799034,
+                "99.9" : 1777.6467106799034,
+                "99.99" : 1777.6467106799034,
+                "99.999" : 1777.6467106799034,
+                "99.9999" : 1777.6467106799034,
+                "100.0" : 1777.6467106799034
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1612.5995699994448,
+                    1777.6467106799034,
+                    1773.2089034043308
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "snappy",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1959.018762428573,
+            "scoreError" : 3731.4428933777886,
+            "scoreConfidence" : [
+                -1772.4241309492156,
+                5690.461655806362
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1723.8849017215437,
+                "50.0" : 2057.407866908941,
+                "90.0" : 2095.7635186552347,
+                "95.0" : 2095.7635186552347,
+                "99.0" : 2095.7635186552347,
+                "99.9" : 2095.7635186552347,
+                "99.99" : 2095.7635186552347,
+                "99.999" : 2095.7635186552347,
+                "99.9999" : 2095.7635186552347,
+                "100.0" : 2095.7635186552347
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1723.8849017215437,
+                    2095.7635186552347,
+                    2057.407866908941
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "16384",
+            "compression" : "lz4",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1914.7278220456549,
+            "scoreError" : 4110.427500118979,
+            "scoreConfidence" : [
+                -2195.6996780733243,
+                6025.155322164634
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1661.6460883694187,
+                "50.0" : 1989.0652261118482,
+                "90.0" : 2093.4721516556983,
+                "95.0" : 2093.4721516556983,
+                "99.0" : 2093.4721516556983,
+                "99.9" : 2093.4721516556983,
+                "99.99" : 2093.4721516556983,
+                "99.999" : 2093.4721516556983,
+                "99.9999" : 2093.4721516556983,
+                "100.0" : 2093.4721516556983
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1661.6460883694187,
+                    1989.0652261118482,
+                    2093.4721516556983
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "none",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 2182.8320814735966,
+            "scoreError" : 881.5515555739736,
+            "scoreConfidence" : [
+                1301.2805258996232,
+                3064.38363704757
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2127.038054979831,
+                "50.0" : 2210.3153811700736,
+                "90.0" : 2211.1428082708844,
+                "95.0" : 2211.1428082708844,
+                "99.0" : 2211.1428082708844,
+                "99.9" : 2211.1428082708844,
+                "99.99" : 2211.1428082708844,
+                "99.999" : 2211.1428082708844,
+                "99.9999" : 2211.1428082708844,
+                "100.0" : 2211.1428082708844
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2211.1428082708844,
+                    2210.3153811700736,
+                    2127.038054979831
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "gzip",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1640.367527727729,
+            "scoreError" : 3757.0845573361444,
+            "scoreConfidence" : [
+                -2116.717029608415,
+                5397.452085063874
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1445.1926394245174,
+                "50.0" : 1620.3083368889504,
+                "90.0" : 1855.6016068697202,
+                "95.0" : 1855.6016068697202,
+                "99.0" : 1855.6016068697202,
+                "99.9" : 1855.6016068697202,
+                "99.99" : 1855.6016068697202,
+                "99.999" : 1855.6016068697202,
+                "99.9999" : 1855.6016068697202,
+                "100.0" : 1855.6016068697202
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1445.1926394245174,
+                    1620.3083368889504,
+                    1855.6016068697202
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "snappy",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1994.5637348304729,
+            "scoreError" : 3731.9680752429285,
+            "scoreConfidence" : [
+                -1737.4043404124557,
+                5726.531810073401
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1796.5536256661262,
+                "50.0" : 1982.0362271214037,
+                "90.0" : 2205.1013517038896,
+                "95.0" : 2205.1013517038896,
+                "99.0" : 2205.1013517038896,
+                "99.9" : 2205.1013517038896,
+                "99.99" : 2205.1013517038896,
+                "99.999" : 2205.1013517038896,
+                "99.9999" : 2205.1013517038896,
+                "100.0" : 2205.1013517038896
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1796.5536256661262,
+                    1982.0362271214037,
+                    2205.1013517038896
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.KafkaBenchmark.benchmarkSyncProducer",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "5 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "batchSize" : "65536",
+            "compression" : "lz4",
+            "sync" : "true"
+        },
+        "primaryMetric" : {
+            "score" : 1853.1203275680582,
+            "scoreError" : 3144.3665480489,
+            "scoreConfidence" : [
+                -1291.2462204808417,
+                4997.486875616958
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1662.9144417216419,
+                "50.0" : 1897.508728312161,
+                "90.0" : 1998.9378126703718,
+                "95.0" : 1998.9378126703718,
+                "99.0" : 1998.9378126703718,
+                "99.9" : 1998.9378126703718,
+                "99.99" : 1998.9378126703718,
+                "99.999" : 1998.9378126703718,
+                "99.9999" : 1998.9378126703718,
+                "100.0" : 1998.9378126703718
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1662.9144417216419,
+                    1897.508728312161,
+                    1998.9378126703718
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkBooleanGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 2.5214960826333523E8,
+            "scoreError" : 3990284.281539754,
+            "scoreConfidence" : [
+                2.4815932398179546E8,
+                2.56139892544875E8
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.5189927327681673E8,
+                "50.0" : 2.5224582496819812E8,
+                "90.0" : 2.523037265449909E8,
+                "95.0" : 2.523037265449909E8,
+                "99.0" : 2.523037265449909E8,
+                "99.9" : 2.523037265449909E8,
+                "99.99" : 2.523037265449909E8,
+                "99.999" : 2.523037265449909E8,
+                "99.9999" : 2.523037265449909E8,
+                "100.0" : 2.523037265449909E8
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2.523037265449909E8,
+                    2.5189927327681673E8,
+                    2.5224582496819812E8
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkCharGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1.2315027275856858E7,
+            "scoreError" : 2610524.432010143,
+            "scoreConfidence" : [
+                9704502.843846716,
+                1.4925551707867E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.214987938101724E7,
+                "50.0" : 1.239314580374064E7,
+                "90.0" : 1.2402056642812688E7,
+                "95.0" : 1.2402056642812688E7,
+                "99.0" : 1.2402056642812688E7,
+                "99.9" : 1.2402056642812688E7,
+                "99.99" : 1.2402056642812688E7,
+                "99.999" : 1.2402056642812688E7,
+                "99.9999" : 1.2402056642812688E7,
+                "100.0" : 1.2402056642812688E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1.214987938101724E7,
+                    1.2402056642812688E7,
+                    1.239314580374064E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkDateGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 2.1978693831729323E7,
+            "scoreError" : 871431.8444572735,
+            "scoreConfidence" : [
+                2.110726198727205E7,
+                2.2850125676186595E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.1925661657507442E7,
+                "50.0" : 2.1992083853770766E7,
+                "90.0" : 2.2018335983909756E7,
+                "95.0" : 2.2018335983909756E7,
+                "99.0" : 2.2018335983909756E7,
+                "99.9" : 2.2018335983909756E7,
+                "99.99" : 2.2018335983909756E7,
+                "99.999" : 2.2018335983909756E7,
+                "99.9999" : 2.2018335983909756E7,
+                "100.0" : 2.2018335983909756E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2.1925661657507442E7,
+                    2.1992083853770766E7,
+                    2.2018335983909756E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkDecimalGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 4325731.371538419,
+            "scoreError" : 1344182.5710778886,
+            "scoreConfidence" : [
+                2981548.8004605304,
+                5669913.942616308
+            ],
+            "scorePercentiles" : {
+                "0.0" : 4240691.728113626,
+                "50.0" : 4366056.606076809,
+                "90.0" : 4370445.780424824,
+                "95.0" : 4370445.780424824,
+                "99.0" : 4370445.780424824,
+                "99.9" : 4370445.780424824,
+                "99.99" : 4370445.780424824,
+                "99.999" : 4370445.780424824,
+                "99.9999" : 4370445.780424824,
+                "100.0" : 4370445.780424824
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    4370445.780424824,
+                    4366056.606076809,
+                    4240691.728113626
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkEnumGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1.4344621740853074E8,
+            "scoreError" : 1257715.5736302536,
+            "scoreConfidence" : [
+                1.421885018349005E8,
+                1.44703932982161E8
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.4339024343749726E8,
+                "50.0" : 1.4342518542691666E8,
+                "90.0" : 1.4352322336117828E8,
+                "95.0" : 1.4352322336117828E8,
+                "99.0" : 1.4352322336117828E8,
+                "99.9" : 1.4352322336117828E8,
+                "99.99" : 1.4352322336117828E8,
+                "99.999" : 1.4352322336117828E8,
+                "99.9999" : 1.4352322336117828E8,
+                "100.0" : 1.4352322336117828E8
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1.4342518542691666E8,
+                    1.4339024343749726E8,
+                    1.4352322336117828E8
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkIntegerGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 6.288612371761727E7,
+            "scoreError" : 4483201.3853818765,
+            "scoreConfidence" : [
+                5.8402922332235396E7,
+                6.736932510299915E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.2617955514447875E7,
+                "50.0" : 6.2939882158521175E7,
+                "90.0" : 6.3100533479882784E7,
+                "95.0" : 6.3100533479882784E7,
+                "99.0" : 6.3100533479882784E7,
+                "99.9" : 6.3100533479882784E7,
+                "99.99" : 6.3100533479882784E7,
+                "99.999" : 6.3100533479882784E7,
+                "99.9999" : 6.3100533479882784E7,
+                "100.0" : 6.3100533479882784E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    6.2617955514447875E7,
+                    6.2939882158521175E7,
+                    6.3100533479882784E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.PrimitiveGeneratorsBenchmark.benchmarkTimestampGenerator",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 4246115.448836807,
+            "scoreError" : 127680.02708569945,
+            "scoreConfidence" : [
+                4118435.4217511076,
+                4373795.475922506
+            ],
+            "scorePercentiles" : {
+                "0.0" : 4238042.364098582,
+                "50.0" : 4249837.344031497,
+                "90.0" : 4250466.638380341,
+                "95.0" : 4250466.638380341,
+                "99.0" : 4250466.638380341,
+                "99.9" : 4250466.638380341,
+                "99.99" : 4250466.638380341,
+                "99.999" : 4250466.638380341,
+                "99.9999" : 4250466.638380341,
+                "100.0" : 4250466.638380341
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    4238042.364098582,
+                    4250466.638380341,
+                    4249837.344031497
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkCsvComplexRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 968176.3030345069,
+            "scoreError" : 49717.22873094093,
+            "scoreConfidence" : [
+                918459.0743035659,
+                1017893.5317654478
+            ],
+            "scorePercentiles" : {
+                "0.0" : 965050.6470495543,
+                "50.0" : 969424.0874459085,
+                "90.0" : 970054.1746080577,
+                "95.0" : 970054.1746080577,
+                "99.0" : 970054.1746080577,
+                "99.9" : 970054.1746080577,
+                "99.99" : 970054.1746080577,
+                "99.999" : 970054.1746080577,
+                "99.9999" : 970054.1746080577,
+                "100.0" : 970054.1746080577
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    965050.6470495543,
+                    969424.0874459085,
+                    970054.1746080577
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkCsvNestedRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 203842.46444436404,
+            "scoreError" : 7383.648695939323,
+            "scoreConfidence" : [
+                196458.8157484247,
+                211226.11314030338
+            ],
+            "scorePercentiles" : {
+                "0.0" : 203399.79919372647,
+                "50.0" : 203934.04318408045,
+                "90.0" : 204193.55095528514,
+                "95.0" : 204193.55095528514,
+                "99.0" : 204193.55095528514,
+                "99.9" : 204193.55095528514,
+                "99.99" : 204193.55095528514,
+                "99.999" : 204193.55095528514,
+                "99.9999" : 204193.55095528514,
+                "100.0" : 204193.55095528514
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    203934.04318408045,
+                    204193.55095528514,
+                    203399.79919372647
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkCsvSimpleRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 2599927.982560068,
+            "scoreError" : 66772.04792883522,
+            "scoreConfidence" : [
+                2533155.9346312326,
+                2666700.030488903
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2596841.5116272876,
+                "50.0" : 2598971.0416121013,
+                "90.0" : 2603971.394440815,
+                "95.0" : 2603971.394440815,
+                "99.0" : 2603971.394440815,
+                "99.9" : 2603971.394440815,
+                "99.99" : 2603971.394440815,
+                "99.999" : 2603971.394440815,
+                "99.9999" : 2603971.394440815,
+                "100.0" : 2603971.394440815
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2598971.0416121013,
+                    2603971.394440815,
+                    2596841.5116272876
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkJsonComplexRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1089912.3788791255,
+            "scoreError" : 42328.788376650606,
+            "scoreConfidence" : [
+                1047583.5905024748,
+                1132241.167255776
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1087821.7798206557,
+                "50.0" : 1089506.713491098,
+                "90.0" : 1092408.6433256227,
+                "95.0" : 1092408.6433256227,
+                "99.0" : 1092408.6433256227,
+                "99.9" : 1092408.6433256227,
+                "99.99" : 1092408.6433256227,
+                "99.999" : 1092408.6433256227,
+                "99.9999" : 1092408.6433256227,
+                "100.0" : 1092408.6433256227
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1087821.7798206557,
+                    1089506.713491098,
+                    1092408.6433256227
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkJsonNestedRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 647777.3075262164,
+            "scoreError" : 36617.90939953746,
+            "scoreConfidence" : [
+                611159.3981266789,
+                684395.2169257539
+            ],
+            "scorePercentiles" : {
+                "0.0" : 645505.7793140202,
+                "50.0" : 648514.6051614898,
+                "90.0" : 649311.5381031391,
+                "95.0" : 649311.5381031391,
+                "99.0" : 649311.5381031391,
+                "99.9" : 649311.5381031391,
+                "99.99" : 649311.5381031391,
+                "99.999" : 649311.5381031391,
+                "99.9999" : 649311.5381031391,
+                "100.0" : 649311.5381031391
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    648514.6051614898,
+                    649311.5381031391,
+                    645505.7793140202
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkJsonSimpleRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 2956447.754927285,
+            "scoreError" : 1275550.7509882438,
+            "scoreConfidence" : [
+                1680897.0039390412,
+                4231998.505915529
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2875723.7773906626,
+                "50.0" : 2995737.292685928,
+                "90.0" : 2997882.194705265,
+                "95.0" : 2997882.194705265,
+                "99.0" : 2997882.194705265,
+                "99.9" : 2997882.194705265,
+                "99.99" : 2997882.194705265,
+                "99.999" : 2997882.194705265,
+                "99.9999" : 2997882.194705265,
+                "100.0" : 2997882.194705265
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2875723.7773906626,
+                    2997882.194705265,
+                    2995737.292685928
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkProtobufComplexRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 567353.2909926829,
+            "scoreError" : 30864.655386303584,
+            "scoreConfidence" : [
+                536488.6356063794,
+                598217.9463789865
+            ],
+            "scorePercentiles" : {
+                "0.0" : 565532.3020227242,
+                "50.0" : 567651.2719847402,
+                "90.0" : 568876.2989705844,
+                "95.0" : 568876.2989705844,
+                "99.0" : 568876.2989705844,
+                "99.9" : 568876.2989705844,
+                "99.99" : 568876.2989705844,
+                "99.999" : 568876.2989705844,
+                "99.9999" : 568876.2989705844,
+                "100.0" : 568876.2989705844
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    565532.3020227242,
+                    567651.2719847402,
+                    568876.2989705844
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkProtobufNestedRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 311012.1405475564,
+            "scoreError" : 48431.52236802459,
+            "scoreConfidence" : [
+                262580.6181795318,
+                359443.66291558096
+            ],
+            "scorePercentiles" : {
+                "0.0" : 308125.870427389,
+                "50.0" : 311561.1335503433,
+                "90.0" : 313349.4176649369,
+                "95.0" : 313349.4176649369,
+                "99.0" : 313349.4176649369,
+                "99.9" : 313349.4176649369,
+                "99.99" : 313349.4176649369,
+                "99.999" : 313349.4176649369,
+                "99.9999" : 313349.4176649369,
+                "100.0" : 313349.4176649369
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    308125.870427389,
+                    311561.1335503433,
+                    313349.4176649369
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.SerializerBenchmark.benchmarkProtobufSimpleRecord",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1557159.6943736381,
+            "scoreError" : 67216.47216452048,
+            "scoreConfidence" : [
+                1489943.2222091176,
+                1624376.1665381587
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1554008.0483073683,
+                "50.0" : 1556260.670728432,
+                "90.0" : 1561210.3640851132,
+                "95.0" : 1561210.3640851132,
+                "99.0" : 1561210.3640851132,
+                "99.9" : 1561210.3640851132,
+                "99.99" : 1561210.3640851132,
+                "99.999" : 1561210.3640851132,
+                "99.9999" : 1561210.3640851132,
+                "100.0" : 1561210.3640851132
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1554008.0483073683,
+                    1556260.670728432,
+                    1561210.3640851132
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexCompileBenchmark.compileBoundedCharClass",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.7351194940161782,
+            "scoreError" : 0.07007105292030061,
+            "scoreConfidence" : [
+                0.6650484410958776,
+                0.8051905469364787
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.7308052316703029,
+                "50.0" : 0.7363864920738226,
+                "90.0" : 0.738166758304409,
+                "95.0" : 0.738166758304409,
+                "99.0" : 0.738166758304409,
+                "99.9" : 0.738166758304409,
+                "99.99" : 0.738166758304409,
+                "99.999" : 0.738166758304409,
+                "99.9999" : 0.738166758304409,
+                "100.0" : 0.738166758304409
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.7308052316703029,
+                    0.7363864920738226,
+                    0.738166758304409
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexCompileBenchmark.compileLiteralPlusDigits",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.5802078172409196,
+            "scoreError" : 0.02313930939567019,
+            "scoreConfidence" : [
+                0.5570685078452494,
+                0.6033471266365898
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.5787525004396886,
+                "50.0" : 0.5807932247542628,
+                "90.0" : 0.5810777265288076,
+                "95.0" : 0.5810777265288076,
+                "99.0" : 0.5810777265288076,
+                "99.9" : 0.5810777265288076,
+                "99.99" : 0.5810777265288076,
+                "99.999" : 0.5810777265288076,
+                "99.9999" : 0.5810777265288076,
+                "100.0" : 0.5810777265288076
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.5807932247542628,
+                    0.5787525004396886,
+                    0.5810777265288076
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.datagenerator.benchmarks.DatafakerRegexCompileBenchmark.compileLongStructured",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "/home/marco/.sdkman/candidates/java/21.0.9-amzn/bin/java",
+        "jvmArgs" : [
+            "-Dfile.encoding=UTF-8",
+            "-Djava.io.tmpdir=/home/marco/development/seedstream/benchmarks/build/tmp/jmh",
+            "-Duser.country=US",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "21.0.9",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.9+10-LTS",
+        "warmupIterations" : 2,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 2.9661174770479413,
+            "scoreError" : 1.7523302495166782,
+            "scoreConfidence" : [
+                1.2137872275312631,
+                4.718447726564619
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.8997100127852398,
+                "50.0" : 2.922390351582017,
+                "90.0" : 3.0762520667765667,
+                "95.0" : 3.0762520667765667,
+                "99.0" : 3.0762520667765667,
+                "99.9" : 3.0762520667765667,
+                "99.99" : 3.0762520667765667,
+                "99.999" : 3.0762520667765667,
+                "99.9999" : 3.0762520667765667,
+                "100.0" : 3.0762520667765667
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    3.0762520667765667,
+                    2.922390351582017,
+                    2.8997100127852398
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+

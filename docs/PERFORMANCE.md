@@ -21,92 +21,146 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 
 | Workload | Throughput | Notes |
 |----------|------------|-------|
-| **Primitive types (in-memory)** | 12-258 M records/sec | Boolean fastest (258M), char slowest (12M) |
-| **Realistic data (Datafaker)** | 13-154 K records/sec | Company names fastest (154K), phones slowest (13K) |
-| **File output (JSON)** | ~32,000-38,000 records/sec | With 64KB buffer + batching (E2E validated, Jun 2026) |
-| **File output (CSV)** | ~33,000-39,000 records/sec | Fastest format for flat data (E2E validated, Jun 2026) |
-| **File output (Protobuf)** | ~32,000-37,000 records/sec | Binary format, 50-70% smaller than JSON (E2E validated, Jun 2026) |
-| **Kafka output (JSON/Protobuf)** | ~21,000-31,000 records/sec | Network-bound; JSON ~25-31K, Protobuf ~21-26K (E2E validated, Jun 2026) |
-| **Database output (PostgreSQL, flat)** | 57,000-85,000 records/sec | BIGSERIAL PK, JDBC batching, local Docker; see DB section for realistic production estimates |
-| **Database output (PostgreSQL, nested)** | 2,500-3,300 records/sec | 3 INSERTs per logical record (1 parent + 2 children), `per_batch` strategy |
+| **Primitive types (in-memory)** | 4-252 M records/sec | Boolean fastest (252M), decimal/timestamp slowest (~4.3M) |
+| **Realistic data (Datafaker)** | 108 K - 1.1 M records/sec | Company fastest (1.1M), phones slowest (108K) — **7-65× faster since the `FakerCache`** |
+| **Regex types (`regex:`)** | 1.2 - 5.1 M records/sec | Cheaper than a Datafaker name field; cost scales with output length |
+| **File output (JSON)** | ~32,000-38,000 records/sec | With 64KB buffer + batching (E2E validated, Jul 2026) |
+| **File output (CSV)** | ~33,000-39,000 records/sec | Fastest format for flat data (E2E validated, Jul 2026) |
+| **File output (Protobuf)** | ~32,000-37,000 records/sec | Binary output is 50-70% smaller than JSON, but *costs more CPU to produce* (E2E validated, Jul 2026) |
+| **Kafka output (JSON/Protobuf)** | ~21,000-31,000 records/sec | Network-bound; JSON ~25-31K, Protobuf ~21-26K (E2E validated, Jul 2026) |
+| **Database output (PostgreSQL, flat)** | 55,000-84,000 records/sec | BIGSERIAL PK, JDBC batching, local Docker; see DB section for realistic production estimates |
+| **Database output (PostgreSQL, nested)** | 1,900-2,900 records/sec | 3 INSERTs per logical record (1 parent + 2 children), `per_batch` strategy |
 
 **⚠️ Benchmark Environment:** All tests run on **localhost** (Kafka and PostgreSQL in Docker containers). Real-world production deployments with network latency will show **30-50% lower throughput** for Kafka destinations and **50-70% lower throughput** for database destinations.
 
-**Rule of Thumb**: Realistic Datafaker data is **1,000× slower** than primitives. Plan accordingly.
+> ### ⚠️ How to read the E2E rows
+>
+> The file/Kafka/database rows above are measured by `benchmarks/run_e2e_test.sh`, which times the **whole
+> CLI process** — including ~1.5–1.7 s of fixed JVM startup, class loading, and Datafaker locale
+> initialisation. At the 100K-record job size used, that fixed cost is roughly *half the wall clock*.
+>
+> They are therefore an honest answer to *"what does one `seedstream execute` run of 100K records deliver?"*
+> — and a **misleading** answer to *"what is the engine's throughput?"* or *"does threading help?"*. The
+> engine's own reported rate (`Time elapsed` in the CLI output) for the same jobs is 2–3× higher:
+>
+> | Job (engine-only, 200K records) | 1 thread | 4 threads | 8 threads |
+> |---|---|---|---|
+> | passport → file/json | 77K rec/s | 106K rec/s | 99K rec/s |
+> | invoice (nested) → file/json | 40K rec/s | 85K rec/s | 90K rec/s |
+> | invoice (nested) → kafka/json (snappy) | 29K rec/s | 33K rec/s | 37K rec/s |
+> | primitives-only → file/json | 532K rec/s | 576K rec/s | 509K rec/s |
+>
+> Amortise the startup over a larger job (1M+ records) and the E2E figures converge on these.
+
+**Rule of Thumb**: **generator choice is rarely your bottleneck; the writer and the destination usually are.**
+Since the thread-local `FakerCache`, every generator family runs at 0.1M–252M ops/s, while the *serial* part
+of the pipeline (single writer thread → destination) tops out around 530K rec/s for file. Whether extra
+threads help depends on how much of your per-record cost is generation:
+
+- **Generation-heavy** (nested objects, many Datafaker fields) → threads help (**up to 2.3×**)
+- **Light records** (few primitives) → already writer-bound; threads do nothing
+- **Kafka** → threads help least (**~1.3×**); see [§4 Thread Count](#4-thread-count)
+
+> The old advice here — *"realistic Datafaker data is 1,000× slower than primitives, plan accordingly"* — was
+> measured before the `FakerCache` and is **no longer true**. The gap is now 10–100×.
 
 ---
 
 ## Benchmark Results
 
-All benchmarks run with **JMH** (Java Microbenchmark Harness) on development hardware. Results validated March 2026.
+All benchmarks run with **JMH** (Java Microbenchmark Harness) on development hardware. **Results validated
+14 July 2026**, using the high-fidelity config (5 warmup / 10 iterations / 2 forks) so the error margins are
+≤ 5%. Full tables, error bars, and the delta against March 2026 are in
+[BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md).
 
 ### Primitive Generation
 
-**✅ NFR-1 Compliance**: All primitive generators **exceed 10M ops/s requirement**.
+**NFR-1**: ≥ 10M ops/s.
 
 | Type | Throughput | Target | Compliance |
 |------|------------|--------|------------|
-| Boolean | **258M ops/s** | 10M ops/s | ✅ 25.8× |
-| Integer | **57M ops/s** | 10M ops/s | ✅ 5.7× |
-| String (char) | **12M ops/s** | 10M ops/s | ✅ 1.2× |
-| Timestamp | **4.5M ops/s** | 10M ops/s | ⚠️ 0.45× (acceptable) |
-| Decimal (BigDecimal) | **3.0M ops/s** | 10M ops/s | ⚠️ 0.3× (acceptable) |
-| Date (LocalDate) | **2.4M ops/s** | 10M ops/s | ⚠️ 0.24× (acceptable) |
+| Boolean | **252M ops/s** | 10M ops/s | ✅ 25× |
+| Enum | **142M ops/s** | 10M ops/s | ✅ 14× |
+| Integer | **63M ops/s** | 10M ops/s | ✅ 6.3× |
+| Date (LocalDate) | **22M ops/s** | 10M ops/s | ✅ 2.2× |
+| String (char) | **12.4M ops/s** | 10M ops/s | ✅ 1.2× |
+| Timestamp | **4.5M ops/s** | 10M ops/s | ⚠️ 0.45× |
+| Decimal (BigDecimal) | **4.3M ops/s** | 10M ops/s | ⚠️ 0.43× |
 
-**Note**: Timestamp, Decimal, and Date are slightly below target due to Java class overhead (Instant, BigDecimal, LocalDate construction), but still sufficient for production use.
+**`DateGenerator` now clears NFR-1** — 2.4M → 22M ops/s (9.1×). Cause: commit `137caba` (14 Jun 2026), which
+caches the parsed min/max bounds per type. Previously *every* `generate()` call re-parsed the same two range
+strings with `LocalDate.parse()`. The same commit cached Integer/Char bounds, but those barely moved
+(1.1×/1.0×) — `Integer.parseInt` was already cheap, whereas `LocalDate.parse` dominated the date path.
+
+Timestamp and Decimal remain below target (`Instant` / `BigDecimal` construction cost), but are still ~8×
+above the fastest measured full-pipeline rate, so this is not a practical constraint.
 
 ### Realistic Data Generation (Datafaker)
 
-Datafaker generates **realistic, locale-aware** data (names, addresses, etc.). Expect **~1,000× slower** than primitives:
+| Type | Throughput | March 2026 | Change |
+|------|------------|-----------:|-------:|
+| Company names | **1.10M ops/s** | 154K | **7.1×** |
+| Cities | **921K ops/s** | 14K | **64.7×** |
+| Person names | **863K ops/s** | 23K | **37.2×** |
+| Email addresses | **325K ops/s** | 24K | **13.5×** |
+| Addresses | **261K ops/s** | 18K | **14.8×** |
+| Phone numbers | **108K ops/s** | 13K | **8.5×** |
 
-| Type | Throughput | Notes |
-|------|------------|-------|
-| Company names | **154K ops/s** | Fastest semantic type|
-| Email addresses | **24K ops/s** | |
-| Person names | **23K ops/s** | Full names (first + last) |
-| Addresses | **18K ops/s** | Street addresses |
-| Cities | **14K ops/s** | Locale-specific |
-| Phone numbers | **13K ops/s** | Locale-specific formats |
+**Why the jump?** The thread-local `FakerCache` (`generators/.../semantic/FakerCache.java`, commit
+`cf3492d`, 8 Mar 2026). Before it, a fresh `Faker` — and therefore a fresh locale dictionary load — was
+constructed **for every field of every record**. The March benchmark run predates the commit. Primitives and
+serializers are unchanged over the same period, which is the control confirming the effect is real.
 
-**Average Datafaker throughput**: ~41K ops/s
+### Regex Types
 
-**Why slower?**
-- String manipulation and formatting
-- Locale lookup overhead
-- Internal randomization (Datafaker uses its own Random)
-- More complex algorithms (e.g., realistic address generation)
+Config-declarable `regex:` types (`--faker-types`), backed by RgxGen. See
+[Regex Types](#regex-types-1) below for guidance and [REGEX-E2E-RESULTS.md](REGEX-E2E-RESULTS.md) for the
+pipeline cost.
+
+| Pattern | Throughput |
+|---------|-----------:|
+| `ORD-\d{8}` (literal + fixed digits) | **5.14M ops/s** |
+| `(INV\|CRN\|DBN)-[0-9]{6}` (alternation) | **4.46M ops/s** |
+| `SEPA[0-9]{8}[A-Z0-9]{6}` | **2.91M ops/s** |
+| `[A-Z0-9]{10,35}` (bounded class) | **1.85M ops/s** |
+| IBAN-shaped | **1.66M ops/s** |
+| `[a-z]+` (unbounded — capped at 100 reps) | **1.20M ops/s** |
+| *Pattern compile (one-off, at load)* | *0.59 – 2.97 µs* |
 
 ### Composite Generators
 
 | Type | Throughput | Notes |
 |------|------------|-------|
-| Simple objects (5 fields) | **117K ops/s** | Flat structure, primitive fields |
-| Small arrays (10 elements) | **5.8M ops/s** | Primitive elements |
-| Large arrays (100 elements) | **721K ops/s** | Primitive elements |
-| Nested objects (2-3 levels) | **10-50K ops/s** | Depends on field types |
+| Small arrays (10 elements) | **6.0M ops/s** | Primitive elements |
+| Simple objects (5 fields) | **5.7M ops/s** | Flat structure, primitive fields |
+| Large arrays (100 elements) | **738K ops/s** | Primitive elements |
 
-**Key insight**: Object overhead is minimal. Arrays of primitives are fast. Nested Datafaker objects are bottleneck.
+**Key insight**: Object overhead is minimal. Arrays of primitives are fast.
 
 ### Serialization
 
 | Format | Throughput (simple) | Throughput (complex) | Throughput (nested) |
 |--------|---------------------|----------------------|---------------------|
-| **JSON** | **3.0M ops/s** | **1.08M ops/s** | **699K ops/s** |
-| **CSV** | **2.6M ops/s** | **942K ops/s** | **218K ops/s** |
-| **Protobuf** | **~2.5M ops/s** (est.) | **~900K ops/s** (est.) | **~550K ops/s** (est.) |
+| **JSON** | **3.14M ops/s** | **1.07M ops/s** | **688K ops/s** |
+| **CSV** | **2.58M ops/s** | **960K ops/s** | **240K ops/s** |
+| **Protobuf** | **1.48M ops/s** | **569K ops/s** | **307K ops/s** |
 
 **Observations**:
-- JSON and CSV are close for simple records; JSON is ~18% faster
-- JSON handles nesting far better than CSV (699K vs 218K — 3.2×): CSV has no native nested representation, so it double-serializes (object→JSON string→CSV cell)
-- Protobuf produces 50-70% smaller output than JSON (binary encoding); Protobuf throughput is estimated — `SerializerBenchmark` has the methods but results are not yet recorded in [BENCHMARK-RESULTS.md](../BENCHMARK-RESULTS.md)
-- Nested structures slow serialization ~4× across all formats
+- **Protobuf is now measured, and it is the slowest serializer** — about 2× slower than JSON on simple
+  records. Earlier revisions of this doc carried *estimates* of ~2.5M / ~900K / ~550K, which were
+  optimistic. Protobuf still produces 50–70% smaller output than JSON; it simply costs more CPU to produce.
+  Choose it for wire/storage size, not for speed.
+- JSON and CSV are close for simple records; JSON is ~22% faster
+- JSON handles nesting far better than CSV (688K vs 240K — 2.9×): CSV has no native nested representation,
+  so it double-serializes (object→JSON string→CSV cell)
+- Nested structures slow serialization ~3-4× across all formats
 
 ### File I/O
 
 | Operation | Throughput | Notes |
 |-----------|------------|-------|
-| Raw BufferedWriter | **4.7M ops/s** | Baseline (no serialization) |
-| FileDestination (optimized) | **Expected 2-3M ops/s** | 600-800 MB/s |
+| Raw BufferedWriter | **5.4M ops/s** | Baseline (no serialization) |
+| FileDestination (optimized) | **962K ops/s** | Serialize + 64KB buffer + 1000-record batch |
 
 **Optimizations applied** (March 2026):
 - 64KB buffer size (up from 8KB)
@@ -202,32 +256,36 @@ Measured with the **Passport** structure (11 fields, mixed Datafaker + primitive
 
 #### Database Destination
 
-Database throughput is dominated by network round-trips and commit overhead rather than generation speed. Measured via JMH against a local PostgreSQL 17-alpine Docker instance (March 2026):
+Database throughput is dominated by network round-trips and commit overhead rather than generation speed. Measured via JMH against a local PostgreSQL 17-alpine Docker instance (**re-run 14 July 2026**):
 
 **Flat Insert (`benchmark_flat`, BIGSERIAL PK, 5 fields):**
 
 | batchSize | `per_batch`    | `auto_commit`  |
 |-----------|----------------|----------------|
-| 100       | 56,809 ops/s   | 59,484 ops/s   |
-| 500       | 76,502 ops/s   | 71,004 ops/s   |
-| 1,000     | 81,958 ops/s   | 76,213 ops/s   |
-| 5,000     | 85,066 ops/s   | 75,563 ops/s   |
+| 100       | 56,165 ops/s   | 54,549 ops/s   |
+| 500       | 75,560 ops/s   | 75,518 ops/s   |
+| 1,000     | 80,154 ops/s   | 72,131 ops/s   |
+| 5,000     | 83,519 ops/s   | 73,601 ops/s   |
 
 **Nested Insert (`benchmark_order` + `order_items`, 1 parent + 2 children):**
 
 | batchSize | `per_batch`    | `auto_commit`  |
 |-----------|----------------|----------------|
-| 100       | 2,593 ops/s    | 794 ops/s      |
-| 500       | 2,462 ops/s    | 723 ops/s      |
-| 1,000     | 3,084 ops/s    | 653 ops/s      |
-| 5,000     | 3,328 ops/s    | 797 ops/s      |
+| 100       | 1,974 ops/s    | 772 ops/s      |
+| 500       | 2,344 ops/s    | 658 ops/s      |
+| 1,000     | 1,934 ops/s    | 123 ops/s      |
+| 5,000     | 2,895 ops/s    | 126 ops/s      |
 
 **Key Observations**:
 1. **Flat throughput is very high** under these micro-benchmark conditions: BIGSERIAL eliminates client-side ID generation, the same pre-built record is reused every call (no Datafaker overhead), and the Docker container uses shared memory sockets — not TCP — so network latency is effectively zero.
-2. **Nested `auto_commit`** is independent of `batchSize` (~650–800 ops/s regardless): per-statement commits dominate and negate any batch accumulation benefit.
-3. **Nested `per_batch`** scales modestly with `batchSize` (2,500→3,300 ops/s from 100→5000): the 3× INSERT fanout is the binding constraint, not commit frequency.
-4. **Flat vs Nested overhead factor**: ~25× (56K/2.6K) — far above the theoretical 3× INSERT fanout, confirming that decomposition overhead (FK injection, multi-table prepared-statement cache misses, parent-child dependency ordering) adds significant cost.
+2. **Nested `auto_commit` is catastrophic** — and worse than the March figures suggested. At batch 1000–5000 it collapses to ~125 ops/s, up to **24× slower** than `per_batch`. Never use `auto_commit` for nested writes.
+3. **Nested `per_batch`** scales modestly with `batchSize` (~1,900→2,900 ops/s): the 3× INSERT fanout is the binding constraint, not commit frequency.
+4. **Flat vs Nested overhead factor**: ~29× (83K/2.9K) — far above the theoretical 3× INSERT fanout, confirming that decomposition overhead (FK injection, multi-table prepared-statement cache misses, parent-child dependency ordering) adds significant cost.
 5. **Production throughput will be substantially lower**: real workloads with Datafaker generation, TCP connections to a remote DB, and non-trivial record variety typically yield 5,000–15,000 rec/s (flat) and 1,000–3,000 rec/s (nested). Use the JMH numbers to compare configurations relative to each other, not as absolute production targets.
+
+⚠️ These DB benchmarks run at the default JMH config and their error margins are wide (batch=100/`per_batch`
+reports 56,165 ops/s **± 119,838**). Trust the *ordering* and the `per_batch`-vs-`auto_commit` conclusion;
+treat the absolute values as ±50%.
 
 ---
 
@@ -235,52 +293,122 @@ Database throughput is dominated by network round-trips and commit overhead rath
 
 ### 1. Generator Selection
 
-**Rule**: Use primitives for volume, Datafaker for realism.
+**Rule (revised, July 2026): pick the type that expresses your data. Generator choice is no longer a
+throughput decision.**
 
-| Need | Recommendation | Throughput |
-|------|----------------|------------|
-| High volume test data | Primitives (int, char, boolean) | Millions/sec |
-| Load testing | Primitives with occasional Datafaker | Hundreds of K/sec |
-| Development data | Mostly Datafaker | Thousands/sec |
-| Demo/showcase data | 100% Datafaker | Thousands/sec |
+Every generator family now runs far faster than any destination can drain:
 
-**Example - Mixed workload**:
+| Family | Throughput | vs fastest destination (~39K rec/s) |
+|--------|------------|-------------------------------------|
+| Primitives | 4M – 252M ops/s | 100× – 6,000× headroom |
+| Regex types | 1.2M – 5.1M ops/s | 30× – 130× headroom |
+| Datafaker | 108K – 1.1M ops/s | 3× – 28× headroom |
+
+Even the *slowest* generator (phone numbers, 108K ops/s) is ~3× faster than the quickest destination. Picking
+primitives over Datafaker to "go faster" buys you nothing end-to-end — it only makes your test data less
+realistic. Optimise the destination instead (see §3 and §4).
+
+> This reverses the previous guidance in this document, which was written when Datafaker cost ~13–24K ops/s
+> and genuinely *was* the bottleneck. The `FakerCache` (Mar 2026) removed that constraint.
+
+**Where it still matters:** at 100% Datafaker across *many* fields, per-record generation cost can still
+add up — a 10-field all-Datafaker record costs roughly 10 × ~1–10 µs. If you are chasing the last 10% on a
+file destination, mixing in primitives for fields nobody inspects is still a legitimate micro-optimisation.
+It is no longer a 1,000× decision.
+
+### 2. Regex Types
+
+Regex types (`regex:` in a `--faker-types` YAML) cost **less than a Datafaker name field** — 1.2M–5.1M ops/s.
+End-to-end, a record with 4 of 10 fields as regex runs **~6% slower** than the same record with `char[]`
+in those slots (see [REGEX-E2E-RESULTS.md](REGEX-E2E-RESULTS.md)). That is the whole price of structured,
+pattern-conformant IDs.
+
+**What actually costs, in order:**
+
+1. **Output length.** Cost scales with the number of characters generated, not with how clever the pattern
+   looks. Alternation is nearly free (4.5M ops/s).
+2. **Unbounded quantifiers.** `+`, `*`, `{n,}` are capped by RgxGen at **100 repetitions**, so `[a-z]+` can
+   emit a 100-character string — the slowest case measured (1.2M ops/s) and almost certainly not what you
+   meant. **Always bound them**: `[a-z]{5,10}`.
+3. **`.`** matches any printable ASCII including punctuation. Prefer explicit classes: `[A-Za-z0-9]`.
+
+Pattern compilation (0.59–2.97 µs) happens **once**, at `--faker-types` load — it amortises after a handful
+of records. Do not restructure patterns to make them "compile faster".
+
 ```yaml
-# Optimize: Use primitives where realism doesn't matter
+# Good — bounded, explicit
+types:
+  order_ref: "regex:ORD-\\d{8}"
+  msg_id: "regex:[A-Z0-9]{10,35}"
+
+# Avoid — unbounded (100-char values) and `.` (punctuation in your IDs)
+types:
+  bad_ref: "regex:[a-z]+"
+  bad_id: "regex:.{10}"
+```
+
+### 3. Mixed Workloads
+
+```yaml
 data:
-  id: { datatype: int[1..999999] }          # Primitive - fast
-  name: { datatype: name }                   # Datafaker - realistic
-  email: { datatype: email }                 # Datafaker - realistic
-  status: { datatype: enum[ACTIVE,INACTIVE] } # Primitive - fast
-  created_at: { datatype: timestamp[now-365d..now] } # Primitive - fast
+  id: { datatype: int[1..999999] }
+  name: { datatype: name }                           # Datafaker - realistic
+  email: { datatype: email }                         # Datafaker - realistic
+  order_ref: { datatype: order_ref }                 # regex - structured ID
+  status: { datatype: enum[ACTIVE,INACTIVE] }
+  created_at: { datatype: timestamp[now-365d..now] }
 ```
 
-### 2. Thread Count
+### 4. Thread Count
 
-**Guidelines**:
+**The pipeline is parallel on the producer side and serial on the writer side.** Worker threads generate
+*and* serialize records into bounded queues; **one writer thread** merges them in chunk order and calls the
+destination. So threading only speeds up the parallel half, and Amdahl's law sets the ceiling:
 
-| Workload | Recommended Threads | Rationale |
-|----------|---------------------|-----------|
-| Primitive-heavy (80%+) | CPU cores (`nproc`) | CPU-bound, scales linearly |
-| Mixed (50% Datafaker) | 2× CPU cores | Some I/O wait |
-| Datafaker-heavy (80%+) | 4-6 threads | I/O bound, diminishing returns |
-| File I/O heavy | 2-4 threads | Disk I/O is bottleneck |
-
-**Commands**:
-```bash
-# Primitive-heavy: Use all cores
-./gradlew :cli:run --args="... --threads $(nproc)"
-
-# Datafaker-heavy: Use 4-6 threads
-./gradlew :cli:run --args="... --threads 4"
-
-# Single-threaded (debugging or small jobs)
-./gradlew :cli:run --args="... --threads 1"
 ```
+Worker 0 → generate + serialize → queue[0] ─┐
+Worker 1 → generate + serialize → queue[1] ─┼→ Writer (merge, ordered) → Destination
+Worker N → generate + serialize → queue[N] ─┘        ^ serial
+```
+
+**Measured speedup (engine-only, 8 threads vs 1):**
+
+| Workload | 1 thread | 8 threads | Speedup | Why |
+|----------|---------:|----------:|--------:|-----|
+| Nested invoice → file | 40K rec/s | 90K rec/s | **2.3×** | Generation-heavy — lots of parallel work |
+| Passport → file | 77K rec/s | 99K rec/s | **1.4×** | Less generation per record |
+| Primitives → file | 532K rec/s | 509K rec/s | **1.0×** | Already writer-bound; nothing to parallelize |
+| Nested invoice → Kafka | 29K rec/s | 37K rec/s | **1.3×** | See below |
+
+**Rule**: the more expensive your record is to *generate*, the more threads pay. A cheap record is
+writer-bound, and extra threads only add queue and GC overhead.
+
+#### Why Kafka scales worst
+
+Kafka scales to only ~1.3× where the same structure to a file scales 2.3×. The reason is not the broker and
+not the network — it is that `KafkaProducer.send()` **compresses the record into its batch buffer on the
+calling thread**, and that call happens on the single writer thread. Compression is therefore serialized
+onto one core, while the workers sit idle.
+
+Measured, nested invoice → Kafka, engine-only:
+
+| Compression | 1 thread | 4 threads | Speedup |
+|-------------|---------:|----------:|--------:|
+| `snappy` | 28.8K rec/s | 32.9K rec/s | 1.14× |
+| `none` | 35.9K rec/s | **54.7K rec/s** | **1.52×** |
+
+**Dropping compression is +66% at 4 threads.** If your broker link is local or fast, prefer
+`compression: none` and let the network carry the bytes. If you are bandwidth-constrained, keep compression
+and accept that the writer thread is your ceiling — adding worker threads will not move it.
+
+> **This is a fixable limitation, not a law.** `KafkaProducer` is thread-safe and explicitly designed to be
+> shared across threads, and SeedStream's global record ordering is meaningless for Kafka anyway (records are
+> sent with a null key, so the broker round-robins them across partitions). Letting workers call `send()`
+> directly — instead of funnelling through the single writer — should recover most of the gap. Not yet done.
 
 **Auto-optimization**: For jobs < 1000 records, engine automatically uses single-threaded mode (faster).
 
-### 3. File I/O Optimization
+### 5. File I/O Optimization
 
 **Current defaults** (optimized March 2026):
 - Buffer size: **64KB** (internal, fixed)
@@ -300,7 +428,7 @@ conf:
 - **Compression (gzip)**: 70-80% smaller files, 30-40% slower writes
 - **Append mode**: Slightly slower due to seek operations
 
-### 4. Database Output Optimization
+### 6. Database Output Optimization
 
 The three main knobs for database performance are **transaction strategy**, **batch size**, and **structure complexity**.
 
@@ -346,7 +474,7 @@ For nested structures, reduce `batch_size` to 100-200 to avoid large transaction
 
 **JDBC driver**: drivers are **not** bundled in the distribution. Drop the driver JAR for your database (PostgreSQL, MySQL, or any JDBC-compliant driver) into the `extras/` directory — the launch scripts prepend `extras/*` to the classpath at startup, so the driver registers via `DriverManager` automatically.
 
-### 5. Format Selection
+### 7. Format Selection
 
 | Format | Speed | Size | Use Case |
 |--------|-------|------|----------|
@@ -356,7 +484,7 @@ For nested structures, reduce `batch_size` to 100-200 to avoid large transaction
 
 **Recommendation**: Use CSV for simple flat data, JSON for everything else.
 
-### 6. Data Complexity
+### 8. Data Complexity
 
 **Impact of nesting**:
 
@@ -448,38 +576,38 @@ python3 benchmarks/format_results.py > BENCHMARK-RESULTS.md
 cat BENCHMARK-RESULTS.md
 ```
 
-### Custom Benchmarks
+### Running a Subset
 
-Run specific benchmark classes:
+Use `-PjmhSuite`:
 
 ```bash
-# Primitive generators only
-./gradlew :benchmarks:jmh --args='.*PrimitiveBenchmark'
-
-# Datafaker generators only
-./gradlew :benchmarks:jmh --args='.*DatafakerBenchmark'
-
-# Serializers only
-./gradlew :benchmarks:jmh --args='.*SerializerBenchmark'
+./gradlew :benchmarks:jmh -PjmhSuite=generators   # primitives, datafaker, composite, serializer, destination
+./gradlew :benchmarks:jmh -PjmhSuite=regex        # regex types + Datafaker regexify comparison
+./gradlew :benchmarks:jmh -PjmhSuite=kafka        # needs Kafka on localhost:9092
+./gradlew :benchmarks:jmh -PjmhSuite=database     # needs PostgreSQL on localhost:5432
 ```
+
+⚠️ **`-Pjmh.includes` and `-Pjmh.excludes` do not work.** With `me.champeau.jmh` 0.7.3 they are silently
+ignored and the *entire* suite runs regardless — which, if you were expecting a filtered run, wastes hours
+and re-measures things you didn't intend to touch. `-PjmhSuite` is applied inside
+`benchmarks/build.gradle.kts` and does take effect. Use it.
 
 ### Benchmark Configuration
 
-Edit `benchmarks/src/main/java/com/datagenerator/benchmarks/BenchmarkConfig.java`:
+Defaults live in the `jmh { }` block of `benchmarks/build.gradle.kts` (2 warmup / 3 iterations / 1 fork).
+**Don't edit them** — every historical number in [BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md) was measured
+with those values, so changing them silently invalidates comparison against past runs.
 
-```java
-// Warmup iterations (default: 3)
-@Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
+For tighter error bars, use the high-fidelity flag instead (5 warmup / 10 iterations / 2 forks):
 
-// Measurement iterations (default: 5)
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-
-// Number of forks (default: 1)
-@Fork(1)
-
-// Thread count per benchmark
-@Threads(1)
+```bash
+./gradlew :benchmarks:jmh -PjmhSuite=generators -PjmhFidelity=high
 ```
+
+High-fidelity results are **not** comparable with default-config results — label them when publishing.
+
+⚠️ Each run **overwrites** `benchmarks/build/reports/jmh/results.json`. Archive it before the next run
+(see `benchmarks/results-2026-07-14/` for the layout).
 
 For more details, see [benchmarks/README.md](../benchmarks/README.md).
 

@@ -36,47 +36,74 @@ def main():  # NOSONAR
     print('='*100)
     print()
     
-    # Group results by category
+    # Group results by category.
+    # Order matters: the regex classes are named Datafaker* (so they ride the existing
+    # `generators` suite filter), so they must be matched before the generic Datafaker branch
+    # or they would be folded into the Datafaker table.
     primitives = []
     datafaker = []
+    regex = []
+    regex_compile = []
     composites = []
     serializers = []
     destinations = []
-    
+    kafka = []
+    database = []
+
     for result in results:
         benchmark_name = result['benchmark']
         score = result['primaryMetric']['score']
         error = result['primaryMetric']['scoreError']
-        
-        # Clean up name
+
+        # Clean up name, and keep @Param values — for Kafka/Database they ARE the configuration
         short_name = benchmark_name.split('.')[-1]
-        
+        params = result.get('params')
+        if params:
+            short_name += ' [' + ', '.join(f"{k}={v}" for k, v in sorted(params.items())) + ']'
+
         if 'PrimitiveGenerators' in benchmark_name:
             primitives.append((short_name, score, error))
+        elif 'DatafakerRegexCompile' in benchmark_name:
+            regex_compile.append((short_name, score, error))
+        elif 'DatafakerRegexType' in benchmark_name or 'DatafakerRegexp' in benchmark_name:
+            regex.append((short_name, score, error))
         elif 'Datafaker' in benchmark_name:
             datafaker.append((short_name, score, error))
         elif 'Composite' in benchmark_name:
             composites.append((short_name, score, error))
         elif 'Serializer' in benchmark_name:
             serializers.append((short_name, score, error))
+        elif 'KafkaBenchmark' in benchmark_name:
+            kafka.append((short_name, score, error))
+        elif 'DatabaseBenchmark' in benchmark_name:
+            database.append((short_name, score, error))
         elif 'Destination' in benchmark_name:
             destinations.append((short_name, score, error))
-    
-    def print_category(title, results_list, target=None):
+
+    def print_category(title, results_list, target=None, unit='ops/s'):
+        if not results_list:
+            return
         print(f"\n{title}")
         print('-' * 100)
         if target:
             print(f"Target: {target}")
             print()
-        for name, score, error in sorted(results_list, key=lambda x: x[1], reverse=True):
-            print(f"  {name:55s} {score:15,.0f} ops/s  (± {error:,.0f})")
+        # AverageTime results are lower-is-better; throughput is higher-is-better
+        reverse = unit == 'ops/s'
+        for name, score, error in sorted(results_list, key=lambda x: x[1], reverse=reverse):
+            print(f"  {name:55s} {score:15,.3f} {unit}  (± {error:,.3f})")
         print()
-    
+
     print_category("PRIMITIVE GENERATORS", primitives, "Target: 10M ops/s (10,000,000)")
     print_category("DATAFAKER GENERATORS (Realistic Data)", datafaker, "Expected: ~10K ops/s")
+    print_category("REGEX TYPES (registerRegex / RgxGen vs Datafaker regexify)", regex)
+    print_category("REGEX PATTERN COMPILE (one-off, at --faker-types load)", regex_compile,
+                   unit='us/op')
     print_category("COMPOSITE GENERATORS (Objects & Arrays)", composites)
-    print_category("SERIALIZERS (JSON & CSV)", serializers)
+    print_category("SERIALIZERS (JSON, CSV & Protobuf)", serializers)
     print_category("DESTINATIONS (File I/O)", destinations, "Target: Enable 500 MB/s file writes")
+    print_category("KAFKA DESTINATION (async x compression x batch size)", kafka)
+    print_category("DATABASE DESTINATION (batch size x transaction strategy)", database)
     
     # Summary statistics
     print("\n" + "="*100)
