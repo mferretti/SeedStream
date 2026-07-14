@@ -38,7 +38,7 @@ Flags:
 
 New Gradle module `inspector`, dependency edge `cli → inspector → schema → core`.
 Parser lib (`swagger-parser` / `jackson`) isolated in `inspector`, never leaks into the
-generation hot path. **Module creation requires confirmation** (per CLAUDE.md) — gate before build.
+generation hot path. **Module creation requires maintainer confirmation** — gate before build.
 
 ## 3. Type mapping
 

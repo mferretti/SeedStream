@@ -418,7 +418,7 @@ See [config/README.md](config/README.md) for full secret configuration reference
 
 ## Is This AI Slop?
 
-SeedStream was built with AI assistance — `CLAUDE.md` is in the repo and Claude Code is in the stack, openly. Fair question to ask of any such project. The answer is in the verification, not the prose:
+SeedStream was built with AI assistance, openly — Claude Code is in the stack. Fair question to ask of any such project. The answer is in the verification, not the prose:
 
 - **~106 test classes** — 90 unit + 16 integration (Testcontainers for real Kafka, and Postgres/MySQL/Oracle/SQL Server over JDBC; 3 tagged `slow`), not smoke tests.
 - **70% minimum line coverage**, enforced by a JaCoCo gate — the build fails below it.

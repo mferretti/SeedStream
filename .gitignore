@@ -48,10 +48,13 @@ profiling-output/
 # Internal planning documents (work in progress, not for publication)
 docs/DATABASE-DESTINATION-PLANNING.md
 
-# Claude Code — machine-specific permissions and generated knowledge graph (local only)
-.claude/settings.local.json
-.claude/skills/graphify/
-graphify-out/
+# Claude Code — the SeedStream skill is the only thing published.
+# Maintainer settings, hooks and local tooling stay on the machine that made them.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/seedstream-config/
+CLAUDE.local.md
 
 # SonarQube scanner working directory (local artifacts)
 .scannerwork/
