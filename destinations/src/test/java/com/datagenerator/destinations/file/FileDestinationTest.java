@@ -336,6 +336,98 @@ class FileDestinationTest {
     assertThat(outputFile).exists();
   }
 
+  // ── Write coalescing (issue #193) ────────────────────────────────────────────
+
+  @Test
+  void shouldReportWriteCoalescingSupportForJson() {
+    FileDestinationConfig config = configBuilder.filePath(tempDir.resolve(OUTPUT_JSON)).build();
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+
+    assertThat(destination.supportsSerializedWrite()).isTrue();
+    assertThat(destination.supportsWriteCoalescing()).isTrue();
+  }
+
+  @Test
+  void shouldNotReportWriteCoalescingSupportForCsvOrAvro() {
+    FileDestination csvDestination =
+        new FileDestination(
+            configBuilder.filePath(tempDir.resolve("output.csv")).build(), new CsvSerializer());
+    FileDestination avroDestination =
+        new FileDestination(
+            configBuilder.filePath(tempDir.resolve("output.avro")).build(), new AvroSerializer());
+
+    assertThat(csvDestination.supportsWriteCoalescing()).isFalse();
+    assertThat(avroDestination.supportsWriteCoalescing()).isFalse();
+  }
+
+  @Test
+  void shouldCoalescePayloadsWithTrailingNewlinePerRecord() {
+    FileDestinationConfig config = configBuilder.filePath(tempDir.resolve(OUTPUT_JSON)).build();
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+
+    byte[] p1 = "{\"id\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] p2 = "{\"id\":2}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] p3 = "{\"id\":3}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    byte[] coalesced = destination.coalesce(List.of(p1, p2, p3));
+
+    // Must be byte-identical to what the OLD per-record path produced: payload + '\n', in order,
+    // with no extra/missing bytes — i.e. exactly outputStream.write(p); outputStream.write('\n')
+    // for each payload, concatenated.
+    byte[] expected =
+        (new String(p1, java.nio.charset.StandardCharsets.UTF_8)
+                + "\n"
+                + new String(p2, java.nio.charset.StandardCharsets.UTF_8)
+                + "\n"
+                + new String(p3, java.nio.charset.StandardCharsets.UTF_8)
+                + "\n")
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    assertThat(coalesced).isEqualTo(expected);
+  }
+
+  @Test
+  void shouldCoalesceSinglePayloadChunk() {
+    FileDestinationConfig config = configBuilder.filePath(tempDir.resolve(OUTPUT_JSON)).build();
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+
+    byte[] payload = "{\"id\":42}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] coalesced = destination.coalesce(List.of(payload));
+
+    assertThat(coalesced)
+        .isEqualTo(("{\"id\":42}\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void shouldWriteCoalescedChunkRawWithoutAddingExtraFraming() throws Exception {
+    Path outputFile = tempDir.resolve(OUTPUT_JSON);
+    FileDestinationConfig config = configBuilder.filePath(outputFile).build();
+
+    try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
+      destination.open();
+
+      byte[] p1 = "{\"id\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+      byte[] p2 = "{\"id\":2}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+      byte[] coalesced = destination.coalesce(List.of(p1, p2));
+
+      destination.writeSerializedChunk(coalesced);
+      destination.flush();
+    }
+
+    List<String> lines = Files.readAllLines(outputFile);
+    assertThat(lines).containsExactly("{\"id\":1}", "{\"id\":2}");
+  }
+
+  @Test
+  void writeSerializedChunkThrowsWhenNotOpen() {
+    FileDestinationConfig config = configBuilder.filePath(tempDir.resolve(OUTPUT_JSON)).build();
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+
+    byte[] coalesced = "{}\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    assertThatThrownBy(() -> destination.writeSerializedChunk(coalesced))
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("not open");
+  }
+
   @Test
   void shouldWriteLargeNumberOfRecords() throws Exception {
     Path outputFile = tempDir.resolve("large.json");

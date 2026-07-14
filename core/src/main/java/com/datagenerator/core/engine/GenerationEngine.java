@@ -105,6 +105,23 @@ public class GenerationEngine {
   /** Optional: writes pre-serialized bytes; required when {@link #recordSerializer} is set. */
   private final SerializedWriter serializedWriter;
 
+  /**
+   * Optional: folds a full chunk of serialized payloads (or, on the single-threaded path, a
+   * singleton one-payload "chunk") into a single combined payload before it reaches {@link
+   * #serializedWriter}. Typically {@code destination::coalesce}.
+   *
+   * <p>Applying this on the producer side (the worker thread in the multi-threaded path) moves the
+   * per-record concatenation work — e.g. appending newline delimiters — off the single writer
+   * thread: the writer then performs one {@code write()} call per chunk instead of one per record.
+   * Only meaningful together with {@link #recordSerializer} and {@link #serializedWriter}; ignored
+   * otherwise (the raw-{@code Map} pipeline never folds).
+   *
+   * <p>Leave unset for destinations where each payload must remain an independent write unit — e.g.
+   * one Kafka message per record. Folding would merge multiple records into a single destination
+   * write, which for Kafka means a single corrupted message instead of many.
+   */
+  private final ChunkFolder chunkFolder;
+
   /** Master seed for deterministic generation. */
   private final long masterSeed;
 
@@ -168,12 +185,19 @@ public class GenerationEngine {
     // into the worker (producer) side so it runs in parallel; the single writer thread then only
     // performs ordered I/O. Otherwise the raw Map flows through and the destination serializes.
     if (recordSerializer != null && serializedWriter != null) {
+      // chunkFolder collapses a List<byte[]> chunk into a single coalesced byte[], wrapped back
+      // into a singleton list so the writer's per-item loop (see generateWorkerRecords/
+      // runSingleThreaded) still applies unchanged — it just iterates once instead of chunkSize
+      // times.
+      Function<List<byte[]>, List<byte[]>> chunkTransform =
+          chunkFolder == null ? null : payloads -> List.of(chunkFolder.fold(payloads));
       runPipeline(
           count,
           random -> recordSerializer.serialize(recordGenerator.generate(random)),
-          serializedWriter::write);
+          serializedWriter::write,
+          chunkTransform);
     } else {
-      runPipeline(count, recordGenerator::generate, recordWriter::write);
+      runPipeline(count, recordGenerator::generate, recordWriter::write, null);
     }
   }
 
@@ -184,20 +208,31 @@ public class GenerationEngine {
    * @param count number of records to generate
    * @param produce builds one payload from a thread-local {@link Random} (runs on workers)
    * @param consume writes one payload (runs on the single writer thread)
+   * @param chunkTransform optional fold applied to each chunk (or single-record "chunk" on the
+   *     single-threaded path) before its payloads reach {@code consume}; {@code null} to pass
+   *     payloads through unchanged
    */
-  private <P> void runPipeline(long count, Function<Random, P> produce, Consumer<P> consume)
+  private <P> void runPipeline(
+      long count,
+      Function<Random, P> produce,
+      Consumer<P> consume,
+      Function<List<P>, List<P>> chunkTransform)
       throws InterruptedException {
     if (count < singleThreadedThreshold) {
       log.info("Small job ({} records), using single thread", count);
-      runSingleThreaded(count, produce, consume);
+      runSingleThreaded(count, produce, consume, chunkTransform);
     } else {
       log.info("Starting parallel generation: {} records using {} workers", count, workerThreads);
-      runMultiThreaded(count, produce, consume);
+      runMultiThreaded(count, produce, consume, chunkTransform);
     }
   }
 
   /** Single-threaded generation for small jobs. */
-  private <P> void runSingleThreaded(long count, Function<Random, P> produce, Consumer<P> consume) {
+  private <P> void runSingleThreaded(
+      long count,
+      Function<Random, P> produce,
+      Consumer<P> consume,
+      Function<List<P>, List<P>> chunkTransform) {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
     Random random = randomProvider.getRandom();
 
@@ -206,7 +241,16 @@ public class GenerationEngine {
     for (long i = 0; i < count; i++) {
       // Seed by global record index so output matches the multi-threaded path byte-for-byte.
       random.setSeed(randomProvider.deriveRecordSeed(i));
-      consume.accept(produce.apply(random));
+      P payload = produce.apply(random);
+      if (chunkTransform == null) {
+        consume.accept(payload);
+      } else {
+        // Fold this single record as a one-element "chunk" so a coalescing destination sees the
+        // same framing it would from the multi-threaded path, regardless of job size.
+        for (P item : chunkTransform.apply(List.of(payload))) {
+          consume.accept(item);
+        }
+      }
 
       // Progress logging
       if ((i + 1) % logBatchSize == 0) {
@@ -231,7 +275,11 @@ public class GenerationEngine {
           "Worker Future is intentionally not stored; the first worker failure is captured in "
               + "workerError, which interrupts the writer and is rethrown after awaitTermination")
   @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S3776"})
-  private <P> void runMultiThreaded(long count, Function<Random, P> produce, Consumer<P> consume)
+  private <P> void runMultiThreaded(
+      long count,
+      Function<Random, P> produce,
+      Consumer<P> consume,
+      Function<List<P>, List<P>> chunkTransform)
       throws InterruptedException {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
 
@@ -304,6 +352,7 @@ public class GenerationEngine {
                   totalChunks,
                   randomProvider,
                   produce,
+                  chunkTransform,
                   myQueue,
                   new ProgressTracker(generated, count, startTime));
             } catch (InterruptedException e) {
@@ -362,6 +411,8 @@ public class GenerationEngine {
    * @param totalChunks total number of chunks
    * @param randomProvider provider of the thread-local Random (reseeded per record)
    * @param produce builds (and optionally serializes) one payload from a Random
+   * @param chunkTransform optional fold applied to each chunk before it is enqueued (e.g.
+   *     coalescing per-record payloads into one); {@code null} to enqueue the chunk unchanged
    * @param queue this worker's own queue for handing off its chunks, in ascending chunk order
    * @param progress shared progress state (total generated counter, target count, start time)
    * @throws InterruptedException if interrupted
@@ -374,6 +425,7 @@ public class GenerationEngine {
       long totalChunks,
       RandomProvider randomProvider,
       Function<Random, P> produce,
+      Function<List<P>, List<P>> chunkTransform,
       BlockingQueue<List<P>> queue,
       ProgressTracker progress)
       throws InterruptedException {
@@ -397,8 +449,12 @@ public class GenerationEngine {
         }
       }
 
-      queue.put(chunk); // blocks if queue is full - backpressure
-      recordChunkProgress(progress, chunk.size());
+      // Progress is tracked on the pre-fold record count; chunkTransform may collapse the chunk
+      // into fewer (e.g. one coalesced) payloads before it is handed to the writer.
+      int recordsInChunk = chunk.size();
+      List<P> toEnqueue = chunkTransform == null ? chunk : chunkTransform.apply(chunk);
+      queue.put(toEnqueue); // blocks if queue is full - backpressure
+      recordChunkProgress(progress, recordsInChunk);
     }
 
     log.debug("Worker {} completed: generated {} records", workerId, workerGenerated);
@@ -478,5 +534,24 @@ public class GenerationEngine {
   @FunctionalInterface
   public interface SerializedWriter {
     void write(byte[] payload);
+  }
+
+  /**
+   * Functional interface for folding a chunk of serialized payloads into a single combined payload
+   * on the producer side, before it reaches the {@link SerializedWriter}.
+   *
+   * <p>Typically implemented as {@code destination::coalesce}. Supplying one to the engine moves
+   * per-record framing/concatenation (e.g. newline delimiters) off the single writer thread and
+   * onto the parallel workers, collapsing {@code chunkSize} writer-thread write calls into one.
+   */
+  @FunctionalInterface
+  public interface ChunkFolder {
+    /**
+     * Fold an ordered, non-empty list of payloads into a single combined payload.
+     *
+     * @param payloads ordered payloads to fold
+     * @return single payload combining all inputs, with any needed framing applied
+     */
+    byte[] fold(List<byte[]> payloads);
   }
 }

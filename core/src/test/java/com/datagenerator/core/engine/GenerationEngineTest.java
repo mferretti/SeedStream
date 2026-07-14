@@ -376,4 +376,213 @@ class GenerationEngineTest {
     // Then: all records flowed through the byte pipeline
     assertThat(writtenBytes).hasSize(5000);
   }
+
+  // ── Chunk coalescing (issue #193) ────────────────────────────────────────────
+
+  /** Fold that mimics FileDestination.coalesce: concatenate each payload with a trailing '\n'. */
+  private static byte[] newlineJoin(java.util.List<byte[]> payloads) {
+    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+    for (byte[] p : payloads) {
+      out.writeBytes(p);
+      out.write('\n');
+    }
+    return out.toByteArray();
+  }
+
+  @Test
+  void shouldFoldMultiThreadedChunksIntoOneWriterCallPerChunk() throws InterruptedException {
+    // 1000 records, chunkSize default 256 -> 4 chunks (3 full + 1 partial of 232).
+    AtomicInteger idCounter = new AtomicInteger(0);
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", idCounter.incrementAndGet());
+
+    List<byte[]> writtenChunks = new ArrayList<>();
+    GenerationEngine.SerializedWriter writer =
+        bytes -> {
+          synchronized (writtenChunks) {
+            writtenChunks.add(bytes);
+          }
+        };
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(recordGenerator)
+            .recordSerializer(
+                data -> ("id=" + data.get("id")).getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .serializedWriter(writer)
+            .chunkFolder(GenerationEngineTest::newlineJoin)
+            .masterSeed(12345L)
+            .workerThreads(4)
+            .singleThreadedThreshold(1000)
+            .build();
+
+    engine.generate(1000);
+
+    // One writer call per chunk (4), not one per record (1000) — the whole point of coalescing.
+    assertThat(writtenChunks).hasSize(4);
+
+    // Concatenating all chunks reproduces the exact same bytes as the uncoalesced per-record
+    // path would have, in the same global order.
+    java.io.ByteArrayOutputStream combined = new java.io.ByteArrayOutputStream();
+    for (byte[] chunk : writtenChunks) {
+      combined.writeBytes(chunk);
+    }
+    long lineCount =
+        new String(combined.toByteArray(), java.nio.charset.StandardCharsets.UTF_8).lines().count();
+    assertThat(lineCount).isEqualTo(1000);
+  }
+
+  @Test
+  void shouldFoldSingleThreadedRecordsIndividuallyWhenBelowThreshold() throws InterruptedException {
+    // Below singleThreadedThreshold: no chunk batching happens, but the fold must still apply to
+    // each record individually (as a singleton "chunk") so a coalescing destination sees the same
+    // per-record framing it would on the multi-threaded path.
+    AtomicInteger idCounter = new AtomicInteger(0);
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", idCounter.incrementAndGet());
+
+    List<byte[]> writtenItems = new ArrayList<>();
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(recordGenerator)
+            .recordSerializer(
+                data -> ("id=" + data.get("id")).getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .serializedWriter(writtenItems::add)
+            .chunkFolder(GenerationEngineTest::newlineJoin)
+            .masterSeed(12345L)
+            .singleThreadedThreshold(1000) // 50 < 1000 -> single-threaded
+            .build();
+
+    engine.generate(50);
+
+    // Each record folded (as a singleton) and written individually — one writer call per record.
+    assertThat(writtenItems).hasSize(50);
+    assertThat(new String(writtenItems.get(0), java.nio.charset.StandardCharsets.UTF_8))
+        .isEqualTo("id=1\n");
+  }
+
+  @Test
+  void shouldNotFoldWhenChunkFolderIsUnset() throws InterruptedException {
+    // Default (Kafka-like) behaviour: no chunkFolder configured -> writer still gets one call per
+    // record, chunking is purely an internal producer/queue batching detail.
+    AtomicInteger idCounter = new AtomicInteger(0);
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", idCounter.incrementAndGet());
+    List<byte[]> writtenItems = new ArrayList<>();
+    GenerationEngine.SerializedWriter writer =
+        bytes -> {
+          synchronized (writtenItems) {
+            writtenItems.add(bytes);
+          }
+        };
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(recordGenerator)
+            .recordSerializer(
+                data -> ("id=" + data.get("id")).getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .serializedWriter(writer)
+            .masterSeed(12345L)
+            .workerThreads(4)
+            .singleThreadedThreshold(1000)
+            .build();
+
+    engine.generate(1000);
+
+    // No chunkFolder -> one writer call per record, exactly as before this feature existed.
+    assertThat(writtenItems).hasSize(1000);
+  }
+
+  @Test
+  void shouldProduceIdenticalFoldedOutputRegardlessOfThreadCount() throws InterruptedException {
+    // Same reproducibility guarantee as shouldProduceIdenticalOrderedOutputRegardlessOfThreadCount,
+    // but through the coalescing fold path: concatenating all coalesced chunks must reproduce the
+    // exact same byte stream regardless of thread count.
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", random.nextInt(1_000_000));
+    GenerationEngine.RecordSerializer serializer =
+        data -> (data.get("id") + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    int recordCount = 3000; // not a multiple of chunkSize (256) -> exercises partial final chunk
+
+    // Reference: single-threaded path (below threshold), still folded per-record.
+    java.io.ByteArrayOutputStream referenceOut = new java.io.ByteArrayOutputStream();
+    GenerationEngine.SerializedWriter referenceWriter =
+        bytes -> {
+          synchronized (referenceOut) {
+            referenceOut.writeBytes(bytes);
+          }
+        };
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordSerializer(serializer)
+        .serializedWriter(referenceWriter)
+        .chunkFolder(GenerationEngineTest::newlineJoin)
+        .masterSeed(555L)
+        .singleThreadedThreshold(Integer.MAX_VALUE) // force single-threaded path
+        .build()
+        .generate(recordCount);
+    byte[] reference = referenceOut.toByteArray();
+    assertThat(reference).isNotEmpty();
+
+    for (int threads : new int[] {1, 2, 4, 8}) {
+      java.io.ByteArrayOutputStream runOut = new java.io.ByteArrayOutputStream();
+      GenerationEngine.SerializedWriter runWriter =
+          bytes -> {
+            synchronized (runOut) {
+              runOut.writeBytes(bytes);
+            }
+          };
+      GenerationEngine.builder()
+          .recordGenerator(recordGenerator)
+          .recordSerializer(serializer)
+          .serializedWriter(runWriter)
+          .chunkFolder(GenerationEngineTest::newlineJoin)
+          .masterSeed(555L)
+          .workerThreads(threads)
+          .singleThreadedThreshold(1) // force multi-threaded path even at 1 worker
+          .build()
+          .generate(recordCount);
+
+      assertThat(runOut.toByteArray())
+          .as(
+              "folded output with %d worker thread(s) must equal the single-threaded reference",
+              threads)
+          .isEqualTo(reference);
+    }
+  }
+
+  @Test
+  void shouldFoldPartialFinalChunkCorrectly() throws InterruptedException {
+    // recordCount not a multiple of chunkSize (256): the last chunk has fewer than 256 records.
+    // It must still be folded (never skipped, never folded as empty).
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("id", 1);
+    GenerationEngine.RecordSerializer serializer =
+        data -> "x".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    List<byte[]> writtenChunks = new ArrayList<>();
+    GenerationEngine.SerializedWriter writer =
+        bytes -> {
+          synchronized (writtenChunks) {
+            writtenChunks.add(bytes);
+          }
+        };
+
+    int recordCount = 256 * 2 + 5; // 2 full chunks + 1 partial chunk of 5
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordSerializer(serializer)
+        .serializedWriter(writer)
+        .chunkFolder(GenerationEngineTest::newlineJoin)
+        .masterSeed(1L)
+        .workerThreads(1)
+        .singleThreadedThreshold(1)
+        .build()
+        .generate(recordCount);
+
+    assertThat(writtenChunks).hasSize(3); // 2 full + 1 partial, none empty/skipped
+    // Last chunk folded from exactly 5 records ("x\n" each) = 10 bytes.
+    assertThat(writtenChunks.get(2)).hasSize(5 * 2);
+  }
 }

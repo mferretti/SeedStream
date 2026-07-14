@@ -268,6 +268,46 @@ class ExecuteCommandTest {
     assertThat(outDir.resolve(OUTPUT_JSON)).exists();
   }
 
+  // ── Write coalescing (issue #193): byte-identical output regardless of thread count ─────────
+
+  @Test
+  void jsonToFileOutputIsByteIdenticalAcrossThreadCounts() throws Exception {
+    // chunkSize is 256 (hardcoded in GenerationEngine); pick a count that is NOT a multiple of it
+    // so every run exercises a partial final chunk, in addition to several full coalesced chunks.
+    Path jobFile = writeJobFile();
+    int count = 256 * 3 + 7; // 775 — 3 full chunks + 1 partial chunk of 7
+
+    byte[] reference = null;
+    for (int threads : new int[] {1, 4, 8}) {
+      Path output = outDir.resolve(OUTPUT_JSON);
+      if (Files.exists(output)) {
+        Files.delete(output);
+      }
+
+      int code =
+          execute(
+              OPT_JOB,
+              jobFile.toString(),
+              OPT_COUNT,
+              String.valueOf(count),
+              OPT_SEED,
+              "555",
+              "--threads",
+              String.valueOf(threads));
+      assertThat(code).isZero();
+
+      byte[] bytes = Files.readAllBytes(output);
+      if (reference == null) {
+        reference = bytes;
+        assertThat(Files.readAllLines(output)).hasSize(count);
+      } else {
+        assertThat(bytes)
+            .as("output with %d threads must be byte-identical to the 1-thread reference", threads)
+            .isEqualTo(reference);
+      }
+    }
+  }
+
   // ── Error cases ──────────────────────────────────────────────────────────────
 
   @Test

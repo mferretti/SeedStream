@@ -501,9 +501,24 @@ public class ExecuteCommand implements Callable<Integer> {
           "Parallel serialization enabled for {}/{}",
           destination.getDestinationType(),
           serializer.getFormatName());
-      engineBuilder
-          .recordSerializer(serializer::serializeToBytes)
-          .serializedWriter(destination::writeSerialized);
+      engineBuilder.recordSerializer(serializer::serializeToBytes);
+
+      // When the destination can also coalesce a chunk of independently-serialized payloads into
+      // one write (e.g. newline-delimited files), fold on the worker side and hand the writer a
+      // pre-coalesced blob per chunk instead of chunkSize individual payloads. Destinations where
+      // each payload must stay its own write (e.g. Kafka: one payload = one message) opt out via
+      // supportsWriteCoalescing() and keep the per-record writeSerialized path.
+      if (destination.supportsWriteCoalescing()) {
+        log.info(
+            "Write coalescing enabled for {}/{}",
+            destination.getDestinationType(),
+            serializer.getFormatName());
+        engineBuilder
+            .serializedWriter(destination::writeSerializedChunk)
+            .chunkFolder(destination::coalesce);
+      } else {
+        engineBuilder.serializedWriter(destination::writeSerialized);
+      }
     } else {
       engineBuilder.recordWriter(destination::write);
     }

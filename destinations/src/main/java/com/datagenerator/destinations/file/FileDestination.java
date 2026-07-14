@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
@@ -202,6 +203,40 @@ public class FileDestination extends AbstractDestination {
       outputStream.write('\n');
     } catch (IOException e) {
       throw new DestinationException("Failed to write serialized record to file", e);
+    }
+  }
+
+  @Override
+  public boolean supportsWriteCoalescing() {
+    // Same eligibility as supportsSerializedWrite(): plain NDJSON-style formats, not Avro OCF or
+    // CSV (header handling needs the record's keys, which raw bytes don't carry).
+    return supportsSerializedWrite();
+  }
+
+  @Override
+  public byte[] coalesce(List<byte[]> payloads) {
+    int size = 0;
+    for (byte[] payload : payloads) {
+      size += payload.length + 1; // +1 for the trailing newline this method adds per record
+    }
+    byte[] combined = new byte[size];
+    int pos = 0;
+    for (byte[] payload : payloads) {
+      System.arraycopy(payload, 0, combined, pos, payload.length);
+      pos += payload.length;
+      combined[pos++] = '\n';
+    }
+    return combined;
+  }
+
+  @Override
+  public void writeSerializedChunk(byte[] coalescedPayload) {
+    requireOpen("File");
+    try {
+      // coalesce() already interleaved each record with its trailing newline; write as-is.
+      outputStream.write(coalescedPayload);
+    } catch (IOException e) {
+      throw new DestinationException("Failed to write coalesced records to file", e);
     }
   }
 

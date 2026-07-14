@@ -16,6 +16,7 @@
 
 package com.datagenerator.destinations;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -76,6 +77,55 @@ public interface DestinationAdapter extends AutoCloseable {
   default void writeSerialized(byte[] payload) {
     throw new UnsupportedOperationException(
         getDestinationType() + " does not support serialized writes");
+  }
+
+  /**
+   * Whether this destination can further coalesce multiple {@link #writeSerialized} payloads within
+   * a chunk into a single write, via {@link #coalesce} and {@link #writeSerializedChunk}. Defaults
+   * to {@code false}. Only meaningful when {@link #supportsSerializedWrite()} is also {@code true};
+   * ignored otherwise.
+   *
+   * <p>Enable this for destinations where independently-serialized record payloads can be
+   * concatenated (with framing, e.g. a newline delimiter) into one blob and written in a single
+   * call — collapsing what would be {@code chunkSize} writer-thread {@code write()} calls into one.
+   * Leave this {@code false} (the default) for destinations where each payload must remain an
+   * independent write unit — e.g. Kafka, where one payload is one message; coalescing there would
+   * merge multiple records into a single message, corrupting the output.
+   *
+   * @return true if {@link #coalesce} and {@link #writeSerializedChunk} are supported
+   */
+  default boolean supportsWriteCoalescing() {
+    return false;
+  }
+
+  /**
+   * Fold an ordered, non-empty list of independently-serialized record payloads into a single
+   * combined payload, applying whatever framing this destination needs between records (e.g. a
+   * trailing newline per record for NDJSON). Runs on a worker thread — the writer thread later
+   * writes the result via {@link #writeSerializedChunk}. Only invoked when {@link
+   * #supportsWriteCoalescing()} returns {@code true}.
+   *
+   * @param payloads ordered, non-empty per-record serialized payloads
+   * @return single payload combining all inputs, framed as this destination requires
+   */
+  default byte[] coalesce(List<byte[]> payloads) {
+    throw new UnsupportedOperationException(
+        getDestinationType() + " does not support write coalescing");
+  }
+
+  /**
+   * Write a payload already produced by {@link #coalesce} — one or more record payloads already
+   * concatenated and framed. Called only on the single writer thread, so implementations need not
+   * be thread-safe. Only invoked when {@link #supportsWriteCoalescing()} returns {@code true}.
+   * Unlike {@link #writeSerialized}, implementations must NOT apply any further per-record framing
+   * here: {@link #coalesce} already did.
+   *
+   * @param coalescedPayload the already-framed, concatenated payload
+   * @throws DestinationException if write fails
+   */
+  default void writeSerializedChunk(byte[] coalescedPayload) {
+    throw new UnsupportedOperationException(
+        getDestinationType() + " does not support write coalescing");
   }
 
   /**
