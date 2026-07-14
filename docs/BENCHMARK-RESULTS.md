@@ -249,7 +249,8 @@ Nothing regressed. Changes vs the March 2026 run:
 | Decimal, simple object, FileDestination | 1.2–1.5× faster | not attributed; within refactor noise |
 | Protobuf serializer | previously **estimated**, now measured — and 2× slower than the estimate | estimates were wrong |
 | Primitives, JSON/CSV serializers | unchanged (1.0×) | control — confirms the above are real |
-| **Thread scaling** | still works, but is structure-dependent: **2.3×** (nested invoice → file), **1.4×** (passport → file), **1.3×** (Kafka), **1.0×** (primitives) | only generation + serialization are parallel; the writer thread is serial |
+| **Thread scaling** | structure-dependent (8 threads, 1M records): **3.6×** (nested invoice → file), **2.1×** (passport → file), **2.1×** (primitives), **1.7×** (Kafka) | only generation + serialization are parallel; the writer thread is serial |
+| **File write path** | **223 MB/s** — NFR-1's 500 MB/s target is **not met** | the docs claimed 600–800 MB/s; that was a projection, never measured. Gap is Jackson serialization, not disk (raw writer: 1,261 MB/s) |
 
 ---
 

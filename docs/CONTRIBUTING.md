@@ -526,10 +526,13 @@ Documentation is always appreciated:
 
 ### 🧪 New Generators
 Want to add a new data generator?
-1. Implement `DataTypeGenerator` interface
+1. Implement the `DataGenerator` interface (`generate(Random, DataType)` + `supports(DataType)`)
 2. Add tests (80%+ coverage)
 3. Update type system documentation
 4. Add examples in `config/structures/`
+
+For a new *semantic* type, you usually don't need a new generator at all — register it on
+`DatafakerRegistry`, or declare it in a `--faker-types` YAML (including `regex:` patterns) with no code.
 
 ### 🔌 New Destinations
 Want to add a new destination (S3, Azure, Elasticsearch)?

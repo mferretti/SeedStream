@@ -1,0 +1,9 @@
+# Diagnostic structure — NOT an example. Measures the file writer's MB/s ceiling.
+# One large char field: generation is ~free (primitives run at 12M+ ops/s), so the
+# resulting bytes/sec is the pipeline+destination ceiling, not a generator limit.
+name: perf_probe_wide
+data:
+  id:
+    datatype: int[1..999999]
+  payload:
+    datatype: char[500..500]

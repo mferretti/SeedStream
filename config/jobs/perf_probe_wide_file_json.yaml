@@ -1,0 +1,8 @@
+# Diagnostic job — file writer MB/s ceiling probe.
+source: perf_probe_wide.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: build/run-output/perf_probe_wide

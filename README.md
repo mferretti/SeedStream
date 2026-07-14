@@ -313,14 +313,14 @@ Validated throughput — JMH component benchmarks plus the July 2026 end-to-end 
 | File I/O | 600–800 MB/s |
 
 **Scaling**: worker threads parallelize generation and serialization; a single writer thread then drains to the
-destination. Speedup therefore depends on how generation-heavy your structure is — a nested `invoice` scales
-**2.3× on 8 threads** (file), a flatter `passport` **~1.4×**, and a primitives-only record not at all (it is
-already writer-bound at ~530K rec/s). Kafka scales worst (**~1.3×**): record compression happens on the single
-writer thread, so `compression: none` is **+66% faster at 4 threads** than `snappy`.
+destination. Speedup depends on how generation-heavy your structure is — measured on 1M records, 8 threads vs 1:
+a nested `invoice` scales **3.6×** (file), a flatter `passport` **2.1×**. Kafka scales worst (**1.7×**) because
+record compression runs on the single writer thread; `compression: none` is **+45% at 4 threads** and scales 2.2×.
 
-> The E2E table above measures a **whole CLI process**, which carries ~1.5s of fixed JVM + locale startup.
-> For 100K-record runs that overhead dominates and hides the scaling. Engine-only throughput is much higher
-> (passport ~106K rec/s, invoice→file ~90K rec/s). See [PERFORMANCE.md](docs/PERFORMANCE.md#thread-count).
+> The E2E table above measures a **whole CLI process**, which carries ~1.5s of fixed JVM + locale startup — about
+> half the wall clock of a 100K-record run. Engine-only throughput is 2–3× higher (passport 258K rec/s, nested
+> invoice → file 185K rec/s on 8 threads). Benchmark with 1M+ records; short runs understate both throughput and
+> scaling. See [PERFORMANCE.md](docs/PERFORMANCE.md#4-thread-count).
 
 See [PERFORMANCE.md](docs/PERFORMANCE.md) for full benchmarks, tuning guide, and hardware recommendations.
 

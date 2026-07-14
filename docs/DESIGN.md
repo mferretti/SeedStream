@@ -1,10 +1,12 @@
 # SeedStream - Design Documentation
 
-**Last Updated**: June 18, 2026 (v0.5.0)
+**Last Updated**: July 14, 2026 (v0.5.0)
 
 This document captures the architectural decisions, design patterns, issues encountered, and their resolutions during development. It serves as a reference for developers extending the project and for discussions around alternative approaches.
 
-**Status**: Core architecture complete. All destinations implemented: File, Kafka, Database (Stage 1 flat tables + Stage 2 nested auto-decomposition). Plugin/registry architecture for Datafaker types complete. Foreign key reference generator (`ref[]`) implemented in v0.5.0.
+**Status**: Core architecture complete. All destinations implemented: File, Kafka, Database (Stage 1 flat tables + Stage 2 nested auto-decomposition). Plugin/registry architecture for Datafaker types complete, extensible from config via `--faker-types` (including `regex:` patterns). Foreign key reference generator (`ref[]`) implemented in v0.5.0.
+
+**Known gap**: NFR-1's 500 MB/s file-write target is **not met** — the write path measures 223 MB/s, bounded by Jackson serialization rather than disk. See [Issue #5](#issue-5-file-io-performance-bottleneck).
 
 ---
 
@@ -54,7 +56,9 @@ This document captures the architectural decisions, design patterns, issues enco
 **Current**: Strategy pattern with clear interfaces:
 - `DestinationAdapter` for new destinations
 - `FormatSerializer` for new formats
-- `DataTypeGenerator` for new data types
+- `DataGenerator` for new data types
+- `DatafakerRegistry.register(...)` for new semantic types, or a `--faker-types` YAML to declare them
+  without code (see [Custom & Regex Types](#custom--regex-types))
 
 ### 4. Developer Experience
 
@@ -408,14 +412,33 @@ long recordsPerSec = (count * 1000) / Math.max(elapsed, 1);
 
 ### Performance Characteristics
 
-**Tested Scenario**: 1M records, 4 workers, file destination (SSD).
+**Tested Scenario**: 1M records, file destination (NVMe SSD), engine-reported time (excludes JVM
+startup). Re-measured 14 July 2026 — see [PERFORMANCE.md](PERFORMANCE.md).
 
-**Results**:
-- Single-threaded: ~30K records/sec
-- Multi-threaded (4 workers): ~110K records/sec
-- Scaling: ~3.7x speedup (92% efficiency)
+| Structure | 1 worker | 4 workers | 8 workers | Speedup (8w) |
+|-----------|---------:|----------:|----------:|-------------:|
+| Nested `invoice` (generation-heavy) | 51K rec/s | 143K rec/s | 185K rec/s | **3.6×** |
+| Flat `passport` (11 mixed fields) | 122K rec/s | 228K rec/s | 258K rec/s | **2.1×** |
+| Primitives only (3 fields) | 732K rec/s | 1.52M rec/s | 1.54M rec/s | **2.1×** |
 
-**Bottleneck**: I/O (file writes). CPU-bound generation scales linearly.
+**Scaling depends on how much of the per-record cost is generation.** Only generation and
+(where the destination allows it) serialization are parallel; the writer thread is serial. A
+generation-heavy nested structure has plenty of parallel work and scales ~3.6×; a cheap record is
+writer-bound sooner and plateaus around 1.5M rec/s.
+
+> **Measurement warning.** These are *1M-record* runs. Do not benchmark this engine with small jobs:
+> at 100–200K records, JVM startup and JIT warmup dominate and make scaling look far worse than it
+> is (the same passport job measures only ~1.4× at 200K vs 2.1× at 1M). The E2E harness
+> (`benchmarks/run_e2e_test.sh`) times the whole CLI process at 100K records and therefore
+> *understates* both throughput and scaling — see the warning in
+> [E2E-TEST-RESULTS.md](E2E-TEST-RESULTS.md).
+
+**Historical note**: this section previously reported ~30K rec/s single-threaded and a 3.7× speedup at
+4 workers. The 30K predates the thread-local `FakerCache` (commit `cf3492d`) — single-threaded is now
+4× that. The 3.7× figure still roughly holds, but only for generation-heavy structures at 8 workers.
+
+**Bottleneck**: the serial writer thread (serialize-if-needed → destination). Generation scales with
+workers until it hits that ceiling.
 
 **Memory**: Fixed overhead (queue capacity × record size). Example: 1000 records × 1KB/record = 1MB.
 
@@ -578,6 +601,62 @@ location:
 **Performance Impact**: Negligible (ConcurrentHashMap lookup is O(1), no synchronized blocks)
 
 **Migration Path**: All existing YAML configs remain compatible (registry includes all original enum types)
+
+### Custom & Regex Types
+
+The registry can also be extended **from configuration, without writing code**, via a `--faker-types`
+YAML passed to `execute` and `inspect`. `CustomTypeConfigLoader` reads it and registers each entry
+before generation starts:
+
+```yaml
+types:
+  # 1. Method-chain types — each dot segment is a no-arg method invoked on the Faker instance
+  beer_style: beer.style                 # → faker.beer().style()
+  job_title: job.title                   # → faker.job().title()
+
+  # 2. Regex types — a `regex:` prefix generates values matching the pattern
+  iso_msg_id: "regex:[A-Z0-9]{10,35}"
+  order_ref: "regex:ORD-\\d{8}"
+
+aliases:
+  beerstyle: beer_style
+```
+
+**Why two mechanisms?** Datafaker exposes far more providers than SeedStream pre-registers, and a
+method chain reaches any of them. But structured identifiers (ISO 20022 message ids, order references,
+IBAN-shaped keys) don't exist as Datafaker providers at all — they are *patterns*, and a regex is the
+natural way to express one.
+
+**Regex implementation** (`DatafakerRegistry.registerRegex`): the pattern is parsed **once at
+registration** with [RgxGen](https://github.com/curious-odd-man/RgxGen), and the compiled generator is
+cached in the registry closure. Generation draws from the seeded `Random`, so it is deterministic
+under the job seed like everything else. Malformed patterns throw at load time, not mid-run.
+
+**Why RgxGen directly, rather than Datafaker's `regexify`?** Datafaker bundles a shaded copy of the
+same engine. Depending on it directly gives us control of the version and lets us fail fast on a bad
+pattern at config-load time. It is **not** a performance decision — measured, our path is ~9% *slower*
+than a warm `Faker.regexify()` for the same pattern (1.85M vs 2.04M ops/s). Faker is bypassed entirely
+on the regex hot path.
+
+**Cost** (14 Jul 2026, high-fidelity JMH — see [BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md)):
+
+| | Throughput |
+|---|---:|
+| Regex types (across pattern shapes) | 1.2M – 5.1M ops/s |
+| — for reference: `char[10..35]` primitive | 6.6M ops/s |
+| — for reference: Datafaker `name` | 782K ops/s |
+| Pattern compile (once, at load) | 0.59 – 2.97 µs |
+
+So a regex field costs **more than a dumb random string, less than a realistic name**. End-to-end, a
+10-field record with 4 regex fields runs ~6% slower than the same record with `char[]` in those slots.
+
+**Authoring constraints** (RgxGen semantics, and they bite):
+- `.` matches any printable ASCII **including punctuation** — prefer explicit classes like `[A-Za-z0-9]`
+- unbounded quantifiers (`+`, `*`, `{n,}`) are **capped at 100 repetitions**, so `[a-z]+` emits strings
+  up to 100 chars — almost never what the author meant, and the slowest case measured. Always bound them.
+- lookaround and `\p{...}` Unicode categories are only partially supported
+- a regex cannot compute a checksum, so mod-97 constructs (ISO 11649 "RF" references, valid IBANs) are
+  out of reach — those need a real generator (`iban` / `sepa_iban` exist for that reason)
 
 ---
 
@@ -763,7 +842,7 @@ GenerationEngine engine = GenerationEngine.builder()
 
 **Result**: All 10 workers successful, 100,000 records generated correctly.
 
-> **Note**: The 6,923 rec/s figure was pre-optimization throughput (pre-TASK-040). After the thread-local Faker cache optimization (TASK-040), equivalent jobs run at ~25,000–33,000 rec/s. See `docs/PERFORMANCE.md` for current benchmarks.
+> **Note**: The 6,923 rec/s figure was pre-optimization throughput (pre-TASK-040). After the thread-local Faker cache optimization (TASK-040), equivalent jobs run at ~122,000 rec/s single-threaded and ~258,000 rec/s on 8 workers (engine time, 1M records). The "~25,000–33,000 rec/s" previously quoted here was a *whole-CLI-process* figure at 100K records, where JVM startup is about half the wall clock. See `docs/PERFORMANCE.md` for current benchmarks.
 
 **Lesson**: When using `ThreadLocal` state in multi-threaded environments, ensure each thread initializes its own context. Try-with-resources on main thread doesn't propagate to worker threads.
 
@@ -821,6 +900,8 @@ Target: 500 MB/s (2.3x gap)
 - **Expected Gain**: +10-20% (marginal improvement given Phase 1 & 2 results)
 - **Effort**: High (4-6 hours - requires interface refactoring, extensive testing)
 - **Decision**: Deferred to TASK-039 (low priority) - target already met with Phase 1 & 2
+  ⚠️ **This premise was wrong.** The target was *not* met (223 MB/s vs 500 MB/s — see Result below), and
+  serialization is precisely the remaining bottleneck. Phase 3 is the fix, not a marginal +10-20%.
 
 **Implementation Details**:
 
@@ -853,7 +934,26 @@ private void flushBatch() throws IOException {
 }
 ```
 
-**Result**: Expected 600-800 MB/s (validated via JMH benchmarks after implementation).
+**Result**: ⚠️ **The 600-800 MB/s figure was a projection, and it was never achieved. NFR-1's 500 MB/s
+file target is NOT met.**
+
+Measured 14 July 2026 (`DestinationBenchmark`, 243-byte JSON record, high-fidelity JMH config):
+
+| Path | Throughput | MB/s |
+|------|-----------:|-----:|
+| Raw `BufferedWriter` (no serialization) | 5,442,992 ops/s | **1,261 MB/s** |
+| `FileDestination` (serialize + 64KB buffer + 1000-record batch) | 961,828 ops/s | **223 MB/s** |
+| Full pipeline, 8 workers, 526-byte records | 602,409 rec/s | **302 MB/s** |
+| **NFR-1 target** | — | **500 MB/s** |
+
+The Phase 1 + Phase 2 optimisations *did* work — `benchmarkFileDestinationWrite` went from 761K to
+962K ops/s (**+26%**) — but that is a long way from the projected 3×, and the write path still sits at
+roughly **half the NFR-1 target** and ~5× below the raw `BufferedWriter` ceiling on the same hardware.
+
+The gap is **serialization, not I/O**: raw buffered writing reaches 1,261 MB/s on this disk, so the
+remaining cost is Jackson turning each record into a `String`. That is exactly what **Phase 3 (Jackson
+streaming, deferred above as "target already met")** was meant to address — and the premise for
+deferring it was false. Phase 3 should be reconsidered if the 500 MB/s target is still wanted.
 
 **Trade-offs**:
 - **Memory**: +300KB per FileDestination instance (1000 records × 300 bytes batch buffer)
@@ -993,10 +1093,15 @@ age: int[18..65, distribution=normal, mean=35, stddev=10]
 **Vision for Plugin System**:
 ```java
 // User creates custom generator
-public class CustomDataGenerator implements DataTypeGenerator {
+public class CustomDataGenerator implements DataGenerator {
     @Override
-    public Object generate(Random random, TypeConfig config) {
+    public Object generate(Random random, DataType dataType) {
         // Custom logic
+    }
+
+    @Override
+    public boolean supports(DataType dataType) {
+        return dataType instanceof PrimitiveType p && p.getKind() == PrimitiveType.Kind.CHAR;
     }
 }
 

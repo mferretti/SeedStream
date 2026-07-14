@@ -21,20 +21,24 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 > - **Datafaker generators are 7–65× faster** than the last recorded figures (`FakerCache`, commit `cf3492d`,
 >   landed after the March benchmark run). Primitives and serializers are unchanged, confirming the effect
 >   is real rather than a measurement artefact.
-> - **Threading still works, but the E2E harness hides it.** `run_e2e_test.sh` times the whole CLI process,
->   including ~1.5–1.7 s of fixed JVM + locale startup — roughly half the wall clock of a 100K-record run — so
->   speeding up generation barely moves its number. Measured on the engine's own clock, 8 threads vs 1 gives
->   **2.3×** (nested invoice → file), **1.4×** (passport → file), **1.3×** (Kafka), **1.0×** (primitives, already
->   writer-bound). Only generation and serialization are parallel; the single writer thread is serial.
-> - **Kafka scales worst (~1.3×)** because `KafkaProducer.send()` compresses each record into its batch buffer
->   *on the calling thread* — i.e. on the single writer thread. `compression: none` is **+66% at 4 threads**
->   (54.7K vs 32.9K rec/s). `KafkaProducer` is thread-safe, so letting workers send directly would likely
->   recover most of the gap.
+> - **Threading works fine; the E2E harness hides it.** `run_e2e_test.sh` times the whole CLI process, including
+>   ~1.5–1.7 s of fixed JVM + locale startup — roughly half the wall clock of a 100K-record run — so speeding up
+>   generation barely moves its number. On the engine's own clock at **1M records**, 8 threads vs 1 gives
+>   **3.6×** (nested invoice → file), **2.1×** (passport → file), **2.1×** (primitives, hitting the ~1.5M rec/s
+>   writer ceiling), **1.7×** (Kafka). Only generation and serialization are parallel; the writer thread is serial.
+>   **Benchmark with 1M+ records** — at 100–200K, JIT warmup also distorts the picture downward.
+> - **Kafka scales worst (1.7×)** because `KafkaProducer.send()` compresses each record into its batch buffer
+>   *on the calling thread* — i.e. on the single writer thread. `compression: none` is **+45% at 4 threads**
+>   (103.5K vs 71.6K rec/s) and scales 2.2×. `KafkaProducer` is thread-safe, so letting workers send directly
+>   would likely recover most of the gap.
+> - **NFR-1's 500 MB/s file target is NOT met**: `FileDestination` measures **223 MB/s** (raw `BufferedWriter`
+>   on the same disk: 1,261 MB/s). The "600–800 MB/s achieved" in the docs was a projection, never a
+>   measurement. The gap is Jackson serialization, not disk.
 > - **Protobuf serialization was measured for the first time** and is the *slowest* format, ~2× slower than
 >   JSON — the previous "~2.5M ops/s (est.)" figures were optimistic guesses.
 >
 > The practical consequence: **thread count pays in proportion to generation cost.** Generation-heavy nested
-> structures scale; cheap flat records are already writer-bound. For Kafka, drop compression before adding threads.
+> structures scale ~3.6×; flatter records ~2.1×. For Kafka, drop compression before adding threads.
 
 ### Quick Performance Reference
 
@@ -48,7 +52,8 @@ SeedStream sustains **~32,000–39,000 records/second** for flat-record file gen
 | **Primitive Generation (in-memory)** | 4-252M ops/s | ✅ Exceeds target |
 | **Datafaker Generation (isolated)** | 108K-1.1M ops/s | ✅ 7-65× faster since `FakerCache` |
 | **Regex Types (isolated)** | 1.2-5.1M ops/s | ✅ Cheaper than a Datafaker name |
-| **Thread Efficiency (8 threads)** | 1.0×–2.3× (structure-dependent) | ⚠️ Only generation is parallel; writer is serial |
+| **Thread Efficiency (8 threads, 1M records)** | 1.7×–3.6× (structure-dependent) | ✅ Only generation is parallel; writer is serial |
+| **File write path** | 223 MB/s | ❌ NFR-1 target is 500 MB/s — not met |
 | **Memory Usage** | 22-70MB typical | ✅ Efficient |
 | **GC Overhead** | <2.63% | ✅ Healthy |
 

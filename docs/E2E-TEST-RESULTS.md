@@ -11,7 +11,8 @@
 > 1, 4, and 8 threads, so it flattens the thread-scaling columns below almost to noise.
 >
 > Engine-only rates for the same jobs (from the CLI's own `Time elapsed` line) are 2–3× higher, and threading
-> clearly does help there: nested invoice → file goes **40K → 90K rec/s** from 1 to 8 threads (2.3×).
+> clearly does help there. Measured at **1M records**, 1 → 8 threads: nested invoice → file **51K → 185K rec/s
+> (3.6×)**, passport → file **122K → 258K rec/s (2.1×)**, Kafka **46K → 77K rec/s (1.7×)**.
 > See [PERFORMANCE.md §4 Thread Count](PERFORMANCE.md#4-thread-count).
 
 **Date:** July 14, 2026

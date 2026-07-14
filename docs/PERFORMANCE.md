@@ -43,23 +43,25 @@ This document provides comprehensive performance benchmarks, tuning guidance, an
 > — and a **misleading** answer to *"what is the engine's throughput?"* or *"does threading help?"*. The
 > engine's own reported rate (`Time elapsed` in the CLI output) for the same jobs is 2–3× higher:
 >
-> | Job (engine-only, 200K records) | 1 thread | 4 threads | 8 threads |
+> | Job (engine-only, **1M records**) | 1 thread | 4 threads | 8 threads |
 > |---|---|---|---|
-> | passport → file/json | 77K rec/s | 106K rec/s | 99K rec/s |
-> | invoice (nested) → file/json | 40K rec/s | 85K rec/s | 90K rec/s |
-> | invoice (nested) → kafka/json (snappy) | 29K rec/s | 33K rec/s | 37K rec/s |
-> | primitives-only → file/json | 532K rec/s | 576K rec/s | 509K rec/s |
+> | passport → file/json | 122K rec/s | 228K rec/s | 258K rec/s |
+> | invoice (nested) → file/json | 51K rec/s | 143K rec/s | 185K rec/s |
+> | invoice (nested) → kafka/json (snappy) | 46K rec/s | 72K rec/s | 77K rec/s |
+> | primitives-only → file/json | 732K rec/s | 1.52M rec/s | 1.54M rec/s |
 >
-> Amortise the startup over a larger job (1M+ records) and the E2E figures converge on these.
+> **Use 1M+ records to benchmark this engine.** At 100–200K, JVM startup *and* JIT warmup both dominate:
+> the same passport job measures 1.4× scaling at 200K but 2.1× at 1M. Short runs understate both
+> throughput and scaling.
 
 **Rule of Thumb**: **generator choice is rarely your bottleneck; the writer and the destination usually are.**
 Since the thread-local `FakerCache`, every generator family runs at 0.1M–252M ops/s, while the *serial* part
-of the pipeline (single writer thread → destination) tops out around 530K rec/s for file. Whether extra
-threads help depends on how much of your per-record cost is generation:
+of the pipeline (single writer thread → destination) tops out around **1.5M rec/s** for file. Threads pay in
+proportion to how much of your per-record cost is generation:
 
-- **Generation-heavy** (nested objects, many Datafaker fields) → threads help (**up to 2.3×**)
-- **Light records** (few primitives) → already writer-bound; threads do nothing
-- **Kafka** → threads help least (**~1.3×**); see [§4 Thread Count](#4-thread-count)
+- **Generation-heavy** (nested objects, many Datafaker fields) → **3.6×** on 8 threads
+- **Lighter records** (flat, few Datafaker fields) → **~2.1×**
+- **Kafka** → **1.7×** with compression, **2.2×** without; see [§4 Thread Count](#4-thread-count)
 
 > The old advice here — *"realistic Datafaker data is 1,000× slower than primitives, plan accordingly"* — was
 > measured before the `FakerCache` and is **no longer true**. The gap is now 10–100×.
@@ -167,7 +169,22 @@ pipeline cost.
 - Batch writes (1000 records per batch)
 - Eliminated redundant newLine() calls
 
-**Result**: Achieved 600-800 MB/s throughput, exceeding 500 MB/s target (NFR-1).
+**Result**: ⚠️ **NFR-1's 500 MB/s file target is NOT met.** This document previously claimed "600-800 MB/s,
+exceeding the 500 MB/s target" — that figure was a *projection* from the optimization plan, never a
+measurement. Measured 14 Jul 2026:
+
+| Path | Throughput | MB/s |
+|------|-----------:|-----:|
+| Raw `BufferedWriter` (no serialization) | 5,442,992 ops/s | **1,261 MB/s** |
+| `FileDestination` (serialize + 64KB buffer + batch) | 961,828 ops/s | **223 MB/s** |
+| Full pipeline, 8 workers, 526-byte records | 602,409 rec/s | **302 MB/s** |
+| **NFR-1 target** | — | **500 MB/s** |
+
+The optimizations did work (`benchmarkFileDestinationWrite` 761K → 962K ops/s, **+26%**), but nowhere near
+the projected 3×. The remaining gap is **serialization, not disk**: raw buffered writing hits 1,261 MB/s on
+the same hardware, so Jackson's per-record `String` construction is the bottleneck. That is exactly what
+"Phase 3: Jackson streaming" was meant to fix — and it was deferred on the false premise that the target had
+already been met. See [DESIGN.md Issue #5](DESIGN.md).
 
 ---
 
@@ -371,35 +388,38 @@ Worker 1 → generate + serialize → queue[1] ─┼→ Writer (merge, ordered)
 Worker N → generate + serialize → queue[N] ─┘        ^ serial
 ```
 
-**Measured speedup (engine-only, 8 threads vs 1):**
+**Measured speedup (engine-only, 1M records, 8 threads vs 1):**
 
-| Workload | 1 thread | 8 threads | Speedup | Why |
-|----------|---------:|----------:|--------:|-----|
-| Nested invoice → file | 40K rec/s | 90K rec/s | **2.3×** | Generation-heavy — lots of parallel work |
-| Passport → file | 77K rec/s | 99K rec/s | **1.4×** | Less generation per record |
-| Primitives → file | 532K rec/s | 509K rec/s | **1.0×** | Already writer-bound; nothing to parallelize |
-| Nested invoice → Kafka | 29K rec/s | 37K rec/s | **1.3×** | See below |
+| Workload | 1 thread | 4 threads | 8 threads | Speedup | Why |
+|----------|---------:|----------:|----------:|--------:|-----|
+| Nested invoice → file | 51K rec/s | 143K rec/s | 185K rec/s | **3.6×** | Generation-heavy — lots of parallel work |
+| Passport → file | 122K rec/s | 228K rec/s | 258K rec/s | **2.1×** | Less generation per record |
+| Primitives → file | 732K rec/s | 1.52M rec/s | 1.54M rec/s | **2.1×** | Hits the writer ceiling (~1.5M rec/s) |
+| Nested invoice → Kafka (snappy) | 46K rec/s | 72K rec/s | 77K rec/s | **1.7×** | See below |
 
-**Rule**: the more expensive your record is to *generate*, the more threads pay. A cheap record is
-writer-bound, and extra threads only add queue and GC overhead.
+**Rule**: the more expensive your record is to *generate*, the more threads pay.
+
+> **Benchmark with 1M+ records.** At 100–200K, JVM startup and JIT warmup dominate and make scaling look
+> far worse than it is — the same passport job measures 1.4× at 200K but 2.1× at 1M, and Kafka measures
+> 1.3× at 200K but 1.7× at 1M. Short runs will mislead you (they misled an earlier revision of this doc).
 
 #### Why Kafka scales worst
 
-Kafka scales to only ~1.3× where the same structure to a file scales 2.3×. The reason is not the broker and
+Kafka scales to only ~1.7× where the same structure to a file scales 3.6×. The reason is not the broker and
 not the network — it is that `KafkaProducer.send()` **compresses the record into its batch buffer on the
 calling thread**, and that call happens on the single writer thread. Compression is therefore serialized
 onto one core, while the workers sit idle.
 
-Measured, nested invoice → Kafka, engine-only:
+Measured, nested invoice → Kafka, engine-only, 1M records:
 
-| Compression | 1 thread | 4 threads | Speedup |
-|-------------|---------:|----------:|--------:|
-| `snappy` | 28.8K rec/s | 32.9K rec/s | 1.14× |
-| `none` | 35.9K rec/s | **54.7K rec/s** | **1.52×** |
+| Compression | 1 thread | 4 threads | 8 threads | Speedup |
+|-------------|---------:|----------:|----------:|--------:|
+| `snappy` | 46.0K rec/s | 71.6K rec/s | 76.7K rec/s | 1.67× |
+| `none` | 47.1K rec/s | **103.5K rec/s** | 103.2K rec/s | **2.19×** |
 
-**Dropping compression is +66% at 4 threads.** If your broker link is local or fast, prefer
-`compression: none` and let the network carry the bytes. If you are bandwidth-constrained, keep compression
-and accept that the writer thread is your ceiling — adding worker threads will not move it.
+**Dropping compression is +45% at 4 threads** (103.5K vs 71.6K) *and* it scales better. If your broker link
+is local or fast, prefer `compression: none` and let the network carry the bytes. If you are
+bandwidth-constrained, keep compression and accept a lower thread ceiling.
 
 > **This is a fixable limitation, not a law.** `KafkaProducer` is thread-safe and explicitly designed to be
 > shared across threads, and SeedStream's global record ordering is meaningless for Kafka anyway (records are
