@@ -78,7 +78,7 @@ public class ProtobufInspector {
       }
     }
 
-    return new Inspection(structures, comments, warnings);
+    return Inspection.of(structures, comments, warnings);
   }
 
   private byte[] readBytes(Path file) {

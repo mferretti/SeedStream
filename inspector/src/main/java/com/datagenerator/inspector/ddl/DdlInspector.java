@@ -117,7 +117,7 @@ public class DdlInspector {
       Inspection nested = new NestingPlanner().plan(tables, nesting);
       List<String> all = new ArrayList<>(warnings);
       all.addAll(nested.warnings());
-      return new Inspection(nested.structures(), nested.comments(), all);
+      return Inspection.of(nested.structures(), nested.comments(), all);
     }
     return toInspection(tables, warnings);
   }
@@ -166,7 +166,7 @@ public class DdlInspector {
         comments.put(table.name(), table.comments());
       }
     }
-    return new Inspection(structures, comments, warnings);
+    return Inspection.of(structures, comments, warnings);
   }
 
   private TableInfo toTableInfo(CreateTable createTable, int order, List<String> warnings) {

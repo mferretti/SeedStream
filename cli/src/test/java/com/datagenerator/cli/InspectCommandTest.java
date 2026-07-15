@@ -70,6 +70,22 @@ class InspectCommandTest {
               id: {type: string, format: uuid}
       """;
 
+  // JSON kept as a concatenated string: google-java-format mangles a text block starting with '{'.
+  private static final String JSON_SCHEMA =
+      "{ \"title\": \"Widget\", \"type\": \"object\","
+          + " \"properties\": {"
+          + "   \"code\": { \"type\": \"string\", \"pattern\": \"^[A-Z]{3}$\" },"
+          + "   \"name\": { \"type\": \"string\" } } }";
+
+  private static final String YAML_SCHEMA =
+      """
+      $schema: "https://json-schema.org/draft/2020-12/schema"
+      title: Gadget
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+      """;
+
   private int run(String... args) {
     return new CommandLine(new InspectCommand()).execute(args);
   }
@@ -160,6 +176,120 @@ class InspectCommandTest {
   void nestIgnoredForOpenApiButStillSucceeds() throws Exception {
     Path spec = write("api.yaml", MINIMAL_OPENAPI);
     assertThat(run(spec.toString(), "-o", outDir().toString(), "--nest")).isZero();
+    assertThat(outDir().resolve("thing.yaml")).exists();
+  }
+
+  @Test
+  void jsonSchemaByExtensionAutoDetectedAndWritesFakerTypes() throws Exception {
+    Path schema = write("payload.schema.json", JSON_SCHEMA);
+    assertThat(run(schema.toString(), "-o", outDir().toString())).isZero();
+    assertThat(outDir().resolve("widget.yaml")).exists();
+    // the regex `pattern` field emits a companion faker-types file the user can feed back
+    assertThat(outDir().resolve("inspect-faker-types.yaml")).exists();
+  }
+
+  @Test
+  void jsonSchemaOnYamlDetectedByContentPeek() throws Exception {
+    // .yaml is ambiguous — the $schema root key disambiguates it as JSON Schema, not OpenAPI.
+    Path schema = write("schema.yaml", YAML_SCHEMA);
+    assertThat(run(schema.toString(), "-o", outDir().toString())).isZero();
+    assertThat(outDir().resolve("gadget.yaml")).exists();
+  }
+
+  @Test
+  void jsonSchemaExplicitFormatOverride() throws Exception {
+    Path schema =
+        write(
+            "plain.json",
+            "{ \"type\": \"object\", \"properties\": { \"x\": { \"type\": \"string\" } } }");
+    assertThat(run(schema.toString(), "-o", outDir().toString(), "--format", "jsonschema"))
+        .isZero();
+    assertThat(outDir().resolve("plain.yaml")).exists();
+  }
+
+  @Test
+  void nestIgnoredForJsonSchemaButStillSucceeds() throws Exception {
+    Path schema = write("payload.schema.json", JSON_SCHEMA);
+    assertThat(run(schema.toString(), "-o", outDir().toString(), "--nest")).isZero();
+    assertThat(outDir().resolve("widget.yaml")).exists();
+  }
+
+  @Test
+  void companionFakerTypesNotClobberedOnRerun() throws Exception {
+    Path schema = write("payload.schema.json", JSON_SCHEMA);
+    assertThat(run(schema.toString(), "-o", outDir().toString())).isZero();
+    Path companion = outDir().resolve("inspect-faker-types.yaml");
+    String firstContent = Files.readString(companion);
+
+    // rerun without --force: the companion exists → skipped, left byte-for-byte intact.
+    assertThat(run(schema.toString(), "-o", outDir().toString())).isZero();
+    assertThat(Files.readString(companion)).isEqualTo(firstContent);
+  }
+
+  @Test
+  void companionNotWrittenOverFakerTypesInput() throws Exception {
+    Path schema = write("payload.schema.json", JSON_SCHEMA);
+    assertThat(run(schema.toString(), "-o", outDir().toString())).isZero();
+    Path companion = outDir().resolve("inspect-faker-types.yaml");
+    String before = Files.readString(companion);
+
+    // point --faker-types at the companion itself: must refuse to overwrite its own input,
+    // even with --force.
+    assertThat(
+            run(
+                schema.toString(),
+                "-o",
+                outDir().toString(),
+                "--force",
+                "--faker-types",
+                companion.toString()))
+        .isZero();
+    assertThat(Files.readString(companion)).isEqualTo(before);
+  }
+
+  @Test
+  void invalidFormatOverrideReturnsTwo() throws Exception {
+    Path schema = write("payload.schema.json", JSON_SCHEMA);
+    assertThat(run(schema.toString(), "-o", outDir().toString(), "--format", "bogus")).isEqualTo(2);
+  }
+
+  @Test
+  void unknownExtensionCannotAutoDetectReturnsTwo() throws Exception {
+    Path file = write("schema.txt", JSON_SCHEMA);
+    assertThat(run(file.toString(), "-o", outDir().toString())).isEqualTo(2);
+  }
+
+  @Test
+  void nonObjectJsonRootPeeksAsOpenApiThenFails() throws Exception {
+    // A JSON array root is neither OpenAPI nor JSON Schema → peek defaults to OpenAPI, which then
+    // fails (no components.schemas) with exit 2.
+    Path file = write("array.json", "[1, 2, 3]");
+    assertThat(run(file.toString(), "-o", outDir().toString())).isEqualTo(2);
+  }
+
+  @Test
+  void malformedJsonPeekFallsBackToOpenApiThenFails() throws Exception {
+    // Unparseable content → the peek swallows the IOException and defaults to OpenAPI, which then
+    // fails to read it; detection itself never hard-crashes.
+    Path file = write("broken.json", "{ not valid json ");
+    assertThat(run(file.toString(), "-o", outDir().toString())).isEqualTo(2);
+  }
+
+  @Test
+  void yamlWithoutMarkersFallsBackToOpenApi() throws Exception {
+    // No openapi/swagger key and no $schema/$defs/definitions → content-peek defaults to OpenAPI.
+    Path spec =
+        write(
+            "spec.yaml",
+            """
+            components:
+              schemas:
+                Thing:
+                  type: object
+                  properties:
+                    id: {type: string}
+            """);
+    assertThat(run(spec.toString(), "-o", outDir().toString())).isZero();
     assertThat(outDir().resolve("thing.yaml")).exists();
   }
 }

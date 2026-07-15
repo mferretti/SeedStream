@@ -13,4 +13,7 @@ dependencies {
 
     // Protobuf FileDescriptorSet ingestion
     implementation(libs.protobuf.java)
+
+    // Test-only: exercise the registered regex generator end-to-end (JsonSchemaRegexRoundTripTest).
+    testImplementation(libs.datafaker)
 }

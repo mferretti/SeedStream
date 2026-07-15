@@ -323,7 +323,7 @@ public final class NestingPlanner {
         comments.put(t.name(), new LinkedHashMap<>(t.comments()));
       }
     }
-    return new Inspection(structures, comments, warnings);
+    return Inspection.of(structures, comments, warnings);
   }
 
   private static boolean containsIgnoreCase(Collection<String> values, String target) {

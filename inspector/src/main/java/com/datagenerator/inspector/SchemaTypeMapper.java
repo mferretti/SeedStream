@@ -14,23 +14,21 @@
  * limitations under the License.
  */
 
-package com.datagenerator.inspector.openapi;
+package com.datagenerator.inspector;
 
-import com.datagenerator.inspector.Defaults;
-import com.datagenerator.inspector.FakerTypes;
-import com.datagenerator.inspector.MappedType;
-import com.datagenerator.inspector.NameHints;
-import com.datagenerator.inspector.Names;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.StringJoiner;
 import java.util.function.Supplier;
 
 /**
- * Maps a single OpenAPI property schema to a SeedStream datatype string. Resolution order matches
- * {@code docs/INSPECT-V1-SPEC.md} §3: {@code $ref} → format → enum → bounded numeric → name hint →
- * type default.
+ * Maps a single JSON Schema property node to a SeedStream datatype string. Keys only on plain JSON
+ * Schema vocabulary ({@code $ref}, {@code type}, {@code format}, {@code enum}, {@code
+ * minimum}/{@code maximum}, {@code maxLength}, {@code minItems}/{@code maxItems}, {@code items}),
+ * so it is shared by both the OpenAPI and standalone JSON Schema inspectors. Resolution order
+ * matches {@code docs/INSPECT-V1-SPEC.md} §3: {@code $ref} → format → enum → bounded numeric → name
+ * hint → type default.
  */
-public final class OpenApiTypeMapper {
+public final class SchemaTypeMapper {
 
   private static final String MINIMUM = "minimum";
   private static final String MAXIMUM = "maximum";
@@ -119,7 +117,11 @@ public final class OpenApiTypeMapper {
     return values.toString();
   }
 
-  /** Extracts and snake_cases the schema name from a {@code $ref} pointer. */
+  /**
+   * Extracts and snake_cases the schema name from a {@code $ref} pointer. Takes the last path
+   * segment, so it resolves OpenAPI {@code #/components/schemas/Foo} and JSON Schema {@code
+   * #/$defs/Foo} / {@code #/definitions/Foo} pointers alike.
+   */
   private String refName(String ref) {
     String last = ref.substring(ref.lastIndexOf('/') + 1);
     return Names.toSnakeCase(last);

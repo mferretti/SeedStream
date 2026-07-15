@@ -20,6 +20,7 @@ import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.Names;
+import com.datagenerator.inspector.SchemaTypeMapper;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.FieldDefinition;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,7 +39,7 @@ import java.util.Map;
  */
 public class OpenApiInspector {
 
-  private final OpenApiTypeMapper mapper = new OpenApiTypeMapper();
+  private final SchemaTypeMapper mapper = new SchemaTypeMapper();
 
   /** Inspects an OpenAPI spec file and returns the structures plus diagnostics. */
   public Inspection inspect(Path specFile) {
@@ -60,7 +61,7 @@ public class OpenApiInspector {
       }
     }
 
-    return new Inspection(structures, comments, warnings);
+    return Inspection.of(structures, comments, warnings);
   }
 
   private DataStructure toStructure(

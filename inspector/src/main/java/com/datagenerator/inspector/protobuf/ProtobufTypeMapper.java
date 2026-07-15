@@ -27,7 +27,7 @@ import java.util.StringJoiner;
 
 /**
  * Maps a single protobuf {@link FieldDescriptor} to a SeedStream datatype string. Mirrors the
- * resolution logic of {@code OpenApiTypeMapper} adapted for the protobuf type system.
+ * resolution logic of {@code SchemaTypeMapper} adapted for the protobuf type system.
  */
 public final class ProtobufTypeMapper {
 

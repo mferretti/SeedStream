@@ -9,8 +9,9 @@ dependencies {
     implementation(project(":formats"))
     implementation(project(":destinations"))
     implementation(project(":inspector"))
-    // Jackson for JSON processing
+    // Jackson for JSON processing (YAML for inspect format auto-detection peek)
     implementation(libs.jackson.databind)
+    implementation(libs.jackson.dataformat.yaml)
     // CLI framework
     implementation(libs.picocli)
     // Logback for programmatic log level control
