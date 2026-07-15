@@ -44,7 +44,7 @@ docker run --rm seedstream:local --help
 
 ## The `/work` layout
 
-`WORKDIR` is `/work`. The CLI is on `PATH` as `cli` and is the `ENTRYPOINT`, so
+`WORKDIR` is `/work`. The CLI is on `PATH` as `seedstream` and is the `ENTRYPOINT`, so
 a run reads as `docker run <image> execute --job ... --count ...`.
 
 ```
