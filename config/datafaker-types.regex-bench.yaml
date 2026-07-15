@@ -4,7 +4,7 @@
 # the same shapes through the full generate → serialize → write pipeline so the micro numbers can be
 # checked against a real throughput figure.
 #
-# Use with:  cli execute --job config/jobs/e2e_regex_file_json.yaml \
+# Use with:  ./seedstream execute --job config/jobs/e2e_regex_file_json.yaml \
 #              --faker-types config/datafaker-types.regex-bench.yaml
 
 types:

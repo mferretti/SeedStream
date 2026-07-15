@@ -24,7 +24,7 @@ trap cleanup EXIT
 
 echo "==> Building CLI (one time)…"
 ./gradlew -q :cli:installDist
-CLI="$ROOT/cli/build/install/cli/bin/cli"
+CLI="$ROOT/cli/build/install/seedstream/bin/seedstream"
 
 run_hash() {
   local threads="$1"

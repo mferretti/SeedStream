@@ -42,7 +42,7 @@ RESULTS_FILE="${PROJECT_ROOT}/benchmarks/regex_e2e_results.csv"
 REPORT_FILE="${PROJECT_ROOT}/docs/REGEX-E2E-RESULTS.md"
 GC_LOG_DIR="${PROJECT_ROOT}/benchmarks/build/gc_logs_regex"
 OUTPUT_DIR="${PROJECT_ROOT}/build/run-output"
-CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/cli/bin/cli"
+CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/seedstream/bin/seedstream"
 FAKER_TYPES="${PROJECT_ROOT}/config/datafaker-types.regex-bench.yaml"
 
 # Test matrix — same thread/heap grid as run_e2e_test.sh so the numbers sit alongside it
