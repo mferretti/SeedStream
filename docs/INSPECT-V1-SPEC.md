@@ -1,4 +1,4 @@
-# datagenerator inspect — v1 Spec
+# seedstream inspect — v1 Spec
 
 Status: implemented. Scope: OpenAPI, SQL DDL **and** Protobuf → SeedStream structure YAML.
 Supersedes the open questions from the design phase with locked decisions.
@@ -18,9 +18,9 @@ Supersedes the open questions from the design phase with locked decisions.
   `.yaml`/`.yml`/`.json` → OpenAPI); `--format openapi|ddl|protobuf` overrides.
 
 ```bash
-datagenerator inspect api.yaml      --output config/structures/
-datagenerator inspect schema.sql    --output config/structures/ --force
-datagenerator inspect schema.desc   --output config/structures/   # protoc/buf descriptor set
+./seedstream inspect api.yaml      --output config/structures/
+./seedstream inspect schema.sql    --output config/structures/ --force
+./seedstream inspect schema.desc   --output config/structures/   # protoc/buf descriptor set
 ```
 
 Flags:
@@ -158,8 +158,8 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
     beerstyle:  beer_style
   ```
   ```bash
-  datagenerator inspect schema.sql --faker-types config/datafaker-types.example.yaml
-  datagenerator execute --job ...  --faker-types config/datafaker-types.example.yaml
+  ./seedstream inspect schema.sql --faker-types config/datafaker-types.example.yaml
+  ./seedstream execute --job ...  --faker-types config/datafaker-types.example.yaml
   ```
   - The chain is resolved + validated at load (`DatafakerRegistry.registerExpression`), so a typo
     fails fast.
@@ -231,7 +231,7 @@ its children as nested documents:
 | `--nest-default-count <min..max>` | array multiplicity when the schema gives no hint (default `1..10`) |
 
 ```bash
-datagenerator inspect schema.sql --nest --output config/structures/
+./seedstream inspect schema.sql --nest --output config/structures/
 ```
 
 - **1:1** (child FK column is `UNIQUE`/PK) → `object[child]`; **1:n** → `array[object[child], min..max]`.

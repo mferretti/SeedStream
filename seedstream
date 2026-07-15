@@ -1,0 +1,88 @@
+#!/bin/sh
+#
+# SeedStream launcher — the mvnw-style wrapper.
+#
+# Run the CLI without remembering `./gradlew :cli:run --args="…"` and its quoting,
+# and without hunting for a jar. Arguments pass straight through:
+#
+#   ./seedstream execute --job config/jobs/quickstart.yaml --count 1000
+#   ./seedstream inspect openapi api.yaml
+#   ./seedstream --help
+#
+# Resolution: use an existing self-contained fat JAR if present, otherwise build it
+# once via Gradle, then `java -jar`. Only *source* edits need a rebuild — config
+# files are read at runtime. Force a rebuild with SEEDSTREAM_REBUILD=1.
+#
+# Environment:
+#   JAVA_HOME          if set, $JAVA_HOME/bin/java is used; else `java` on PATH
+#   JAVA_OPTS          extra JVM flags (e.g. -Xmx4g)
+#   SEEDSTREAM_JAR     explicit path to a fat jar (skips discovery/build)
+#   SEEDSTREAM_REBUILD =1 forces `:cli:fatJar` before running
+#
+set -eu
+
+# --- resolve the directory this script lives in (follow symlinks) ------------
+PRG="$0"
+while [ -h "$PRG" ]; do
+  ls=$(ls -ld "$PRG")
+  link=$(expr "$ls" : '.*-> \(.*\)$')
+  case "$link" in
+    /*) PRG="$link" ;;
+    *)  PRG="$(dirname "$PRG")/$link" ;;
+  esac
+done
+SEEDSTREAM_HOME=$(cd "$(dirname "$PRG")" && pwd)
+
+# --- resolve java ------------------------------------------------------------
+if [ -n "${JAVA_HOME:-}" ]; then
+  JAVA="$JAVA_HOME/bin/java"
+else
+  JAVA="java"
+fi
+if ! command -v "$JAVA" >/dev/null 2>&1 && [ ! -x "$JAVA" ]; then
+  echo "seedstream: no Java found. Install Java 21+ or set JAVA_HOME." >&2
+  exit 1
+fi
+
+# Require Java 21+. `java -version` prints e.g. `openjdk version "21.0.2"` to stderr.
+JAVA_MAJOR=$("$JAVA" -version 2>&1 | head -n1 | sed -e 's/.*version "//' -e 's/".*//' -e 's/^1\.//' -e 's/[._-].*//')
+case "$JAVA_MAJOR" in
+  ''|*[!0-9]*)
+    echo "seedstream: could not determine Java version from '$JAVA'." >&2
+    exit 1 ;;
+  *)
+    if [ "$JAVA_MAJOR" -lt 21 ]; then
+      echo "seedstream: Java 21+ required, found major version $JAVA_MAJOR." >&2
+      exit 1
+    fi ;;
+esac
+
+# --- locate the fat jar (newest match wins) ----------------------------------
+find_jar() {
+  # $1 = glob pattern; echo the newest matching, readable file, if any.
+  # shellcheck disable=SC2012
+  ls -1t $1 2>/dev/null | head -n1
+}
+
+JAR=""
+if [ -n "${SEEDSTREAM_JAR:-}" ]; then
+  JAR="$SEEDSTREAM_JAR"
+elif [ "${SEEDSTREAM_REBUILD:-}" != "1" ]; then
+  JAR=$(find_jar "$SEEDSTREAM_HOME/seedstream-*.jar")
+  [ -n "$JAR" ] || JAR=$(find_jar "$SEEDSTREAM_HOME/cli/build/libs/seedstream-*.jar")
+fi
+
+# --- build on demand ---------------------------------------------------------
+if [ -z "$JAR" ] || [ ! -f "$JAR" ]; then
+  echo "seedstream: building the runtime jar (first run or SEEDSTREAM_REBUILD=1)…" >&2
+  "$SEEDSTREAM_HOME/gradlew" -p "$SEEDSTREAM_HOME" :cli:fatJar --console=plain -q
+  JAR=$(find_jar "$SEEDSTREAM_HOME/cli/build/libs/seedstream-*.jar")
+  if [ -z "$JAR" ] || [ ! -f "$JAR" ]; then
+    echo "seedstream: build did not produce cli/build/libs/seedstream-*.jar." >&2
+    exit 1
+  fi
+fi
+
+# --- run ---------------------------------------------------------------------
+# shellcheck disable=SC2086
+exec "$JAVA" ${JAVA_OPTS:-} -jar "$JAR" "$@"

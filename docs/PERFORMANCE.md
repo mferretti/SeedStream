@@ -207,7 +207,7 @@ way until ~930 MB/s, where the writer thread becomes the next ceiling.
 
 ```bash
 ./gradlew :cli:installDist
-./cli/build/install/cli/bin/cli execute \
+./cli/build/install/seedstream/bin/seedstream execute \
     --job config/jobs/perf_probe_wide_file_json.yaml \
     --count 1000000 --threads $(nproc)
 ```

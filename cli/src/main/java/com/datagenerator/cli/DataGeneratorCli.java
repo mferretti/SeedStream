@@ -36,7 +36,7 @@ import picocli.CommandLine.IVersionProvider;
  * </pre>
  */
 @Command(
-    name = "datagenerator",
+    name = "seedstream",
     mixinStandardHelpOptions = true,
     versionProvider = DataGeneratorCli.ManifestVersionProvider.class,
     description = "High-performance test data generator",

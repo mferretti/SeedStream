@@ -152,10 +152,10 @@ java -jar seedstream-latest.jar execute --job config/jobs/file_address.yaml --co
 ### Option 2 — Distribution zip
 
 ```bash
-wget https://github.com/mferretti/SeedStream/releases/latest/download/cli-latest.zip
-unzip cli-latest.zip
+wget https://github.com/mferretti/SeedStream/releases/latest/download/seedstream-latest.zip
+unzip seedstream-latest.zip
 # Point to your own job configs or clone the repo for examples
-cli-*/bin/datagenerator execute --job /path/to/job.yaml --count 100
+seedstream-*/bin/seedstream execute --job /path/to/job.yaml --count 100
 ```
 
 ### Option 3 — Build from source
@@ -163,6 +163,14 @@ cli-*/bin/datagenerator execute --job /path/to/job.yaml --count 100
 ```bash
 git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --count 100"
+```
+
+Or use the `./seedstream` wrapper — it builds a runnable jar on first use, then runs
+directly with no Gradle and no `--args="…"` quoting (arguments pass straight through):
+
+```bash
+git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
+./seedstream execute --job config/jobs/file_address.yaml --count 100
 ```
 
 ### Common examples
@@ -210,13 +218,13 @@ Already have a live database schema or an OpenAPI spec? `inspect` bootstraps See
 
 ```bash
 # From a SQL DDL file (auto-detected from .sql extension)
-datagenerator inspect schema.sql --output config/structures/
+./seedstream inspect schema.sql --output config/structures/
 
 # From an OpenAPI 3.x spec (auto-detected from .yaml / .json extension)
-datagenerator inspect api.yaml --output config/structures/
+./seedstream inspect api.yaml --output config/structures/
 
 # Overwrite any existing structure files
-datagenerator inspect schema.sql --output config/structures/ --force
+./seedstream inspect schema.sql --output config/structures/ --force
 ```
 
 **What you get**: one `{snake_case_name}.yaml` per `CREATE TABLE` or OpenAPI schema object, written to the output directory and immediately usable in a job. For example, given:
@@ -265,7 +273,7 @@ Fields with **no comment** were mapped from explicit schema information (declare
 **Opt-in nesting** (`--nest`): the DDL inspector can invert `1:n` / `1:1` foreign keys into embedded documents — the same `customer → invoice → invoice_item` chain then emits a `customer` that carries `invoices: array[object[invoice], 1..10]` and an `invoice` that carries `invoice_items: array[object[invoice_item], 1..10]`:
 
 ```bash
-datagenerator inspect schema.sql --nest --output config/structures/
+./seedstream inspect schema.sql --nest --output config/structures/
 # array multiplicity defaults to 1..10; override with --nest-default-count 2..5
 ```
 
@@ -291,7 +299,7 @@ datagenerator inspect schema.sql --nest --output config/structures/
 The built-in name hints cover common fields (`email`, `city`, `first_name`, etc.). For domain-specific column names, register extra Datafaker providers with `--faker-types`:
 
 ```bash
-datagenerator inspect schema.sql \
+./seedstream inspect schema.sql \
   --faker-types config/datafaker-types.example.yaml \
   --output config/structures/
 ```

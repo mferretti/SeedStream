@@ -41,7 +41,7 @@ jobs:
       # Stable, unversioned filenames so README links under /releases/latest/download/
       # never need bumping per release.
       run: |
-        cp "cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.zip" cli-latest.zip
+        cp "cli/build/distributions/seedstream-${{ steps.version.outputs.VERSION }}.zip" seedstream-latest.zip
         cp "cli/build/libs/seedstream-${{ steps.version.outputs.VERSION }}.jar" seedstream-latest.jar
 
     - name: Create GitHub Release
@@ -50,9 +50,9 @@ jobs:
         name: "SeedStream ${{ github.ref_name }}"
         body_path: CHANGELOG.md
         files: |
-          cli/build/distributions/cli-${{ steps.version.outputs.VERSION }}.zip
+          cli/build/distributions/seedstream-${{ steps.version.outputs.VERSION }}.zip
           cli/build/libs/seedstream-${{ steps.version.outputs.VERSION }}.jar
-          cli-latest.zip
+          seedstream-latest.zip
           seedstream-latest.jar
         draft: false
         prerelease: false

@@ -80,7 +80,7 @@ path and the auto-resolved `structures/` directory are relative to the job file)
 
 ```bash
 ./gradlew :cli:installDist
-./cli/build/install/cli/bin/cli execute \
+./cli/build/install/seedstream/bin/seedstream execute \
   --job use-cases/dora-gdpr-sepa-payments/jobs/file_sepa_credit_transfer.yaml \
   --faker-types use-cases/dora-gdpr-sepa-payments/faker-types.yaml --count 20
 # → build/run-output/sepa_credit_transfers.json  (one JSON object per line)

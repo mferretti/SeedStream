@@ -25,6 +25,7 @@ dependencies {
 
 application {
     mainClass.set("com.datagenerator.cli.DataGeneratorCli")
+    applicationName = "seedstream"
 }
 
 tasks.jar {

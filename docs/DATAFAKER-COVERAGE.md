@@ -117,7 +117,7 @@ types:
   pokemon:      pokemon.name             # faker.pokemon().name()
 ```
 ```bash
-datagenerator execute --job ... --faker-types my-types.yaml
+./seedstream execute --job ... --faker-types my-types.yaml
 ```
 
 The chain is resolved + validated at load (`DatafakerRegistry.registerExpression`), so a typo fails fast.
@@ -325,7 +325,7 @@ types:
   hospital: medical.hospitalName      # faker.medical().hospitalName()
 ```
 ```bash
-datagenerator execute --job ... --faker-types my-types.yaml
+./seedstream execute --job ... --faker-types my-types.yaml
 ```
 
 The chain is validated at load (`DatafakerRegistry.registerExpression`). This covers every no-arg

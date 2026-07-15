@@ -87,8 +87,8 @@ LABEL org.opencontainers.image.title="SeedStream" \
 
 WORKDIR /work
 
-# Application: bin/cli + lib/*.jar + extras/ (classpath dir for runtime JDBC drivers)
-COPY --from=build /src/cli/build/install/cli /opt/seedstream
+# Application: bin/seedstream + lib/*.jar + extras/ (classpath dir for runtime JDBC drivers)
+COPY --from=build /src/cli/build/install/seedstream /opt/seedstream
 # Curated sample config — the quickstart runs with zero mounts
 COPY --from=build /dist/config /work/config
 
@@ -104,5 +104,5 @@ RUN useradd -r -u 10001 seed \
     && chown -R seed /work
 USER seed
 
-ENTRYPOINT ["cli"]
+ENTRYPOINT ["seedstream"]
 CMD ["--help"]
