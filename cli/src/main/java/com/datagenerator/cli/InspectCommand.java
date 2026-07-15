@@ -16,16 +16,22 @@
 
 package com.datagenerator.cli;
 
+import com.datagenerator.inspector.FakerTypeSuggestionsWriter;
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.StructureYamlWriter;
 import com.datagenerator.inspector.ddl.DdlInspector;
 import com.datagenerator.inspector.ddl.NestingOptions;
+import com.datagenerator.inspector.jsonschema.JsonSchemaInspector;
 import com.datagenerator.inspector.openapi.OpenApiInspector;
 import com.datagenerator.inspector.protobuf.ProtobufInspector;
 import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.parser.CustomTypeConfigLoader;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
@@ -38,16 +44,18 @@ import picocli.CommandLine.Parameters;
 /**
  * Reads an existing schema and emits ready-to-use SeedStream structure YAML files.
  *
- * <p>Supports OpenAPI 3.x specs (JSON/YAML) and SQL DDL ({@code .sql}). Format is auto-detected
- * from the file extension and can be overridden with {@code --format}. See {@code
- * docs/INSPECT-V1-SPEC.md}.
+ * <p>Supports OpenAPI 3.x specs (JSON/YAML), standalone JSON Schema ({@code .schema.json} or a
+ * {@code $schema}/{@code $defs} root), SQL DDL ({@code .sql}), and compiled Protobuf descriptor
+ * sets. Format is auto-detected from the file extension/content and can be overridden with {@code
+ * --format}. See {@code docs/INSPECT-V1-SPEC.md}.
  *
  * <p><b>Usage:</b>
  *
  * <pre>
  * datagenerator inspect api.yaml --output config/structures/
+ * datagenerator inspect payload.schema.json --output config/structures/
  * datagenerator inspect schema.sql --output config/structures/ --force
- * datagenerator inspect spec.yaml --format ddl
+ * datagenerator inspect spec.yaml --format jsonschema
  * </pre>
  *
  * <p><b>Exit codes:</b>
@@ -60,16 +68,20 @@ import picocli.CommandLine.Parameters;
 @Slf4j
 @Command(
     name = "inspect",
-    description = "Generate SeedStream structure YAML from an OpenAPI spec or SQL DDL",
+    description =
+        "Generate SeedStream structure YAML from an OpenAPI spec, JSON Schema, SQL DDL, or Protobuf",
     mixinStandardHelpOptions = true)
 public class InspectCommand implements Callable<Integer> {
   private static final String FORMAT_PROTOBUF = "protobuf";
+  private static final String FORMAT_OPENAPI = "openapi";
+  private static final String FORMAT_JSONSCHEMA = "jsonschema";
 
   @Parameters(
       index = "0",
       description =
-          "Schema file to inspect: OpenAPI 3.x (.yaml/.yml/.json), SQL DDL (.sql), or compiled"
-              + " Protobuf descriptor set (.desc/.binpb/.protoset)")
+          "Schema file to inspect: OpenAPI 3.x (.yaml/.yml/.json), standalone JSON Schema"
+              + " (.schema.json or a $schema/$defs root), SQL DDL (.sql), or compiled Protobuf"
+              + " descriptor set (.desc/.binpb/.protoset)")
   private Path inputFile;
 
   @Option(
@@ -84,7 +96,9 @@ public class InspectCommand implements Callable<Integer> {
 
   @Option(
       names = {"--format"},
-      description = "Input format: openapi | ddl. Default: auto-detect from file extension.")
+      description =
+          "Input format: openapi | jsonschema | ddl | protobuf. Default: auto-detect from file"
+              + " extension/content.")
   private String format = "auto";
 
   @Option(
@@ -131,7 +145,8 @@ public class InspectCommand implements Callable<Integer> {
     }
     if (nest != null && !"ddl".equals(resolved)) {
       log.warn(
-          "--nest ignored for OpenAPI input (nesting comes from the spec's native $ref/array)");
+          "--nest ignored for {} input (nesting comes from the schema's native $ref/array)",
+          resolved);
     }
 
     try {
@@ -140,6 +155,8 @@ public class InspectCommand implements Callable<Integer> {
         inspection = new DdlInspector().inspect(inputFile, resolveNesting(resolved), bestEffort);
       } else if (FORMAT_PROTOBUF.equals(resolved)) {
         inspection = new ProtobufInspector().inspect(inputFile);
+      } else if (FORMAT_JSONSCHEMA.equals(resolved)) {
+        inspection = new JsonSchemaInspector().inspect(inputFile);
       } else {
         inspection = new OpenApiInspector().inspect(inputFile);
       }
@@ -163,6 +180,7 @@ public class InspectCommand implements Callable<Integer> {
       }
 
       inspection.warnings().forEach(log::warn);
+      writeFakerTypeSuggestions(inspection.fakerTypeSuggestions());
 
       log.info(
           "inspect complete: {} written, {} skipped, {} fields flagged for review (commented)",
@@ -173,6 +191,37 @@ public class InspectCommand implements Callable<Integer> {
     } catch (InspectorException e) {
       log.error("inspect failed: {}", e.getMessage());
       return 2;
+    }
+  }
+
+  /**
+   * Writes discovered regex/custom-type suggestions to a companion {@code
+   * inspect-faker-types.yaml}, never clobbering an existing file or the {@code --faker-types}
+   * input. On a skip the suggestions are logged so the user can still act on them.
+   */
+  private void writeFakerTypeSuggestions(Map<String, String> suggestions) {
+    FakerTypeSuggestionsWriter.Outcome outcome =
+        new FakerTypeSuggestionsWriter().write(suggestions, outputDir, force, fakerTypes);
+    switch (outcome.result()) {
+      case WRITTEN ->
+          log.info(
+              "wrote {} ({} suggested type(s)) — rerun with --faker-types {} to apply",
+              outcome.target(),
+              suggestions.size(),
+              outcome.target());
+      case SKIPPED_EXISTS ->
+          log.warn(
+              "{} exists — not overwritten (use --force). Suggested types: {}",
+              outcome.target(),
+              suggestions);
+      case SKIPPED_IS_INPUT ->
+          log.warn(
+              "not writing suggestions over the --faker-types input {}. Suggested types: {}",
+              outcome.target(),
+              suggestions);
+      default -> {
+        // NONE (or any future outcome): nothing to write
+      }
     }
   }
 
@@ -202,10 +251,11 @@ public class InspectCommand implements Callable<Integer> {
   private String resolveFormat() {
     String requested = format.toLowerCase(Locale.ROOT);
     return switch (requested) {
-      case "openapi", "ddl", FORMAT_PROTOBUF -> requested;
+      case FORMAT_OPENAPI, "ddl", FORMAT_PROTOBUF, FORMAT_JSONSCHEMA -> requested;
       case "auto" -> detectFormat();
       default -> {
-        log.error("Unsupported --format '{}'. Supported: openapi, ddl, protobuf", format);
+        log.error(
+            "Unsupported --format '{}'. Supported: openapi, jsonschema, ddl, protobuf", format);
         yield null;
       }
     };
@@ -222,12 +272,44 @@ public class InspectCommand implements Callable<Integer> {
         || fileName.endsWith(".protoset")) {
       return FORMAT_PROTOBUF;
     }
+    if (fileName.endsWith(".schema.json")) {
+      return FORMAT_JSONSCHEMA;
+    }
     if (fileName.endsWith(".yaml") || fileName.endsWith(".yml") || fileName.endsWith(".json")) {
-      return "openapi";
+      // .json/.yaml is ambiguous between OpenAPI and standalone JSON Schema — peek the root.
+      return peekJsonOrYamlFormat();
     }
     log.error(
-        "Cannot auto-detect format for '{}'. Use --format openapi|ddl|protobuf",
+        "Cannot auto-detect format for '{}'. Use --format openapi|jsonschema|ddl|protobuf",
         inputFile.getFileName());
     return null;
+  }
+
+  /**
+   * Disambiguates a {@code .json}/{@code .yaml} input by its root keys: an OpenAPI document has
+   * {@code openapi}/{@code swagger}; a standalone JSON Schema has {@code $schema}/{@code
+   * $defs}/{@code definitions}. Defaults to OpenAPI (the historical behaviour) when neither is
+   * present or the file cannot be parsed, so detection never hard-fails here.
+   */
+  private String peekJsonOrYamlFormat() {
+    try {
+      ObjectMapper reader =
+          inputFile.toString().toLowerCase(Locale.ROOT).endsWith(".json")
+              ? new ObjectMapper()
+              : new YAMLMapper();
+      JsonNode root = reader.readTree(inputFile.toFile());
+      if (root == null || !root.isObject()) {
+        return FORMAT_OPENAPI;
+      }
+      if (root.has(FORMAT_OPENAPI) || root.has("swagger")) {
+        return FORMAT_OPENAPI;
+      }
+      if (root.has("$schema") || root.has("$defs") || root.has("definitions")) {
+        return FORMAT_JSONSCHEMA;
+      }
+    } catch (IOException e) {
+      log.debug("format peek failed for {}, defaulting to openapi: {}", inputFile, e.getMessage());
+    }
+    return FORMAT_OPENAPI;
   }
 }

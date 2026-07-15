@@ -46,6 +46,29 @@ public final class Names {
   }
 
   /**
+   * Validates that a structure name is a single safe path segment (CWE-22 guard). The name is
+   * derived from an untrusted source (schema key/title/{@code $id}/file name), so a value like
+   * {@code ../../etc/x} or one containing a path separator must not be allowed to redirect a later
+   * file write. Shared by {@code StructureYamlWriter} (emitted-file naming) and the inspectors
+   * (root-schema naming) so the two can't diverge.
+   *
+   * @return the name unchanged when safe
+   * @throws InspectorException if the name is null/blank or not a plain single path segment
+   */
+  public static String requireSafeStructureName(String name) {
+    if (name == null
+        || name.isBlank()
+        || name.indexOf('/') >= 0
+        || name.indexOf('\\') >= 0
+        || name.indexOf('\0') >= 0
+        || name.contains("..")) {
+      throw new InspectorException(
+          "Refusing structure with unsafe name '" + name + "' (must be a plain file name)");
+    }
+    return name;
+  }
+
+  /**
    * Splits a name into lowercase word tokens on camelCase boundaries and on {@code _}/{@code
    * -}/whitespace separators. Returns an empty list for blank input.
    */

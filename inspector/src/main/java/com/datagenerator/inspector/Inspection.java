@@ -27,11 +27,23 @@ import java.util.Map;
  * @param comments review comments to emit, keyed by structure name then field name — only for
  *     flagged guesses (name hints, unknown types); declared and default-range fields are absent
  * @param warnings human-readable warnings (skipped schemas, etc.)
+ * @param fakerTypeSuggestions suggested custom Datafaker types keyed by type name → expression
+ *     (e.g. {@code code → regex:^[A-Z]{3}-\d{3}$}); the CLI writes these to a companion {@code
+ *     inspect-faker-types.yaml} the user can feed back via {@code --faker-types}
  */
 public record Inspection(
     List<DataStructure> structures,
     Map<String, Map<String, String>> comments,
-    List<String> warnings) {
+    List<String> warnings,
+    Map<String, String> fakerTypeSuggestions) {
+
+  /** Builds an inspection with no faker-type suggestions (OpenAPI / DDL / Protobuf sources). */
+  public static Inspection of(
+      List<DataStructure> structures,
+      Map<String, Map<String, String>> comments,
+      List<String> warnings) {
+    return new Inspection(structures, comments, warnings, Map.of());
+  }
 
   /** Total number of flagged fields across all structures. */
   public int flaggedCount() {

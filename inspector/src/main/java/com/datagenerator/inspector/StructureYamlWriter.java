@@ -78,17 +78,7 @@ public class StructureYamlWriter {
    * @throws InspectorException if the name is unsafe or escapes {@code outputDir}
    */
   private static Path safeOutputFile(Path outputDir, String name) {
-    if (name == null
-        || name.isBlank()
-        || name.indexOf('/') >= 0
-        || name.indexOf('\\') >= 0
-        || name.indexOf('\0') >= 0
-        || name.contains("..")) {
-      throw new InspectorException(
-          "Refusing to write structure with unsafe name '"
-              + name
-              + "' (must be a plain file name)");
-    }
+    Names.requireSafeStructureName(name);
     Path base = outputDir.normalize();
     Path file = base.resolve(name + ".yaml").normalize();
     if (!file.startsWith(base) || file.equals(base)) {

@@ -1,11 +1,13 @@
 # seedstream inspect — v1 Spec
 
-Status: implemented. Scope: OpenAPI, SQL DDL **and** Protobuf → SeedStream structure YAML.
-Supersedes the open questions from the design phase with locked decisions.
+Status: implemented. Scope: OpenAPI, standalone JSON Schema, SQL DDL **and** Protobuf → SeedStream
+structure YAML. Supersedes the open questions from the design phase with locked decisions.
 
 ## 1. Scope
 
 - **In**: OpenAPI 3.x specs (`.yaml` / `.json`, object schemas under `components.schemas`),
+  standalone **JSON Schema** (Draft 7 / 2020-12 — root object schema + entries under
+  `$defs`/`definitions`; see §10),
   SQL DDL (`.sql`, `CREATE TABLE` statements incl. foreign keys → `ref[...]`), and compiled
   Protobuf **FileDescriptorSet**s (`.desc` / `.binpb` / `.protoset` from `protoc --descriptor_set_out`
   or `buf build -o`; one structure per message, nested messages → `object[...]`, `repeated` → `array[...]`,
@@ -14,13 +16,16 @@ Supersedes the open questions from the design phase with locked decisions.
   Parsing `.proto` source directly is not supported — pre-compile to a descriptor set.
 - **Out**: `alias` emission, nullable/required hints, geolocation/locale, primary-key handling.
 - One `inspect` subcommand on the existing `datagenerator` CLI. No separate binary.
-- Format auto-detected from extension (`.sql` → DDL, `.desc`/`.binpb`/`.protoset` → Protobuf,
-  `.yaml`/`.yml`/`.json` → OpenAPI); `--format openapi|ddl|protobuf` overrides.
+- Format auto-detected from extension/content (`.sql` → DDL, `.desc`/`.binpb`/`.protoset` →
+  Protobuf, `.schema.json` → JSON Schema; for plain `.yaml`/`.yml`/`.json` the root keys
+  disambiguate — `openapi`/`swagger` → OpenAPI, else `$schema`/`$defs`/`definitions` → JSON Schema,
+  else OpenAPI); `--format openapi|jsonschema|ddl|protobuf` overrides.
 
 ```bash
-./seedstream inspect api.yaml      --output config/structures/
-./seedstream inspect schema.sql    --output config/structures/ --force
-./seedstream inspect schema.desc   --output config/structures/   # protoc/buf descriptor set
+./seedstream inspect api.yaml            --output config/structures/
+./seedstream inspect payload.schema.json --output config/structures/   # standalone JSON Schema
+./seedstream inspect schema.sql          --output config/structures/ --force
+./seedstream inspect schema.desc         --output config/structures/   # protoc/buf descriptor set
 ```
 
 Flags:
@@ -28,7 +33,7 @@ Flags:
 |---|---|---|
 | `--output <dir>` | `config/structures/` | where YAML files are written |
 | `--force` | off | overwrite existing files (else skip + warn — never silent clobber) |
-| `--format openapi\|ddl\|protobuf` | auto | input format override; supports all three implemented inspectors |
+| `--format openapi\|jsonschema\|ddl\|protobuf` | auto | input format override; supports all four implemented inspectors |
 | `--faker-types <file>` | unset | optional custom Datafaker types config loaded before inspection |
 | `--best-effort` | off | DDL only: emit the parseable subset and warn on unparseable `CREATE TABLE`s instead of aborting |
 | `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]` — see §9 |
@@ -286,3 +291,67 @@ All warnings flow through the existing `Inspection.warnings` channel and the CLI
 
 **Implementation:** `NestingOptions`, `NestingPlanner`, `Pluralizer`; entry point
 `DdlInspector.inspect(Path, NestingOptions)`.
+
+## 10. JSON Schema specifics
+
+Standalone JSON Schema (Draft 7 / 2020-12) is mapped by the same `SchemaTypeMapper` the OpenAPI
+inspector uses — the per-property vocabulary (`type`, `format`, `enum`, `minimum`/`maximum`,
+`maxLength`, `minItems`/`maxItems`, `$ref`, `items`) is identical (see §3). Only the **entry point**
+differs.
+
+**Entry points → structures:**
+- The **root** object schema (any schema with `properties`) → one structure. Its name is taken from
+  `title` → `$id` (last path segment) → the file-name stem, then run through the same safe-name
+  guard as the emitted YAML file (`Names.requireSafeStructureName`).
+- Every entry under **`$defs`** and **`definitions`** (both supported) → one structure each, named
+  `snake_case(key)`.
+- Local `$ref` (`#/$defs/Foo`, `#/definitions/Foo`) → `object[foo]`, resolved by last path segment.
+- No root object schema and no `$defs`/`definitions` → error (`not a recognizable JSON Schema`).
+
+### Composition & conditionals — merged, because we generate data
+
+`inspect` produces **data**, not a validator, so it emits every field that could appear rather than
+dropping constructs it can't fully honour. At the **structure level** (keywords sitting beside
+`properties`) the subschemas of `allOf` / `oneOf` / `anyOf` / `if` / `then` / `else` /
+`dependentSchemas` — and any local `$ref` among them — are **merged into one record** (union,
+first-declared field wins). Local `$ref`s are resolved against `$defs`/`definitions`.
+
+- **`allOf`** is an exact merge (the "extends" idiom) — no comment, no warning.
+- The **lossy** branches (`oneOf`/`anyOf`/`if`/`then`/`else`/`dependentSchemas`) still get merged so
+  their fields are emitted, but the conditional/polymorphic relationship is dropped. Each such field
+  gets an inline `# review:` comment, and the structure gets a warning: the union record **may not
+  validate** against the source (mutually-exclusive variants co-populated, one branch's bounds
+  chosen on conflict). `not` / `patternProperties` / `additionalProperties: true` /
+  `dependentRequired` add nothing mergeable but still warn.
+
+Example — a root `if`/`then`/`else` that tightens `membershipNumber` per branch: both `isMember` and
+`membershipNumber` are emitted and flagged, with a structure warning that the conditional isn't
+enforced.
+
+*Per-property* composition (the same keywords on a single field, which occupies one datatype slot and
+so **can't** be unioned) is still flagged with a `# review:` comment + placeholder `char[1..50]`:
+`oneOf`/`anyOf`/`allOf`, `if`/`then`/`else`, `const`, `not`, tuple-form `items`, `patternProperties`,
+`additionalProperties: true`, external `$ref`, recursive `$ref`.
+
+### Regex (`pattern`) → suggested faker-type + rerun
+
+SeedStream has no inline regex datatype; regex generation is a **custom Datafaker type** registered
+via `--faker-types` (`name: "regex:<pattern>"` → `DatafakerRegistry.registerRegex`). So on a
+`string` + `pattern` field, `inspect`:
+
+1. maps the field to `char[1..N]` and adds a `# review:` comment naming the pattern,
+2. accumulates the pattern into a companion **`inspect-faker-types.yaml`** in the output dir, keyed
+   by the (snake_case) field name,
+3. on rerun with `--faker-types inspect-faker-types.yaml`, the field resolves by name-hint to the
+   registered regex generator (datatype becomes the type name), producing matching values.
+
+The companion file **never clobbers**: an existing file is left untouched unless `--force`, and the
+target is refused outright if it is the very `--faker-types` input the run was given (the suggestions
+are logged instead, so nothing is lost).
+
+**Positioning.** `inspect` is a **bootstrap + sync** for large / nested / constraint-rich schemas.
+For a small flat structure (≤ ~10 primitive fields), hand-writing the YAML stays the blessed path —
+the inspect → review → fix loop costs more than just typing it.
+
+**Implementation:** `JsonSchemaInspector`, `JsonSchemaGaps`, `FakerTypeSuggestionsWriter`; shared
+`SchemaTypeMapper` (formerly `OpenApiTypeMapper`).
