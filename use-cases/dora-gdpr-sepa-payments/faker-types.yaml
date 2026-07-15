@@ -4,7 +4,7 @@
 # of plain random alphanumeric. Pass this file to the CLI so the structure's `sepa_*` datatypes
 # resolve:
 #
-#   ./cli/build/install/cli/bin/cli execute \
+#   ./seedstream execute \
 #     --job use-cases/dora-gdpr-sepa-payments/jobs/file_sepa_credit_transfer.yaml \
 #     --faker-types use-cases/dora-gdpr-sepa-payments/faker-types.yaml --count 20
 #

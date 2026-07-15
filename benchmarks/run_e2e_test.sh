@@ -58,7 +58,7 @@ RESULTS_FILE="${PROJECT_ROOT}/benchmarks/e2e_results.csv"
 GC_LOG_DIR="${PROJECT_ROOT}/benchmarks/build/gc_logs"
 JFR_OUTPUT_DIR="${PROJECT_ROOT}/benchmarks/build/jfr"
 OUTPUT_DIR="${PROJECT_ROOT}/build/run-output"
-CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/cli/bin/cli"
+CLI_SCRIPT="${PROJECT_ROOT}/cli/build/install/seedstream/bin/seedstream"
 
 # Test matrix
 FORMATS=("json" "csv" "protobuf")
@@ -219,7 +219,7 @@ build_project() {
     # installDist wipes extras/ on every sync, so (re)install the PostgreSQL JDBC
     # driver the database tests need. Driver is NOT bundled by design; pull the
     # release jar from the Gradle cache if present.
-    local extras_dir="${PROJECT_ROOT}/cli/build/install/cli/extras"
+    local extras_dir="${PROJECT_ROOT}/cli/build/install/seedstream/extras"
     mkdir -p "$extras_dir"
     if ! ls "$extras_dir"/postgresql-*.jar >/dev/null 2>&1; then
         local pg_jar
