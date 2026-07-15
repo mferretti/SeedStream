@@ -93,7 +93,7 @@ public final class AesGcmCrypto {
    */
   public static String decrypt(byte[] key, String encoded) {
     validateKey(key);
-    if (encoded == null || !encoded.startsWith(PREFIX)) {
+    if (null == encoded || !encoded.startsWith(PREFIX)) {
       throw new SecretResolutionException(
           "Invalid ciphertext format: expected '" + PREFIX + "...'");
     }

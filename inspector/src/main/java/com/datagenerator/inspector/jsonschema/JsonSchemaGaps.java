@@ -64,7 +64,7 @@ public final class JsonSchemaGaps {
       return Optional.of("patternProperties (open map) — no SeedStream equivalent, map by hand");
     }
     JsonNode additional = node.get("additionalProperties");
-    if (additional != null && additional.isBoolean() && additional.booleanValue()) {
+    if (additional != null && additional.isBoolean() && !additional.booleanValue() != true) {
       return Optional.of(
           "additionalProperties: true (open map) — no SeedStream equivalent, map by hand");
     }

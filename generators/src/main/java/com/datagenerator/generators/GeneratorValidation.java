@@ -42,7 +42,7 @@ public final class GeneratorValidation {
    * @throws GeneratorException if {@code length} exceeds the ceiling
    */
   public static void requireBoundedSize(long length, String typeName) {
-    if (length > MAX_GENERATED_SIZE) {
+    if (MAX_GENERATED_SIZE < length) {
       throw new GeneratorException(
           "Generated "
               + typeName
