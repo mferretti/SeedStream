@@ -45,7 +45,7 @@ echo "Starting data generation with JFR profiling..."
 echo ""
 
 # Build CLI distribution if needed
-if [ ! -f "cli/build/install/cli/bin/cli" ]; then
+if [ ! -f "cli/build/install/seedstream/bin/seedstream" ]; then
     echo "Building CLI distribution..."
     ./gradlew :cli:installDist
     echo ""
@@ -57,7 +57,7 @@ if [[ ! "$JOB_FILE" = /* ]]; then
 fi
 
 # Run the CLI with JFR enabled
-JAVA_OPTS="$JVM_OPTS $JFR_SETTINGS" cli/build/install/cli/bin/cli execute --job "$JOB_FILE" --count $RECORD_COUNT --threads $THREADS
+JAVA_OPTS="$JVM_OPTS $JFR_SETTINGS" cli/build/install/seedstream/bin/seedstream execute --job "$JOB_FILE" --count $RECORD_COUNT --threads $THREADS
 
 echo ""
 echo "=== Profiling Complete ==="

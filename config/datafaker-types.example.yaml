@@ -4,8 +4,8 @@
 # a Datafaker method path (each dot-separated segment is a no-arg method, invoked left to right
 # starting on the Faker instance). The chain is validated at load time, so a typo fails fast.
 #
-# Use with:  datagenerator inspect schema.sql --faker-types config/datafaker-types.example.yaml
-#       and: datagenerator execute --job ... --faker-types config/datafaker-types.example.yaml
+# Use with:  ./seedstream inspect schema.sql --faker-types config/datafaker-types.example.yaml
+#       and: ./seedstream execute --job ... --faker-types config/datafaker-types.example.yaml
 #
 # Once registered, a structure can reference the key directly, e.g.  datatype: beer_style
 # The inspector also auto-targets a custom type when a column name matches its key.
