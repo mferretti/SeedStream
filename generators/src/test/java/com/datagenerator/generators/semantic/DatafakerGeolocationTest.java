@@ -175,6 +175,41 @@ class DatafakerGeolocationTest {
     assertThat(countries).isSubsetOf(SEPA_COUNTRIES).hasSizeGreaterThan(1);
   }
 
+  // BIC: 8 or 11 uppercase alphanumerics; country in positions 5-6 (0-based index 4-5).
+  private static final String BIC_PATTERN = "^[A-Z0-9]{8}([A-Z0-9]{3})?$";
+
+  @ParameterizedTest
+  @CsvSource({"italy, IT", "germany, DE", "france, FR", "usa, US"})
+  void shouldGenerateBicForLocaleCountry(String geolocation, String expectedCountry) {
+    // #177: bic must carry the locale country in positions 5-6, not a random one.
+    String bic = (String) generateWithContext(geolocation, new CustomDatafakerType("bic"));
+    assertThat(bic).isNotNull().matches(BIC_PATTERN);
+    assertThat(bic.substring(4, 6)).isEqualTo(expectedCountry);
+  }
+
+  @Test
+  void shouldGenerateRandomBicIndependentOfLocale() {
+    String bic = (String) generateWithContext("italy", new CustomDatafakerType("random_bic"));
+    assertThat(bic).isNotNull().matches(BIC_PATTERN);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"italy, EUR", "germany, EUR", "usa, USD", "uk, GBP", "japan, JPY"})
+  void shouldGenerateLocaleCurrencyForLocaleCountry(String geolocation, String expectedCurrency) {
+    // #177: locale_currency ties the ISO 4217 code to the locale country.
+    String currency =
+        (String) generateWithContext(geolocation, new CustomDatafakerType("locale_currency"));
+    assertThat(currency).isEqualTo(expectedCurrency);
+  }
+
+  @Test
+  void shouldKeepCurrencyLocaleInsensitive() {
+    // currency stays a random ISO 4217 code (a system may transact many currencies), so italy
+    // is not pinned to EUR — that's what locale_currency is for.
+    String currency = (String) generateWithContext("italy", new CustomDatafakerType("currency"));
+    assertThat(currency).isNotNull().matches("^[A-Z]{3}$");
+  }
+
   // ==================================================================================
   // ALL SEMANTIC TYPES COVERAGE - Test every semantic type we support
   // ==================================================================================

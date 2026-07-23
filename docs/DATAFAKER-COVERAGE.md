@@ -59,9 +59,11 @@ Aliases are case-insensitive and normalized at lookup time.
 | `iban` | `faker.finance().iban(country)` — locale-aware: uses the locale's country when Datafaker supports it, else random-country | — |
 | `random_iban` | `faker.finance().iban()` — explicit random-country IBAN (e.g. cross-border destination accounts) | `random_locale_iban` |
 | `sepa_iban` | `faker.finance().iban(country)` for a random **SEPA-zone** country — locale-independent | — |
-| `currency` | `faker.money().currencyCode()` | — |
+| `currency` | `faker.money().currencyCode()` — random ISO 4217 (a system may transact many currencies) | — |
+| `locale_currency` | `Currency.getInstance(locale)` — ISO 4217 for the locale's country (e.g. `italy`→EUR, `usa`→USD); falls back to random when the locale has no country/currency | — |
 | `price` | `faker.commerce().price()` | — |
-| `bic` | `faker.finance().bic()` | `swift` |
+| `bic` | `faker.finance().bic()` with the locale country spliced into positions 5-6 — locale-aware (see #177), uppercased per ISO 9362 | `swift` |
+| `random_bic` | `faker.finance().bic()` — random-country BIC (pre-#177 behavior), uppercased | — |
 | `cvv` | `faker.number().numberBetween(100, 999)` | `cvc` |
 | `credit_card_type` | `faker.finance().creditCard().split(" ")[0]` | `creditcardtype` |
 | `stock_market` | `faker.stock().nsdqSymbol()` | `stockmarket`, `stock`, `ticker` |

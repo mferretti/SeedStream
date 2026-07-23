@@ -34,7 +34,7 @@
  *   <li><b>Person:</b> name, first_name, last_name, full_name, username, title, occupation
  *   <li><b>Address:</b> address, street_name, street_number, city, state, postal_code, country
  *   <li><b>Contact:</b> email, phone_number
- *   <li><b>Finance:</b> company, credit_card, iban, currency, price
+ *   <li><b>Finance:</b> company, credit_card, iban, bic, currency, locale_currency, price
  *   <li><b>Internet:</b> domain, url, ipv4, ipv6, mac_address
  *   <li><b>Codes:</b> isbn, uuid
  * </ul>

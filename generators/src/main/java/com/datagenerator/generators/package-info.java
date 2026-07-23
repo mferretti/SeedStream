@@ -59,8 +59,8 @@
  *   <li><b>Primitives:</b> char, int, decimal, boolean, date, timestamp
  *   <li><b>Semantic:</b> name, first_name, last_name, full_name, username, title, occupation,
  *       address, street_name, street_number, city, state, postal_code, country, email,
- *       phone_number, company, credit_card, iban, currency, price, domain, url, ipv4, ipv6,
- *       mac_address, isbn, uuid
+ *       phone_number, company, credit_card, iban, bic, currency, locale_currency, price, domain,
+ *       url, ipv4, ipv6, mac_address, isbn, uuid
  *   <li><b>Enums:</b> Predefined value lists
  *   <li><b>Arrays:</b> Variable-length collections with inner type
  *   <li><b>Objects:</b> Nested structure references
