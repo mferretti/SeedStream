@@ -35,6 +35,7 @@ import lombok.Value;
  *   batch_size: 1000
  *   pool_size: 10
  *   transaction_strategy: per_batch
+ *   truncate_before_insert: true # DESTRUCTIVE — empties the table (CASCADE) before seeding
  * </pre>
  *
  * <p><b>Environment variable substitution:</b> String values matching {@code ${VAR_NAME}} are
@@ -103,4 +104,15 @@ public class DatabaseDestinationConfig {
    * column.
    */
   @Builder.Default boolean injectParentFk = true;
+
+  /**
+   * When {@code true}, each target table is emptied with {@code TRUNCATE TABLE ... CASCADE} before
+   * its first insert. Default: {@code false}.
+   *
+   * <p><b>DESTRUCTIVE</b> — intended for CI seeding into a disposable database, where a fixed seed
+   * plus a clean table yields a deterministic dataset without an external teardown script. The
+   * table must already exist (no DDL generation). Uses PostgreSQL/Oracle {@code CASCADE} syntax, so
+   * nested foreign-key graphs are cleared in one shot; MySQL/SQL Server are not supported.
+   */
+  @Builder.Default boolean truncateBeforeInsert = false;
 }

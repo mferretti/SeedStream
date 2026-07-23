@@ -1,0 +1,26 @@
+# CI pipeline database seeding (issue #80).
+#
+# Run this BEFORE the integration-test task. The fixed seed makes the dataset
+# byte-for-byte identical on every run and every branch, so test assertions can
+# reference specific generated values with confidence. `truncate_before_insert`
+# empties the table first (TRUNCATE ... CASCADE) — each run reseeds from clean,
+# eliminating "test depends on pre-existing state" flakiness.
+#
+# Example:
+#   export DB_PASSWORD=...
+#   psql -f config/sql/ci_seed_users.sql          # one-time: create the table
+#   ./seedstream execute --job config/jobs/db_ci_seed_users.yaml --count 100
+#   ./gradlew integrationTest                     # assertions see the same 100 rows
+source: ci_user.yaml
+type: database
+seed:
+  type: embedded
+  value: 424242          # fixed — do NOT change between runs; it defines the dataset
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
+  username: "dbuser"
+  password: "${DB_PASSWORD}"
+  table: "ci_users"
+  batch_size: 1000
+  transaction_strategy: per_batch
+  truncate_before_insert: true   # ⚠️ DESTRUCTIVE — reseed clean; disposable/CI DB only

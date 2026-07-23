@@ -789,7 +789,13 @@ conf:
   batch_size: 1000
   pool_size: 5
   transaction_strategy: per_batch  # per_batch | per_job | auto_commit
+  truncate_before_insert: false    # ⚠️ DESTRUCTIVE — see "CI seeding" below
 ```
+
+**CI seeding (`truncate_before_insert`)**: Set to `true` to empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert. Combined with a fixed `seed`, one `execute` gives a clean, deterministic dataset per run — no external teardown script. Defaults to `false`. Notes:
+- ⚠️ **Destructive** — wipes the table (and, via `CASCADE`, its FK dependents). Use only against a disposable/CI database.
+- Tables must already exist (no DDL). CASCADE clears nested child tables in one shot, so FK graphs reseed cleanly.
+- PostgreSQL/Oracle only — `CASCADE` is not valid MySQL/SQL Server `TRUNCATE` syntax.
 
 **Nested structures (Stage 2)**: When a structure contains `object[X]` or `array[object[X]]` fields, SeedStream automatically decomposes the tree into multi-table INSERTs. The parent is inserted first; each child gets a `{parent_table}_id` FK column injected automatically.
 

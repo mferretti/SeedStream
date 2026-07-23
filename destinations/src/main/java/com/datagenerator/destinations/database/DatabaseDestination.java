@@ -27,12 +27,15 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
@@ -150,6 +153,13 @@ public class DatabaseDestination extends AbstractDestination {
 
   // --- Common state ---
   private long totalInserted = 0;
+
+  /**
+   * Tables already truncated in this run. Guards {@link #truncateIfNeeded(String)} so each table is
+   * emptied at most once, before its first insert. Only populated when {@code
+   * truncate_before_insert} is enabled.
+   */
+  private final Set<String> truncatedTables = new HashSet<>();
 
   /**
    * Create a database destination with the given configuration (Option A — no schema).
@@ -365,6 +375,7 @@ public class DatabaseDestination extends AbstractDestination {
           "Table name and column names are validated by validateIdentifier(); "
               + "any identifier with non-alphanumeric/underscore chars is rejected before reaching this point")
   private void initializeStatement(Map<String, Object> firstRecord) {
+    truncateIfNeeded(config.getTableName());
     columnNames = new ArrayList<>(firstRecord.keySet());
     String sql = buildInsertSql(config.getTableName(), columnNames);
     try {
@@ -478,6 +489,7 @@ public class DatabaseDestination extends AbstractDestination {
               + "PreparedStatement is stored in nestedStatements immediately after creation — "
               + "no resource leak path exists")
   private void initNestedStatementIfAbsent(String tableName, Map<String, Object> firstRecord) {
+    truncateIfNeeded(tableName);
     if (nestedStatements.containsKey(tableName)) return;
 
     List<String> cols = new ArrayList<>(firstRecord.keySet());
@@ -513,6 +525,35 @@ public class DatabaseDestination extends AbstractDestination {
               + "'");
     }
     return name;
+  }
+
+  /**
+   * Empties {@code tableName} with {@code TRUNCATE TABLE ... CASCADE} before its first insert, when
+   * {@code truncate_before_insert} is enabled. Idempotent per run via {@link #truncatedTables}.
+   *
+   * <p>CASCADE clears foreign-key dependents in one statement, so truncating a parent before its
+   * children (the insert order) does not violate FK constraints. TRUNCATE participates in the
+   * active transaction on PostgreSQL, so it is committed/rolled back with the surrounding batch.
+   */
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
+  @SuppressFBWarnings(
+      value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      justification =
+          "Table name is validated by validateIdentifier(); any identifier with "
+              + "non-alphanumeric/underscore chars is rejected before reaching this point")
+  private void truncateIfNeeded(String tableName) {
+    if (!config.isTruncateBeforeInsert() || truncatedTables.contains(tableName)) {
+      return;
+    }
+    String safeTable = validateIdentifier(tableName);
+    String sql = "TRUNCATE TABLE " + safeTable + " CASCADE";
+    try (Statement st = connection.createStatement()) {
+      st.executeUpdate(sql); // nosemgrep
+      truncatedTables.add(tableName);
+      log.warn("Truncated table '{}' before insert (truncate_before_insert=true)", tableName);
+    } catch (SQLException e) {
+      throw new DestinationException("Failed to truncate table: " + tableName, e);
+    }
   }
 
   private static String buildInsertSql(String tableName, List<String> columns) {

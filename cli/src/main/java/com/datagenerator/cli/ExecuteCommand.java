@@ -779,6 +779,9 @@ public class ExecuteCommand implements Callable<Integer> {
     if (conf.has("inject_parent_fk")) {
       builder.injectParentFk(conf.get("inject_parent_fk").asBoolean());
     }
+    if (conf.has("truncate_before_insert")) {
+      builder.truncateBeforeInsert(conf.get("truncate_before_insert").asBoolean());
+    }
 
     DatabaseDestinationConfig dbConfig = builder.build();
     log.info(
