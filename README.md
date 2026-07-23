@@ -70,7 +70,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
-- 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec, SQL DDL, or compiled Protobuf descriptor set — no hand-writing required
+- 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec, JSON Schema, SQL DDL, or compiled Protobuf descriptor set — no hand-writing required
 - 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, Google Secret Manager backends
 
 ---
@@ -88,7 +88,7 @@ People comparison-shop, so here's an honest cut. The wedge is **determinism that
 | **Foreign-key integrity** (`ref[]`) | ✅ | ⚠️ | ✅ | ❌ |
 | **Scale / multi-threaded** | ✅ | ⚠️ hosted limits | ✅ | ⚠️ DIY |
 | **No-code config** | ✅ YAML | ✅ GUI | ✅ schema | ❌ you write Java |
-| **Bootstrap schema from existing source** | ✅ DDL / OpenAPI / Protobuf | ❌ | ⚠️ live DB only | ❌ |
+| **Bootstrap schema from existing source** | ✅ DDL / OpenAPI / JSON Schema / Protobuf | ❌ | ⚠️ live DB only | ❌ |
 | **Self-hosted / offline** | ✅ | ❌ SaaS | ✅ | ✅ |
 | **Locales** | ✅ via Datafaker | ✅ many | ⚠️ limited | ✅ most (built on it) |
 | **License** | Apache-2.0 | Proprietary (SaaS) | Apache-2.0 | Apache-2.0 |
@@ -96,7 +96,7 @@ People comparison-shop, so here's an honest cut. The wedge is **determinism that
 **Where the others win — honestly:**
 
 - **Mockaroo** — nothing to install; a polished GUI and a huge built-in type catalog make one-off sample files the fastest path. If you don't need reproducibility-under-parallelism or streaming into infra, it's hard to beat for quick mock data.
-- **Synth** — a single Rust binary that connects to a **live database and samples its actual data distributions**. SeedStream also bootstraps schemas — its `inspect` subcommand generates structure YAML from a SQL DDL, an OpenAPI 3.x spec, or a compiled Protobuf descriptor — but it reads the *declared schema*, not a running system's data. Synth's edge is cloning the statistical shape of data you already have in a live DB.
+- **Synth** — a single Rust binary that connects to a **live database and samples its actual data distributions**. SeedStream also bootstraps schemas — its `inspect` subcommand generates structure YAML from a SQL DDL, an OpenAPI 3.x spec, a JSON Schema, or a compiled Protobuf descriptor — but it reads the *declared schema*, not a running system's data. Synth's edge is cloning the statistical shape of data you already have in a live DB.
 - **raw Datafaker** — SeedStream is *built on* Datafaker. If you're inside a JVM app and want to call a faker in code (no YAML, no process), use Datafaker directly — it has the widest provider/locale breadth. SeedStream adds the determinism model, the YAML layer, FK integrity, scale, and the Kafka/DB/file destinations around it.
 
 > Capability-level comparison as of mid-2026; tools evolve. Spot something out of date? [Open an issue](https://github.com/mferretti/SeedStream/issues) — corrections welcome.
@@ -214,18 +214,26 @@ echo -n "my-db-password" | ./gradlew :cli:run --args="encrypt"
 
 ## Schema Inspection
 
-Already have a live database schema or an OpenAPI spec? `inspect` bootstraps SeedStream structure YAML files from it, so you don't need to write them by hand.
+Already have a live database schema, an OpenAPI spec, a JSON Schema, or compiled Protobuf? `inspect` bootstraps SeedStream structure YAML files from any of them, so you don't need to write them by hand.
 
 ```bash
-# From a SQL DDL file (auto-detected from .sql extension)
+# SQL DDL          (auto-detected from .sql)
 ./seedstream inspect schema.sql --output config/structures/
 
-# From an OpenAPI 3.x spec (auto-detected from .yaml / .json extension)
+# OpenAPI 3.x      (auto-detected from .yaml / .json with an openapi/swagger root)
 ./seedstream inspect api.yaml --output config/structures/
+
+# JSON Schema      (auto-detected from .schema.json, or a $schema/$defs root)
+./seedstream inspect payload.schema.json --output config/structures/
+
+# Protobuf         (compiled FileDescriptorSet: .desc / .binpb / .protoset)
+./seedstream inspect schema.desc --output config/structures/
 
 # Overwrite any existing structure files
 ./seedstream inspect schema.sql --output config/structures/ --force
 ```
+
+Format is auto-detected from the extension, and for ambiguous `.json` / `.yaml` from the root keys (`openapi`/`swagger` → OpenAPI, else `$schema`/`$defs`/`definitions` → JSON Schema). Override with `--format openapi|jsonschema|ddl|protobuf`.
 
 **What you get**: one `{snake_case_name}.yaml` per `CREATE TABLE` or OpenAPI schema object, written to the output directory and immediately usable in a job. For example, given:
 
@@ -281,14 +289,37 @@ Fields with **no comment** were mapped from explicit schema information (declare
 
 **After inspection**: review and adjust any commented fields, then create a job YAML pointing at the output directory and run `execute` as normal.
 
+### JSON Schema
+
+Standalone JSON Schema (Draft 7 / 2020-12) maps the **root** object schema plus every entry under `$defs` / `definitions` to its own structure; local `$ref` (`#/$defs/Foo`) becomes `object[foo]`. The structure name comes from `title` → `$id` → the file name.
+
+Because `inspect` generates **data**, schema composition is *merged* rather than dropped: the fields of `allOf` / `oneOf` / `anyOf` / `if` / `then` / `else` / `dependentSchemas` subschemas are unioned into one record so nothing that could appear is lost. `allOf` (the "extends" idiom) is an exact merge; the conditional/polymorphic branches are merged too but flagged with a `# review` comment and a warning, since the flattened record no longer enforces the original constraint.
+
+**Regex fields → suggested Datafaker types.** A `string` with a `pattern` has no inline SeedStream type, so `inspect` writes a companion `inspect-faker-types.yaml` (in the output directory) with a `regex:` entry per patterned field, and comments the field. Feed that file back to resolve those fields — and to `execute` to generate matching values:
+
+```bash
+# 1. first pass writes structures + inspect-faker-types.yaml for any pattern fields
+./seedstream inspect payload.schema.json -o config/structures/
+
+# 2. rerun with the suggestions: patterned fields now resolve to a regex generator
+./seedstream inspect payload.schema.json -o config/structures/ --force \
+  --faker-types config/structures/inspect-faker-types.yaml
+
+# 3. generate — pattern-matching values, e.g. code -> "ABC-123"
+./seedstream execute --job config/jobs/payload_file.yaml \
+  --faker-types config/structures/inspect-faker-types.yaml --count 100
+```
+
+The companion file is never overwritten if it already exists, and never written over the `--faker-types` input you passed in. Constructs with no clean SeedStream equivalent (`const`, `not`, `patternProperties`, external / recursive `$ref`, tuple-form `items`) are flagged with a `# review` comment rather than mis-mapped. See [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) §10.
+
 ### `inspect` flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `<input>` | required | Schema file to inspect (`.sql`, `.yaml`, `.yml`, `.json`) |
+| `<input>` | required | Schema file to inspect (`.sql`, `.yaml`, `.yml`, `.json`, `.schema.json`, `.desc`, `.binpb`, `.protoset`) |
 | `--output` | `config/structures/` | Directory to write structure YAML files |
 | `--force` | off | Overwrite existing structure files (default: skip and warn) |
-| `--format openapi\|ddl\|protobuf` | auto-detect | Override format detection (by default inferred from extension) |
+| `--format openapi\|jsonschema\|ddl\|protobuf` | auto-detect | Override format detection (by default inferred from extension/content) |
 | `--faker-types <file>` | unset | YAML config of extra Datafaker types; register before inspection so name hints can target them |
 | `--best-effort` | off | DDL only: emit the parseable subset and warn on tables that fail to parse, instead of aborting the whole inspection |
 | `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]`. `auto` keeps cycles/M:N/shared children flat; `all` errors on a true cycle |
@@ -359,7 +390,7 @@ See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading 
 | Document | Contents |
 |----------|----------|
 | [config/README.md](config/README.md) | Type system reference, job/structure examples, Kafka & database config |
-| [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) | `inspect` subcommand: type mapping tables, DDL/OpenAPI rules, review comment taxonomy |
+| [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) | `inspect` subcommand: type mapping tables, DDL / OpenAPI / JSON Schema / Protobuf rules, review comment taxonomy |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture, threading model, reproducibility, extensibility |
 | [docs/CONTAINER.md](docs/CONTAINER.md) | Running in Docker/Kubernetes/CI: image, `/work` layout, resource sizing, seed-then-test recipes |
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Benchmarks, tuning guide, hardware recommendations |
