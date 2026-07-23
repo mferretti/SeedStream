@@ -101,8 +101,9 @@ subprojects {
     // which OWASP DC flags even when runtimeClasspath overrides them correctly.
     configurations.all {
         resolutionStrategy.force(
-            "org.apache.logging.log4j:log4j-core:2.26.0",
-            "org.apache.logging.log4j:log4j-api:2.26.0",
+            // log4j 2.26.0 is vulnerable to CVE-2026-49844; 2.26.1 is the fix.
+            "org.apache.logging.log4j:log4j-core:2.26.1",
+            "org.apache.logging.log4j:log4j-api:2.26.1",
             // commons-lang3: compileClasspath resolves 3.14.0 (from AWS SDK transitive)
             // while runtimeClasspath correctly overrides to 3.20.0. Force 3.20.0 everywhere
             // so OWASP DC never sees 3.14.0 on any configuration.
@@ -118,6 +119,22 @@ subprojects {
             // OWASP DC never sees 2.20.0 on any configuration.
             "com.fasterxml.jackson.core:jackson-databind:2.22.1"
         )
+        // netty ships ~20 coordinated artifacts, all pulled transitively at 4.1.135.Final via
+        // software.amazon.awssdk:netty-nio-client (awssdk 2.48.3 still resolves .135). 4.1.135 is
+        // vulnerable to CVE-2026-44891, CVE-2026-55831, CVE-2026-55833; 4.1.136.Final is the fix.
+        // eachDependency force covers every io.netty artifact without listing each coordinate.
+        resolutionStrategy.eachDependency {
+            // tcnative (netty-tcnative*) and netty-bom follow their own versioning, not the
+            // 4.1.x line, and are not in the CVE set — leave them alone.
+            if (requested.group == "io.netty" &&
+                requested.name.startsWith("netty-") &&
+                !requested.name.startsWith("netty-tcnative") &&
+                requested.name != "netty-bom"
+            ) {
+                useVersion("4.1.136.Final")
+                because("CVE-2026-44891/55831/55833 — force patched netty across all configurations")
+            }
+        }
     }
 
     dependencies {

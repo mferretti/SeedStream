@@ -54,7 +54,7 @@ azure-identity = "1.18.4"
 gcp-secretmanager = "2.94.0"
 
 # Security Constraints (for dependency-check)
-log4j = "2.26.0"
+log4j = "2.26.1"
 
 # Build Plugins
 jmh-plugin = "0.7.3"
