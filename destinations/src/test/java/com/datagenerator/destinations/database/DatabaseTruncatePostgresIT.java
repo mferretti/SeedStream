@@ -92,9 +92,17 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
     return data;
   }
 
-  private int count(String table) throws SQLException {
+  private int countOrders() throws SQLException {
     try (Statement st = verifyConnection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
+        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM orders")) {
+      rs.next();
+      return rs.getInt(1);
+    }
+  }
+
+  private int countOrderLines() throws SQLException {
+    try (Statement st = verifyConnection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM order_lines")) {
       rs.next();
       return rs.getInt(1);
     }
@@ -105,7 +113,7 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
     try (Statement st = verifyConnection.createStatement()) {
       st.execute("INSERT INTO orders (id, customer) VALUES (99, 'stale')");
     }
-    assertThat(count(TABLE_ORDERS)).isEqualTo(1);
+    assertThat(countOrders()).isEqualTo(1);
 
     try (DatabaseDestination dest = new DatabaseDestination(config(TABLE_ORDERS, true))) {
       dest.open();
@@ -115,7 +123,7 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
     }
 
     // Stale row gone; only the two fresh rows remain
-    assertThat(count(TABLE_ORDERS)).isEqualTo(2);
+    assertThat(countOrders()).isEqualTo(2);
     try (Statement st = verifyConnection.createStatement();
         ResultSet rs = st.executeQuery("SELECT customer FROM orders WHERE id = 1")) {
       assertThat(rs.next()).isTrue();
@@ -136,7 +144,7 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
     }
 
     // Existing row survives — append semantics
-    assertThat(count(TABLE_ORDERS)).isEqualTo(2);
+    assertThat(countOrders()).isEqualTo(2);
   }
 
   @Test
@@ -146,7 +154,7 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
       st.execute("INSERT INTO orders (id, customer) VALUES (99, 'stale')");
       st.execute("INSERT INTO order_lines (id, sku, orders_id) VALUES (5, 'OLD', 99)");
     }
-    assertThat(count(TABLE_LINES)).isEqualTo(1);
+    assertThat(countOrderLines()).isEqualTo(1);
 
     // Nested record → orders row + order_lines child row; CASCADE must clear the stale child
     Map<String, Object> line = new LinkedHashMap<>();
@@ -163,8 +171,8 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
       dest.flush();
     }
 
-    assertThat(count(TABLE_ORDERS)).isEqualTo(1);
-    assertThat(count(TABLE_LINES)).isEqualTo(1);
+    assertThat(countOrders()).isEqualTo(1);
+    assertThat(countOrderLines()).isEqualTo(1);
     try (Statement st = verifyConnection.createStatement();
         ResultSet rs = st.executeQuery("SELECT sku FROM order_lines")) {
       assertThat(rs.next()).isTrue();
