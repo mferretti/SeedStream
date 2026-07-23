@@ -23,6 +23,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -150,9 +151,11 @@ public class DatafakerRegistry {
     registerAlias("random_locale_iban", "random_iban");
     register("sepa_iban", DatafakerRegistry::sepaIban);
     register("currency", (faker, random) -> faker.money().currencyCode());
+    register("locale_currency", (faker, random) -> localeCurrency(faker));
     register("price", (faker, random) -> faker.commerce().price());
-    register("bic", (faker, random) -> conformantBic(faker));
+    register("bic", (faker, random) -> localeAwareBic(faker));
     registerAlias("swift", "bic");
+    register("random_bic", (faker, random) -> randomBic(faker));
     register("cvv", (faker, random) -> String.valueOf(faker.number().numberBetween(100, 999)));
     registerAlias("cvc", "cvv");
     register("credit_card_type", (faker, random) -> faker.finance().creditCard().split(" ")[0]);
@@ -198,19 +201,62 @@ public class DatafakerRegistry {
   }
 
   /**
-   * Generates an ISO 9362-conformant BIC. A BIC must be uppercase letters and digits only.
+   * Generates an ISO 9362-conformant BIC from a random country, ignoring the Faker locale. A BIC
+   * must be uppercase letters and digits only.
    *
    * <p>Datafaker's {@code Finance.bic()} interpolates the ISO 3166-1 alpha-2 country code
    * (positions 5-6) from locale YAML, where it is stored lowercase, producing non-conformant BICs
    * such as {@code "UFMNmzAVSDD"}. We normalize to uppercase here. This is the correct
    * normalization per ISO 9362 regardless of upstream behavior and is idempotent, so it remains
-   * safe if Datafaker fixes the casing.
+   * safe if Datafaker fixes the casing. The country is whatever Datafaker picked
+   * (locale-insensitive) — the {@code bic} type derives the country from the locale instead; use
+   * {@code random_bic} to keep this behavior.
    *
    * <p>Upstream:
    * https://github.com/datafaker-net/datafaker/commit/d4267942d61314017cba303f98cd607d071409f4
    */
-  private static String conformantBic(Faker faker) {
+  private static String randomBic(Faker faker) {
     return faker.finance().bic().toUpperCase(Locale.ROOT);
+  }
+
+  /**
+   * Generates a BIC whose ISO 3166-1 country (positions 5-6) matches the Faker locale, so {@code
+   * geolocation: italy} yields an {@code ....IT..} BIC consistent with the locale-aware
+   * name/address/IBAN.
+   *
+   * <p>Datafaker's {@code Finance.bic()} does not honor the locale for the country segment (see
+   * #177), so we splice the locale country into positions 5-6 of an otherwise-conformant BIC. Falls
+   * back to {@link #randomBic} when the locale carries no 2-letter country (language-only locale)
+   * or the generated BIC is too short to carry a country segment.
+   */
+  private static String localeAwareBic(Faker faker) {
+    String bic = randomBic(faker);
+    String country = faker.getContext().getLocale().getCountry().toUpperCase(Locale.ROOT);
+    if (country.length() != 2 || bic.length() < 6) {
+      return bic;
+    }
+    return bic.substring(0, 4) + country + bic.substring(6);
+  }
+
+  /**
+   * Returns the ISO 4217 currency code for the Faker locale's country, so {@code geolocation:
+   * italy} yields {@code EUR} and {@code usa} yields {@code USD}. Unlike {@code currency} (a random
+   * ISO 4217 code — a system may transact many currencies), this ties the currency to the locale.
+   *
+   * <p>Uses the JDK's {@link Currency#getInstance(Locale)}. Falls back to a random {@code currency}
+   * when the locale has no country or the JDK has no currency for it (e.g. a language-only locale
+   * or a territory with no legal tender).
+   */
+  private static String localeCurrency(Faker faker) {
+    Locale locale = faker.getContext().getLocale();
+    if (!locale.getCountry().isBlank()) {
+      try {
+        return Currency.getInstance(locale).getCurrencyCode();
+      } catch (IllegalArgumentException e) {
+        log.debug("No currency for locale {}, falling back to random currency", locale, e);
+      }
+    }
+    return faker.money().currencyCode();
   }
 
   /**

@@ -251,8 +251,10 @@ class DatafakerRegistryTest {
     assertThat(DatafakerRegistry.generate("random_iban", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("sepa_iban", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("currency", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("locale_currency", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("price", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("bic", FAKER, RANDOM)).isNotBlank();
+    assertThat(DatafakerRegistry.generate("random_bic", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("cvv", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("credit_card_type", FAKER, RANDOM)).isNotBlank();
     assertThat(DatafakerRegistry.generate("stock_market", FAKER, RANDOM)).isNotBlank();
