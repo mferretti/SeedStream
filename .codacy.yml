@@ -1,0 +1,6 @@
+---
+# SQL files here are database DDL/fixtures, not application code. Codacy applies a
+# SQL Server (T-SQL) linter that misfires on PostgreSQL syntax (e.g. demanding
+# SET QUOTED_IDENTIFIER), so exclude them from analysis.
+exclude_paths:
+  - 'config/sql/**'
