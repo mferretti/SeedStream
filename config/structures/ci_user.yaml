@@ -1,0 +1,18 @@
+# CI integration-test user fixture.
+# Flat structure — one row per generated record maps 1:1 to a `ci_users` row.
+# The DB assigns the primary key (identity column), so no `id` field is generated here.
+name: ci_user
+geolocation: usa
+data:
+  first_name:
+    datatype: first_name
+  last_name:
+    datatype: last_name
+  email:
+    datatype: email
+  username:
+    datatype: username
+  active:
+    datatype: boolean
+  signup_date:
+    datatype: date[2020-01-01..2024-12-31]

@@ -17,14 +17,18 @@
 package com.datagenerator.destinations.database;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.datagenerator.destinations.DestinationException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -463,6 +467,77 @@ class DatabaseDestinationTest {
         .hasMessageContaining("failed after 2 attempt");
 
     verify(mockDs, times(2)).getConnection();
+  }
+
+  // --- truncate_before_insert (mocked JDBC: H2 does not accept TRUNCATE ... CASCADE) ---
+
+  private DatabaseDestinationConfig truncateConfig(boolean truncate) {
+    return DatabaseDestinationConfig.builder()
+        .jdbcUrl("jdbc:irrelevant")
+        .username("u")
+        .password("p")
+        .tableName(TABLE_USERS)
+        .transactionStrategy("auto_commit")
+        .truncateBeforeInsert(truncate)
+        .build();
+  }
+
+  @Test
+  @SuppressFBWarnings("SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING") // mock stub
+  void shouldTruncateTableBeforeInsertWhenEnabled() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    Statement mockTruncateStmt = mock(Statement.class);
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.createStatement()).thenReturn(mockTruncateStmt);
+    when(mockConn.prepareStatement(anyString())).thenReturn(mock(PreparedStatement.class));
+
+    try (DatabaseDestination dest = new DatabaseDestination(truncateConfig(true), mockDs)) {
+      dest.open();
+      dest.write(buildRecord(1, NAME_ALICE, true));
+      dest.flush();
+    }
+
+    verify(mockTruncateStmt).executeUpdate("TRUNCATE TABLE users CASCADE");
+  }
+
+  @Test
+  @SuppressFBWarnings("SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING") // mock stub
+  void shouldNotTruncateWhenDisabled() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.prepareStatement(anyString())).thenReturn(mock(PreparedStatement.class));
+
+    try (DatabaseDestination dest = new DatabaseDestination(truncateConfig(false), mockDs)) {
+      dest.open();
+      dest.write(buildRecord(1, NAME_ALICE, true));
+      dest.flush();
+    }
+
+    // createStatement() is only used by the truncate path
+    verify(mockConn, never()).createStatement();
+  }
+
+  @Test
+  @SuppressFBWarnings("SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING") // mock stub
+  void shouldTruncateOncePerTableAcrossManyRecords() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    Statement mockTruncateStmt = mock(Statement.class);
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.createStatement()).thenReturn(mockTruncateStmt);
+    when(mockConn.prepareStatement(anyString())).thenReturn(mock(PreparedStatement.class));
+
+    try (DatabaseDestination dest = new DatabaseDestination(truncateConfig(true), mockDs)) {
+      dest.open();
+      for (int i = 1; i <= 5; i++) {
+        dest.write(buildRecord(i, USER_PREFIX + i, true));
+      }
+      dest.flush();
+    }
+
+    verify(mockTruncateStmt, times(1)).executeUpdate("TRUNCATE TABLE users CASCADE");
   }
 
   // --- Helpers ---
