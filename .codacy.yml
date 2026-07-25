@@ -4,3 +4,4 @@
 # SET QUOTED_IDENTIFIER), so exclude them from analysis.
 exclude_paths:
   - 'config/sql/**'
+  - '**/*.sql'
