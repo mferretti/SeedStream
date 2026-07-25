@@ -592,7 +592,7 @@ class ExecuteCommandTest {
           case "none" -> "  compress: false";
           case "stream" -> "  compress: true";
           case "per_chunk" -> "  compress: true\n  compress_mode: per_chunk";
-          default -> throw new IllegalArgumentException("unknown mode: " + mode);
+          case null, default -> throw new IllegalArgumentException("unknown mode: " + mode);
         };
     return writeJobFile("file", extraConf);
   }
