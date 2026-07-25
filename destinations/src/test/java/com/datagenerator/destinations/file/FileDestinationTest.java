@@ -445,4 +445,157 @@ class FileDestinationTest {
     long lineCount = Files.lines(outputFile).count();
     assertThat(lineCount).isEqualTo(10000);
   }
+
+  // ── Per-chunk gzip mode (issue #210) ──────────────────────────────────────
+
+  @Test
+  void shouldGzipCoalescedChunkPerMember() throws Exception {
+    // With compress_mode: per_chunk, coalesce should return a gzipped byte[] of the combined
+    // payloads (each joined with a trailing '\n'), forming one complete gzip member.
+    Path outputFile = tempDir.resolve("per_chunk.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("per_chunk").build();
+
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+    destination.open();
+
+    byte[] p1 = "{\"a\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] p2 = "{\"b\":2}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    byte[] member = destination.coalesce(List.of(p1, p2));
+
+    // Decompress with GZIPInputStream — should equal "{\"a\":1}\n{\"b\":2}\n"
+    java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(member);
+    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+    try (GZIPInputStream gz = new GZIPInputStream(bais)) {
+      byte[] buffer = new byte[1024];
+      int len;
+      while ((len = gz.read(buffer)) != -1) {
+        baos.write(buffer, 0, len);
+      }
+    }
+
+    byte[] decompressed = baos.toByteArray();
+    String expected = "{\"a\":1}\n{\"b\":2}\n";
+    assertThat(decompressed).isEqualTo(expected.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    destination.close();
+  }
+
+  @Test
+  void shouldWriteValidMultiMemberGzipFile() throws Exception {
+    // Full flow: open per_chunk dest, write two coalesced chunks, close; read the .gz file
+    // with a single GZIPInputStream (Java reads consecutive members transparently) and verify
+    // all content is present in order.
+    Path outputFile = tempDir.resolve("per_chunk_full.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("per_chunk").build();
+
+    byte[] p1 = "{\"id\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] p2 = "{\"id\":2}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] p3 = "{\"id\":3}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] p4 = "{\"id\":4}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
+      destination.open();
+
+      byte[] chunk1 = destination.coalesce(List.of(p1, p2));
+      // Each coalesced chunk must be an independent gzip member (magic 0x1f 0x8b) — this is what
+      // distinguishes per_chunk from stream mode, where coalesce() returns raw concatenated bytes.
+      assertThat(chunk1[0] & 0xff).isEqualTo(0x1f);
+      assertThat(chunk1[1] & 0xff).isEqualTo(0x8b);
+      destination.writeSerializedChunk(chunk1);
+
+      byte[] chunk2 = destination.coalesce(List.of(p3, p4));
+      assertThat(chunk2[0] & 0xff).isEqualTo(0x1f);
+      assertThat(chunk2[1] & 0xff).isEqualTo(0x8b);
+      destination.writeSerializedChunk(chunk2);
+    }
+
+    // File should have .gz extension
+    Path gzFile = Path.of(outputFile.toString() + ".gz");
+    assertThat(gzFile).exists();
+
+    // Decompress and read all records
+    List<String> lines = new ArrayList<>();
+    try (BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(new GZIPInputStream(Files.newInputStream(gzFile))))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        lines.add(line);
+      }
+    }
+
+    assertThat(lines).hasSize(4);
+    assertThat(lines.get(0)).isEqualTo("{\"id\":1}");
+    assertThat(lines.get(1)).isEqualTo("{\"id\":2}");
+    assertThat(lines.get(2)).isEqualTo("{\"id\":3}");
+    assertThat(lines.get(3)).isEqualTo("{\"id\":4}");
+  }
+
+  @Test
+  void shouldWriteValidEmptyGzipWhenNoRecords() throws Exception {
+    // open + close with zero writes should yield a valid empty .gz that GZIPInputStream
+    // can read without exception.
+    Path outputFile = tempDir.resolve("per_chunk_empty.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("per_chunk").build();
+
+    try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
+      destination.open();
+      // No writes
+    }
+
+    Path gzFile = Path.of(outputFile.toString() + ".gz");
+    assertThat(gzFile).exists();
+
+    // Should be readable and yield zero bytes without exception
+    int bytesRead = 0;
+    try (GZIPInputStream gz = new GZIPInputStream(Files.newInputStream(gzFile))) {
+      byte[] buffer = new byte[1024];
+      bytesRead = gz.read(buffer);
+    }
+
+    assertThat(bytesRead).isEqualTo(-1); // EOF immediately
+  }
+
+  @Test
+  void shouldFailFastWhenPerChunkWithoutCompress() {
+    Path outputFile = tempDir.resolve("per_chunk_no_compress.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(false).compressMode("per_chunk").build();
+
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+
+    assertThatThrownBy(destination::open)
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("compress: true");
+  }
+
+  @Test
+  void shouldFailFastWhenPerChunkWithCsv() {
+    Path outputFile = tempDir.resolve("per_chunk_csv.csv");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("per_chunk").build();
+
+    FileDestination destination = new FileDestination(config, new CsvSerializer());
+
+    assertThatThrownBy(destination::open)
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("NDJSON");
+  }
+
+  @Test
+  void shouldFailFastOnUnknownCompressMode() {
+    Path outputFile = tempDir.resolve("per_chunk_unknown.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("zstd").build();
+
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+
+    assertThatThrownBy(destination::open)
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("compress_mode");
+  }
 }

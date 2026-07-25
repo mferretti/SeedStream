@@ -22,6 +22,7 @@ import com.datagenerator.formats.FormatSerializer;
 import com.datagenerator.formats.FormatSerializer.StreamWriter;
 import com.datagenerator.formats.avro.AvroSerializer;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -46,7 +47,7 @@ import org.apache.avro.generic.GenericRecord;
  *   <li>Java NIO for fast I/O
  *   <li>Buffered writes (configurable buffer size via {@link
  *       FileDestinationConfig#getBufferSize()})
- *   <li>Optional gzip compression
+ *   <li>Optional gzip compression (serial "stream" mode or parallel "per_chunk" mode)
  *   <li>Append mode support
  *   <li>CSV header row (for CSV format)
  *   <li>Automatic parent directory creation
@@ -77,10 +78,15 @@ import org.apache.avro.generic.GenericRecord;
  */
 @Slf4j
 public class FileDestination extends AbstractDestination {
+  private static final String MODE_STREAM = "stream";
+  private static final String MODE_PER_CHUNK = "per_chunk";
+
   private final FileDestinationConfig config;
   private final FormatSerializer serializer;
 
   private boolean headerWritten = false;
+  private boolean perChunkGzip = false;
+  private boolean anyChunkWritten = false;
 
   // Text-format state
   private OutputStream outputStream;
@@ -109,6 +115,8 @@ public class FileDestination extends AbstractDestination {
       log.warn("File destination already open: {}", config.getFilePath());
       return;
     }
+
+    validateCompressMode();
 
     try {
       Path filePath = config.getFilePath();
@@ -140,7 +148,9 @@ public class FileDestination extends AbstractDestination {
           filePath = Path.of(filePath.toString() + ".gz");
         }
         OutputStream base = Files.newOutputStream(filePath, openOptions);
-        if (config.isCompress()) {
+        // When perChunkGzip is true, do NOT wrap GZIPOutputStream here; each chunk is gzipped
+        // on the worker thread and the writer concatenates the members.
+        if (config.isCompress() && !perChunkGzip) {
           base = new GZIPOutputStream(base);
         }
         outputStream = new BufferedOutputStream(base, config.getBufferSize());
@@ -160,9 +170,31 @@ public class FileDestination extends AbstractDestination {
     }
   }
 
+  /** Validate {@code compress_mode} and resolve the {@link #perChunkGzip} flag (fail fast). */
+  private void validateCompressMode() {
+    String compressMode = config.getCompressMode();
+    if (!MODE_STREAM.equals(compressMode) && !MODE_PER_CHUNK.equals(compressMode)) {
+      throw new DestinationException(
+          "Unknown compress_mode '" + compressMode + "'. Valid values: stream, per_chunk");
+    }
+    boolean perChunk = MODE_PER_CHUNK.equals(compressMode);
+    if (perChunk && !config.isCompress()) {
+      throw new DestinationException("compress_mode: per_chunk requires compress: true");
+    }
+    if (perChunk && !supportsWriteCoalescing()) {
+      throw new DestinationException(
+          "compress_mode: per_chunk requires an NDJSON-style format; csv/avro serialize on the writer thread");
+    }
+    perChunkGzip = config.isCompress() && perChunk;
+  }
+
   @Override
   public void write(Map<String, Object> data) {
     requireOpen("File");
+
+    if (perChunkGzip) {
+      throw new DestinationException("per_chunk compression requires the serialized write path");
+    }
 
     if (isAvro) {
       writeAvro(data);
@@ -199,8 +231,17 @@ public class FileDestination extends AbstractDestination {
   public void writeSerialized(byte[] payload) {
     requireOpen("File");
     try {
-      outputStream.write(payload);
-      outputStream.write('\n');
+      if (perChunkGzip) {
+        // Defensive: engine never calls this when coalescing is wired, but keep the contract valid.
+        byte[] framed = new byte[payload.length + 1];
+        System.arraycopy(payload, 0, framed, 0, payload.length);
+        framed[payload.length] = '\n';
+        outputStream.write(gzipMember(framed));
+      } else {
+        outputStream.write(payload);
+        outputStream.write('\n');
+      }
+      anyChunkWritten = true;
     } catch (IOException e) {
       throw new DestinationException("Failed to write serialized record to file", e);
     }
@@ -226,6 +267,10 @@ public class FileDestination extends AbstractDestination {
       pos += payload.length;
       combined[pos++] = '\n';
     }
+    // If per_chunk gzip mode, wrap the combined payload as an independent gzip member.
+    if (perChunkGzip) {
+      return gzipMember(combined);
+    }
     return combined;
   }
 
@@ -233,11 +278,34 @@ public class FileDestination extends AbstractDestination {
   public void writeSerializedChunk(byte[] coalescedPayload) {
     requireOpen("File");
     try {
-      // coalesce() already interleaved each record with its trailing newline; write as-is.
+      // When perChunkGzip is true, coalesce() has already gzipped the payload as an independent
+      // member; write as-is. Otherwise, coalesce() returns plain concatenated bytes.
       outputStream.write(coalescedPayload);
+      anyChunkWritten = true;
     } catch (IOException e) {
       throw new DestinationException("Failed to write coalesced records to file", e);
     }
+  }
+
+  /**
+   * Gzip-compress a raw byte array as an independent gzip member.
+   *
+   * <p>Runs on worker threads during parallel generation. Thread-safe and stateless. Returns a
+   * complete gzip member that can be written to the output stream; multiple members are
+   * concatenated to form a valid multi-member .gz file (RFC 1952).
+   *
+   * @param raw raw bytes to compress
+   * @return gzipped bytes (complete gzip member)
+   * @throws DestinationException if compression fails
+   */
+  private byte[] gzipMember(byte[] raw) {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream(Math.max(64, raw.length / 3));
+    try (GZIPOutputStream gz = new GZIPOutputStream(baos)) {
+      gz.write(raw);
+    } catch (IOException e) {
+      throw new DestinationException("Failed to gzip chunk", e);
+    }
+    return baos.toByteArray();
   }
 
   private void writeAvro(Map<String, Object> data) {
@@ -294,6 +362,10 @@ public class FileDestination extends AbstractDestination {
           avroRawOut.close();
         }
       } else {
+        // If per_chunk gzip and no chunks were written, emit an empty member so the .gz is valid.
+        if (perChunkGzip && !anyChunkWritten) {
+          outputStream.write(gzipMember(new byte[0]));
+        }
         flush();
         streamWriter.close();
         outputStream.close();

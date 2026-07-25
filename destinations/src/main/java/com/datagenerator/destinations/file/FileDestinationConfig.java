@@ -56,4 +56,19 @@ public class FileDestinationConfig {
    * per-record writes). Set to 1 to disable batching.
    */
   @Builder.Default int batchSize = 1000;
+
+  /**
+   * Compression mode for gzip output. Controls how gzip compression is applied when compress=true.
+   *
+   * <ul>
+   *   <li>"stream" (default): Single GZIPOutputStream wrapping the writer thread output stream.
+   *       Deflate runs serially on the writer thread, sequential/deterministic member layout.
+   *       Maintains existing behavior.
+   *   <li>"per_chunk": Each engine chunk is independently gzipped on a worker thread as an
+   *       independent gzip member. The writer concatenates complete members in chunk order.
+   *       Multi-member RFC 1952 .gz file; parallel deflate (scales with worker threads). Requires
+   *       compress=true and an NDJSON-style format (JSON, not CSV/Avro).
+   * </ul>
+   */
+  @Builder.Default String compressMode = "stream";
 }

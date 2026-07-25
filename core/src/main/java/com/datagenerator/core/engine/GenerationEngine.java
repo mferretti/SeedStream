@@ -107,15 +107,21 @@ public class GenerationEngine {
   private final SerializedWriter serializedWriter;
 
   /**
-   * Optional: folds a full chunk of serialized payloads (or, on the single-threaded path, a
-   * singleton one-payload "chunk") into a single combined payload before it reaches {@link
-   * #serializedWriter}. Typically {@code destination::coalesce}.
+   * Optional: folds a full chunk of serialized payloads into a single combined payload before it
+   * reaches {@link #serializedWriter}. Typically {@code destination::coalesce}.
    *
-   * <p>Applying this on the producer side (the worker thread in the multi-threaded path) moves the
-   * per-record concatenation work — e.g. appending newline delimiters — off the single writer
-   * thread: the writer then performs one {@code write()} call per chunk instead of one per record.
-   * Only meaningful together with {@link #recordSerializer} and {@link #serializedWriter}; ignored
-   * otherwise (the raw-{@code Map} pipeline never folds).
+   * <p>Applying this on the producer side (the worker thread in the multi-threaded path, or the
+   * main thread in the single-threaded path) moves the per-record concatenation work — e.g.
+   * appending newline delimiters — off the single writer thread: the writer then performs one
+   * {@code write()} call per chunk instead of one per record. Only meaningful together with {@link
+   * #recordSerializer} and {@link #serializedWriter}; ignored otherwise (the raw-{@code Map}
+   * pipeline never folds).
+   *
+   * <p>Both paths batch records into fixed-size chunks of {@link #chunkSize} (default 256) and
+   * apply the fold to each chunk: the single-threaded path accumulates payloads into a buffer and
+   * folds when reaching chunkSize or end-of-job, producing the same chunk layout (sizes) as the
+   * multi-threaded path for a given count/chunkSize combination. This ensures output is
+   * deterministic and uncompressed folded bytes are unchanged (concatenation is associative).
    *
    * <p>Leave unset for destinations where each payload must remain an independent write unit — e.g.
    * one Kafka message per record. Folding would merge multiple records into a single destination
@@ -209,9 +215,9 @@ public class GenerationEngine {
    * @param count number of records to generate
    * @param produce builds one payload from a thread-local {@link Random} (runs on workers)
    * @param consume writes one payload (runs on the single writer thread)
-   * @param chunkTransform optional fold applied to each chunk (or single-record "chunk" on the
-   *     single-threaded path) before its payloads reach {@code consume}; {@code null} to pass
-   *     payloads through unchanged
+   * @param chunkTransform optional fold applied to each full chunk (fixed-size batches of {@link
+   *     #chunkSize} records in both single- and multi-threaded paths) before its payloads reach
+   *     {@code consume}; {@code null} to pass payloads through unchanged (one per record)
    */
   private <P> void runPipeline(
       long count,
@@ -236,32 +242,67 @@ public class GenerationEngine {
       UnaryOperator<List<P>> chunkTransform) {
     RandomProvider randomProvider = new RandomProvider(masterSeed);
     Random random = randomProvider.getRandom();
-
     long startTime = System.currentTimeMillis();
 
-    for (long i = 0; i < count; i++) {
-      // Seed by global record index so output matches the multi-threaded path byte-for-byte.
-      random.setSeed(randomProvider.deriveRecordSeed(i));
-      P payload = produce.apply(random);
-      if (chunkTransform == null) {
-        consume.accept(payload);
-      } else {
-        // Fold this single record as a one-element "chunk" so a coalescing destination sees the
-        // same framing it would from the multi-threaded path, regardless of job size.
-        for (P item : chunkTransform.apply(List.of(payload))) {
-          consume.accept(item);
-        }
-      }
-
-      // Progress logging
-      if ((i + 1) % logBatchSize == 0) {
-        logProgress(i + 1, count, startTime);
-      }
+    if (chunkTransform == null) {
+      runSingleThreadedUnfolded(count, produce, consume, randomProvider, random, startTime);
+    } else {
+      runSingleThreadedFolded(
+          count, produce, consume, chunkTransform, randomProvider, random, startTime);
     }
 
     logProgress(count, count, startTime); // Final progress
     workerCleanup.run();
     log.info("Single-threaded generation complete");
+  }
+
+  /** No folding: consume each record as it is produced (raw {@code Map} / non-coalescing path). */
+  @SuppressWarnings("java:S107")
+  private <P> void runSingleThreadedUnfolded(
+      long count,
+      Function<Random, P> produce,
+      Consumer<P> consume,
+      RandomProvider randomProvider,
+      Random random,
+      long startTime) {
+    for (long i = 0; i < count; i++) {
+      random.setSeed(randomProvider.deriveRecordSeed(i));
+      consume.accept(produce.apply(random));
+      if ((i + 1) % logBatchSize == 0) {
+        logProgress(i + 1, count, startTime);
+      }
+    }
+  }
+
+  /**
+   * Batch payloads into {@code chunkSize} and fold each full batch (mirrors multi-threaded path).
+   */
+  @SuppressWarnings("java:S107")
+  private <P> void runSingleThreadedFolded(
+      long count,
+      Function<Random, P> produce,
+      Consumer<P> consume,
+      UnaryOperator<List<P>> chunkTransform,
+      RandomProvider randomProvider,
+      Random random,
+      long startTime) {
+    List<P> buffer = new ArrayList<>(chunkSize);
+    for (long i = 0; i < count; i++) {
+      random.setSeed(randomProvider.deriveRecordSeed(i));
+      buffer.add(produce.apply(random));
+
+      // When the buffer reaches chunkSize or this is the last record, fold and consume.
+      if (buffer.size() == chunkSize || i == count - 1) {
+        for (P item : chunkTransform.apply(buffer)) {
+          consume.accept(item);
+        }
+        buffer.clear();
+      }
+
+      if ((i + 1) % logBatchSize == 0) {
+        logProgress(i + 1, count, startTime);
+      }
+    }
   }
 
   /**

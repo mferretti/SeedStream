@@ -174,16 +174,24 @@ seed:
   value: 98765
 conf:
   path: build/run-output/customers
-  compress: true    # Enable gzip compression (.gz added automatically)
+  compress: true              # Enable gzip compression (.gz added automatically)
+  compress_mode: stream       # Optional: stream (default) or per_chunk
   append: false
 ```
 
+**`compress_mode` (optional, default `stream`):**
+- `stream` — single gzip stream on the writer thread; default behavior, unchanged from earlier versions.
+- `per_chunk` — each chunk gzipped independently on workers, then concatenated as multi-member gzip; requires `compress: true` and an NDJSON-style format (JSON/NDJSON only — CSV/Avro not supported). Decompressed output is identical to `stream` mode; compressed `.gz` bytes differ. Parallel workers remove compression from the writer-thread bottleneck, at a cost of slightly lower compression ratio due to smaller per-member dictionaries.
+
 **Usage**:
 ```bash
+# stream mode (default)
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer_gzip.yaml --format json --count 1000"
+# per_chunk mode (parallel gzip)
+./gradlew :cli:run --args="execute --job config/jobs/file_customer_gzip_parallel.yaml --format json --count 1000"
 ```
 
-**Output**: `build/run-output/customers.json.gz` (valid gzip, decompresses to newline-delimited JSON)
+**Output**: `build/run-output/customers.json.gz` (valid gzip, decompresses to newline-delimited JSON — identical content in either mode)
 
 See `config/jobs/file_order.yaml` for a gzip example with nested structures.
 

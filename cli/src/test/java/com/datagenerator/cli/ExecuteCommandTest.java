@@ -25,18 +25,23 @@ import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPInputStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
@@ -53,6 +58,7 @@ class ExecuteCommandTest {
 
   private Path structDir;
   private Path outDir;
+  private final AtomicInteger jobFileCounter = new AtomicInteger();
 
   @BeforeEach
   void setUp() throws IOException {
@@ -110,6 +116,31 @@ class ExecuteCommandTest {
 
   private int execute(String... args) {
     return new CommandLine(new ExecuteCommand()).execute(args);
+  }
+
+  /**
+   * Writes a standalone job YAML with arbitrary extra top-level YAML lines (e.g. {@code type:},
+   * {@code seed:} block, {@code conf:} block). {@code structurePath} is the structure file's
+   * location relative to {@code tempDir} (e.g. {@code "structures/simple.yaml"}); {@code
+   * structures_path} is derived from its parent directory and {@code source} from its file name, so
+   * both the initial parse and the registry's by-name lookup (basePath + "{name}.yaml") resolve to
+   * the same file.
+   */
+  private Path writeJobYaml(String structurePath, String... lines) throws IOException {
+    Path jobFile = tempDir.resolve("job_" + jobFileCounter.incrementAndGet() + ".yaml");
+    Path resolvedStructurePath = tempDir.resolve(structurePath);
+    Path parent = resolvedStructurePath.getParent();
+    if (parent == null) {
+      throw new IllegalArgumentException("structurePath must include a parent directory");
+    }
+    StringBuilder yaml = new StringBuilder();
+    yaml.append("source: ").append(resolvedStructurePath.getFileName()).append('\n');
+    yaml.append("structures_path: ").append(parent.toAbsolutePath()).append('\n');
+    for (String line : lines) {
+      yaml.append(line).append('\n');
+    }
+    Files.writeString(jobFile, yaml.toString());
+    return jobFile;
   }
 
   // ── Happy path — JSON ────────────────────────────────────────────────────────
@@ -306,6 +337,315 @@ class ExecuteCommandTest {
             .isEqualTo(reference);
       }
     }
+  }
+
+  // ── Per-chunk gzip mode (issue #210): deterministic multi-member .gz ──────────────────
+
+  @Test
+  void shouldProduceIdenticalGzipAcrossThreadCounts() throws Exception {
+    // With compress_mode: per_chunk, the .gz should be byte-identical across threads
+    // because member boundaries = f(chunkSize, count), never thread count.
+    Path jobFile =
+        writeJobYaml(
+            "structures/simple.yaml",
+            "type: file",
+            "seed:",
+            "  type: embedded",
+            "  value: 999",
+            "conf:",
+            "  path: " + outDir.resolve("per_chunk").toAbsolutePath(),
+            "  compress: true",
+            "  compress_mode: per_chunk");
+
+    int count = 256 * 2 + 50; // 562 — 2 full chunks + 1 partial
+
+    byte[] reference = null;
+    for (int threads : new int[] {1, 2, 4}) {
+      Path output = outDir.resolve("per_chunk.json.gz");
+      if (Files.exists(output)) {
+        Files.delete(output);
+      }
+
+      int code =
+          execute(
+              OPT_JOB,
+              jobFile.toString(),
+              OPT_COUNT,
+              String.valueOf(count),
+              OPT_SEED,
+              "777",
+              "--threads",
+              String.valueOf(threads));
+      assertThat(code).isZero();
+
+      byte[] bytes = Files.readAllBytes(output);
+      if (reference == null) {
+        reference = bytes;
+      } else {
+        assertThat(bytes)
+            .as(
+                ".gz bytes with %d threads must be byte-identical to the 1-thread reference (issue #210)",
+                threads)
+            .isEqualTo(reference);
+      }
+    }
+  }
+
+  @Test
+  void shouldDecompressToSameBytesAsUncompressedRun() throws Exception {
+    // Verify that gunzip(per_chunk output) == plain uncompressed run's file bytes.
+    int count = 2500;
+
+    // Uncompressed run
+    Path jobFileUncompressed =
+        writeJobYaml(
+            "structures/simple.yaml",
+            "type: file",
+            "seed:",
+            "  type: embedded",
+            "  value: 888",
+            "conf:",
+            "  path: " + outDir.resolve("plain").toAbsolutePath(),
+            "  compress: false");
+
+    int codeUncompressed =
+        execute(
+            OPT_JOB,
+            jobFileUncompressed.toString(),
+            OPT_COUNT,
+            String.valueOf(count),
+            OPT_SEED,
+            "888");
+
+    assertThat(codeUncompressed).isZero();
+    byte[] uncompressedBytes = Files.readAllBytes(outDir.resolve("plain.json"));
+
+    // Per-chunk gzipped run
+    Path jobFileCompressed =
+        writeJobYaml(
+            "structures/simple.yaml",
+            "type: file",
+            "seed:",
+            "  type: embedded",
+            "  value: 888",
+            "conf:",
+            "  path: " + outDir.resolve("per_chunk").toAbsolutePath(),
+            "  compress: true",
+            "  compress_mode: per_chunk");
+
+    int codeCompressed =
+        execute(
+            OPT_JOB,
+            jobFileCompressed.toString(),
+            OPT_COUNT,
+            String.valueOf(count),
+            OPT_SEED,
+            "888");
+
+    assertThat(codeCompressed).isZero();
+
+    // Decompress and compare
+    java.io.ByteArrayOutputStream decompressed = new java.io.ByteArrayOutputStream();
+    try (java.util.zip.GZIPInputStream gz =
+        new java.util.zip.GZIPInputStream(
+            Files.newInputStream(outDir.resolve("per_chunk.json.gz")))) {
+      byte[] buffer = new byte[4096];
+      int len;
+      while ((len = gz.read(buffer)) != -1) {
+        decompressed.write(buffer, 0, len);
+      }
+    }
+
+    assertThat(decompressed.toByteArray()).isEqualTo(uncompressedBytes);
+  }
+
+  @Test
+  void shouldDecompressToSameBytesOnSingleThreadPath() throws Exception {
+    // Single-threaded path (count < threshold): verify gunzip(per_chunk) == plain output.
+    int count = 300;
+
+    // Uncompressed run
+    Path jobFileUncompressed =
+        writeJobYaml(
+            "structures/simple.yaml",
+            "type: file",
+            "seed:",
+            "  type: embedded",
+            "  value: 777",
+            "conf:",
+            "  path: " + outDir.resolve("plain_single").toAbsolutePath(),
+            "  compress: false");
+
+    int codeUncompressed =
+        execute(
+            OPT_JOB,
+            jobFileUncompressed.toString(),
+            OPT_COUNT,
+            String.valueOf(count),
+            OPT_SEED,
+            "777");
+
+    assertThat(codeUncompressed).isZero();
+    byte[] uncompressedBytes = Files.readAllBytes(outDir.resolve("plain_single.json"));
+
+    // Per-chunk gzipped run
+    Path jobFileCompressed =
+        writeJobYaml(
+            "structures/simple.yaml",
+            "type: file",
+            "seed:",
+            "  type: embedded",
+            "  value: 777",
+            "conf:",
+            "  path: " + outDir.resolve("per_chunk_single").toAbsolutePath(),
+            "  compress: true",
+            "  compress_mode: per_chunk");
+
+    int codeCompressed =
+        execute(
+            OPT_JOB,
+            jobFileCompressed.toString(),
+            OPT_COUNT,
+            String.valueOf(count),
+            OPT_SEED,
+            "777");
+
+    assertThat(codeCompressed).isZero();
+
+    // Decompress and compare
+    java.io.ByteArrayOutputStream decompressed = new java.io.ByteArrayOutputStream();
+    try (java.util.zip.GZIPInputStream gz =
+        new java.util.zip.GZIPInputStream(
+            Files.newInputStream(outDir.resolve("per_chunk_single.json.gz")))) {
+      byte[] buffer = new byte[4096];
+      int len;
+      while ((len = gz.read(buffer)) != -1) {
+        decompressed.write(buffer, 0, len);
+      }
+    }
+
+    assertThat(decompressed.toByteArray()).isEqualTo(uncompressedBytes);
+  }
+
+  // ── Compression determinism regression (issues #193 + #210): every write path is
+  //    thread-count-invariant on disk AND decompresses to the exact plain output ───────────
+
+  @ParameterizedTest(name = "compress mode: {0}")
+  @ValueSource(strings = {"none", "stream", "per_chunk"})
+  void compressedOutputIsDeterministicAndDecompressesToPlainAcrossThreadCounts(String mode)
+      throws Exception {
+    // Count deliberately not a multiple of chunkSize (256) so a partial final chunk is exercised.
+    int count = 256 * 3 + 7; // 775
+    long seed = 20210L;
+
+    // Plain reference content (also the decompressed target for the compressed modes).
+    byte[] plainReference =
+        Files.readAllBytes(
+            runAcrossThreadCounts(writeCompressJob("none"), "output.json", count, seed));
+
+    if ("none".equals(mode)) {
+      // The "none" case is fully asserted inside runAcrossThreadCounts (byte-identical raw output).
+      assertThat(plainReference).isNotEmpty();
+      return;
+    }
+
+    // Compressed modes: on-disk .gz must be byte-identical across thread counts, and must
+    // decompress back to the exact plain bytes.
+    Path gz = runAcrossThreadCounts(writeCompressJob(mode), "output.json.gz", count, seed);
+    assertThat(gunzip(gz))
+        .as("gunzip(%s output) must equal the plain uncompressed output", mode)
+        .isEqualTo(plainReference);
+  }
+
+  @Test
+  void perChunkGzipDiffersFromStreamOnDiskButDecompressesIdentically() throws Exception {
+    // Guards against a silent fallback to stream mode (e.g. compress_mode not wired through the
+    // CLI): the two modes MUST produce different .gz bytes (multi-member vs single-member) while
+    // decompressing to the same content.
+    int count = 256 * 3 + 7; // 775 — spans several chunks so per_chunk emits multiple members
+    long seed = 4242L;
+
+    Path streamGz =
+        runAcrossThreadCounts(writeCompressJob("stream"), "output.json.gz", count, seed);
+    byte[] streamBytes = Files.readAllBytes(streamGz);
+    byte[] streamContent = gunzip(streamGz);
+
+    Path perChunkGz =
+        runAcrossThreadCounts(writeCompressJob("per_chunk"), "output.json.gz", count, seed);
+    byte[] perChunkBytes = Files.readAllBytes(perChunkGz);
+
+    assertThat(perChunkBytes)
+        .as("per_chunk .gz must differ from stream .gz (proves compress_mode took effect)")
+        .isNotEqualTo(streamBytes);
+    assertThat(gunzip(perChunkGz))
+        .as("per_chunk and stream must decompress to identical content")
+        .isEqualTo(streamContent);
+  }
+
+  /**
+   * Build a file job at {@code outDir/output} with the given compression mode
+   * (none|stream|per_chunk).
+   */
+  private Path writeCompressJob(String mode) throws IOException {
+    String extraConf =
+        switch (mode) {
+          case "none" -> "  compress: false";
+          case "stream" -> "  compress: true";
+          case "per_chunk" -> "  compress: true\n  compress_mode: per_chunk";
+          default -> throw new IllegalArgumentException("unknown mode: " + mode);
+        };
+    return writeJobFile("file", extraConf);
+  }
+
+  /**
+   * Run the same job at {@code --threads 1/4/8} and assert the produced file is byte-identical
+   * across all three (the determinism guarantee). Returns the path of the produced file.
+   */
+  private Path runAcrossThreadCounts(Path jobFile, String outputName, int count, long seed)
+      throws Exception {
+    Path output = outDir.resolve(outputName);
+    byte[] reference = null;
+    for (int threads : new int[] {1, 4, 8}) {
+      if (Files.exists(output)) {
+        Files.delete(output);
+      }
+      int code =
+          execute(
+              OPT_JOB,
+              jobFile.toString(),
+              OPT_COUNT,
+              String.valueOf(count),
+              OPT_SEED,
+              String.valueOf(seed),
+              "--threads",
+              String.valueOf(threads));
+      assertThat(code).isZero();
+
+      byte[] bytes = Files.readAllBytes(output);
+      if (reference == null) {
+        reference = bytes;
+      } else {
+        assertThat(bytes)
+            .as(
+                "%s with %d threads must be byte-identical to the 1-thread reference",
+                outputName, threads)
+            .isEqualTo(reference);
+      }
+    }
+    return output;
+  }
+
+  /** Fully decompress a gzip file (transparently reads consecutive members). */
+  private byte[] gunzip(Path gzFile) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (GZIPInputStream gz = new GZIPInputStream(Files.newInputStream(gzFile))) {
+      byte[] buffer = new byte[8192];
+      int len;
+      while ((len = gz.read(buffer)) != -1) {
+        out.write(buffer, 0, len);
+      }
+    }
+    return out.toByteArray();
   }
 
   // ── Error cases ──────────────────────────────────────────────────────────────
