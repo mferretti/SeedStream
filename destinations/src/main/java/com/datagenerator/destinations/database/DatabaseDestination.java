@@ -534,6 +534,10 @@ public class DatabaseDestination extends AbstractDestination {
    * <p>CASCADE clears foreign-key dependents in one statement, so truncating a parent before its
    * children (the insert order) does not violate FK constraints. TRUNCATE participates in the
    * active transaction on PostgreSQL, so it is committed/rolled back with the surrounding batch.
+   *
+   * <p>With {@code restart_identity} enabled the statement becomes {@code TRUNCATE TABLE ...
+   * RESTART IDENTITY CASCADE}, so identity/serial columns restart at 1 and a reseeded table
+   * reproduces the same dense key range on every run (PostgreSQL only).
    */
   @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings(
@@ -546,11 +550,15 @@ public class DatabaseDestination extends AbstractDestination {
       return;
     }
     String safeTable = validateIdentifier(tableName);
-    String sql = "TRUNCATE TABLE " + safeTable + " CASCADE";
+    String identityClause = config.isRestartIdentity() ? " RESTART IDENTITY" : "";
+    String sql = "TRUNCATE TABLE " + safeTable + identityClause + " CASCADE";
     try (Statement st = connection.createStatement()) {
       st.executeUpdate(sql); // nosemgrep
       truncatedTables.add(tableName);
-      log.warn("Truncated table '{}' before insert (truncate_before_insert=true)", tableName);
+      log.warn(
+          "Truncated table '{}' before insert (truncate_before_insert=true, restart_identity={})",
+          tableName,
+          config.isRestartIdentity());
     } catch (SQLException e) {
       throw new DestinationException("Failed to truncate table: " + tableName, e);
     }

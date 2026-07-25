@@ -24,7 +24,9 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,7 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
 
   private static final String TABLE_ORDERS = "orders";
   private static final String TABLE_LINES = "order_lines";
+  private static final String TABLE_IDENTITY = "identity_orders";
 
   @Container
   static PostgreSQLContainer<?> postgres =
@@ -63,6 +66,9 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
       st.execute(
           "CREATE TABLE order_lines ("
               + "id INT, sku VARCHAR(255), orders_id INT REFERENCES orders(id))");
+      st.execute(
+          "CREATE TABLE identity_orders ("
+              + "id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, customer VARCHAR(255))");
     }
   }
 
@@ -71,17 +77,24 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
     try (Statement st = verifyConnection.createStatement()) {
       st.execute("DROP TABLE IF EXISTS order_lines");
       st.execute("DROP TABLE IF EXISTS orders");
+      st.execute("DROP TABLE IF EXISTS identity_orders");
     }
     verifyConnection.close();
   }
 
   private DatabaseDestinationConfig config(String table, boolean truncate) {
+    return config(table, truncate, false);
+  }
+
+  private DatabaseDestinationConfig config(
+      String table, boolean truncate, boolean restartIdentity) {
     return DatabaseDestinationConfig.builder()
         .jdbcUrl(postgres.getJdbcUrl())
         .username(postgres.getUsername())
         .password(postgres.getPassword())
         .tableName(table)
         .truncateBeforeInsert(truncate)
+        .restartIdentity(restartIdentity)
         .build();
   }
 
@@ -178,5 +191,48 @@ class DatabaseTruncatePostgresIT extends IntegrationTest {
       assertThat(rs.next()).isTrue();
       assertThat(rs.getString("sku")).isEqualTo("NEW");
     }
+  }
+
+  // --- restart_identity ---
+
+  private void seedIdentityOrders(boolean restartIdentity) {
+    try (DatabaseDestination dest =
+        new DatabaseDestination(config(TABLE_IDENTITY, true, restartIdentity))) {
+      dest.open();
+      dest.write(Map.of("customer", "Alice"));
+      dest.write(Map.of("customer", "Bob"));
+      dest.flush();
+    }
+  }
+
+  private List<Long> identityOrderIds() throws SQLException {
+    List<Long> ids = new ArrayList<>();
+    try (Statement st = verifyConnection.createStatement();
+        ResultSet rs = st.executeQuery("SELECT id FROM identity_orders ORDER BY id")) {
+      while (rs.next()) {
+        ids.add(rs.getLong("id"));
+      }
+    }
+    return ids;
+  }
+
+  @Test
+  void shouldRestartIdentitySequenceOnReseedWhenEnabled() throws SQLException {
+    seedIdentityOrders(true);
+    assertThat(identityOrderIds()).containsExactly(1L, 2L);
+
+    // Reseed: the sequence must restart, so the same dense key range comes back
+    seedIdentityOrders(true);
+    assertThat(identityOrderIds()).containsExactly(1L, 2L);
+  }
+
+  @Test
+  void shouldKeepClimbingIdentitySequenceWhenRestartIdentityDisabled() throws SQLException {
+    seedIdentityOrders(false);
+    assertThat(identityOrderIds()).containsExactly(1L, 2L);
+
+    // Plain TRUNCATE leaves the sequence untouched — ids continue from the high-water mark
+    seedIdentityOrders(false);
+    assertThat(identityOrderIds()).containsExactly(3L, 4L);
   }
 }

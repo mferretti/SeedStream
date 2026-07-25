@@ -1,0 +1,11 @@
+# order_id references the orders pool — the range MUST match the row count in seed.sh.
+name: order_items
+data:
+  order_id:
+    datatype: ref[orders.id, 1..400]
+  product_name:
+    datatype: product_name
+  quantity:
+    datatype: int[1..5]
+  unit_price:
+    datatype: decimal[1.00..250.00]

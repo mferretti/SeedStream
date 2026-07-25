@@ -472,6 +472,10 @@ class DatabaseDestinationTest {
   // --- truncate_before_insert (mocked JDBC: H2 does not accept TRUNCATE ... CASCADE) ---
 
   private DatabaseDestinationConfig truncateConfig(boolean truncate) {
+    return truncateConfig(truncate, false);
+  }
+
+  private DatabaseDestinationConfig truncateConfig(boolean truncate, boolean restartIdentity) {
     return DatabaseDestinationConfig.builder()
         .jdbcUrl("jdbc:irrelevant")
         .username("u")
@@ -479,6 +483,7 @@ class DatabaseDestinationTest {
         .tableName(TABLE_USERS)
         .transactionStrategy("auto_commit")
         .truncateBeforeInsert(truncate)
+        .restartIdentity(restartIdentity)
         .build();
   }
 
@@ -538,6 +543,43 @@ class DatabaseDestinationTest {
     }
 
     verify(mockTruncateStmt, times(1)).executeUpdate("TRUNCATE TABLE users CASCADE");
+  }
+
+  @Test
+  @SuppressFBWarnings("SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING") // mock stub
+  void shouldEmitRestartIdentityWhenEnabled() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    Statement mockTruncateStmt = mock(Statement.class);
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.createStatement()).thenReturn(mockTruncateStmt);
+    when(mockConn.prepareStatement(anyString())).thenReturn(mock(PreparedStatement.class));
+
+    try (DatabaseDestination dest = new DatabaseDestination(truncateConfig(true, true), mockDs)) {
+      dest.open();
+      dest.write(buildRecord(1, NAME_ALICE, true));
+      dest.flush();
+    }
+
+    verify(mockTruncateStmt).executeUpdate("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
+  }
+
+  @Test
+  @SuppressFBWarnings("SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING") // mock stub
+  void shouldNotTruncateWhenRestartIdentitySetWithoutTruncate() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.prepareStatement(anyString())).thenReturn(mock(PreparedStatement.class));
+
+    try (DatabaseDestination dest = new DatabaseDestination(truncateConfig(false, true), mockDs)) {
+      dest.open();
+      dest.write(buildRecord(1, NAME_ALICE, true));
+      dest.flush();
+    }
+
+    // restart_identity only qualifies the TRUNCATE — it never truncates on its own
+    verify(mockConn, never()).createStatement();
   }
 
   // --- Helpers ---

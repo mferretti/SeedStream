@@ -1061,6 +1061,39 @@ class ExecuteCommandTest {
     assertThat(code).isNotZero();
   }
 
+  @Test
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  void restartIdentityWithoutTruncateBeforeInsertIsRejected() throws Exception {
+    Path jobFile = tempDir.resolve("db_restart_identity_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: database
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          jdbc_url: jdbc:nonexistent://localhost/test
+          username: sa
+          password: ""
+          table: simple_test
+          restart_identity: true
+        """
+            .formatted(structDir.toAbsolutePath()));
+
+    StringWriter err = new StringWriter();
+    CommandLine cmd = new CommandLine(new ExecuteCommand());
+    cmd.setErr(new PrintWriter(err, true));
+
+    // Fails fast at config assembly — before any connection attempt
+    int code = cmd.execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+
+    assertThat(code).isNotZero();
+    assertThat(err.toString()).contains("restart_identity requires truncate_before_insert");
+  }
+
   // ── Structures path inference ─────────────────────────────────────────────────
 
   @Test

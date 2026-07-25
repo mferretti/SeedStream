@@ -1,0 +1,11 @@
+# customer_id references the customers pool — the range MUST match the row count in seed.sh.
+name: orders
+data:
+  customer_id:
+    datatype: ref[customers.id, 1..100]
+  status:
+    datatype: enum[pending,paid,shipped,cancelled]
+  total_amount:
+    datatype: decimal[5.00..999.99]
+  placed_at:
+    datatype: timestamp[2024-01-01T00:00:00..2024-12-31T23:59:59]

@@ -1,0 +1,12 @@
+# customers table. No `id` — the DB IDENTITY column assigns a dense 1..N sequence.
+name: customers
+geolocation: usa
+data:
+  email:
+    datatype: email
+  full_name:
+    datatype: full_name
+  signup_date:
+    datatype: date[2022-01-01..2024-12-31]
+  active:
+    datatype: boolean
