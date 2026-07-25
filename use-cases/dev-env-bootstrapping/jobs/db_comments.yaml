@@ -1,0 +1,13 @@
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: comments.yaml
+type: database
+seed:
+  type: embedded
+  value: 20260725          # fixed → every developer gets identical data
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/devdb"
+  username: "devuser"
+  password: "${DB_PASSWORD}"
+  table: "comments"
+  batch_size: 500
+  transaction_strategy: per_batch

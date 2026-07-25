@@ -1,0 +1,4 @@
+name: labels
+data:
+  name:
+    datatype: char[4..40]

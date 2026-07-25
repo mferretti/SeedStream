@@ -1,0 +1,8 @@
+name: comments
+data:
+  body:
+    datatype: char[10..500]
+  task_id:
+    datatype: ref[tasks.id, 1..500]
+  author_id:
+    datatype: ref[users.id, 1..200]

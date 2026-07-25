@@ -1,0 +1,7 @@
+# M:N join. No `id` (DB IDENTITY). A (task_id,label_id) pair may repeat — see README "Limits".
+name: task_labels
+data:
+  task_id:
+    datatype: ref[tasks.id, 1..500]
+  label_id:
+    datatype: ref[labels.id, 1..20]

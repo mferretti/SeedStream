@@ -1,0 +1,10 @@
+# owner_id references the dense users pool. Static range MUST match the users --count in bootstrap.sh.
+name: projects
+geolocation: usa
+data:
+  name:
+    datatype: char[6..120]
+  status:
+    datatype: enum[active,archived,draft]
+  owner_id:
+    datatype: ref[users.id, 1..200]

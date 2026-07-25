@@ -1,0 +1,10 @@
+# users table. No `id` — the DB IDENTITY column assigns a dense 1..N sequence.
+name: users
+geolocation: usa
+data:
+  email:
+    datatype: email
+  full_name:
+    datatype: full_name
+  created_at:
+    datatype: timestamp[2023-01-01T00:00:00..2025-12-31T23:59:59]

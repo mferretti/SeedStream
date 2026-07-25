@@ -1,0 +1,15 @@
+# project_id/assignee_id reference the projects/users pools — ranges match bootstrap.sh counts.
+# parent_task_id is intentionally NOT generated (left NULL): self-referencing FKs need deferrable
+# constraints or an ordered pass SeedStream does not do today. See README "Limits".
+name: tasks
+data:
+  title:
+    datatype: char[10..200]
+  status:
+    datatype: enum[todo,in_progress,done,blocked]
+  priority:
+    datatype: enum[low,med,high]
+  project_id:
+    datatype: ref[projects.id, 1..50]
+  assignee_id:
+    datatype: ref[users.id, 1..200]
