@@ -85,6 +85,21 @@ Common exclusions:
 - Test utilities
 - Known false positives
 
+### Codacy
+
+Configuration: `.codacy.yml` (repo root). Runs as a required PR check (cloud).
+
+**Excluded from analysis:** `**/*.sql`
+
+Codacy lints SQL with a **SQL Server (T-SQL)** ruleset that misfires on PostgreSQL
+DDL — e.g. it demands `SET QUOTED_IDENTIFIER ON` at the top of every file. Every `.sql`
+in this repo is PostgreSQL DDL / seed fixtures (`config/sql/**`,
+`use-cases/**/schema.sql`) — **not application or test code** — so excluding it silences
+only false positives, not real findings. The exclusion is intentionally scoped to `.sql`;
+do not broaden it to source or test paths to quiet a warning. If real SQL *logic* ever
+ships (stored procedures, app queries), lint it with a PostgreSQL-aware tool instead of
+removing this guard.
+
 ### JaCoCo
 
 Configuration: `build.gradle.kts`
