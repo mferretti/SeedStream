@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Opt-in parallel gzip via `compress_mode: per_chunk` (#210)** — file destinations now support an alternative compression strategy: each generation chunk is gzipped independently on workers and concatenated as a multi-member RFC 1952 gzip, removing compression from the writer-thread bottleneck. Decompressed output is byte-identical to `stream` mode (default), and member boundaries depend only on chunk size and record count, never thread count — so per-chunk `.gz` files are byte-identical across parallel runs for a given seed. Compressed `.gz` bytes differ between modes due to per-member dictionary boundaries; the uncompressed stream remains the hard determinism guarantee. Requires `compress: true` and an NDJSON-style format (JSON/NDJSON only; CSV/Avro unchanged). Gated on new `compress_mode` YAML key (`stream` = default, `per_chunk` = opt-in).
+
 ---
 
 ## [0.7.0] - 2026-07-14

@@ -1,0 +1,15 @@
+# Parallel gzip (issue #210): each generation chunk is gzipped independently on a
+# worker thread and the writer concatenates them as a multi-member RFC 1952 gzip.
+# Moves deflate off the single writer thread; gunzip/GZIPInputStream read it transparently.
+# Same seed => byte-identical .gz across thread counts; decompressed bytes identical to
+# the default `stream` mode. JSON/NDJSON only (not CSV/Avro).
+source: customer.yaml
+type: file
+seed:
+  type: embedded
+  value: 98765
+conf:
+  path: build/run-output/customers
+  compress: true
+  compress_mode: per_chunk   # default is `stream` (single-stream gzip on the writer thread)
+  append: false

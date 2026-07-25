@@ -667,14 +667,15 @@ public class ExecuteCommand implements Callable<Integer> {
       log.warn("Output file {} exists and will be truncated", targetPath);
     }
 
-    FileDestinationConfig config =
-        FileDestinationConfig.builder()
-            .filePath(targetPath)
-            .compress(compress)
-            .append(append)
-            .build();
+    FileDestinationConfig.FileDestinationConfigBuilder configBuilder =
+        FileDestinationConfig.builder().filePath(targetPath).compress(compress).append(append);
 
-    return new FileDestination(config, serializer);
+    // Optional compress_mode (validated fail-fast in FileDestination.open())
+    if (conf.has("compress_mode")) {
+      configBuilder.compressMode(conf.get("compress_mode").asText());
+    }
+
+    return new FileDestination(configBuilder.build(), serializer);
   }
 
   private KafkaDestination createKafkaDestination(

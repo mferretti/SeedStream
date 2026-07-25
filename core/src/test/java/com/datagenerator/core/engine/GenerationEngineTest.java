@@ -433,10 +433,11 @@ class GenerationEngineTest {
   }
 
   @Test
-  void shouldFoldSingleThreadedRecordsIndividuallyWhenBelowThreshold() throws InterruptedException {
-    // Below singleThreadedThreshold: no chunk batching happens, but the fold must still apply to
-    // each record individually (as a singleton "chunk") so a coalescing destination sees the same
-    // per-record framing it would on the multi-threaded path.
+  void shouldFoldSingleThreadedRecordsAsOneChunkWhenBelowChunkSize() throws InterruptedException {
+    // Below singleThreadedThreshold: the single-threaded path batches records to chunkSize before
+    // folding (mirroring the multi-threaded chunk layout). 50 records < chunkSize 256 -> exactly
+    // one fold over all 50, so a coalescing destination sees the same chunk framing it would on
+    // the multi-threaded path.
     AtomicInteger idCounter = new AtomicInteger(0);
     GenerationEngine.RecordGenerator recordGenerator =
         random -> Map.of("id", idCounter.incrementAndGet());
@@ -456,10 +457,11 @@ class GenerationEngineTest {
 
     engine.generate(50);
 
-    // Each record folded (as a singleton) and written individually — one writer call per record.
-    assertThat(writtenItems).hasSize(50);
-    assertThat(new String(writtenItems.get(0), java.nio.charset.StandardCharsets.UTF_8))
-        .isEqualTo("id=1\n");
+    // All 50 records folded as one chunk — a single writer call carrying every record in order.
+    assertThat(writtenItems).hasSize(1);
+    String folded = new String(writtenItems.get(0), java.nio.charset.StandardCharsets.UTF_8);
+    assertThat(folded).startsWith("id=1\nid=2\n").endsWith("id=50\n");
+    assertThat(folded.split("\n")).hasSize(50);
   }
 
   @Test
@@ -584,5 +586,54 @@ class GenerationEngineTest {
     assertThat(writtenChunks).hasSize(3); // 2 full + 1 partial, none empty/skipped
     // Last chunk folded from exactly 5 records ("x\n" each) = 10 bytes.
     assertThat(writtenChunks.get(2)).hasSize(5 * 2);
+  }
+
+  // ── Single-threaded path chunk batching (issue #210) ──────────────────────────────────
+
+  @Test
+  void shouldFoldFullChunksOnSingleThreadedPath() throws InterruptedException {
+    // Single-threaded path (count < threshold): chunkTransform should batch records into
+    // chunkSize-bounded chunks (256 by default), not apply per-record. Verify fold input sizes
+    // match the multi-threaded expectation: [256, 256, 88] for 600 records.
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("id", 1);
+    GenerationEngine.RecordSerializer serializer =
+        data -> "r".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    List<List<byte[]>> foldInputs = new ArrayList<>();
+    GenerationEngine.ChunkFolder folder =
+        payloads -> {
+          synchronized (foldInputs) {
+            foldInputs.add(new ArrayList<>(payloads));
+          }
+          return newlineJoin(payloads);
+        };
+
+    List<byte[]> writtenChunks = new ArrayList<>();
+    GenerationEngine.SerializedWriter writer =
+        bytes -> {
+          synchronized (writtenChunks) {
+            writtenChunks.add(bytes);
+          }
+        };
+
+    int recordCount = 600; // 2 full chunks (256 each) + 1 partial (88)
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordSerializer(serializer)
+        .serializedWriter(writer)
+        .chunkFolder(folder)
+        .masterSeed(1L)
+        .singleThreadedThreshold(Integer.MAX_VALUE) // Force single-threaded path
+        .build()
+        .generate(recordCount);
+
+    // Verify fold was called 3 times with chunk sizes matching multi-threaded layout
+    assertThat(foldInputs).hasSize(3);
+    assertThat(foldInputs.get(0)).hasSize(256);
+    assertThat(foldInputs.get(1)).hasSize(256);
+    assertThat(foldInputs.get(2)).hasSize(88);
+
+    // Written chunks should match
+    assertThat(writtenChunks).hasSize(3);
   }
 }

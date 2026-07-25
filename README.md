@@ -124,6 +124,10 @@ Determinism is abstract until you watch two hashes match. One command generates 
 
 The output byte-for-byte does not depend on thread count, core count, or machine — only the seed. This is the property that makes reproducible bug reports, golden-master pipeline tests, and "ship the recipe, not the data" collaboration possible. It's locked in CI by `GenerationEngineTest.shouldProduceIdenticalOrderedOutputRegardlessOfThreadCount`.
 
+**Compressed output (gzip):** SeedStream supports two compression modes for file destinations:
+- **`compress_mode: stream` (default)** — the entire output is gzipped as a single stream on the writer thread. The `.gz` file is a single gzip member; decompressed bytes are byte-identical to the uncompressed output. `.gz` bytes are byte-identical across thread counts and machines (same seed, same version, same JDK zlib).
+- **`compress_mode: per_chunk` (opt-in)** — each generation chunk is gzipped independently on workers as a separate gzip member, then the writer concatenates complete members in chunk order. The resulting `.gz` file is a valid multi-member gzip (RFC 1952, transparent to `gunzip` and `GZIPInputStream`). Decompressed bytes remain byte-identical to the uncompressed output (hard determinism guarantee), but compressed `.gz` bytes differ from `stream` mode and are a function of member boundaries — which depend only on `chunkSize` and record count, never thread count. Per-chunk mode moves gzip deflate off the single writer thread onto parallel workers, with a trade-off: slightly lower compression ratio (few %) due to smaller dictionaries per member, but removes compression from the writer-thread bottleneck on large jobs.
+
 ---
 
 ## Requirements
