@@ -8,8 +8,9 @@
 -- Session settings below pin the textual rendering of dates/timestamps so the hash depends only
 -- on the data, not on the client's locale or timezone.
 --
--- Usage: PGPASSWORD=... psql -h localhost -U ci_user -d ci_testdb -q -X -f verify.sql
--- (-q suppresses command tags, so stdout is exactly the three fingerprint lines.)
+-- Usage: PGPASSWORD=... psql -h localhost -U ci_user -d ci_testdb -q -X -f verify.sql | grep -v '^$'
+-- (-q suppresses command tags; the grep drops the trailing blank line some psql builds add after
+-- the last unaligned record, so the output is exactly the three fingerprint lines.)
 
 \pset format unaligned
 \pset tuples_only on

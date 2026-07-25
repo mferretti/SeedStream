@@ -87,7 +87,7 @@ export PGPASSWORD=$DB_PASSWORD
 
 psql -h localhost -U ci_user -d ci_testdb -f schema.sql     # once
 ./seed.sh                                                   # every run
-psql -h localhost -U ci_user -d ci_testdb -q -X -f verify.sql
+psql -h localhost -U ci_user -d ci_testdb -q -X -f verify.sql | grep -v '^$'
 ```
 
 Expected output — and identical after any number of reruns:
@@ -141,3 +141,6 @@ assertThat(orderRepository.findAll())
   `expected-fingerprint.txt` with `verify.sql` when it happens.
 - **No uniqueness guarantee.** `ref[]` samples uniformly, so a customer may get many orders or none.
   Assert on aggregates, not on "every customer has an order".
+- **Timestamps are stored in UTC**, independent of the JVM's time zone — this fixture is what caught
+  the bug where they weren't (see the CHANGELOG). `orders.placed_at` therefore fingerprints
+  identically on a developer laptop and a CI runner.

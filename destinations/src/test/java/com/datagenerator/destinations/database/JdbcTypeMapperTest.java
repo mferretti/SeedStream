@@ -31,11 +31,14 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,11 +51,24 @@ class JdbcTypeMapperTest {
   private static final String DATE_FROM = "2020-01-01";
   private static final String DATE_TO = "2025-12-31";
 
+  private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+
   @Mock private PreparedStatement ps;
 
   @BeforeEach
   void setUp() throws SQLException {
     // no-op setup — mocks are injected by Mockito
+  }
+
+  /**
+   * Asserts the instant was bound through a UTC calendar, which is what keeps the stored wall-clock
+   * value independent of the JVM's default time zone. Calendars are compared by zone, not by
+   * equals() — a Calendar also carries its creation time, so two UTC instances are never equal.
+   */
+  private void verifyBoundAsUtcTimestamp(int index, Instant expected) throws SQLException {
+    ArgumentCaptor<Calendar> calendar = ArgumentCaptor.forClass(Calendar.class);
+    verify(ps).setTimestamp(eq(index), eq(Timestamp.from(expected)), calendar.capture());
+    assertThat(calendar.getValue().getTimeZone()).isEqualTo(UTC);
   }
 
   // -------------------------------------------------------------------------
@@ -107,11 +123,26 @@ class JdbcTypeMapperTest {
     }
 
     @Test
-    void shouldBindInstantAsTimestamp() throws SQLException {
+    void shouldBindInstantAsTimestampInUtc() throws SQLException {
       Instant instant = Instant.parse(TS_VAL);
       JdbcTypeMapper.bind(ps, 1, instant);
 
-      verify(ps).setTimestamp(1, Timestamp.from(instant));
+      verifyBoundAsUtcTimestamp(1, instant);
+    }
+
+    @Test
+    void shouldBindInstantInUtcRegardlessOfDefaultTimeZone() throws SQLException {
+      Instant instant = Instant.parse(TS_VAL);
+      TimeZone original = TimeZone.getDefault();
+      try {
+        // A zone far from UTC in both offset and DST rules — binding must not notice
+        TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Kiritimati"));
+        JdbcTypeMapper.bind(ps, 1, instant);
+      } finally {
+        TimeZone.setDefault(original);
+      }
+
+      verifyBoundAsUtcTimestamp(1, instant);
     }
 
     @Test
@@ -251,7 +282,7 @@ class JdbcTypeMapperTest {
       Instant instant = Instant.parse(TS_VAL);
       JdbcTypeMapper.bind(ps, 1, instant, tsType);
 
-      verify(ps).setTimestamp(1, Timestamp.from(instant));
+      verifyBoundAsUtcTimestamp(1, instant);
     }
 
     // --- String coercion (the core Option B improvement) ---
@@ -302,7 +333,7 @@ class JdbcTypeMapperTest {
       PrimitiveType tsType = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, null);
       JdbcTypeMapper.bind(ps, 1, TS_VAL, tsType);
 
-      verify(ps).setTimestamp(1, Timestamp.from(Instant.parse(TS_VAL)));
+      verifyBoundAsUtcTimestamp(1, Instant.parse(TS_VAL));
     }
 
     // --- Enum and Datafaker type binding ---

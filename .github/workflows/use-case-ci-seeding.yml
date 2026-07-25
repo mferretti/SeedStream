@@ -101,8 +101,9 @@ jobs:
       - name: Fingerprint — run 1
         env:
           PGPASSWORD: ${{ env.DB_PASSWORD }}
-        # -q keeps command tags out of stdout so the file holds only the fingerprint lines
-        run: psql -q -v ON_ERROR_STOP=1 -X -f "$USE_CASE_DIR/verify.sql" > run1.txt
+        # -q keeps command tags out of stdout; the grep drops the trailing blank line some psql
+        # builds emit after the last unaligned record, so the file holds only fingerprint lines
+        run: psql -q -v ON_ERROR_STOP=1 -X -f "$USE_CASE_DIR/verify.sql" | grep -v '^$' > run1.txt
 
       - name: Seed — run 2 (reseeds over run 1)
         run: SEEDSTREAM="$PWD/cli/build/install/seedstream/bin/seedstream" "$USE_CASE_DIR/seed.sh"
@@ -110,7 +111,7 @@ jobs:
       - name: Fingerprint — run 2
         env:
           PGPASSWORD: ${{ env.DB_PASSWORD }}
-        run: psql -q -v ON_ERROR_STOP=1 -X -f "$USE_CASE_DIR/verify.sql" > run2.txt
+        run: psql -q -v ON_ERROR_STOP=1 -X -f "$USE_CASE_DIR/verify.sql" | grep -v '^$' > run2.txt
 
       - name: Assert the reseed is identical
         run: |

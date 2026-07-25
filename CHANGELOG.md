@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> ### ⚠️ Stored timestamps change if your JVM is not on UTC
+>
+> Database timestamp columns are now written in UTC instead of the JVM's default zone (see *Fixed*).
+> Rows written by an earlier version on a non-UTC machine hold a wall-clock value shifted by that
+> machine's offset; re-run the job to normalise them. Values written on a UTC machine are unchanged,
+> as are `TIMESTAMP WITH TIME ZONE` columns.
+
+### Fixed
+- **Database timestamps were bound in the JVM's default time zone (#80)** — `setTimestamp()` was called without a `Calendar`, so the driver rendered each `Instant` in the local zone before writing it to a `TIMESTAMP` column. The same seed therefore produced different stored wall-clock values on different machines: an instant of `12:00:00Z` landed as `14:00:00` on a CEST developer box and `12:00:00` on a UTC CI runner, breaking the cross-machine reproducibility guarantee for any structure with a `timestamp` field. Bindings now go through a UTC calendar, so the stored value depends only on the seed. `date` fields and `TIMESTAMP WITH TIME ZONE` columns were never affected. Caught by the new CI seeding use case, whose fingerprint differed between a local run and GitHub Actions.
+
 ### Added
 - **Opt-in table truncation via `truncate_before_insert` (#80)** — database destinations can empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert, so a fixed seed plus a clean table yields a deterministic dataset with no external teardown script. **DESTRUCTIVE** — default `false`, PostgreSQL/Oracle only.
 - **`restart_identity` for database destinations (#80)** — new opt-in job key that turns the `truncate_before_insert` statement into `TRUNCATE TABLE ... RESTART IDENTITY CASCADE`, so identity/serial sequences restart at 1 on every reseed. Without it, plain TRUNCATE leaves sequences at their high-water mark and a reseeded linked dataset breaks: children referencing a parent pool with a static `ref[parent.id, 1..N]` range hit foreign-key violations on the second run. PostgreSQL only (`RESTART IDENTITY` is not valid Oracle syntax); requires `truncate_before_insert: true` and is rejected at startup without it. Default `false`.
