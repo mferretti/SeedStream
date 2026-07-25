@@ -1,6 +1,7 @@
 ---
-# SQL files here are database DDL/fixtures, not application code. Codacy applies a
-# SQL Server (T-SQL) linter that misfires on PostgreSQL syntax (e.g. demanding
-# SET QUOTED_IDENTIFIER), so exclude them from analysis.
+# SQL files here are database DDL/fixtures, not application code. Codacy applies a fixed
+# SQL Server (T-SQL) linter that misfires on other SQL dialects (e.g. demanding
+# SET QUOTED_IDENTIFIER); SeedStream is engine-agnostic, so exclude .sql from analysis.
 exclude_paths:
   - 'config/sql/**'
+  - '**/*.sql'
