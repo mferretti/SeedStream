@@ -27,11 +27,13 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.TimeZone;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -53,6 +55,15 @@ class JdbcTypeMapperTest {
   @BeforeEach
   void setUp() throws SQLException {
     // no-op setup — mocks are injected by Mockito
+  }
+
+  /**
+   * Asserts the instant was bound as its UTC wall clock. A {@link java.time.LocalDateTime} carries
+   * no offset, so the driver has nothing to convert — that is what keeps the stored value
+   * independent of the JVM's default time zone.
+   */
+  private void verifyBoundAsUtcTimestamp(int index, Instant expected) throws SQLException {
+    verify(ps).setObject(index, LocalDateTime.ofInstant(expected, ZoneOffset.UTC));
   }
 
   // -------------------------------------------------------------------------
@@ -107,11 +118,26 @@ class JdbcTypeMapperTest {
     }
 
     @Test
-    void shouldBindInstantAsTimestamp() throws SQLException {
+    void shouldBindInstantAsTimestampInUtc() throws SQLException {
       Instant instant = Instant.parse(TS_VAL);
       JdbcTypeMapper.bind(ps, 1, instant);
 
-      verify(ps).setTimestamp(1, Timestamp.from(instant));
+      verifyBoundAsUtcTimestamp(1, instant);
+    }
+
+    @Test
+    void shouldBindInstantInUtcRegardlessOfDefaultTimeZone() throws SQLException {
+      Instant instant = Instant.parse(TS_VAL);
+      TimeZone original = TimeZone.getDefault();
+      try {
+        // A zone far from UTC in both offset and DST rules — binding must not notice
+        TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Kiritimati"));
+        JdbcTypeMapper.bind(ps, 1, instant);
+      } finally {
+        TimeZone.setDefault(original);
+      }
+
+      verifyBoundAsUtcTimestamp(1, instant);
     }
 
     @Test
@@ -251,7 +277,7 @@ class JdbcTypeMapperTest {
       Instant instant = Instant.parse(TS_VAL);
       JdbcTypeMapper.bind(ps, 1, instant, tsType);
 
-      verify(ps).setTimestamp(1, Timestamp.from(instant));
+      verifyBoundAsUtcTimestamp(1, instant);
     }
 
     // --- String coercion (the core Option B improvement) ---
@@ -302,7 +328,7 @@ class JdbcTypeMapperTest {
       PrimitiveType tsType = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, null, null);
       JdbcTypeMapper.bind(ps, 1, TS_VAL, tsType);
 
-      verify(ps).setTimestamp(1, Timestamp.from(Instant.parse(TS_VAL)));
+      verifyBoundAsUtcTimestamp(1, Instant.parse(TS_VAL));
     }
 
     // --- Enum and Datafaker type binding ---

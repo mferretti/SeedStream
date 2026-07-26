@@ -11,7 +11,7 @@ sample structures, see [`config/`](../config/) and the [root README](../README.m
 |---|---|---|---|---|
 | DORA / GDPR resilience testing | Regulated finance (bank / insurer / fintech) | Reproducible ISO 20022 SEPA dataset for load/resilience tests — no production PII in non-prod | **Ready** | [`dora-gdpr-sepa-payments/`](dora-gdpr-sepa-payments/) |
 | Developer environment bootstrapping | Application developer | One command fills a local DB with a linked users/orders/line-items dataset — no prod dump | **Ready** | [`dev-env-bootstrapping/`](dev-env-bootstrapping/) |
-| CI pipeline database seeding | Platform / DevOps | Deterministic DB seed per CI run | *Planned* ([#80](https://github.com/mferretti/SeedStream/issues/80)) | — |
+| CI pipeline database seeding | Platform / DevOps | Truncate-and-reseed a disposable DB before integration tests — identical rows, identical ids, every run | **Ready** | [`ci-pipeline-seeding/`](ci-pipeline-seeding/) |
 | Performance and load testing | Performance engineer | High-volume synthetic data for benchmarks | *Planned* ([#81](https://github.com/mferretti/SeedStream/issues/81)) | — |
 | SaaS demo environments | Sales / solutions engineering | Convincing demo data for prospect environments | *Planned* ([#82](https://github.com/mferretti/SeedStream/issues/82)) | — |
 

@@ -1,0 +1,132 @@
+name: Use case — CI pipeline seeding
+
+# Executes the use-cases/ci-pipeline-seeding/ example end to end against a real PostgreSQL service
+# container, and asserts the fixture is deterministic:
+#   1. seed → fingerprint  (run 1)
+#   2. seed → fingerprint  (run 2, reseeds over the top of run 1)
+#   3. run 1 == run 2      → truncate + restart_identity + fixed seed really are idempotent
+#   4. run 1 == committed expected-fingerprint.txt → the dataset has not silently changed
+#
+# Path-filtered: only runs when the use case, the database destination, or this workflow changes.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'use-cases/ci-pipeline-seeding/**'
+      - 'destinations/src/main/java/com/datagenerator/destinations/database/**'
+      - 'cli/src/main/java/com/datagenerator/cli/ExecuteCommand.java'
+      - '.github/workflows/use-case-ci-seeding.yml'
+  pull_request:
+    paths:
+      - 'use-cases/ci-pipeline-seeding/**'
+      - 'destinations/src/main/java/com/datagenerator/destinations/database/**'
+      - 'cli/src/main/java/com/datagenerator/cli/ExecuteCommand.java'
+      - '.github/workflows/use-case-ci-seeding.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Throwaway credentials for the ephemeral service container — nothing to protect, and the
+  # service block below cannot read secrets from the job env, so the value is repeated there.
+  DB_PASSWORD: seedstream_ci
+  PGHOST: localhost
+  PGPORT: '5432'
+  PGUSER: ci_user
+  PGDATABASE: ci_testdb
+  POSTGRES_DRIVER_VERSION: '42.7.13'
+  USE_CASE_DIR: use-cases/ci-pipeline-seeding
+
+jobs:
+  seed-and-verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ci_testdb
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: seedstream_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ci_user -d ci_testdb"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build the SeedStream distribution
+        run: ./gradlew :cli:installDist -x test
+
+      - name: Add the PostgreSQL JDBC driver to extras/
+        # Drivers are deliberately not bundled; the launcher prepends extras/* to the classpath.
+        run: |
+          set -euo pipefail
+          extras="cli/build/install/seedstream/extras"
+          base="https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRES_DRIVER_VERSION}"
+          jar="postgresql-${POSTGRES_DRIVER_VERSION}.jar"
+          mkdir -p "$extras"
+          curl -fsSL -o "$extras/$jar" "$base/$jar"
+          curl -fsSL -o "$extras/$jar.sha1" "$base/$jar.sha1"
+          # Maven Central .sha1 files hold the digest alone or "digest  filename" — take field 1.
+          ( cd "$extras" && printf '%s  %s\n' "$(cut -d' ' -f1 "$jar.sha1")" "$jar" | sha1sum -c - )
+          rm "$extras/$jar.sha1"
+
+      - name: Create the fixture schema
+        env:
+          PGPASSWORD: ${{ env.DB_PASSWORD }}
+        run: psql -v ON_ERROR_STOP=1 -f "$USE_CASE_DIR/schema.sql"
+
+      - name: Seed — run 1
+        run: |
+          chmod +x "$USE_CASE_DIR/seed.sh"
+          SEEDSTREAM="$PWD/cli/build/install/seedstream/bin/seedstream" "$USE_CASE_DIR/seed.sh"
+
+      - name: Fingerprint — run 1
+        env:
+          PGPASSWORD: ${{ env.DB_PASSWORD }}
+        # -q keeps command tags out of stdout; the grep drops the trailing blank line some psql
+        # builds emit after the last unaligned record, so the file holds only fingerprint lines
+        run: psql -q -v ON_ERROR_STOP=1 -X -f "$USE_CASE_DIR/verify.sql" | grep -v '^$' > run1.txt
+
+      - name: Seed — run 2 (reseeds over run 1)
+        run: SEEDSTREAM="$PWD/cli/build/install/seedstream/bin/seedstream" "$USE_CASE_DIR/seed.sh"
+
+      - name: Fingerprint — run 2
+        env:
+          PGPASSWORD: ${{ env.DB_PASSWORD }}
+        run: psql -q -v ON_ERROR_STOP=1 -X -f "$USE_CASE_DIR/verify.sql" | grep -v '^$' > run2.txt
+
+      - name: Assert the reseed is identical
+        run: |
+          echo "--- run 1 ---"; cat run1.txt
+          echo "--- run 2 ---"; cat run2.txt
+          diff -u run1.txt run2.txt
+
+      - name: Assert the dataset matches the committed fingerprint
+        run: diff -u "$USE_CASE_DIR/expected-fingerprint.txt" run1.txt
+
+      - name: Sample the seeded data on failure
+        if: failure()
+        env:
+          PGPASSWORD: ${{ env.DB_PASSWORD }}
+        run: |
+          psql -c 'SELECT * FROM customers ORDER BY id LIMIT 5;'
+          psql -c 'SELECT * FROM orders ORDER BY id LIMIT 5;'
+          psql -c 'SELECT * FROM order_items ORDER BY id LIMIT 5;'

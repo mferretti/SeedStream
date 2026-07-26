@@ -25,10 +25,11 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Maps generated Java values to JDBC {@link PreparedStatement} bindings.
@@ -54,14 +55,29 @@ import java.time.LocalDate;
  *   <li>{@link PrimitiveType.Kind#BOOLEAN} → {@code setBoolean()} (coerces {@link String})
  *   <li>{@link PrimitiveType.Kind#CHAR} → {@code setString()}
  *   <li>{@link PrimitiveType.Kind#DATE} → {@code setDate()} (coerces ISO-8601 {@link String})
- *   <li>{@link PrimitiveType.Kind#TIMESTAMP} → {@code setTimestamp()} (coerces ISO-8601 {@link
- *       String})
+ *   <li>{@link PrimitiveType.Kind#TIMESTAMP} → {@code setObject()} with a UTC {@link LocalDateTime}
+ *       (coerces ISO-8601 {@link String})
  *   <li>{@link EnumType} → {@code setString()}
  *   <li>{@link CustomDatafakerType} → {@code setString()} (Datafaker always produces strings)
  *   <li>{@code null} → {@code setNull()} with correct SQL type derived from {@link DataType}
  * </ul>
  *
- * <p><b>Thread Safety:</b> Stateless — all methods are static. Safe for concurrent use.
+ * <p><b>Timestamps are written as a UTC wall clock.</b> {@code setTimestamp(i, ts)} lets the driver
+ * render the instant in the JVM's default time zone, so the same seed produced different stored
+ * values on machines in different zones — an {@code Instant} of {@code 12:00:00Z} landed as {@code
+ * 14:00:00} in a {@code TIMESTAMP} column on a CEST box and as {@code 12:00:00} on a UTC box.
+ * Binding a {@link LocalDateTime} taken at {@link ZoneOffset#UTC} removes the JVM zone from the
+ * equation entirely: the value carries no offset, so the driver has nothing to convert and the
+ * stored wall clock depends only on the seed.
+ *
+ * <p>This governs the value leaving the client. Zone-aware column types still apply their own
+ * conversion on top: PostgreSQL {@code timestamptz} and Oracle {@code TIMESTAMP WITH TIME ZONE}
+ * preserve the instant, but MySQL {@code TIMESTAMP} converts using the connection's session zone
+ * and can still drift — see issue #218. Zone-naive columns ({@code TIMESTAMP}, {@code DATETIME},
+ * {@code DATETIME2}) are exact.
+ *
+ * <p><b>Thread Safety:</b> Stateless — all methods are static and every value bound is immutable.
+ * Safe for concurrent use.
  */
 public class JdbcTypeMapper {
 
@@ -92,7 +108,7 @@ public class JdbcTypeMapper {
     } else if (value instanceof LocalDate d) {
       ps.setDate(index, Date.valueOf(d));
     } else if (value instanceof Instant t) {
-      ps.setTimestamp(index, Timestamp.from(t));
+      ps.setObject(index, toUtcWallClock(t));
     } else {
       // String, enum values, Datafaker types, and any other Object → setString
       ps.setString(index, value.toString());
@@ -132,7 +148,7 @@ public class JdbcTypeMapper {
         case BOOLEAN -> ps.setBoolean(index, toBool(value));
         case CHAR -> ps.setString(index, value.toString());
         case DATE -> ps.setDate(index, toDate(value));
-        case TIMESTAMP -> ps.setTimestamp(index, toTimestamp(value));
+        case TIMESTAMP -> ps.setObject(index, toUtcWallClock(value));
         default -> throw new IllegalStateException("Unexpected PrimitiveType.Kind: " + p.getKind());
       }
       return;
@@ -198,8 +214,12 @@ public class JdbcTypeMapper {
     return Date.valueOf(LocalDate.parse(value.toString()));
   }
 
-  private static Timestamp toTimestamp(Object value) {
-    if (value instanceof Instant t) return Timestamp.from(t);
-    return Timestamp.from(Instant.parse(value.toString()));
+  /**
+   * Converts a generated value to the UTC wall clock to bind. Returning {@link LocalDateTime} — a
+   * value with no offset — is what keeps the write independent of the JVM's time zone.
+   */
+  private static LocalDateTime toUtcWallClock(Object value) {
+    Instant instant = value instanceof Instant t ? t : Instant.parse(value.toString());
+    return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
   }
 }

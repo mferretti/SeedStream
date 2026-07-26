@@ -780,9 +780,16 @@ public class ExecuteCommand implements Callable<Integer> {
     if (conf.has("inject_parent_fk")) {
       builder.injectParentFk(conf.get("inject_parent_fk").asBoolean());
     }
-    if (conf.has("truncate_before_insert")) {
-      builder.truncateBeforeInsert(conf.get("truncate_before_insert").asBoolean());
+    boolean truncateBeforeInsert =
+        conf.has("truncate_before_insert") && conf.get("truncate_before_insert").asBoolean();
+    boolean restartIdentity =
+        conf.has("restart_identity") && conf.get("restart_identity").asBoolean();
+    if (restartIdentity && !truncateBeforeInsert) {
+      throw new IllegalArgumentException(
+          "restart_identity requires truncate_before_insert: true — it only qualifies the TRUNCATE "
+              + "statement and has no effect on its own");
     }
+    builder.truncateBeforeInsert(truncateBeforeInsert).restartIdentity(restartIdentity);
 
     DatabaseDestinationConfig dbConfig = builder.build();
     log.info(

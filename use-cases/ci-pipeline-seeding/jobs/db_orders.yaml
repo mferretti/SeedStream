@@ -1,0 +1,15 @@
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: orders.yaml
+type: database
+seed:
+  type: embedded
+  value: 424242            # fixed → identical dataset on every CI run and every branch
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/ci_testdb"
+  username: "ci_user"
+  password: "${DB_PASSWORD}"
+  table: "orders"
+  batch_size: 500
+  transaction_strategy: per_batch
+  truncate_before_insert: true   # ⚠️ DESTRUCTIVE — disposable CI database only
+  restart_identity: true         # ids restart at 1, so order_items' ref[orders.id, 1..400] holds

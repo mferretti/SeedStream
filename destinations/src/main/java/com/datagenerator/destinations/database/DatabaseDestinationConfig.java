@@ -36,6 +36,7 @@ import lombok.Value;
  *   pool_size: 10
  *   transaction_strategy: per_batch
  *   truncate_before_insert: true # DESTRUCTIVE — empties the table (CASCADE) before seeding
+ *   restart_identity: true       # also reset identity/serial sequences (PostgreSQL only)
  * </pre>
  *
  * <p><b>Environment variable substitution:</b> String values matching {@code ${VAR_NAME}} are
@@ -115,4 +116,20 @@ public class DatabaseDestinationConfig {
    * nested foreign-key graphs are cleared in one shot; MySQL/SQL Server are not supported.
    */
   @Builder.Default boolean truncateBeforeInsert = false;
+
+  /**
+   * When {@code true}, the truncate emitted by {@link #truncateBeforeInsert} becomes {@code
+   * TRUNCATE TABLE ... RESTART IDENTITY CASCADE}, resetting the sequences owned by identity/serial
+   * columns of the truncated tables. Default: {@code false}. Ignored unless {@code
+   * truncateBeforeInsert} is enabled.
+   *
+   * <p>Plain TRUNCATE leaves sequences where they are, so a reseeded table restarts at the previous
+   * high-water mark. That breaks reseeding of linked datasets, where children reference parents
+   * with a static {@code ref[parent.id, 1..N]} range: on the second run the parents are numbered
+   * {@code N+1..2N} and the FK inserts fail. Enabling this yields a dense {@code 1..N} identity
+   * sequence on every run.
+   *
+   * <p>PostgreSQL only — {@code RESTART IDENTITY} is not valid Oracle TRUNCATE syntax.
+   */
+  @Builder.Default boolean restartIdentity = false;
 }

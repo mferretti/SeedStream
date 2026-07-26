@@ -413,7 +413,9 @@ a "scenario README + config" unit you can copy, run in one command, and forward 
 | Use case | Persona | Status |
 |----------|---------|--------|
 | [DORA / GDPR resilience testing (ISO 20022 SEPA)](use-cases/dora-gdpr-sepa-payments/) | Regulated finance | **Ready** |
-| Dev bootstrapping · CI DB seeding · load testing · SaaS demos | Various | *Planned* |
+| [Developer environment bootstrapping](use-cases/dev-env-bootstrapping/) | Application developer | **Ready** |
+| [CI pipeline database seeding](use-cases/ci-pipeline-seeding/) | Platform / DevOps | **Ready** |
+| Load testing · SaaS demos | Various | *Planned* |
 
 See [use-cases/](use-cases/) for the full index.
 

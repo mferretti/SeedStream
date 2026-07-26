@@ -9,7 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> ### ⚠️ Stored timestamps change if your JVM is not on UTC
+>
+> Database timestamp columns are now written in UTC instead of the JVM's default zone (see *Fixed*).
+> Rows written by an earlier version on a non-UTC machine hold a wall-clock value shifted by that
+> machine's offset; re-run the job to normalise them. Values written on a UTC machine are unchanged,
+> as are `TIMESTAMP WITH TIME ZONE` columns.
+
+### Fixed
+- **Database timestamps were bound in the JVM's default time zone (#80)** — `setTimestamp()` was called without a `Calendar`, so the driver rendered each `Instant` in the local zone before writing it to a `TIMESTAMP` column. The same seed therefore produced different stored wall-clock values on different machines: an instant of `12:00:00Z` landed as `14:00:00` on a CEST developer box and `12:00:00` on a UTC CI runner, breaking the cross-machine reproducibility guarantee for any structure with a `timestamp` field. Timestamps are now bound as a `LocalDateTime` taken at `ZoneOffset.UTC` — a value with no offset, so the driver has nothing to convert and the stored wall clock depends only on the seed. `date` fields were never affected. Verified on PostgreSQL, MySQL, Oracle and SQL Server. Caught by the new CI seeding use case, whose fingerprint differed between a local run and GitHub Actions. Note that zone-aware column types still apply their own conversion: PostgreSQL `timestamptz` and Oracle `TIMESTAMP WITH TIME ZONE` preserve the instant, but MySQL `TIMESTAMP` converts using the connection's session zone and can still drift (#218).
+
 ### Added
+- **Opt-in table truncation via `truncate_before_insert` (#80)** — database destinations can empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert, so a fixed seed plus a clean table yields a deterministic dataset with no external teardown script. **DESTRUCTIVE** — default `false`, PostgreSQL/Oracle only.
+- **`restart_identity` for database destinations (#80)** — new opt-in job key that turns the `truncate_before_insert` statement into `TRUNCATE TABLE ... RESTART IDENTITY CASCADE`, so identity/serial sequences restart at 1 on every reseed. Without it, plain TRUNCATE leaves sequences at their high-water mark and a reseeded linked dataset breaks: children referencing a parent pool with a static `ref[parent.id, 1..N]` range hit foreign-key violations on the second run. PostgreSQL only (`RESTART IDENTITY` is not valid Oracle syntax); requires `truncate_before_insert: true` and is rejected at startup without it. Default `false`.
+- **CI pipeline seeding use case (#80)** — `use-cases/ci-pipeline-seeding/`: a runnable customers/orders/order_items fixture (schema, structures, jobs, `seed.sh`, `verify.sql`) that truncates and reseeds a disposable PostgreSQL database with a fixed seed, so integration tests see byte-for-byte identical rows and dense ids on every run. The new `use-case-ci-seeding.yml` workflow executes it against a PostgreSQL service container and asserts two consecutive seeds match each other and the committed fingerprint. Replaces the standalone `docs/CI-SEEDING.md` guide (now a pointer to the use case) and the `config/**/ci_*` sample files.
 - **Opt-in parallel gzip via `compress_mode: per_chunk` (#210)** — file destinations now support an alternative compression strategy: each generation chunk is gzipped independently on workers and concatenated as a multi-member RFC 1952 gzip, removing compression from the writer-thread bottleneck. Decompressed output is byte-identical to `stream` mode (default), and member boundaries depend only on chunk size and record count, never thread count — so per-chunk `.gz` files are byte-identical across parallel runs for a given seed. Compressed `.gz` bytes differ between modes due to per-member dictionary boundaries; the uncompressed stream remains the hard determinism guarantee. Requires `compress: true` and an NDJSON-style format (JSON/NDJSON only; CSV/Avro unchanged). Gated on new `compress_mode` YAML key (`stream` = default, `per_chunk` = opt-in).
 
 ---
