@@ -41,4 +41,10 @@ class DatabaseDestinationSqlServerIT extends AbstractDatabaseDestinationIT {
   protected JdbcDatabaseContainer<?> container() {
     return sqlServer;
   }
+
+  // In T-SQL, TIMESTAMP is a rowversion (an auto-generated binary counter), not a datetime.
+  @Override
+  protected String timestampColumnType() {
+    return "DATETIME2";
+  }
 }

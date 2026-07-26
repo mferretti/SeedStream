@@ -40,4 +40,11 @@ class DatabaseDestinationMySqlIT extends AbstractDatabaseDestinationIT {
     String base = container().getJdbcUrl();
     return base + (base.contains("?") ? "&" : "?") + "connectionTimeZone=UTC";
   }
+
+  // MySQL's TIMESTAMP converts to/from the session zone server-side, which is a separate concern
+  // from the client-side binding under test. DATETIME stores the wall clock as handed over.
+  @Override
+  protected String timestampColumnType() {
+    return "DATETIME";
+  }
 }

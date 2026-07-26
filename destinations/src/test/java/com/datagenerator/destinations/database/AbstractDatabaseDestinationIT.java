@@ -19,15 +19,21 @@ package com.datagenerator.destinations.database;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.destinations.IntegrationTest;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +44,7 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
  * subclasses.
  *
  * <p>Uses the passport structure (Stage 1 — flat fields only) to exercise all supported JDBC type
- * mappings: {@code VARCHAR}, {@code DATE}, and {@code enum} values as strings.
+ * mappings: {@code VARCHAR}, {@code DATE}, {@code TIMESTAMP}, and {@code enum} values as strings.
  *
  * <p>Run with: {@code ./gradlew :destinations:integrationTest}
  */
@@ -55,29 +61,57 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
   private static final String FIELD_ISSUE_DATE = "issue_date";
   private static final String FIELD_EXPIRY_DATE = "expiry_date";
   private static final String FIELD_AUTHORITY = "authority";
+  private static final String FIELD_ISSUED_AT = "issued_at";
   private static final String PASSPORT_AB = "AB123456";
   private static final String TABLE_PASSPORTS = "passports";
 
-  private static final String CREATE_PASSPORTS_TABLE =
-      """
-      CREATE TABLE passports (
-        doc_number     VARCHAR(9),
-        first_name     VARCHAR(255),
-        last_name      VARCHAR(255),
-        full_name      VARCHAR(255),
-        dob            DATE,
-        nationality    VARCHAR(255),
-        place_of_birth VARCHAR(255),
-        issue_date     DATE,
-        expiry_date    DATE,
-        authority      VARCHAR(255),
-        sex            VARCHAR(5)
-      )
-      """;
+  /** UTC+14 and no DST — as far from UTC as a JVM default zone gets. */
+  private static final String FAR_ZONE = "Pacific/Kiritimati";
+
+  private static final Instant ISSUED_AT = Instant.parse("2024-06-15T10:30:00Z");
 
   private Connection verifyConnection;
 
   protected abstract JdbcDatabaseContainer<?> container();
+
+  /**
+   * Passport DDL. Built per-run rather than held as a constant because the timestamp column type is
+   * dialect-dependent — see {@link #timestampColumnType()}.
+   */
+  @SuppressFBWarnings(
+      "VA_FORMAT_STRING_USES_NEWLINE") // text block newlines are intentional DDL line endings
+  private String createPassportsTable() {
+    return """
+        CREATE TABLE passports (
+          doc_number     VARCHAR(9),
+          first_name     VARCHAR(255),
+          last_name      VARCHAR(255),
+          full_name      VARCHAR(255),
+          dob            DATE,
+          nationality    VARCHAR(255),
+          place_of_birth VARCHAR(255),
+          issue_date     DATE,
+          expiry_date    DATE,
+          authority      VARCHAR(255),
+          sex            VARCHAR(5),
+          issued_at      %s
+        )
+        """
+        .formatted(timestampColumnType());
+  }
+
+  /**
+   * SQL type for a wall-clock timestamp column — one with no time-zone semantics of its own.
+   *
+   * <p>Standard {@code TIMESTAMP} everywhere except the two dialects where that name means
+   * something else: SQL Server's {@code TIMESTAMP} is a rowversion (not a datetime at all), and
+   * MySQL's applies a server-side session-zone conversion on write and read, which would mask what
+   * {@link #shouldStoreTimestampInUtcRegardlessOfDefaultTimeZone()} asserts about the client-side
+   * binding. Both override this with their plain datetime type.
+   */
+  protected String timestampColumnType() {
+    return "TIMESTAMP";
+  }
 
   protected String jdbcUrl() {
     return container().getJdbcUrl();
@@ -95,7 +129,7 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
   void setUp() throws SQLException {
     verifyConnection = DriverManager.getConnection(jdbcUrl(), username(), password());
     try (Statement st = verifyConnection.createStatement()) {
-      st.execute(CREATE_PASSPORTS_TABLE);
+      st.execute(createPassportsTable());
     }
   }
 
@@ -263,6 +297,81 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Timestamps — written in UTC, whatever zone the JVM happens to be in
+  // -------------------------------------------------------------------------
+
+  /**
+   * Writes one row carrying {@code issued_at} while the JVM default zone is {@code zoneId}, which
+   * is the only thing that differs between a developer laptop and a CI runner.
+   *
+   * @param schema declared field types for schema-aware binding, or null for runtime inference
+   */
+  private void writeIssuedAtUnderZone(
+      String docNumber, Object issuedAt, String zoneId, Map<String, String> schema) {
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put(FIELD_NUMBER, docNumber);
+    row.put(FIELD_ISSUED_AT, issuedAt);
+
+    TimeZone original = TimeZone.getDefault();
+    try {
+      TimeZone.setDefault(TimeZone.getTimeZone(zoneId));
+      try (DatabaseDestination dest =
+          schema == null
+              ? new DatabaseDestination(config())
+              : new DatabaseDestination(config(), schema)) {
+        dest.open();
+        dest.write(row);
+        dest.flush();
+      }
+    } finally {
+      TimeZone.setDefault(original);
+    }
+  }
+
+  /**
+   * Reads the stored value back interpreted in UTC, so the assertion depends on the wall clock that
+   * was written and not on the zone in force at read time. Binding without a UTC calendar stored a
+   * wall clock shifted by the writer's offset, which surfaces here as a different instant.
+   */
+  private Timestamp readIssuedAtInUtc(String docNumber) throws SQLException {
+    try (PreparedStatement ps =
+        verifyConnection.prepareStatement("SELECT issued_at FROM passports WHERE doc_number = ?")) {
+      ps.setString(1, docNumber);
+      try (ResultSet rs = ps.executeQuery()) {
+        assertThat(rs.next()).isTrue();
+        return rs.getTimestamp(FIELD_ISSUED_AT, Calendar.getInstance(TimeZone.getTimeZone("UTC")));
+      }
+    }
+  }
+
+  @Test
+  void shouldStoreTimestampInUtcRegardlessOfDefaultTimeZone() throws SQLException {
+    // One instant, written as if from two machines 14 hours apart
+    writeIssuedAtUnderZone("TS000001", ISSUED_AT, FAR_ZONE, null);
+    writeIssuedAtUnderZone("TS000002", ISSUED_AT, "UTC", null);
+
+    Timestamp expected = Timestamp.from(ISSUED_AT);
+    assertThat(readIssuedAtInUtc("TS000001")).isEqualTo(expected);
+    assertThat(readIssuedAtInUtc("TS000002")).isEqualTo(expected);
+  }
+
+  @Test
+  void shouldStoreTimestampInUtcWithSchemaAwareBinding() throws SQLException {
+    // Option B: ISO-8601 String coerced through the declared timestamp type
+    writeIssuedAtUnderZone("TS000003", ISSUED_AT.toString(), FAR_ZONE, timestampSchema());
+
+    assertThat(readIssuedAtInUtc("TS000003")).isEqualTo(Timestamp.from(ISSUED_AT));
+  }
+
+  private Map<String, String> timestampSchema() {
+    return Map.of(
+        FIELD_NUMBER,
+        "char[8..9]",
+        FIELD_ISSUED_AT,
+        "timestamp[2020-01-01T00:00:00..2030-12-31T23:59:59]");
+  }
+
   @Test
   void shouldInsertAcrossMultipleBatches() throws SQLException {
     // batchSize=10, writing 35 records → 3 full batches + 1 partial
@@ -341,7 +450,7 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
   void shouldRespectTableNameOverride() throws SQLException {
     // Create an alternate table
     try (Statement st = verifyConnection.createStatement()) {
-      st.execute(CREATE_PASSPORTS_TABLE.replace(TABLE_PASSPORTS, "alt_passports"));
+      st.execute(createPassportsTable().replace(TABLE_PASSPORTS, "alt_passports"));
     }
 
     DatabaseDestinationConfig altConfig =
