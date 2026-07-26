@@ -27,18 +27,17 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Calendar;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.TimeZone;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -51,8 +50,6 @@ class JdbcTypeMapperTest {
   private static final String DATE_FROM = "2020-01-01";
   private static final String DATE_TO = "2025-12-31";
 
-  private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
-
   @Mock private PreparedStatement ps;
 
   @BeforeEach
@@ -61,14 +58,12 @@ class JdbcTypeMapperTest {
   }
 
   /**
-   * Asserts the instant was bound through a UTC calendar, which is what keeps the stored wall-clock
-   * value independent of the JVM's default time zone. Calendars are compared by zone, not by
-   * equals() — a Calendar also carries its creation time, so two UTC instances are never equal.
+   * Asserts the instant was bound as its UTC wall clock. A {@link java.time.LocalDateTime} carries
+   * no offset, so the driver has nothing to convert — that is what keeps the stored value
+   * independent of the JVM's default time zone.
    */
   private void verifyBoundAsUtcTimestamp(int index, Instant expected) throws SQLException {
-    ArgumentCaptor<Calendar> calendar = ArgumentCaptor.forClass(Calendar.class);
-    verify(ps).setTimestamp(eq(index), eq(Timestamp.from(expected)), calendar.capture());
-    assertThat(calendar.getValue().getTimeZone()).isEqualTo(UTC);
+    verify(ps).setObject(index, LocalDateTime.ofInstant(expected, ZoneOffset.UTC));
   }
 
   // -------------------------------------------------------------------------
