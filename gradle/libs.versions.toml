@@ -18,7 +18,7 @@ rgxgen = "3.1"
 
 # Validation
 jakarta-validation = "3.1.1"
-hibernate-validator = "9.1.2.Final"
+hibernate-validator = "9.1.3.Final"
 jakarta-el = "4.0.2"
 
 # Schema inspection
