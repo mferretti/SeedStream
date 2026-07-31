@@ -36,7 +36,24 @@
           over-matches azure-core/identity/json by their own artifact versions.
         - CVE-2023-36415 / CVE-2024-35255: CPE false positives (confirmed in 2026-07-07 review).
 
-      Suppressions below are all false positives, time-boxed to 2026-10-10.
+      2026-07-31 (workflow_dispatch on main and on the aws-sdk 2.49.3 Dependabot branch): the
+      CVSS>=7.0 gate failed on :benchmarks with CVE-2026-56816 against all 19 netty 4.1.136.Final
+      artifacts. Both branches failed identically, so it is not a regression from the dependency
+      bump — the CVE was published 2026-07-21 and reached NVD's CPE data after the 2026-07-29 main
+      run. NVD freshness confirmed for these runs ("Update NVD database" = success; the cache key
+      now rotates per github.run_id).
+
+      Triage: false positive. The flaw is Http3FrameCodec.decodeFrame trusting the wire-specified
+      payLoadLength for reserved HTTP/3 frame types (unbounded buffering -> memory-exhaustion DoS),
+      shipped only in netty-codec-http3 on the 4.2.x line and fixed in 4.2.16.Final. This project
+      forces netty 4.1.136.Final (build.gradle.kts resolutionStrategy.eachDependency, holding the
+      fix for CVE-2026-44891/55831/55833); the 4.1.x line has no HTTP/3 support and the dependency
+      tree resolves zero netty-codec-http3 artifacts on any configuration. NVD's CPE carries
+      versionEndExcluding 4.2.16 with no versionStartIncluding, so it over-matches the entire 4.1.x
+      line across every netty artifact — same shape as the httpcore 4.4.16 entry below. Upgrading
+      to 4.2.x is not the remedy: it is a separate release line, not a patch for 4.1.x.
+
+      Suppressions below are all false positives, time-boxed to 2026-10-10 (netty: 2026-10-29).
     -->
 
     <suppress until="2026-10-10Z">
@@ -77,6 +94,21 @@
         <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpcore@.*$</packageUrl>
         <cve>CVE-2026-54399</cve>
         <cve>CVE-2026-54428</cve>
+    </suppress>
+
+    <suppress until="2026-10-29Z">
+        <notes>CVE-2026-56816: false positive on netty 4.1.136.Final. The flaw is
+        Http3FrameCodec.decodeFrame trusting the wire-specified payLoadLength for reserved HTTP/3
+        frame types, letting an attacker open many QUIC streams and exhaust memory. It ships only
+        in netty-codec-http3 on the 4.2.x line and is fixed in 4.2.16.Final. This project resolves
+        netty 4.1.x only (codec-http / codec-http2; zero netty-codec-http3 artifacts on any
+        configuration), so the vulnerable class is never present, and 4.2.x is a separate release
+        line rather than a patch for 4.1.x. NVD's CPE has versionEndExcluding 4.2.16 with no
+        versionStartIncluding, so it over-matches the whole 4.1.x line across every netty artifact
+        (19 flagged, all transitive via grpc-netty-shaded / azure-core-http-netty). Re-verify
+        component + CPE at expiry, and drop this entry if the netty force moves to 4.2.16+.</notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty-.*@4\.1\..*$</packageUrl>
+        <cve>CVE-2026-56816</cve>
     </suppress>
 
 </suppressions>
