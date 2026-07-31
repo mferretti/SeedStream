@@ -486,11 +486,12 @@ The determinism guarantee in particular is locked by a regression test that gene
 
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
-**Known open issues (as of 2026-07-12):** none exploitable. One transitive fix applied; four
-CPE false positives suppressed with a 2026-10-10 expiry.
+**Known open issues (as of 2026-07-31):** none exploitable. One transitive fix applied; five
+CPE false positives suppressed — four expiring 2026-10-10, one (netty) 2026-10-29.
 
 The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive via
-`azure-security-keyvault-secrets`). Triage against upstream CVE records:
+`azure-security-keyvault-secrets`), and the 2026-07-31 scan added a netty match. Triage against
+upstream CVE records:
 
 | CVE | Component | Resolution |
 |-----|-----------|------------|
@@ -498,6 +499,7 @@ The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive 
 | CVE-2026-54428, CVE-2026-54399 | `httpcore` 4.4.16 (classic) | False positive — HTTP/2 issue in 5.x only; 4.x has no HTTP/2. Suppressed |
 | CVE-2026-33117 | azure-core / identity / json | False positive — flaw is in keyvault-*keys* local crypto; we use keyvault-*secrets*. Suppressed |
 | CVE-2023-36415, CVE-2024-35255 | azure-identity / msal4j | CPE false positives (confirmed 2026-07-07). Suppressed |
+| CVE-2026-56816 | netty 4.1.136 (19 artifacts) | False positive — flaw is in `Http3FrameCodec` (netty-codec-http3, 4.2.x only, fixed 4.2.16); we resolve netty 4.1.x with no HTTP/3 on any configuration. NVD's CPE has no `versionStartIncluding`, so it over-matches all of 4.1.x. Suppressed |
 
 No permanent suppressions exist in this project — every entry in
 `config/dependency-check-suppressions.xml` carries an `until` expiry that forces CI to re-fail and
