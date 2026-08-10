@@ -61,7 +61,7 @@ jmh-plugin = "0.7.3"
 lombok-plugin = "9.5.0"
 spotless-plugin = "8.8.0"
 spotbugs-plugin = "6.5.9"
-dependency-check-plugin = "12.2.2"
+dependency-check-plugin = "13.0.0"
 sonarqube-plugin = "7.3.1.8318"
 
 [libraries]
