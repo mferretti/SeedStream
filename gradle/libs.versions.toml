@@ -6,7 +6,7 @@
 jackson = "2.22.1"
 lombok = "1.18.46"
 slf4j = "2.0.18"
-logback = "1.6.0"
+logback = "1.6.1"
 picocli = "4.7.7"
 
 # Data Generation
@@ -35,8 +35,8 @@ kafka = "4.3.1"
 # Database
 hikaricp = "7.1.0"
 postgresql = "42.7.13"
-mysql-connector = "8.4.0"
-ojdbc = "23.26.2.0.0"
+mysql-connector = "26.7.0"
+ojdbc = "23.26.3.0.0"
 mssql-jdbc = "13.4.0.jre11"
 
 # Testing
@@ -48,10 +48,10 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.49.3"
+aws-sdk = "2.51.2"
 azure-keyvault-secrets = "4.11.1"
 azure-identity = "1.18.4"
-gcp-secretmanager = "2.94.0"
+gcp-secretmanager = "2.95.0"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.1"
@@ -59,10 +59,10 @@ log4j = "2.26.1"
 # Build Plugins
 jmh-plugin = "0.7.3"
 lombok-plugin = "9.5.0"
-spotless-plugin = "8.8.0"
-spotbugs-plugin = "6.5.9"
-dependency-check-plugin = "12.2.2"
-sonarqube-plugin = "7.3.1.8318"
+spotless-plugin = "8.9.0"
+spotbugs-plugin = "6.5.10"
+dependency-check-plugin = "13.0.0"
+sonarqube-plugin = "7.4.0.8496"
 
 [libraries]
 # Lombok
