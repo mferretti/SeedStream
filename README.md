@@ -486,8 +486,9 @@ The determinism guarantee in particular is locked by a regression test that gene
 
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
-**Known open issues (as of 2026-07-31):** none exploitable. One transitive fix applied; five
-CPE false positives suppressed — four expiring 2026-10-10, one (netty) 2026-10-29.
+**Known open issues (as of 2026-08-16):** none exploitable and nothing at or above the CVSS 7.0
+gate. One transitive fix applied; one below-threshold finding accepted; five CPE false positives
+suppressed — four expiring 2026-10-10, one (netty) 2026-10-29.
 
 The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive via
 `azure-security-keyvault-secrets`), and the 2026-07-31 scan added a netty match. Triage against
@@ -495,11 +496,18 @@ upstream CVE records:
 
 | CVE | Component | Resolution |
 |-----|-----------|------------|
+| CVE-2026-64607 | `httpclient5` 5.6.2 | **Open, below gate** — MEDIUM (5.3). Classic (blocking) i/o client fails to release the connection back to the pool on an invalid `Content-Encoding` response header; async i/o unaffected. Reached transitively via the Azure Key Vault seed source and not on any hot path. Published 2026-08-13; affects 5.0-alpha1 → 5.6.2. Not suppressed — it is under the 7.0 threshold and is meant to stay visible |
 | CVE-2026-54428, CVE-2026-54399 | `httpcore5-h2` 5.4 | **Fixed** — forced to `5.4.3` (patched) in `build.gradle.kts` |
-| CVE-2026-54428, CVE-2026-54399 | `httpcore` 4.4.16 (classic) | False positive — HTTP/2 issue in 5.x only; 4.x has no HTTP/2. Suppressed |
+| CVE-2026-54428, CVE-2026-54399 | `httpcore` 4.4.16 (classic) | False positive — HTTP/2 issue in 5.x only; 4.x has no HTTP/2. Suppressed (see note below) |
 | CVE-2026-33117 | azure-core / identity / json | False positive — flaw is in keyvault-*keys* local crypto; we use keyvault-*secrets*. Suppressed |
 | CVE-2023-36415, CVE-2024-35255 | azure-identity / msal4j | CPE false positives (confirmed 2026-07-07). Suppressed |
-| CVE-2026-56816 | netty 4.1.136 (19 artifacts) | False positive — flaw is in `Http3FrameCodec` (netty-codec-http3, 4.2.x only, fixed 4.2.16); we resolve netty 4.1.x with no HTTP/3 on any configuration. NVD's CPE has no `versionStartIncluding`, so it over-matches all of 4.1.x. Suppressed |
+| CVE-2026-56816 | netty 4.1.136 (19 artifacts) | False positive — flaw is in `Http3FrameCodec` (netty-codec-http3, 4.2.x only, fixed 4.2.16); we resolve netty 4.1.x with no HTTP/3 on any configuration. NVD's CPE has no `versionStartIncluding`, so it over-matches all of 4.1.x. Suppressed (see note below) |
+
+**2026-08-16 scan note.** The classic-`httpcore` and netty rows above no longer produce a finding
+at all: NVD has since narrowed both CPE ranges, so those two suppressions currently match nothing.
+They are kept until their existing expiry rather than deleted, because NVD CPE data has flipped
+back before and the expiry already forces a re-review. The affected artifacts are still resolved
+(`httpcore` 4.4.16, netty 4.1.136.Final), so a re-broadened CPE would be caught.
 
 No permanent suppressions exist in this project — every entry in
 `config/dependency-check-suppressions.xml` carries an `until` expiry that forces CI to re-fail and
