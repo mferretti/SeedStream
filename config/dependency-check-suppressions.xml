@@ -53,7 +53,17 @@
       line across every netty artifact — same shape as the httpcore 4.4.16 entry below. Upgrading
       to 4.2.x is not the remedy: it is a separate release line, not a patch for 4.1.x.
 
-      Suppressions below are all false positives, time-boxed to 2026-10-10 (netty: 2026-10-29).
+      2026-08-16 review (batch Dependabot bumps, PR #237): the classic-httpcore entry
+      (CVE-2026-54428 / CVE-2026-54399) and the netty entry (CVE-2026-56816) were both matching
+      nothing — zero occurrences in the reports for every module, on main and on the branch alike,
+      while genuinely-suppressed CVEs (CVE-2023-36415, CVE-2026-33117) still appeared under
+      "Suppressed Vulnerabilities". NVD has since narrowed both CPE ranges, so neither CVE is
+      flagged against this dependency set any more. Both entries removed as dead weight, matching
+      the 2026-07-07 precedent. The affected artifacts are still resolved (httpcore 4.4.16, netty
+      4.1.136.Final), so if NVD ever re-broadens either CPE the gate fails and forces a re-triage —
+      the triage notes for both are preserved above and in the README/CHANGELOG history.
+
+      Suppressions below are all false positives, time-boxed to 2026-10-10.
     -->
 
     <suppress until="2026-10-10Z">
@@ -82,33 +92,6 @@
         (unrelated) artifact versions. Re-verify component + CPE at expiry.</notes>
         <packageUrl regex="true">^pkg:maven/com\.azure/azure-(core|core-http-netty|identity|json)@.*$</packageUrl>
         <cve>CVE-2026-33117</cve>
-    </suppress>
-
-    <suppress until="2026-10-10Z">
-        <notes>CVE-2026-54428 / CVE-2026-54399: false positive on Apache HttpComponents httpcore
-        4.4.16 (classic 4.x, transitive via azure-identity -> msal4j). Both CVEs are HTTP/2 /
-        header-parsing hardening in httpcomponents-core 5.x (fixed 5.4.3); OSV lists only 5.x
-        affected versions. httpcore 4.4.16 is the EOL final 4.x release, has no HTTP/2 support,
-        and no fix exists or is needed. The genuinely-affected httpcore5-h2 is upgraded to 5.4.3
-        via resolutionStrategy.force in build.gradle.kts (not suppressed).</notes>
-        <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpcore@.*$</packageUrl>
-        <cve>CVE-2026-54399</cve>
-        <cve>CVE-2026-54428</cve>
-    </suppress>
-
-    <suppress until="2026-10-29Z">
-        <notes>CVE-2026-56816: false positive on netty 4.1.136.Final. The flaw is
-        Http3FrameCodec.decodeFrame trusting the wire-specified payLoadLength for reserved HTTP/3
-        frame types, letting an attacker open many QUIC streams and exhaust memory. It ships only
-        in netty-codec-http3 on the 4.2.x line and is fixed in 4.2.16.Final. This project resolves
-        netty 4.1.x only (codec-http / codec-http2; zero netty-codec-http3 artifacts on any
-        configuration), so the vulnerable class is never present, and 4.2.x is a separate release
-        line rather than a patch for 4.1.x. NVD's CPE has versionEndExcluding 4.2.16 with no
-        versionStartIncluding, so it over-matches the whole 4.1.x line across every netty artifact
-        (19 flagged, all transitive via grpc-netty-shaded / azure-core-http-netty). Re-verify
-        component + CPE at expiry, and drop this entry if the netty force moves to 4.2.16+.</notes>
-        <packageUrl regex="true">^pkg:maven/io\.netty/netty-.*@4\.1\..*$</packageUrl>
-        <cve>CVE-2026-56816</cve>
     </suppress>
 
 </suppressions>
