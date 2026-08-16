@@ -274,6 +274,13 @@ subprojects {
         failBuildOnCVSS = 7.0f
         suppressionFile = "$rootDir/config/dependency-check-suppressions.xml"
 
+        // Pin the report location instead of relying on the plugin default: 12.2.2
+        // defaulted to "reports" (build/reports/) while 13.0.0 changed it to
+        // "dependency-check" (build/dependency-check/). CI globs the reports for the
+        // audit artifact, and the upload only warns when it matches nothing, so a
+        // default change silently drops the CVE reports while the run stays green.
+        outputDirectory = layout.buildDirectory.dir("reports").get().asFile
+
         // Do NOT update NVD during analysis. The OWASP plugin treats an NVD
         // update failure (e.g. a 503) as a fatal error that bypasses
         // failOnError, so an autoUpdate during analyze turns every NVD outage

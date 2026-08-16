@@ -178,3 +178,7 @@ jobs:
       with:
         name: dependency-check-reports
         path: '**/build/reports/dependency-check-report.html'
+        # Fail loudly when the glob matches nothing. The default ("warn") let the
+        # 12.2.2 -> 13.0.0 report-path change drop the CVE audit artifact while the
+        # run stayed green; a missing security report must never pass unnoticed.
+        if-no-files-found: error
