@@ -40,7 +40,7 @@ ojdbc = "23.26.3.0.0"
 mssql-jdbc = "13.4.0.jre11"
 
 # Testing
-junit = "6.1.2"
+junit = "6.1.3"
 h2 = "2.4.240"
 mockito = "5.21.0"
 assertj = "3.27.7"
