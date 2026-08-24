@@ -117,7 +117,7 @@ subprojects {
             // constraint) while runtimeClasspath correctly overrides to 2.22.0. 2.20.0 carries
             // CVE-2026-54512/54513 (CVSS > 7) + 54514; force the catalog version everywhere so
             // OWASP DC never sees 2.20.0 on any configuration.
-            "com.fasterxml.jackson.core:jackson-databind:2.22.1",
+            "com.fasterxml.jackson.core:jackson-databind:2.22.2",
             // httpclient5: AWS SDK apache5-client (:benchmarks) and Azure Key Vault secrets
             // (:schema) pull httpclient5 5.6.2, vulnerable to CVE-2026-71290 (CVSS 9.1 — async
             // TLS hostname verification silently disabled, HostnameVerificationPolicy#BUILTIN
@@ -153,7 +153,7 @@ subprojects {
 
         // Force newer versions to address security vulnerabilities
         constraints {
-            implementation("com.google.protobuf:protobuf-java:4.35.1") // CVE-2024-7254
+            implementation("com.google.protobuf:protobuf-java:4.36.0") // CVE-2024-7254
         }
 
         // Logging
