@@ -60,7 +60,7 @@ log4j = "2.26.1"
 jmh-plugin = "0.7.3"
 lombok-plugin = "9.5.0"
 spotless-plugin = "8.9.0"
-spotbugs-plugin = "6.5.10"
+spotbugs-plugin = "6.5.11"
 dependency-check-plugin = "13.0.0"
 sonarqube-plugin = "7.4.0.8496"
 
