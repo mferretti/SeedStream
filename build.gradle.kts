@@ -117,7 +117,13 @@ subprojects {
             // constraint) while runtimeClasspath correctly overrides to 2.22.0. 2.20.0 carries
             // CVE-2026-54512/54513 (CVSS > 7) + 54514; force the catalog version everywhere so
             // OWASP DC never sees 2.20.0 on any configuration.
-            "com.fasterxml.jackson.core:jackson-databind:2.22.1"
+            "com.fasterxml.jackson.core:jackson-databind:2.22.1",
+            // httpclient5: AWS SDK apache5-client (:benchmarks) and Azure Key Vault secrets
+            // (:schema) pull httpclient5 5.6.2, vulnerable to CVE-2026-71290 (CVSS 9.1 — async
+            // TLS hostname verification silently disabled, HostnameVerificationPolicy#BUILTIN
+            // ineffective) and CVE-2026-64607 (connection-pool leak on invalid Content-Encoding).
+            // Both fixed in 5.6.4. Force everywhere so OWASP DC never sees 5.6.2 on any config.
+            "org.apache.httpcomponents.client5:httpclient5:5.6.4"
         )
         // netty ships ~20 coordinated artifacts, all pulled transitively at 4.1.135.Final via
         // software.amazon.awssdk:netty-nio-client (awssdk 2.48.3 still resolves .135). 4.1.135 is
