@@ -49,7 +49,7 @@ awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
 aws-sdk = "2.51.2"
-azure-keyvault-secrets = "4.11.1"
+azure-keyvault-secrets = "4.11.2"
 azure-identity = "1.18.4"
 gcp-secretmanager = "2.95.0"
 
