@@ -487,7 +487,7 @@ The determinism guarantee in particular is locked by a regression test that gene
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
 **Known open issues (as of 2026-08-16):** none exploitable and nothing at or above the CVSS 7.0
-gate. One transitive fix applied; one below-threshold finding accepted; three CPE false positives
+gate. Transitive fixes applied by forcing patched versions; three CPE false positives
 suppressed, all expiring 2026-10-10.
 
 The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive via
@@ -496,7 +496,7 @@ upstream CVE records:
 
 | CVE | Component | Resolution |
 |-----|-----------|------------|
-| CVE-2026-64607 | `httpclient5` 5.6.2 | **Open, below gate** — MEDIUM (5.3). Classic (blocking) i/o client fails to release the connection back to the pool on an invalid `Content-Encoding` response header; async i/o unaffected. Reached transitively via the Azure Key Vault seed source and not on any hot path. Published 2026-08-13; affects 5.0-alpha1 → 5.6.2. Not suppressed — it is under the 7.0 threshold and is meant to stay visible |
+| CVE-2026-71290, CVE-2026-64607 | `httpclient5` 5.6.2 | **Fixed** — forced to `5.6.4` (patched) in `build.gradle.kts`. CVE-2026-71290 (CVSS 9.1, gate blocker on the 2026-08-23 scan): async transport silently disables TLS hostname verification (`HostnameVerificationPolicy#BUILTIN` ineffective), MITM impersonation; affects 5.4 → 5.6.3. CVE-2026-64607 (MEDIUM 5.3, previously accepted below-gate): connection-pool leak on invalid `Content-Encoding`; affects 5.0-alpha1 → 5.6.2. Reached transitively via AWS SDK `apache5-client` (`:benchmarks`) and Azure Key Vault secrets (`:schema`) |
 | CVE-2026-54428, CVE-2026-54399 | `httpcore5-h2` 5.4 | **Fixed** — forced to `5.4.3` (patched) in `build.gradle.kts` |
 | CVE-2026-54428, CVE-2026-54399 | `httpcore` 4.4.16 (classic) | False positive — HTTP/2 issue in 5.x only; 4.x has no HTTP/2. **No longer flagged**; suppression removed 2026-08-16 |
 | CVE-2026-33117 | azure-core / identity / json | False positive — flaw is in keyvault-*keys* local crypto; we use keyvault-*secrets*. Suppressed |
