@@ -22,6 +22,7 @@ import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.GeneratorValidation;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Map;
 import java.util.Random;
@@ -30,20 +31,19 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Generates random decimal numbers (decimal[min..max]) within specified bounds.
  *
- * <p><b>Algorithm:</b> Linear interpolation with random factor:
- *
- * <pre>
- * value = min + random.nextDouble() * (max - min)
- * </pre>
+ * <p><b>Algorithm:</b> Discrete uniform draw over the grid of representable values at the field's
+ * scale. With {@code steps = (max - min) * 10^scale}, a uniform integer {@code k in [0, steps]} is
+ * drawn and mapped to {@code min + k * 10^-scale}. This makes <b>both</b> {@code min} (k=0) and
+ * {@code max} (k=steps) reachable, unlike a {@code nextDouble()} interpolation whose {@code [0,1)}
+ * factor can never hit the upper bound.
  *
  * <p><b>Precision:</b> Returns BigDecimal with scale determined by max precision in min/max values.
- * Rounds HALF_UP to avoid floating-point errors.
  *
  * <p><b>Range:</b> Inclusive on both ends [min, max].
  */
 public class DecimalGenerator implements DataGenerator {
 
-  private record Bounds(BigDecimal min, BigDecimal range, int scale) {}
+  private record Bounds(BigDecimal min, BigDecimal range, int scale, BigInteger steps) {}
 
   private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
 
@@ -55,13 +55,23 @@ public class DecimalGenerator implements DataGenerator {
 
     Bounds b = boundsCache.computeIfAbsent(primitiveType, this::parseBounds);
 
-    // Generate random value: min + random * (max - min)
-    // nextDouble() returns [0.0, 1.0) so max is approached but not guaranteed; acceptable for
-    // decimals
-    BigDecimal randomFactor = BigDecimal.valueOf(random.nextDouble());
-    BigDecimal value = b.min().add(b.range().multiply(randomFactor));
+    BigInteger steps = b.steps();
+    BigDecimal value;
+    if (steps.signum() == 0) {
+      // min == max: the only representable value is min itself.
+      value = b.min();
+    } else if (steps.bitLength() < 63) {
+      // Common path: the grid fits in a long. Draw a uniform integer k in [0, steps] (inclusive)
+      // so both min (k=0) and max (k=steps) are reachable, then map back to the decimal grid.
+      long k = random.nextLong(steps.longValueExact() + 1);
+      value = b.min().add(BigDecimal.valueOf(k).movePointLeft(b.scale()));
+    } else {
+      // Pathological: (max-min)*10^scale exceeds long range. Fall back to continuous interpolation
+      // (upper bound then only approached, not guaranteed) rather than allocate a BigInteger draw.
+      BigDecimal randomFactor = BigDecimal.valueOf(random.nextDouble());
+      value = b.min().add(b.range().multiply(randomFactor));
+    }
 
-    // Round to desired scale
     return value.setScale(b.scale(), RoundingMode.HALF_UP);
   }
 
@@ -71,7 +81,10 @@ public class DecimalGenerator implements DataGenerator {
     GeneratorValidation.requireValidRange(min, max, "decimal");
     int scale = Math.max(min.scale(), max.scale());
     BigDecimal range = max.subtract(min);
-    return new Bounds(min, range, scale);
+    // Number of discrete increments of 10^-scale between min and max (exact: range's scale <=
+    // scale).
+    BigInteger steps = range.movePointRight(scale).toBigIntegerExact();
+    return new Bounds(min, range, scale, steps);
   }
 
   @Override
