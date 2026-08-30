@@ -351,6 +351,9 @@ public class FileDestination extends AbstractDestination {
   public void close() {
     if (!isOpen) {
       log.debug("File destination already closed: {}", config.getFilePath());
+      // open() may have allocated a stream before failing prior to setting isOpen — release any
+      // such partially-opened resources.
+      closeQuietly();
       return;
     }
 
@@ -374,6 +377,36 @@ public class FileDestination extends AbstractDestination {
       log.info("Closed file destination: {}", config.getFilePath());
     } catch (IOException e) {
       throw new DestinationException("Failed to close file", e);
+    }
+  }
+
+  /**
+   * Best-effort, null-safe cleanup of any resources {@link #open()} may have allocated before
+   * failing partway through (i.e. before {@code isOpen} was set to {@code true}). Never throws.
+   */
+  private void closeQuietly() {
+    try {
+      if (streamWriter != null) {
+        streamWriter.close();
+      }
+    } catch (IOException e) {
+      log.warn("Failed to close StreamWriter during cleanup", e);
+    }
+    try {
+      if (outputStream != null) {
+        outputStream.close();
+      }
+    } catch (IOException e) {
+      log.warn("Failed to close OutputStream during cleanup", e);
+    }
+    try {
+      if (avroFileWriter != null) {
+        avroFileWriter.close(); // also closes avroRawOut
+      } else if (avroRawOut != null) {
+        avroRawOut.close();
+      }
+    } catch (IOException e) {
+      log.warn("Failed to close Avro writer during cleanup", e);
     }
   }
 
