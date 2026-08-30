@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.*;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.GeneratorException;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +40,8 @@ class DateGeneratorTest {
 
     for (int i = 0; i < 100; i++) {
       LocalDate value = (LocalDate) generator.generate(random, type);
-      assertThat(value).isBetween(LocalDate.of(2020, 1, 1), LocalDate.of(2025, 12, 31));
+      assertThat(value)
+          .isBetween(LocalDate.of(2020, Month.JANUARY, 1), LocalDate.of(2025, Month.DECEMBER, 31));
     }
   }
 
@@ -57,7 +59,7 @@ class DateGeneratorTest {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DATE, "2024-06-15", "2024-06-15");
 
     LocalDate result = (LocalDate) generator.generate(RANDOM, type);
-    assertThat(result).isEqualTo(LocalDate.of(2024, 6, 15));
+    assertThat(result).isEqualTo(LocalDate.of(2024, Month.JUNE, 15));
   }
 
   @Test

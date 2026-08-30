@@ -35,7 +35,8 @@ public class TypeParser {
   }
 
   private static final Pattern PRIMITIVE_PATTERN =
-      Pattern.compile("^(char|int|decimal|date|timestamp)\\[([^\\]]+?)\\.\\.([^\\]]+)\\]$");
+      Pattern.compile(
+          "^(char|int|decimal|date|timestamp)\\[((?:(?!\\.\\.)[^\\]])++)\\.\\.([^\\]]++)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");
   private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[([a-z_]+)\\]$");
   private static final Pattern ARRAY_PATTERN =

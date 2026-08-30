@@ -30,6 +30,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -191,11 +192,11 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
         "Jane",
         "Doe",
         "Jane Doe",
-        LocalDate.of(1985, 3, 12),
+        LocalDate.of(1985, Month.MARCH, 12),
         "United States",
         "New York",
-        LocalDate.of(2020, 1, 15),
-        LocalDate.of(2030, 1, 15),
+        LocalDate.of(2020, Month.JANUARY, 15),
+        LocalDate.of(2030, Month.JANUARY, 15),
         "US Department of State",
         sexFor(index));
   }
@@ -237,11 +238,11 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
             "Alice",
             "Smith",
             "Alice Smith",
-            LocalDate.of(1990, 6, 21),
+            LocalDate.of(1990, Month.JUNE, 21),
             "Canada",
             "Toronto",
-            LocalDate.of(2022, 3, 10),
-            LocalDate.of(2032, 3, 10),
+            LocalDate.of(2022, Month.MARCH, 10),
+            LocalDate.of(2032, Month.MARCH, 10),
             "Passport Canada",
             "F");
 
@@ -264,9 +265,9 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
 
   @Test
   void shouldPersistDateFieldsCorrectly() throws SQLException {
-    LocalDate dob = LocalDate.of(1975, 11, 30);
-    LocalDate issueDate = LocalDate.of(2019, 5, 1);
-    LocalDate expiryDate = LocalDate.of(2029, 5, 1);
+    LocalDate dob = LocalDate.of(1975, Month.NOVEMBER, 30);
+    LocalDate issueDate = LocalDate.of(2019, Month.MAY, 1);
+    LocalDate expiryDate = LocalDate.of(2029, Month.MAY, 1);
 
     Map<String, Object> data =
         passportRecord(
@@ -552,8 +553,9 @@ abstract class AbstractDatabaseDestinationIT extends IntegrationTest {
     try (Statement st = verifyConnection.createStatement();
         ResultSet rs = st.executeQuery("SELECT dob, issue_date FROM passports")) {
       assertThat(rs.next()).isTrue();
-      assertThat(rs.getDate("dob")).isEqualTo(Date.valueOf(LocalDate.of(1990, 6, 15)));
-      assertThat(rs.getDate(FIELD_ISSUE_DATE)).isEqualTo(Date.valueOf(LocalDate.of(2020, 3, 1)));
+      assertThat(rs.getDate("dob")).isEqualTo(Date.valueOf(LocalDate.of(1990, Month.JUNE, 15)));
+      assertThat(rs.getDate(FIELD_ISSUE_DATE))
+          .isEqualTo(Date.valueOf(LocalDate.of(2020, Month.MARCH, 1)));
     }
   }
 

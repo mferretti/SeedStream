@@ -79,6 +79,9 @@ import java.time.ZoneOffset;
  * <p><b>Thread Safety:</b> Stateless — all methods are static and every value bound is immutable.
  * Safe for concurrent use.
  */
+// java.sql.Date is required by PreparedStatement.setDate(); java.time cannot be used at the JDBC
+// binding boundary. Sonar S2143 on this is a false positive (marked as such on the server); the
+// rule fires file-level with no anchor line, so @SuppressWarnings/NOSONAR cannot silence it.
 public class JdbcTypeMapper {
 
   private JdbcTypeMapper() {}

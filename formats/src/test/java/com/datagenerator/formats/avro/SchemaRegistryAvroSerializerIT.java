@@ -57,6 +57,7 @@ class SchemaRegistryAvroSerializerIT {
   static ConfluentKafkaContainer kafka =
       new ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"))
           .withNetwork(NETWORK)
+          .withListener("kafka:19092")
           .withNetworkAliases("kafka");
 
   @SuppressWarnings("resource")
@@ -65,7 +66,7 @@ class SchemaRegistryAvroSerializerIT {
       new GenericContainer<>(DockerImageName.parse("confluentinc/cp-schema-registry:7.5.0"))
           .withNetwork(NETWORK)
           .dependsOn(kafka)
-          .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "PLAINTEXT://kafka:9092")
+          .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "PLAINTEXT://kafka:19092")
           .withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
           .withEnv("SCHEMA_REGISTRY_LISTENERS", "http://0.0.0.0:8081")
           .withExposedPorts(8081)

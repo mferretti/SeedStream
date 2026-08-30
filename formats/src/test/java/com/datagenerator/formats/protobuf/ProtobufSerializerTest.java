@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -87,7 +88,7 @@ class ProtobufSerializerTest {
 
   @Test
   void shouldSerializeLocalDateAsIso8601String() {
-    LocalDate date = LocalDate.of(2024, 3, 15);
+    LocalDate date = LocalDate.of(2024, Month.MARCH, 15);
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("birthDate", date);
 
@@ -255,7 +256,7 @@ class ProtobufSerializerTest {
     data.put("inStock", true);
     data.put("tags", List.of("electronics", "gadgets"));
     data.put("createdAt", Instant.parse("2024-03-15T10:30:00Z"));
-    data.put("releaseDate", LocalDate.of(2024, 6, 1));
+    data.put("releaseDate", LocalDate.of(2024, Month.JUNE, 1));
 
     String result = serializer.serialize(data);
 

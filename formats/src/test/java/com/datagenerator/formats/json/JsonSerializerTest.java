@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +98,7 @@ class JsonSerializerTest {
 
   @Test
   void shouldSerializeLocalDateAsIso8601() throws Exception {
-    LocalDate date = LocalDate.of(2024, 3, 15);
+    LocalDate date = LocalDate.of(2024, Month.MARCH, 15);
     Map<String, Object> data = Map.of("birthDate", date);
 
     String json = serializer.serialize(data);
@@ -160,7 +161,7 @@ class JsonSerializerTest {
             "invoiceNumber",
             "INV-001",
             "date",
-            LocalDate.of(2024, 3, 15),
+            LocalDate.of(2024, Month.MARCH, 15),
             "company",
             company,
             FIELD_LINE_ITEMS,
@@ -258,7 +259,7 @@ class JsonSerializerTest {
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("name", "Bob");
     data.put("score", new BigDecimal("9.5"));
-    data.put("date", LocalDate.of(2025, 1, 1));
+    data.put("date", LocalDate.of(2025, Month.JANUARY, 1));
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     try (StreamWriter writer = serializer.createStreamWriter(out)) {

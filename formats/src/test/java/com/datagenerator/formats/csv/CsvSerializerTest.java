@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -158,7 +159,7 @@ class CsvSerializerTest {
 
   @Test
   void shouldSerializeLocalDateAsIso8601() {
-    LocalDate date = LocalDate.of(2024, 3, 15);
+    LocalDate date = LocalDate.of(2024, Month.MARCH, 15);
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("birthDate", date);
 
@@ -226,7 +227,7 @@ class CsvSerializerTest {
 
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("invoiceNumber", "INV-001");
-    data.put("date", LocalDate.of(2024, 3, 15));
+    data.put("date", LocalDate.of(2024, Month.MARCH, 15));
     data.put("lineItems", List.of(lineItem1, lineItem2));
 
     String csv = serializer.serialize(data);

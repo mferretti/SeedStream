@@ -31,6 +31,7 @@ import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.TimeZone;
@@ -111,7 +112,7 @@ class JdbcTypeMapperTest {
 
     @Test
     void shouldBindLocalDateAsDate() throws SQLException {
-      LocalDate date = LocalDate.of(2024, 6, 15);
+      LocalDate date = LocalDate.of(2024, Month.JUNE, 15);
       JdbcTypeMapper.bind(ps, 1, date);
 
       verify(ps).setDate(1, Date.valueOf(date));
@@ -265,7 +266,7 @@ class JdbcTypeMapperTest {
     @Test
     void shouldBindLocalDateValueForDateType() throws SQLException {
       PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, DATE_FROM, DATE_TO);
-      LocalDate date = LocalDate.of(2024, 3, 15);
+      LocalDate date = LocalDate.of(2024, Month.MARCH, 15);
       JdbcTypeMapper.bind(ps, 1, date, dateType);
 
       verify(ps).setDate(1, Date.valueOf(date));
@@ -320,7 +321,7 @@ class JdbcTypeMapperTest {
       PrimitiveType dateType = new PrimitiveType(PrimitiveType.Kind.DATE, DATE_FROM, DATE_TO);
       JdbcTypeMapper.bind(ps, 1, "2024-06-15", dateType);
 
-      verify(ps).setDate(1, Date.valueOf(LocalDate.of(2024, 6, 15)));
+      verify(ps).setDate(1, Date.valueOf(LocalDate.of(2024, Month.JUNE, 15)));
     }
 
     @Test
