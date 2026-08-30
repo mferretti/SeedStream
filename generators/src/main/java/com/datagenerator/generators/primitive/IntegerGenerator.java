@@ -21,6 +21,7 @@ import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.GeneratorValidation;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +45,15 @@ public class IntegerGenerator implements DataGenerator {
 
   private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
 
+  @SuppressFBWarnings(
+      value = "RV_01_TO_INT",
+      justification =
+          "Not the Math.random()*n truncation bug this pattern targets: range here spans up to "
+              + "2^32 (min=Integer.MIN_VALUE, max=Integer.MAX_VALUE), so nextLong(range) can "
+              + "return any value in the full unsigned 32-bit space. Casting that to int "
+              + "reinterprets the low 32 bits as two's-complement, and adding b.min() with "
+              + "intentional int-overflow wraparound correctly enumerates the full [min,max] "
+              + "range uniformly.")
   @Override
   public Object generate(Random random, DataType dataType) {
     PrimitiveType primitiveType =
@@ -56,15 +66,10 @@ public class IntegerGenerator implements DataGenerator {
     // Use long arithmetic to avoid overflow when (max - min + 1) doesn't fit in int
     long range = (long) b.max() - b.min() + 1;
     if (range <= 0 || range > Integer.MAX_VALUE) {
-      // Range exceeds int capacity — rejection sampling for uniform distribution
-      int result;
-      long limit = (long) Integer.MAX_VALUE + 1 - ((long) Integer.MAX_VALUE + 1) % range;
-      do {
-        result = random.nextInt() & Integer.MAX_VALUE;
-      } while (result >= limit);
-      return b.min() + (int) (result % range);
+      // range spans more than the positive int space; nextLong(bound) samples uniformly in
+      // [0,range)
+      return b.min() + (int) random.nextLong(range);
     }
-
     return b.min() + random.nextInt((int) range);
   }
 
