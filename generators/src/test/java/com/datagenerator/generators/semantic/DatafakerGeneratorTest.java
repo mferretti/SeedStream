@@ -233,6 +233,9 @@ class DatafakerGeneratorTest {
 
     try (var ctx = GeneratorContext.enter(factory, ITALY)) {
       String name1 = (String) generator.generate(random1, nameType);
+      // FakerCache requires the same thread-local Random for every call on a thread; switching
+      // to a different Random instance requires clearing the cache first (see FakerCache).
+      FakerCache.clear();
       String name2 = (String) generator.generate(random2, nameType);
 
       // Different seeds should produce different names (with very high probability)
@@ -249,6 +252,8 @@ class DatafakerGeneratorTest {
       assertThat(italianName).isNotNull();
     }
 
+    // Switching to a different Random instance on this thread requires clearing the cache first.
+    FakerCache.clear();
     Random newRandom = new Random(12345L);
     try (var ctx = GeneratorContext.enter(factory, "japan")) {
       String japaneseName = (String) generator.generate(newRandom, nameType);
