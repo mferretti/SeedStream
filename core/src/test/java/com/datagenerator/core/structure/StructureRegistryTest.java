@@ -25,7 +25,13 @@ import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.PrimitiveType;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -148,6 +154,46 @@ class StructureRegistryTest {
 
     registry.validateReferences(loaded, Path.of(CONFIG_STRUCTURES));
     // Should complete without exception
+  }
+
+  @Test
+  void shouldHandleConcurrentLoadsOfSameStructureSafely() throws InterruptedException {
+    // Regression for issue #256: structureCache was a plain HashMap, unsafe for concurrent
+    // put/get from multiple worker threads loading the same not-yet-cached structure.
+    Map<String, DataType> fields = new HashMap<>();
+    fields.put("id", new PrimitiveType(PrimitiveType.Kind.INT, "1", "999"));
+    loader.addStructure("concurrent_struct", fields);
+
+    int threadCount = 16;
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch doneLatch = new CountDownLatch(threadCount);
+    List<Map<String, DataType>> results = new CopyOnWriteArrayList<>();
+    List<Throwable> errors = new CopyOnWriteArrayList<>();
+
+    var structuresPath = Path.of(CONFIG_STRUCTURES);
+    for (int i = 0; i < threadCount; i++) {
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+              results.add(registry.loadStructure("concurrent_struct", structuresPath));
+            } catch (Exception e) {
+              errors.add(e);
+            } finally {
+              doneLatch.countDown();
+            }
+          });
+    }
+
+    startLatch.countDown();
+    assertThat(doneLatch.await(10, TimeUnit.SECONDS)).isTrue();
+    executor.shutdown();
+    assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+
+    assertThat(errors).isEmpty();
+    assertThat(results).hasSize(threadCount);
+    assertThat(results).allSatisfy(r -> assertThat(r).isEqualTo(results.get(0)));
   }
 
   /** Mock loader for testing */
