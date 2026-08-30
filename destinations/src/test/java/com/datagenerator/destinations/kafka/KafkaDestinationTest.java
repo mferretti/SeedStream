@@ -19,6 +19,8 @@ package com.datagenerator.destinations.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,6 +31,7 @@ import com.datagenerator.formats.json.JsonSerializer;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
@@ -250,6 +253,54 @@ class KafkaDestinationTest {
         .hasMessageContaining("failed after 2 attempt");
 
     verify(mockProducer, times(2)).send(any());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void shouldSurfaceAsyncSendFailuresOnClose() {
+    // Regression for issue #258: async sends that fail in the Kafka callback were only logged,
+    // never surfaced to the caller — close() must now fail loudly instead of silently dropping
+    // records.
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+    doAnswer(
+            invocation -> {
+              Callback callback = invocation.getArgument(1);
+              callback.onCompletion(null, new RuntimeException("broker down"));
+              return null;
+            })
+        .when(mockProducer)
+        .send(any(), any(Callback.class));
+
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(TOPIC).sync(false).build();
+
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+    dest.write(Map.of("key", "value"));
+
+    assertThatThrownBy(dest::close)
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("1 record(s) failed to send to Kafka topic " + TOPIC);
+
+    // Regression for issue #257: the producer must still be closed even though the failure
+    // check (raised after flush()) surfaces as an exception.
+    verify(mockProducer, times(1)).close();
+  }
+
+  @Test
+  void shouldStillCloseProducerWhenFlushThrows() {
+    // Regression for issue #257: producer.close() must run even when flush() throws, so the
+    // producer/network resources aren't leaked.
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+    doThrow(new RuntimeException("flush boom")).when(mockProducer).flush();
+
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(TOPIC).build();
+
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+
+    assertThatThrownBy(dest::close).isInstanceOf(DestinationException.class);
+
+    verify(mockProducer, times(1)).close();
   }
 
   // Note: Integration tests with actual Kafka broker using Testcontainers

@@ -24,6 +24,7 @@ import com.datagenerator.formats.FormatSerializer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -75,7 +76,10 @@ public class KafkaDestination extends AbstractDestination {
   private final RetryPolicy retryPolicy;
 
   private Producer<String, byte[]> producer;
-  private long recordCount = 0;
+  // AtomicLong: the producer is documented thread-safe for concurrent workers, and this class
+  // is also touched from the Kafka I/O thread via the async send callback below.
+  private final AtomicLong recordCount = new AtomicLong();
+  private final AtomicLong asyncFailures = new AtomicLong();
 
   /**
    * Create Kafka destination with configuration and serializer.
@@ -218,6 +222,7 @@ public class KafkaDestination extends AbstractDestination {
             (metadata, exception) -> {
               if (exception != null) {
                 log.error("Failed to send record to Kafka topic: {}", config.getTopic(), exception);
+                asyncFailures.incrementAndGet();
               } else {
                 // TRACE log successful send (sampled)
                 if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
@@ -230,11 +235,11 @@ public class KafkaDestination extends AbstractDestination {
             });
       }
 
-      recordCount++;
+      long count = recordCount.incrementAndGet();
 
       // Progress logging every 10,000 records
-      if (recordCount % 10000 == 0) {
-        log.info("Sent {} records to Kafka topic: {}", recordCount, config.getTopic());
+      if (count % 10000 == 0) {
+        log.info("Sent {} records to Kafka topic: {}", count, config.getTopic());
       }
 
     } catch (DestinationException e) {
@@ -264,10 +269,22 @@ public class KafkaDestination extends AbstractDestination {
     }
 
     try {
-      flush();
-      producer.close();
-      isOpen = false;
-      log.info("Closed Kafka destination - total records sent: {}", recordCount);
+      try {
+        flush();
+      } finally {
+        // flush() blocks until all async callbacks have fired, so asyncFailures is final here.
+        producer.close();
+        isOpen = false;
+      }
+      log.info("Closed Kafka destination - total records sent: {}", recordCount.get());
+
+      long failures = asyncFailures.get();
+      if (failures > 0) {
+        throw new DestinationException(
+            failures + " record(s) failed to send to Kafka topic " + config.getTopic());
+      }
+    } catch (DestinationException e) {
+      throw e;
     } catch (Exception e) {
       log.error("Error closing Kafka producer", e);
       throw new DestinationException("Failed to close Kafka producer", e);
