@@ -27,7 +27,9 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,17 +60,21 @@ public class TimestampGenerator implements DataGenerator {
   private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
   private static final Pattern RELATIVE_PATTERN = Pattern.compile("now([+-])(\\d+)([dhms])");
 
+  private record Bounds(Instant start, Instant end) {}
+
+  private final Map<PrimitiveType, Bounds> boundsCache = new ConcurrentHashMap<>();
+
   @Override
   public Object generate(Random random, DataType dataType) {
     PrimitiveType primitiveType =
         GeneratorValidation.requirePrimitiveKind(
             dataType, PrimitiveType.Kind.TIMESTAMP, "TimestampGenerator");
 
-    // Parse start/end timestamps
-    Instant startTimestamp = parseTimestamp(primitiveType.getMinValue(), "minValue");
-    Instant endTimestamp = parseTimestamp(primitiveType.getMaxValue(), "maxValue");
-
-    GeneratorValidation.requireValidRange(startTimestamp, endTimestamp, "timestamp");
+    // Resolve start/end once per field — freezes "now" at first touch so the range doesn't
+    // drift across the many records generated for a single run.
+    Bounds bounds = boundsCache.computeIfAbsent(primitiveType, this::parseBounds);
+    Instant startTimestamp = bounds.start();
+    Instant endTimestamp = bounds.end();
 
     // Calculate seconds between timestamps
     long secondsBetween = ChronoUnit.SECONDS.between(startTimestamp, endTimestamp);
@@ -81,6 +87,13 @@ public class TimestampGenerator implements DataGenerator {
     long randomSeconds = random.nextLong(secondsBetween + 1);
 
     return startTimestamp.plusSeconds(randomSeconds);
+  }
+
+  private Bounds parseBounds(PrimitiveType primitiveType) {
+    Instant startTimestamp = parseTimestamp(primitiveType.getMinValue(), "minValue");
+    Instant endTimestamp = parseTimestamp(primitiveType.getMaxValue(), "maxValue");
+    GeneratorValidation.requireValidRange(startTimestamp, endTimestamp, "timestamp");
+    return new Bounds(startTimestamp, endTimestamp);
   }
 
   @Override
