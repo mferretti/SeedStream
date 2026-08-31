@@ -248,6 +248,15 @@ subprojects {
 
     tasks.named<JacocoReport>("jacocoTestReport") {
         dependsOn(tasks.test)
+        // Aggregate whatever test exec data is present so integration/slow coverage counts too.
+        // Destination adapters (Kafka/DB/File) and other IT-only paths are exercised by
+        // integrationTest/slowTest, not unit tests; without their exec data the Sonar new-code
+        // coverage undercounts. A plain `build` still reports unit-only coverage (only test.exec
+        // exists); after integrationTest/slowTest run, their exec is included in the report.
+        // mustRunAfter (not dependsOn) keeps this opportunistic: it satisfies Gradle's implicit-
+        // dependency validation for reading their exec output without forcing IT/slow to run.
+        mustRunAfter(tasks.named("integrationTest"), tasks.named("slowTest"))
+        executionData(fileTree(layout.buildDirectory.dir("jacoco")).include("*.exec"))
         reports {
             xml.required.set(true)
             html.required.set(true)
