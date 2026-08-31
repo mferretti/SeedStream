@@ -255,6 +255,7 @@ class DatafakerNewTypesTest {
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       String color1 = (String) generator.generate(r1, new CustomDatafakerType(TYPE_COLOR));
+      FakerCache.clear();
       String color2 = (String) generator.generate(r2, new CustomDatafakerType(TYPE_COLOR));
       // Different seeds should produce different colors (with high probability)
       assertThat(color1).isNotEqualTo(color2);

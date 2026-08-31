@@ -120,6 +120,35 @@ class IntegerGeneratorTest {
   }
 
   @Test
+  void shouldTerminateQuicklyForFullIntRange() {
+    // Regression for issue #254: range = 2^32 (min=MIN_VALUE, max=MAX_VALUE) previously computed
+    // limit=0 in the rejection-sampling loop and spun forever. Must complete promptly.
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.INT,
+            String.valueOf(Integer.MIN_VALUE),
+            String.valueOf(Integer.MAX_VALUE));
+    Random random = new Random(42L);
+
+    for (int i = 0; i < 1000; i++) {
+      int value = (int) generator.generate(random, type);
+      assertThat(value).isBetween(Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+  }
+
+  @Test
+  void shouldTerminateQuicklyForRangeJustOverIntCapacity() {
+    // Regression for issue #254: any range in (2^31, 2^32] hit the broken branch.
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.INT, "-2000000000", "2000000000");
+    Random random = new Random(42L);
+
+    for (int i = 0; i < 1000; i++) {
+      int value = (int) generator.generate(random, type);
+      assertThat(value).isBetween(-2000000000, 2000000000);
+    }
+  }
+
+  @Test
   void shouldSupportIntType() {
     PrimitiveType intType = new PrimitiveType(PrimitiveType.Kind.INT, "1", "10");
     PrimitiveType charType = new PrimitiveType(PrimitiveType.Kind.CHAR, "1", "10");

@@ -395,6 +395,8 @@ class DatafakerGeolocationTest {
 
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       for (int seed = 0; seed < 10; seed++) {
+        // Each iteration builds a fresh Random on this thread — clear first (see FakerCache).
+        FakerCache.clear();
         Random random = new Random(seed);
         String email = (String) generator.generate(random, emailType);
         emails.add(email);

@@ -23,16 +23,16 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Registry for loaded data structures with circular reference detection. Maintains a cache of
  * parsed structures and tracks loading stack to detect cycles.
  */
 public class StructureRegistry {
-  private final Map<String, Map<String, DataType>> structureCache = new HashMap<>();
+  private final Map<String, Map<String, DataType>> structureCache = new ConcurrentHashMap<>();
   private final StructureLoader loader;
   private final ThreadLocal<Deque<String>> loadingStack = ThreadLocal.withInitial(ArrayDeque::new);
 

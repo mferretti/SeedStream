@@ -228,6 +228,9 @@ class DatafakerComplexStructureTest {
     String[] countries = {"italy", "germany", "france", "japan", "brazil"};
 
     for (String country : countries) {
+      // Each iteration builds a fresh Random on this thread — the FakerCache requires clearing
+      // first, or it fails fast on the stale-Random mismatch (see FakerCache).
+      FakerCache.clear();
       try (var ctx = GeneratorContext.enter(factory, country)) {
         Random random = new Random(12345L);
         Map<String, Object> passport =
@@ -301,6 +304,8 @@ class DatafakerComplexStructureTest {
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       // Generate 5 transactions with different seeds
       for (int i = 0; i < 5; i++) {
+        // Each iteration builds a fresh Random on this thread — clear first (see FakerCache).
+        FakerCache.clear();
         Random random = new Random(i);
         Map<String, Object> transaction =
             (Map<String, Object>) generator.generate(random, transactionType);
@@ -371,6 +376,8 @@ class DatafakerComplexStructureTest {
     try (var ctx = GeneratorContext.enter(factory, "usa")) {
       // Generate 5 movements with different seeds
       for (int i = 0; i < 5; i++) {
+        // Each iteration builds a fresh Random on this thread — clear first (see FakerCache).
+        FakerCache.clear();
         Random random = new Random((long) i * 1000);
         Map<String, Object> movement =
             (Map<String, Object>) generator.generate(random, movementType);
@@ -437,6 +444,8 @@ class DatafakerComplexStructureTest {
     String[] locales = {"usa", "italy", "germany", "france", "japan"};
 
     for (String locale : locales) {
+      // Each iteration builds a fresh Random on this thread — clear first (see FakerCache).
+      FakerCache.clear();
       try (var ctx = GeneratorContext.enter(factory, locale)) {
         Random random = new Random(12345L);
         Map<String, Object> transaction =

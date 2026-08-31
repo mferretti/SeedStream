@@ -16,7 +16,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > machine's offset; re-run the job to normalise them. Values written on a UTC machine are unchanged,
 > as are `TIMESTAMP WITH TIME ZONE` columns.
 
+> ### ⚠️ `decimal` output changes for a given seed
+>
+> `decimal[min..max]` fields now draw from a discrete uniform grid so the upper bound `max` is
+> actually reachable (see *Changed*). This changes which value a given seed produces for **every**
+> `decimal` field. If you depend on byte-identical output across versions — golden files, recorded
+> fixtures, contract tests — regenerate them. Determinism *within* this version is unchanged: a
+> given seed still yields byte-identical output on any thread count.
+
+### Changed
+- **`decimal` generator now reaches its inclusive `max` (#260)** — the old algorithm was
+  `min + nextDouble() * (max - min)`, and `nextDouble()` returns `[0.0, 1.0)`, so `max` was
+  approached but never emitted; at higher scale (e.g. `decimal[0.000000..100.000000]`) it was
+  effectively unreachable, contradicting the documented inclusive-both-ends contract. The generator
+  now draws a uniform integer `k` in `[0, steps]` where `steps = (max - min) * 10^scale`, then maps
+  it to `min + k * 10^-scale` — so both `min` (k=0) and `max` (k=steps) are reachable and the
+  distribution is uniform over the representable grid. **Breaking:** output differs from prior
+  versions for the same seed on any `decimal` field. A pathological grid that overflows `long`
+  (`(max-min)*10^scale > ~9.2e18`) falls back to the old continuous interpolation.
+
 ### Fixed
+- **`IntegerGenerator` hung forever on `int` ranges wider than 2^31 (#254)** — the rejection-sampling
+  fallback computed `limit = 2^31 - (2^31 % range)`, which is `0` for any range in `(2^31, 2^32]`, so
+  the sampling loop never terminated. `int[-2000000000..2000000000]` and the full-width
+  `int[-2147483648..2147483647]` spun a CPU core indefinitely. Replaced with a single
+  `min + (int) nextLong(range)` draw that covers the full width uniformly.
+- **`timestamp` `now`-relative ranges were not reproducible (#255)** — `now`/`now±Nd` were re-resolved
+  against the moving wall clock on every record (no bounds cache), so a fixed seed drifted across
+  records within a run and between runs. Bounds are now snapshotted once per field (matching the
+  other primitive generators), freezing `now` at first touch.
+- **`StructureRegistry` cache was a non-thread-safe `HashMap` read/written on worker threads (#256)** —
+  `ObjectGenerator.generate()` calls `loadStructure()` from parallel workers; a concurrent first-load
+  of the same nested `object[...]` could corrupt the map (lost entries, resize infinite loop).
+  Switched to `ConcurrentHashMap`.
+- **Kafka producer leaked if the shutdown `flush()` threw (#257)** — `close()` ran `flush()` then
+  `producer.close()` in one `try` with no `finally`, so an unreachable broker at shutdown leaked the
+  producer's I/O thread and sockets. `producer.close()` now runs in a `finally`.
+- **Kafka async mode silently dropped failed records (#258)** — async send failures were only logged,
+  and `recordCount` counted submissions not acknowledgements, so a run reported success while fewer
+  than `N` records landed. Failures are now counted and surfaced as a `DestinationException` at
+  `close()`.
+- **Database/File destinations leaked resources after a partial `open()` (#259)** — `close()`
+  early-returned on `!isOpen`, but `open()` allocated the DataSource / file streams before setting
+  `isOpen`, so a failure part-way through `open()` was never cleaned up. `close()` now releases any
+  partially-allocated resources.
+- **`FakerCache` silently served a stale-seeded `Faker` instead of failing fast (#261)** — on a reused
+  thread handed a different `Random` without `FakerCache.clear()`, it logged a warning and kept the
+  first job's stale RNG, silently losing reproducibility. It now throws `IllegalStateException`.
 - **Database timestamps were bound in the JVM's default time zone (#80)** — `setTimestamp()` was called without a `Calendar`, so the driver rendered each `Instant` in the local zone before writing it to a `TIMESTAMP` column. The same seed therefore produced different stored wall-clock values on different machines: an instant of `12:00:00Z` landed as `14:00:00` on a CEST developer box and `12:00:00` on a UTC CI runner, breaking the cross-machine reproducibility guarantee for any structure with a `timestamp` field. Timestamps are now bound as a `LocalDateTime` taken at `ZoneOffset.UTC` — a value with no offset, so the driver has nothing to convert and the stored wall clock depends only on the seed. `date` fields were never affected. Verified on PostgreSQL, MySQL, Oracle and SQL Server. Caught by the new CI seeding use case, whose fingerprint differed between a local run and GitHub Actions. Note that zone-aware column types still apply their own conversion: PostgreSQL `timestamptz` and Oracle `TIMESTAMP WITH TIME ZONE` preserve the instant, but MySQL `TIMESTAMP` converts using the connection's session zone and can still drift (#218).
 
 ### Added

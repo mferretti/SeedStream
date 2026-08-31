@@ -52,6 +52,31 @@ class DecimalGeneratorTest {
   }
 
   @Test
+  void shouldReachBothInclusiveBounds() {
+    // Small grid (0.0, 0.1, 0.2) so both endpoints are hit within a modest number of draws.
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", "0.2");
+    Random random = new Random(7L);
+    BigDecimal min = new BigDecimal("0.0");
+    BigDecimal max = new BigDecimal("0.2");
+
+    boolean hitMin = false;
+    boolean hitMax = false;
+    for (int i = 0; i < 500; i++) {
+      BigDecimal value = (BigDecimal) generator.generate(random, type);
+      assertThat(value).isBetween(min, max);
+      if (value.compareTo(min) == 0) {
+        hitMin = true;
+      }
+      if (value.compareTo(max) == 0) {
+        hitMax = true;
+      }
+    }
+
+    assertThat(hitMax).as("inclusive max (0.2) must be reachable").isTrue();
+    assertThat(hitMin).as("inclusive min (0.0) must be reachable").isTrue();
+  }
+
+  @Test
   void shouldPreserveScaleFromMaxPrecision() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.00", "100.000");
     Random random = new Random(42L);

@@ -86,6 +86,24 @@ class TimestampGeneratorTest {
   }
 
   @Test
+  void shouldFreezeNowBoundsAcrossRepeatedGenerateCalls() {
+    // Regression for issue #255: "now" was re-resolved (via parseTimestamp -> Instant.now()) on
+    // EVERY generate() call, so successive records for the same field could observe subtly
+    // different [start,end] windows as wall-clock time advanced during a run. The fix caches
+    // resolved Bounds per PrimitiveType so "now" is frozen at first touch.
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "now-30d", "now");
+    Random random = new Random(7L);
+
+    for (int i = 0; i < 50; i++) {
+      generator.generate(random, type);
+    }
+
+    // Exactly one Bounds entry must exist for this field, no matter how many times generate()
+    // was called — i.e. the start/end were resolved once, not on every call.
+    assertThat(generator.boundsCacheSize()).isEqualTo(1);
+  }
+
+  @Test
   void shouldHandleRelativeMinusDays() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "now-30d", "now-1d");
 

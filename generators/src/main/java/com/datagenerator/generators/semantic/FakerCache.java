@@ -96,13 +96,12 @@ public class FakerCache {
       THREAD_RANDOM.set(random);
       log.debug("Initialized FakerCache for thread: {}", Thread.currentThread().getName());
     } else if (storedRandom != random) {
-      // This should NEVER happen with RandomProvider (thread-local Random)
-      // But catch it to prevent subtle bugs if API is misused
-      log.warn(
-          "FakerCache detected different Random instance in thread {}. "
-              + "This breaks determinism! Expected same thread-local Random from RandomProvider.",
-          Thread.currentThread().getName());
-      // Use the first Random to maintain consistency
+      // This should NEVER happen with RandomProvider (thread-local Random). Serving the stale
+      // Faker here would silently break determinism, so fail fast instead.
+      throw new IllegalStateException(
+          "FakerCache received a different Random for an already-cached thread/locale; the "
+              + "thread-local Faker's seed is stale. Call FakerCache.clear() between jobs on a "
+              + "reused thread.");
     }
 
     Map<Locale, Faker> cache = CACHE.get();

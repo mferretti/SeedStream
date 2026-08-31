@@ -312,6 +312,9 @@ public class DatabaseDestination extends AbstractDestination {
   public void close() {
     if (!isOpen) {
       log.debug("Database destination already closed");
+      // open() may have allocated a connection/pool before failing prior to setting isOpen —
+      // release any such partially-opened resources. closeQuietly() is null-safe.
+      closeQuietly();
       return;
     }
 

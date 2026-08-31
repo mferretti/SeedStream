@@ -17,6 +17,7 @@
 package com.datagenerator.generators.semantic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,6 +131,20 @@ class FakerCacheTest {
     String name3 = faker2.name().fullName();
 
     assertThat(name3).isEqualTo(name1); // Same seed = same first value
+  }
+
+  @Test
+  void shouldThrowWhenDifferentRandomUsedForSameThread() {
+    // Regression for issue #261: serving a stale Faker built with a different Random silently
+    // breaks determinism. Must fail fast instead.
+    Random random1 = new Random(1);
+    Random random2 = new Random(2);
+
+    FakerCache.getOrCreate(Locale.ITALY, random1);
+
+    assertThatThrownBy(() -> FakerCache.getOrCreate(Locale.FRANCE, random2))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("different Random");
   }
 
   @Test
