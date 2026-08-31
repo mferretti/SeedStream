@@ -72,9 +72,11 @@ import java.time.ZoneOffset;
  *
  * <p>This governs the value leaving the client. Zone-aware column types still apply their own
  * conversion on top: PostgreSQL {@code timestamptz} and Oracle {@code TIMESTAMP WITH TIME ZONE}
- * preserve the instant, but MySQL {@code TIMESTAMP} converts using the connection's session zone
- * and can still drift — see issue #218. Zone-naive columns ({@code TIMESTAMP}, {@code DATETIME},
- * {@code DATETIME2}) are exact.
+ * preserve the instant. MySQL {@code TIMESTAMP} also converts on write using the connection's
+ * session {@code time_zone} — {@link DatabaseDestination} pins that session zone to UTC on every
+ * MySQL connection ({@code SET time_zone = '+00:00'}, issue #218), so the conversion is a no-op and
+ * the stored instant is deterministic too. Zone-naive columns ({@code DATETIME}, {@code DATETIME2})
+ * are exact regardless.
  *
  * <p><b>Thread Safety:</b> Stateless — all methods are static and every value bound is immutable.
  * Safe for concurrent use.

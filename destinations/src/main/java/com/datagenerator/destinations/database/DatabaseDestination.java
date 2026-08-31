@@ -237,6 +237,16 @@ public class DatabaseDestination extends AbstractDestination {
       hikariConfig.setMaximumPoolSize(config.getPoolSize());
       hikariConfig.setAutoCommit(STRATEGY_AUTO_COMMIT.equals(config.getTransactionStrategy()));
 
+      // MySQL converts TIMESTAMP columns on write using the connection's session time_zone, which
+      // defaults to SYSTEM — the MySQL server host's own OS zone, not necessarily UTC — so the same
+      // seed stored different instants depending on how the target server was configured (issue
+      // #218). Pin the session zone to UTC on every pooled connection so the stored instant depends
+      // only on the value, not the server. Offset '+00:00' needs no server time-zone tables. Only
+      // MySQL applies this session conversion.
+      if (config.getJdbcUrl() != null && config.getJdbcUrl().startsWith("jdbc:mysql:")) {
+        hikariConfig.setConnectionInitSql("SET time_zone = '+00:00'");
+      }
+
       dataSource = new HikariDataSource(hikariConfig);
       connection = dataSource.getConnection();
     }
