@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > fixtures, contract tests — regenerate them. Determinism *within* this version is unchanged: a
 > given seed still yields byte-identical output on any thread count.
 
+> ### ⚠️ MySQL `TIMESTAMP` columns re-normalise to UTC
+>
+> MySQL sessions are now pinned to `time_zone = '+00:00'` on every connection, so `TIMESTAMP`
+> columns store the same instant regardless of the host's zone (see *Fixed*). A job that previously
+> ran against MySQL on a non-UTC machine stored a `TIMESTAMP` value shifted by that machine's
+> session-zone conversion; re-run the job to normalise it. `DATETIME` columns and other database
+> engines are unaffected.
+
 ### Changed
 - **`decimal` generator now reaches its inclusive `max` (#260)** — the old algorithm was
   `min + nextDouble() * (max - min)`, and `nextDouble()` returns `[0.0, 1.0)`, so `max` was
@@ -63,7 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`FakerCache` silently served a stale-seeded `Faker` instead of failing fast (#261)** — on a reused
   thread handed a different `Random` without `FakerCache.clear()`, it logged a warning and kept the
   first job's stale RNG, silently losing reproducibility. It now throws `IllegalStateException`.
-- **Database timestamps were bound in the JVM's default time zone (#80)** — `setTimestamp()` was called without a `Calendar`, so the driver rendered each `Instant` in the local zone before writing it to a `TIMESTAMP` column. The same seed therefore produced different stored wall-clock values on different machines: an instant of `12:00:00Z` landed as `14:00:00` on a CEST developer box and `12:00:00` on a UTC CI runner, breaking the cross-machine reproducibility guarantee for any structure with a `timestamp` field. Timestamps are now bound as a `LocalDateTime` taken at `ZoneOffset.UTC` — a value with no offset, so the driver has nothing to convert and the stored wall clock depends only on the seed. `date` fields were never affected. Verified on PostgreSQL, MySQL, Oracle and SQL Server. Caught by the new CI seeding use case, whose fingerprint differed between a local run and GitHub Actions. Note that zone-aware column types still apply their own conversion: PostgreSQL `timestamptz` and Oracle `TIMESTAMP WITH TIME ZONE` preserve the instant, but MySQL `TIMESTAMP` converts using the connection's session zone and can still drift (#218).
+- **Database timestamps were bound in the JVM's default time zone (#80)** — `setTimestamp()` was called without a `Calendar`, so the driver rendered each `Instant` in the local zone before writing it to a `TIMESTAMP` column. The same seed therefore produced different stored wall-clock values on different machines: an instant of `12:00:00Z` landed as `14:00:00` on a CEST developer box and `12:00:00` on a UTC CI runner, breaking the cross-machine reproducibility guarantee for any structure with a `timestamp` field. Timestamps are now bound as a `LocalDateTime` taken at `ZoneOffset.UTC` — a value with no offset, so the driver has nothing to convert and the stored wall clock depends only on the seed. `date` fields were never affected. Verified on PostgreSQL, MySQL, Oracle and SQL Server. Caught by the new CI seeding use case, whose fingerprint differed between a local run and GitHub Actions. Note that zone-aware column types still apply their own conversion: PostgreSQL `timestamptz` and Oracle `TIMESTAMP WITH TIME ZONE` preserve the instant; MySQL `TIMESTAMP` also converts server-side using the connection's session zone — see #218 below for that fix.
+- **MySQL `TIMESTAMP` columns still drifted despite the client-side UTC binding fix (#218)** — MySQL's `TIMESTAMP` type converts on write using the connection's session `time_zone`, which defaults to `SYSTEM` (the MySQL server host's own OS time zone, not necessarily UTC), so the #80 fix was undone server-side: the same seed stored a different instant depending on how the target MySQL server was configured. `DatabaseDestination.open()` now pins the session zone to UTC on every MySQL connection via Hikari's `connectionInitSql` (`SET time_zone = '+00:00'`), so the server has nothing left to convert. Scoped to `jdbc:mysql:` URLs only — MariaDB and other engines are unaffected.
 
 ### Added
 - **Opt-in table truncation via `truncate_before_insert` (#80)** — database destinations can empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert, so a fixed seed plus a clean table yields a deterministic dataset with no external teardown script. **DESTRUCTIVE** — default `false`, PostgreSQL/Oracle only.
