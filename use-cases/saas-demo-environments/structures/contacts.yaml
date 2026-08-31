@@ -1,0 +1,14 @@
+# account_id references the accounts pool — the range MUST match the row count in seed.sh.
+# `title` uses `occupation` (job title), not `title` (name honorific) — see structures/users.yaml.
+name: contacts
+data:
+  account_id:
+    datatype: ref[accounts.id, 1..100]
+  full_name:
+    datatype: full_name
+  email:
+    datatype: email
+  title:
+    datatype: occupation
+  phone:
+    datatype: phone_number
