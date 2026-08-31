@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.*;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.GeneratorException;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 
@@ -87,7 +86,7 @@ class TimestampGeneratorTest {
   }
 
   @Test
-  void shouldFreezeNowBoundsAcrossRepeatedGenerateCalls() throws Exception {
+  void shouldFreezeNowBoundsAcrossRepeatedGenerateCalls() {
     // Regression for issue #255: "now" was re-resolved (via parseTimestamp -> Instant.now()) on
     // EVERY generate() call, so successive records for the same field could observe subtly
     // different [start,end] windows as wall-clock time advanced during a run. The fix caches
@@ -101,11 +100,7 @@ class TimestampGeneratorTest {
 
     // Exactly one Bounds entry must exist for this field, no matter how many times generate()
     // was called — i.e. the start/end were resolved once, not on every call.
-    var boundsCacheField = TimestampGenerator.class.getDeclaredField("boundsCache");
-    boundsCacheField.setAccessible(true);
-    @SuppressWarnings("unchecked")
-    Map<Object, Object> boundsCache = (Map<Object, Object>) boundsCacheField.get(generator);
-    assertThat(boundsCache).hasSize(1).containsKey(type);
+    assertThat(generator.boundsCacheSize()).isEqualTo(1);
   }
 
   @Test

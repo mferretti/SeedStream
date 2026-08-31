@@ -178,7 +178,10 @@ class StructureRegistryTest {
             try {
               startLatch.await();
               results.add(registry.loadStructure("concurrent_struct", structuresPath));
-            } catch (Exception e) {
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              errors.add(e);
+            } catch (RuntimeException e) {
               errors.add(e);
             } finally {
               doneLatch.countDown();

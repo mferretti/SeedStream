@@ -102,6 +102,17 @@ public class TimestampGenerator implements DataGenerator {
         && primitiveType.getKind() == PrimitiveType.Kind.TIMESTAMP;
   }
 
+  /**
+   * Visible for testing: number of distinct fields whose {@code [start,end]} bounds have been
+   * resolved and cached. A cached field resolves {@code now} exactly once, so this is how the
+   * reproducibility fix (#255) is asserted without reflection.
+   *
+   * @return the number of cached bounds entries
+   */
+  int boundsCacheSize() {
+    return boundsCache.size();
+  }
+
   private Instant parseTimestamp(String value, String fieldName) {
     if (value == null) {
       throw new GeneratorException(
