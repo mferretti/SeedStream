@@ -1,0 +1,23 @@
+name: event
+geolocation: usa
+data:
+  event_id:
+    datatype: uuid
+  user_id:
+    datatype: int[1..1000000]
+  session_id:
+    datatype: uuid
+  event_type:
+    datatype: enum[page_view,click,add_to_cart,purchase,signup,logout]
+  device:
+    datatype: enum[desktop,mobile,tablet]
+  country:
+    datatype: country
+  ip:
+    datatype: ipv4
+  url:
+    datatype: url
+  amount:
+    datatype: decimal[0.00..500.00]
+  occurred_at:
+    datatype: timestamp[2024-01-01T00:00:00..2025-06-30T23:59:59]

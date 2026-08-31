@@ -1,0 +1,19 @@
+# Index / query-latency target: the same events land in Postgres so you can measure INSERT
+# throughput and then benchmark queries against the indexes in schema.sql (user_id, event_type,
+# occurred_at). truncate_before_insert + restart_identity make repeat runs idempotent — see
+# use-cases/ci-pipeline-seeding for the pattern this borrows.
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: event.yaml
+type: database
+seed:
+  type: embedded
+  value: 81001
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/loadtestdb"
+  username: "loaduser"
+  password: "${DB_PASSWORD}"
+  table: "events"
+  batch_size: 1000
+  transaction_strategy: per_batch
+  truncate_before_insert: true   # ⚠️ DESTRUCTIVE — disposable load-test database only
+  restart_identity: true         # ids restart at 1 so counts stay comparable run over run

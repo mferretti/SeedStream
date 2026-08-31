@@ -1,0 +1,17 @@
+# Throughput target: high-volume analytics events → Kafka. Mirrors config/jobs/e2e_invoice_kafka_json.yaml's
+# tuning knobs (batch_size/linger_ms/compression) — see docs/PERFORMANCE.md §4 "Why Kafka scales worst"
+# for what each one buys you.
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: event.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 81001
+conf:
+  bootstrap: localhost:9092
+  topic: loadtest-events
+  sync: false
+  acks: "1"
+  batch_size: 65536
+  linger_ms: 20
+  compression: snappy
