@@ -192,8 +192,9 @@ class StructureRegistryTest {
     executor.shutdown();
     assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
-    assertThat(results).hasSize(threadCount);
-    assertThat(results).allSatisfy(r -> assertThat(r).isEqualTo(results.get(0)));
+    assertThat(results)
+        .hasSize(threadCount)
+        .allSatisfy(r -> assertThat(r).isEqualTo(results.get(0)));
   }
 
   /** Mock loader for testing */
