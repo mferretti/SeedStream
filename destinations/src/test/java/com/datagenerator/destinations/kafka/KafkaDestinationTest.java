@@ -303,6 +303,25 @@ class KafkaDestinationTest {
     verify(mockProducer, times(1)).close();
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  void shouldLogProgressEveryTenThousandRecords() {
+    // Line ~242: progress logging fires when recordCount % 10000 == 0. Write exactly 10,000
+    // async records so that modulus is hit (and no exception surfaces from the count/log path).
+    Producer<String, byte[]> mockProducer = mock(Producer.class);
+
+    KafkaDestinationConfig config =
+        KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic(TOPIC).sync(false).build();
+
+    KafkaDestination dest = new KafkaDestination(config, new JsonSerializer(), mockProducer);
+
+    for (int i = 0; i < 10_000; i++) {
+      dest.write(Map.of("id", i));
+    }
+
+    verify(mockProducer, times(10_000)).send(any(), any(Callback.class));
+  }
+
   // Note: Integration tests with actual Kafka broker using Testcontainers
   // will be implemented in TASK-023.
 }
