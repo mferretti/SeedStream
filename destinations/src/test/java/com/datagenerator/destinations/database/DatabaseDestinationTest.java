@@ -582,6 +582,27 @@ class DatabaseDestinationTest {
     verify(mockConn, never()).createStatement();
   }
 
+  @Test
+  void shouldThrowDestinationExceptionWhenTruncateFails() throws Exception {
+    Connection mockConn = mock(Connection.class);
+    DataSource mockDs = mock(DataSource.class);
+    Statement mockTruncateStmt = mock(Statement.class);
+    when(mockDs.getConnection()).thenReturn(mockConn);
+    when(mockConn.createStatement()).thenReturn(mockTruncateStmt);
+    when(mockTruncateStmt.executeUpdate(anyString())).thenThrow(new SQLException("truncate boom"));
+
+    DatabaseDestination dest = new DatabaseDestination(truncateConfig(true), mockDs);
+    dest.open();
+
+    var rec = buildRecord(1, NAME_ALICE, true);
+    assertThatThrownBy(() -> dest.write(rec))
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("Failed to truncate table")
+        .hasMessageContaining(TABLE_USERS);
+
+    dest.close();
+  }
+
   // --- Helpers ---
 
   private int countRows() throws SQLException {

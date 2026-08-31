@@ -25,6 +25,7 @@ import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -597,5 +598,57 @@ class FileDestinationTest {
     assertThatThrownBy(destination::open)
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("compress_mode");
+  }
+
+  @Test
+  void shouldRejectPlainWriteWhenPerChunkGzipEnabled() {
+    // write() (the record-object path) is not supported once per_chunk gzip is active — the
+    // engine must route through the serialized/coalesced write path instead.
+    Path outputFile = tempDir.resolve("per_chunk_plain_write.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("per_chunk").build();
+
+    FileDestination destination = new FileDestination(config, new JsonSerializer());
+    destination.open();
+
+    Map<String, Object> row = Map.of("id", 1);
+    try {
+      assertThatThrownBy(() -> destination.write(row))
+          .isInstanceOf(DestinationException.class)
+          .hasMessageContaining("serialized write path");
+    } finally {
+      destination.close();
+    }
+  }
+
+  @Test
+  void shouldGzipPayloadAsIndependentMemberWhenWriteSerializedCalledInPerChunkMode()
+      throws Exception {
+    // Defensive path (issue #210): the engine normally routes per_chunk through
+    // coalesce()/writeSerializedChunk(), but writeSerialized() must still gzip-wrap a single
+    // payload correctly if ever invoked directly.
+    Path outputFile = tempDir.resolve("per_chunk_direct.json");
+    FileDestinationConfig config =
+        configBuilder.filePath(outputFile).compress(true).compressMode("per_chunk").build();
+
+    try (FileDestination destination = new FileDestination(config, new JsonSerializer())) {
+      destination.open();
+      byte[] payload = "{\"id\":99}".getBytes(StandardCharsets.UTF_8);
+      destination.writeSerialized(payload);
+    }
+
+    Path gzFile = Path.of(outputFile.toString() + ".gz");
+    assertThat(gzFile).exists();
+
+    List<String> lines = new ArrayList<>();
+    try (BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(new GZIPInputStream(Files.newInputStream(gzFile))))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        lines.add(line);
+      }
+    }
+    assertThat(lines).containsExactly("{\"id\":99}");
   }
 }

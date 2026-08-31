@@ -166,6 +166,25 @@ class DecimalGeneratorTest {
   }
 
   @Test
+  void shouldGenerateWithinRangeWhenGridExceedsLongRange() {
+    // scale=18 over [0, 100] gives steps = 100 * 10^18 = 1e20, whose bitLength (~67) exceeds the
+    // 63-bit threshold, forcing the continuous-interpolation fallback (DecimalGenerator.java:72)
+    // instead of the common long-draw path.
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.DECIMAL, "0.000000000000000000", "100.000000000000000000");
+    Random random = new Random(42L);
+    BigDecimal min = new BigDecimal("0.000000000000000000");
+    BigDecimal max = new BigDecimal("100.000000000000000000");
+
+    for (int i = 0; i < 200; i++) {
+      BigDecimal value = (BigDecimal) generator.generate(random, type);
+      assertThat(value).isBetween(min, max);
+      assertThat(value.scale()).isEqualTo(18);
+    }
+  }
+
+  @Test
   void shouldSupportDecimalKindOnly() {
     assertThat(
             generator.supports(new PrimitiveType(PrimitiveType.Kind.DECIMAL, "0.0", DECIMAL_MAX)))
