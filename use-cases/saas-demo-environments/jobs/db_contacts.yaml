@@ -1,0 +1,15 @@
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: contacts.yaml
+type: database
+seed:
+  type: embedded
+  value: 82003              # fixed → identical demo dataset on every reseed
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/demodb"
+  username: "demouser"
+  password: "${DB_PASSWORD}"
+  table: "contacts"
+  batch_size: 500
+  transaction_strategy: per_batch
+  truncate_before_insert: true   # ⚠️ DESTRUCTIVE — disposable demo database only
+  restart_identity: true         # ids restart at 1, so activities' ref[contacts.id, ...] stays valid

@@ -1,0 +1,15 @@
+# accounts table (companies in the pipeline). No `id` — the DB IDENTITY column assigns a dense
+# 1..N sequence.
+name: accounts
+geolocation: usa
+data:
+  name:
+    datatype: company
+  website:
+    datatype: url
+  industry:
+    datatype: enum[SaaS,Fintech,Healthcare,Retail,Manufacturing,Education,Government]
+  size:
+    datatype: enum[SMB,MidMarket,Enterprise]
+  created_at:
+    datatype: date[2022-01-01..2024-12-31]

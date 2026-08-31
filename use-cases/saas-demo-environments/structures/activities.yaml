@@ -1,0 +1,13 @@
+# contact_id/deal_id reference the contacts/deals pools — ranges MUST match the row counts in seed.sh.
+name: activities
+data:
+  contact_id:
+    datatype: ref[contacts.id, 1..400]
+  deal_id:
+    datatype: ref[deals.id, 1..250]
+  type:
+    datatype: enum[call,email,meeting,note]
+  subject:
+    datatype: lorem_sentence
+  occurred_at:
+    datatype: timestamp[2024-01-01T00:00:00..2025-06-30T23:59:59]

@@ -1,0 +1,13 @@
+# users table (sales reps). No `id` — the DB IDENTITY column assigns a dense 1..N sequence.
+# `title` uses the `occupation` datatype (faker.job().title(), e.g. "Account Executive"), not the
+# `title` datatype (name honorific like "Mr."/"Dr.") — the latter would be nonsensical for a job title.
+name: users
+data:
+  full_name:
+    datatype: full_name
+  email:
+    datatype: email
+  title:
+    datatype: occupation
+  region:
+    datatype: enum[NA,EMEA,APAC,LATAM]

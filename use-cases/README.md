@@ -13,7 +13,7 @@ sample structures, see [`config/`](../config/) and the [root README](../README.m
 | Developer environment bootstrapping | Application developer | One command fills a local DB with a linked users/orders/line-items dataset — no prod dump | **Ready** | [`dev-env-bootstrapping/`](dev-env-bootstrapping/) |
 | CI pipeline database seeding | Platform / DevOps | Truncate-and-reseed a disposable DB before integration tests — identical rows, identical ids, every run | **Ready** | [`ci-pipeline-seeding/`](ci-pipeline-seeding/) |
 | Performance and load testing | Performance engineer | High-volume synthetic data for benchmarks | *Planned* ([#81](https://github.com/mferretti/SeedStream/issues/81)) | — |
-| SaaS demo environments | Sales / solutions engineering | Convincing demo data for prospect environments | *Planned* ([#82](https://github.com/mferretti/SeedStream/issues/82)) | — |
+| SaaS demo environments | Sales / solutions engineering | One command fills a demo tenant with a linked accounts/contacts/deals/activities CRM dataset — no customer PII, identical every reseed | **Ready** | [`saas-demo-environments/`](saas-demo-environments/) |
 
 *Planned* rows are tracked use-case issues; contributions welcome — follow the
 [`dora-gdpr-sepa-payments/`](dora-gdpr-sepa-payments/) layout.
