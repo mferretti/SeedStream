@@ -62,7 +62,7 @@ lombok-plugin = "9.5.0"
 spotless-plugin = "8.10.1"
 spotbugs-plugin = "6.5.11"
 dependency-check-plugin = "13.0.0"
-sonarqube-plugin = "7.4.0.8496"
+sonarqube-plugin = "7.5.0.8588"
 
 [libraries]
 # Lombok
