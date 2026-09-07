@@ -4,7 +4,7 @@
 [versions]
 # Core Libraries
 jackson = "2.22.2"
-lombok = "1.18.46"
+lombok = "1.18.48"
 slf4j = "2.0.18"
 logback = "1.6.3"
 picocli = "4.7.7"
