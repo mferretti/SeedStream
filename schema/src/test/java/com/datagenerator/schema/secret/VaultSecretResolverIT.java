@@ -21,8 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datagenerator.schema.IntegrationTest;
 import com.datagenerator.schema.exception.SecretResolutionException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
@@ -42,47 +42,47 @@ class VaultSecretResolverIT extends IntegrationTest {
               "kv put secret/singleton api_key=only-one-value",
               "kv put secret/multi user=admin pass=s3cr3t");
 
-  @BeforeEach
-  void setToken() {
-    System.setProperty("VAULT_TOKEN", VAULT_TOKEN);
-  }
-
-  @AfterEach
-  void clearToken() {
-    System.clearProperty("VAULT_TOKEN");
+  /**
+   * Build a resolver pointed at the test container, injecting the token via the env-reader hook.
+   * The production path reads {@code VAULT_TOKEN} from the real environment ({@code
+   * System.getenv}), which a JVM cannot set for its own process — so the IT supplies the token
+   * directly instead of relying on an externally exported variable. Keeps the test self-contained
+   * on a fresh clone.
+   */
+  private static VaultSecretResolver resolver() {
+    return new VaultSecretResolver(
+        vault.getHttpHostAddress(),
+        null,
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build(),
+        key -> VAULT_TOKEN);
   }
 
   @Test
   void shouldResolveKvV2FieldWithHashSuffix() {
-    VaultSecretResolver resolver = new VaultSecretResolver(vault.getHttpHostAddress(), null);
-    assertThat(resolver.resolve("secret/data/app#password")).isEqualTo("vault-secret-value");
+    assertThat(resolver().resolve("secret/data/app#password")).isEqualTo("vault-secret-value");
   }
 
   @Test
   void shouldResolveSingleFieldWithoutHashSuffix() {
-    VaultSecretResolver resolver = new VaultSecretResolver(vault.getHttpHostAddress(), null);
-    assertThat(resolver.resolve("secret/data/singleton")).isEqualTo("only-one-value");
+    assertThat(resolver().resolve("secret/data/singleton")).isEqualTo("only-one-value");
   }
 
   @Test
   void shouldThrowForMultipleFieldsWithoutHashSuffix() {
-    VaultSecretResolver resolver = new VaultSecretResolver(vault.getHttpHostAddress(), null);
-    assertThatThrownBy(() -> resolver.resolve("secret/data/multi"))
+    assertThatThrownBy(() -> resolver().resolve("secret/data/multi"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("multiple fields");
   }
 
   @Test
   void shouldThrowForNonExistentPath() {
-    VaultSecretResolver resolver = new VaultSecretResolver(vault.getHttpHostAddress(), null);
-    assertThatThrownBy(() -> resolver.resolve("secret/data/nonexistent#key"))
+    assertThatThrownBy(() -> resolver().resolve("secret/data/nonexistent#key"))
         .isInstanceOf(SecretResolutionException.class);
   }
 
   @Test
   void shouldThrowForMissingFieldInSecret() {
-    VaultSecretResolver resolver = new VaultSecretResolver(vault.getHttpHostAddress(), null);
-    assertThatThrownBy(() -> resolver.resolve("secret/data/app#nonexistent"))
+    assertThatThrownBy(() -> resolver().resolve("secret/data/app#nonexistent"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("nonexistent");
   }
