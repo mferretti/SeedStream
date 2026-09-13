@@ -37,7 +37,7 @@ import net.datafaker.providers.base.Finance;
  * Thread-safe registry for custom Datafaker types. Allows runtime registration of new semantic data
  * types without code changes.
  *
- * <p><b>Built-in Types:</b> 48 pre-registered semantic types (person, address, finance, internet,
+ * <p><b>Built-in Types:</b> 52 pre-registered semantic types (person, address, finance, internet,
  * commerce, etc.)
  *
  * <p><b>Custom Types:</b> Register new types at runtime or via YAML configuration

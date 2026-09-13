@@ -194,7 +194,7 @@ Framework-inspired JSON envelope. Implemented in `CbeffSerializer`.
 | `cbeff_version` | `"1.1"` | CBEFF version | Fixed; references CBEFF 2.x structure concept |
 | `format_owner` | string | BDB Format Owner | Default `"ISO/IEC-JTC1-SC37"`; configurable |
 | `format_type` | string | BDB Format Type | Default `"biometric-json"`; configurable (e.g. `"19794-2-json"`) |
-| `creation_date` | ISO-8601 UTC | SBH Creation Date | Generated at serialization time via `Instant.now()` |
+| `creation_date` | ISO-8601 UTC | SBH Creation Date | Derived deterministically from a hash of the record payload (not wall-clock) so same-seed output stays byte-identical |
 | `subject_id` | string | — | Promoted from payload's `subject_id` field if present |
 | `payload` | object | Biometric Data Block (BDB) | The full original generated record |
 

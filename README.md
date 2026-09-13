@@ -209,6 +209,7 @@ echo -n "my-db-password" | ./gradlew :cli:run --args="encrypt"
 | `--format` | `json` | `json`, `csv`, `protobuf`, `avro`, `avro-registry`, `cbeff` |
 | `--count` | `100` | Records to generate |
 | `--seed` | from config | Override seed for this run |
+| `--faker-types` | unset | YAML of extra Datafaker types to register (must match the file passed to `inspect`) |
 | `--threads` | CPU cores | Worker threads |
 | `--verbose` | off | Detailed logging |
 | `--debug` | off | Enables sampled TRACE logging (see `--trace-sample`) |
@@ -415,7 +416,8 @@ a "scenario README + config" unit you can copy, run in one command, and forward 
 | [DORA / GDPR resilience testing (ISO 20022 SEPA)](use-cases/dora-gdpr-sepa-payments/) | Regulated finance | **Ready** |
 | [Developer environment bootstrapping](use-cases/dev-env-bootstrapping/) | Application developer | **Ready** |
 | [CI pipeline database seeding](use-cases/ci-pipeline-seeding/) | Platform / DevOps | **Ready** |
-| Load testing · SaaS demos | Various | *Planned* |
+| [Performance & load testing](use-cases/performance-load-testing/) | Platform / SRE | **Ready** |
+| [SaaS demo environments](use-cases/saas-demo-environments/) | Sales / Solutions | **Ready** |
 
 See [use-cases/](use-cases/) for the full index.
 

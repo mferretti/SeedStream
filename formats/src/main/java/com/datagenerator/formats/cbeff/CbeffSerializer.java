@@ -48,8 +48,11 @@ import lombok.extern.slf4j.Slf4j;
  * }
  * }</pre>
  *
- * <p><b>Thread Safety:</b> Stateless — {@code Instant.now()} is called per data. ObjectMapper is
- * thread-safe after configuration.
+ * <p><b>Determinism:</b> {@code creation_date} is derived from a stable hash of the record payload
+ * (not wall-clock time), so the same seed produces byte-identical output across runs. See {@link
+ * #deriveCreationDate(String)}.
+ *
+ * <p><b>Thread Safety:</b> Stateless. ObjectMapper is thread-safe after configuration.
  */
 @Slf4j
 public class CbeffSerializer implements FormatSerializer {
@@ -57,6 +60,12 @@ public class CbeffSerializer implements FormatSerializer {
   public static final String CBEFF_VERSION = "1.1";
   public static final String DEFAULT_FORMAT_OWNER = "ISO/IEC-JTC1-SC37";
   public static final String DEFAULT_FORMAT_TYPE = "biometric-json";
+
+  /** Anchor for the deterministic {@code creation_date} derivation. */
+  private static final Instant CBEFF_EPOCH = Instant.parse("2020-01-01T00:00:00Z");
+
+  /** Width of the derived-date window (~10 years, in seconds). */
+  private static final long CBEFF_DATE_RANGE_SECONDS = 10L * 365 * 24 * 60 * 60;
 
   private final String formatOwner;
   private final String formatType;
@@ -89,25 +98,50 @@ public class CbeffSerializer implements FormatSerializer {
 
   @Override
   public String serialize(Map<String, Object> data) {
-    Map<String, Object> envelope = new LinkedHashMap<>();
-    envelope.put("cbeff_version", CBEFF_VERSION);
-    envelope.put("format_owner", formatOwner);
-    envelope.put("format_type", formatType);
-    envelope.put("creation_date", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-
-    Object subjectId = data.get("subject_id");
-    if (subjectId != null) {
-      envelope.put("subject_id", subjectId);
-    }
-
-    envelope.put("payload", data);
-
     try {
+      // Canonical payload JSON drives both the deterministic creation_date and the envelope body.
+      String canonicalPayload = mapper.writeValueAsString(data);
+
+      Map<String, Object> envelope = new LinkedHashMap<>();
+      envelope.put("cbeff_version", CBEFF_VERSION);
+      envelope.put("format_owner", formatOwner);
+      envelope.put("format_type", formatType);
+      envelope.put(
+          "creation_date",
+          DateTimeFormatter.ISO_INSTANT.format(deriveCreationDate(canonicalPayload)));
+
+      Object subjectId = data.get("subject_id");
+      if (subjectId != null) {
+        envelope.put("subject_id", subjectId);
+      }
+
+      envelope.put("payload", data);
+
       return mapper.writeValueAsString(envelope);
     } catch (JsonProcessingException e) {
       log.error("Failed to serialize data to CBEFF JSON: {}", data, e);
       throw new SerializationException("CBEFF serialization failed", e);
     }
+  }
+
+  /**
+   * Derive a stable {@code creation_date} from the record payload so identical data yields an
+   * identical timestamp — preserving the same-seed byte-identical guarantee. A 64-bit FNV-1a hash
+   * of the canonical payload JSON is folded into a ~10-year window anchored at {@link
+   * #CBEFF_EPOCH}. The value is synthetic (not the real generation time); see the "meaningful
+   * timestamps" improvement issue for a seed-plumbed alternative.
+   *
+   * @param canonicalPayload deterministic JSON encoding of the record
+   * @return a reproducible instant within [CBEFF_EPOCH, CBEFF_EPOCH + ~10y)
+   */
+  private static Instant deriveCreationDate(String canonicalPayload) {
+    long hash = 0xcbf29ce484222325L; // FNV-1a 64-bit offset basis
+    for (int i = 0; i < canonicalPayload.length(); i++) {
+      hash ^= canonicalPayload.charAt(i);
+      hash *= 0x100000001b3L; // FNV-1a 64-bit prime
+    }
+    long offsetSeconds = Math.floorMod(hash, CBEFF_DATE_RANGE_SECONDS);
+    return CBEFF_EPOCH.plusSeconds(offsetSeconds);
   }
 
   @Override

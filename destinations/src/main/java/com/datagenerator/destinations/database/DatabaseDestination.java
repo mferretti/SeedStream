@@ -210,6 +210,7 @@ public class DatabaseDestination extends AbstractDestination {
     }
 
     validateTransactionStrategy(config.getTransactionStrategy());
+    validateTruncateDialect();
     retryPolicy.execute(
         "open database connection to " + JdbcUrlRedactor.redactJdbcCredentials(config.getJdbcUrl()),
         this::openConnection);
@@ -628,6 +629,40 @@ public class DatabaseDestination extends AbstractDestination {
           "Unknown transaction_strategy '"
               + strategy
               + "'. Valid values: per_batch, per_job, auto_commit");
+    }
+  }
+
+  /**
+   * Fail fast when {@code truncate_before_insert} is requested against a dialect that does not
+   * support the emitted {@code TRUNCATE TABLE ... CASCADE} / {@code RESTART IDENTITY} clauses.
+   * {@link #truncateIfNeeded(String)} always appends {@code CASCADE} (PostgreSQL/Oracle) and, with
+   * {@code restart_identity}, {@code RESTART IDENTITY} (PostgreSQL only). On MySQL or SQL Server
+   * those clauses are syntax errors, so reject them here rather than at first insert.
+   */
+  private void validateTruncateDialect() {
+    if (!config.isTruncateBeforeInsert()) {
+      return;
+    }
+    String url = config.getJdbcUrl();
+    if (url == null) {
+      return; // openConnection() will fail on the missing URL with a clearer message.
+    }
+    boolean postgres = url.startsWith("jdbc:postgresql:");
+    boolean oracle = url.startsWith("jdbc:oracle:");
+    if (!postgres && !oracle) {
+      throw new DestinationException(
+          "truncate_before_insert emits 'TRUNCATE TABLE ... CASCADE', which is only supported on "
+              + "PostgreSQL and Oracle. JDBC URL '"
+              + JdbcUrlRedactor.redactJdbcCredentials(url)
+              + "' targets an unsupported dialect. Remove truncate_before_insert or truncate the "
+              + "table out of band.");
+    }
+    if (config.isRestartIdentity() && !postgres) {
+      throw new DestinationException(
+          "restart_identity emits 'TRUNCATE TABLE ... RESTART IDENTITY', which is PostgreSQL only. "
+              + "JDBC URL '"
+              + JdbcUrlRedactor.redactJdbcCredentials(url)
+              + "' is not PostgreSQL. Disable restart_identity.");
     }
   }
 

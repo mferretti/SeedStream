@@ -12,7 +12,7 @@ data:
   session_id:
     datatype: uuid
   ip_address:
-    datatype: ip_address
+    datatype: ipv4
   user_agent:
     datatype: char[20..150]
   url:

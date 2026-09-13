@@ -477,7 +477,9 @@ class DatabaseDestinationTest {
 
   private DatabaseDestinationConfig truncateConfig(boolean truncate, boolean restartIdentity) {
     return DatabaseDestinationConfig.builder()
-        .jdbcUrl("jdbc:irrelevant")
+        // PostgreSQL URL so the CASCADE/RESTART IDENTITY dialect guard passes; the injected mock
+        // DataSource means no real connection is made.
+        .jdbcUrl("jdbc:postgresql://irrelevant/db")
         .username("u")
         .password("p")
         .tableName(TABLE_USERS)
@@ -504,6 +506,45 @@ class DatabaseDestinationTest {
     }
 
     verify(mockTruncateStmt).executeUpdate("TRUNCATE TABLE users CASCADE");
+  }
+
+  @Test
+  void shouldRejectTruncateBeforeInsertOnUnsupportedDialect() {
+    DatabaseDestinationConfig mysql =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl("jdbc:mysql://host:3306/db")
+            .username("u")
+            .password("p")
+            .tableName(TABLE_USERS)
+            .truncateBeforeInsert(true)
+            .build();
+
+    try (DatabaseDestination dest = new DatabaseDestination(mysql)) {
+      assertThatThrownBy(dest::open)
+          .isInstanceOf(DestinationException.class)
+          .hasMessageContaining("CASCADE")
+          .hasMessageContaining("PostgreSQL and Oracle");
+    }
+  }
+
+  @Test
+  void shouldRejectRestartIdentityOnNonPostgresDialect() {
+    DatabaseDestinationConfig oracle =
+        DatabaseDestinationConfig.builder()
+            .jdbcUrl("jdbc:oracle:thin:@host:1521:db")
+            .username("u")
+            .password("p")
+            .tableName(TABLE_USERS)
+            .truncateBeforeInsert(true)
+            .restartIdentity(true)
+            .build();
+
+    try (DatabaseDestination dest = new DatabaseDestination(oracle)) {
+      assertThatThrownBy(dest::open)
+          .isInstanceOf(DestinationException.class)
+          .hasMessageContaining("RESTART IDENTITY")
+          .hasMessageContaining("PostgreSQL only");
+    }
   }
 
   @Test

@@ -136,6 +136,33 @@ class CbeffSerializerTest {
   }
 
   @Test
+  void shouldDeriveDeterministicCreationDateFromPayload() throws Exception {
+    Map<String, Object> data = Map.of("subject_id", "S-1", KEY_FIELD, FIELD_VALUE);
+
+    String first = mapper.readTree(serializer.serialize(data)).get("creation_date").asText();
+    String second = mapper.readTree(serializer.serialize(data)).get("creation_date").asText();
+
+    // Same payload → identical creation_date (byte-identical guarantee, no wall-clock).
+    assertThat(second).isEqualTo(first);
+  }
+
+  @Test
+  void shouldDeriveDifferentCreationDatesForDifferentPayloads() throws Exception {
+    String a =
+        mapper
+            .readTree(serializer.serialize(Map.of(KEY_FIELD, "alpha")))
+            .get("creation_date")
+            .asText();
+    String b =
+        mapper
+            .readTree(serializer.serialize(Map.of(KEY_FIELD, "omega")))
+            .get("creation_date")
+            .asText();
+
+    assertThat(a).isNotEqualTo(b);
+  }
+
+  @Test
   void shouldProduceValidJsonRoundTrip() throws Exception {
     Map<String, Object> data = Map.of("x", 100, "y", 200, "type", "ending");
     String output = serializer.serialize(data);

@@ -172,6 +172,7 @@ public class ExecuteCommand implements Callable<Integer> {
    *   <li><b>protobuf</b> - Protocol Buffers binary format (base64-encoded)
    *   <li><b>avro</b> - Apache Avro binary format (base64-encoded, dynamic schema)
    *   <li><b>avro-registry</b> - Confluent wire format (magic byte + schema ID + Avro binary)
+   *   <li><b>cbeff</b> - CBEFF biometric JSON envelope (payload wrapped with format metadata)
    * </ul>
    *
    * <p><b>Format Selection:</b> JSON preserves nested structures and arrays. CSV flattens nested

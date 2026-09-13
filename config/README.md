@@ -106,7 +106,7 @@ config/
 #### `event_log.yaml` - Application Events
 - **Locale**: USA
 - **Fields**: Event ID, timestamp, type, user/session IDs, IP, user agent, URL, status, response time, country
-- **Types**: `uuid`, `timestamp[now-30d..now]`, `enum`, `ip_address`, `int[200..599]`
+- **Types**: `uuid`, `timestamp[now-30d..now]`, `enum`, `ipv4`, `int[200..599]`
 - **Features**: Recent timestamp ranges (last 30 days), HTTP status codes, performance metrics
 - **Use Case**: Log aggregation testing, analytics, monitoring systems
 
@@ -249,9 +249,11 @@ conf:
   acks: "all"
   sync: false
   security_protocol: SASL_SSL
-  sasl_mechanism: PLAIN
-  username: ${KAFKA_USER}
-  password: ${KAFKA_PASSWORD}
+  sasl_mechanism: SCRAM-SHA-512
+  sasl_jaas_config: |
+    org.apache.kafka.common.security.scram.ScramLoginModule required
+    username="${KAFKA_USER}"
+    password="${KAFKA_PASSWORD}";
 ```
 
 **Usage**:
@@ -633,8 +635,7 @@ longitude:   { datatype: longitude }      # aliases: lon, lng
 **Business**
 ```yaml
 company:    { datatype: company }
-industry:   { datatype: industry }
-job_title:  { datatype: job_title }
+occupation: { datatype: occupation }
 department: { datatype: department }
 ```
 
@@ -642,7 +643,8 @@ department: { datatype: department }
 ```yaml
 url:        { datatype: url }
 domain:     { datatype: domain }
-ip_address: { datatype: ip_address }
+ipv4:       { datatype: ipv4 }
+ipv6:       { datatype: ipv6 }
 username:   { datatype: username }
 ```
 
