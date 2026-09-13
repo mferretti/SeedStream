@@ -174,6 +174,28 @@ public class GenerationEngine {
   private final Runnable workerCleanup = () -> {};
 
   /**
+   * Optional initialization to run on each worker thread before it starts generating.
+   *
+   * <p>The mirror image of {@link #workerCleanup}: use it to set up per-worker (thread-local) state
+   * that is invariant for the whole job — e.g. entering a {@code GeneratorContext} once instead of
+   * per record. It runs exactly once per participating worker (and once on the main thread in the
+   * single-threaded path), before any record is produced. Pair it with {@link #workerCleanup} to
+   * tear the same state down.
+   *
+   * <p>Defaults to a no-op.
+   */
+  @SuppressWarnings("java:S1170")
+  @Builder.Default
+  private final Runnable workerInit = () -> {};
+
+  /**
+   * Poll interval (ms) for the worker enqueue back-pressure loop. Workers block on {@code
+   * offer(chunk, this, MILLISECONDS)} rather than an unbounded {@code put()} so they periodically
+   * observe {@code workerError} and abort a failed run instead of blocking forever.
+   */
+  private static final long QUEUE_OFFER_POLL_MS = 100L;
+
+  /**
    * Generate specified number of records.
    *
    * <p>For small counts (&lt; singleThreadedThreshold), uses single thread to avoid overhead. For
@@ -244,15 +266,20 @@ public class GenerationEngine {
     Random random = randomProvider.getRandom();
     long startTime = System.currentTimeMillis();
 
-    if (chunkTransform == null) {
-      runSingleThreadedUnfolded(count, produce, consume, randomProvider, random, startTime);
-    } else {
-      runSingleThreadedFolded(
-          count, produce, consume, chunkTransform, randomProvider, random, startTime);
+    workerInit.run();
+    try {
+      if (chunkTransform == null) {
+        runSingleThreadedUnfolded(count, produce, consume, randomProvider, random, startTime);
+      } else {
+        runSingleThreadedFolded(
+            count, produce, consume, chunkTransform, randomProvider, random, startTime);
+      }
+      logProgress(count, count, startTime); // Final progress
+    } finally {
+      // Always tear down per-worker state (e.g. an entered GeneratorContext), even if generation
+      // throws — otherwise a leaked thread-local would poison a later job on this reused thread.
+      workerCleanup.run();
     }
-
-    logProgress(count, count, startTime); // Final progress
-    workerCleanup.run();
     log.info("Single-threaded generation complete");
   }
 
@@ -314,8 +341,9 @@ public class GenerationEngine {
   @SuppressFBWarnings(
       value = "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE",
       justification =
-          "Worker Future is intentionally not stored; the first worker failure is captured in "
-              + "workerError, which interrupts the writer and is rethrown after awaitTermination")
+          "Worker Future is intentionally not stored; the first failure (worker or writer) is "
+              + "captured in workerError, which unblocks the other side and is rethrown after "
+              + "awaitTermination")
   @SuppressWarnings({"PMD.AvoidCatchingGenericException", "java:S3776"})
   private <P> void runMultiThreaded(
       long count,
@@ -346,7 +374,10 @@ public class GenerationEngine {
       workerQueues.add(new ArrayBlockingQueue<>(perWorkerCapacity));
     }
 
-    // First worker failure (if any), used to abort the writer instead of letting it block forever.
+    // First failure (if any), from a worker OR the writer. A worker failure lets the main thread
+    // interrupt the (possibly blocked) writer; a writer failure unblocks the workers, whose enqueue
+    // loop watches this reference so they stop offering into a queue the dead writer will never
+    // drain. Either way awaitTermination returns and the original cause is rethrown (fail-fast).
     AtomicReference<Throwable> workerError = new AtomicReference<>();
     AtomicLong generated = new AtomicLong(0);
     long startTime = System.currentTimeMillis();
@@ -369,8 +400,11 @@ public class GenerationEngine {
                 Thread.currentThread().interrupt();
                 log.debug("Writer thread interrupted (generation aborted)");
               } catch (Exception e) {
+                // Record the cause so workers stop blocking on a full queue and the main thread
+                // rethrows it after awaitTermination — instead of the writer dying silently and
+                // hanging the run (issue #282).
                 log.error("Writer thread failed", e);
-                throw new IllegalStateException("Writer thread failed", e);
+                workerError.compareAndSet(null, e);
               }
             },
             "writer-thread");
@@ -396,6 +430,7 @@ public class GenerationEngine {
                   produce,
                   chunkTransform,
                   myQueue,
+                  workerError,
                   new ProgressTracker(generated, count, startTime));
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
@@ -416,14 +451,20 @@ public class GenerationEngine {
     }
 
     // If a worker failed, the writer may be blocked waiting for a chunk that will never arrive —
-    // interrupt it, then surface the failure. Otherwise it drains exactly totalChunks and exits.
-    Throwable failure = workerError.get();
-    if (failure != null) {
+    // interrupt it so it can exit. (A writer failure sets workerError too, but by then the writer
+    // has already returned, so the interrupt is a harmless no-op.)
+    if (workerError.get() != null) {
       writerThread.interrupt();
-      writerThread.join();
-      throw new IllegalStateException("Parallel generation failed", failure);
     }
     writerThread.join();
+
+    // Re-read after the join: the writer can fail while draining the last chunks — after the
+    // workers have already terminated — so its failure may not have been visible above. Surface
+    // the original cause and abort (fail-fast) instead of returning as if the run succeeded (#282).
+    Throwable failure = workerError.get();
+    if (failure != null) {
+      throw new IllegalStateException("Parallel generation failed", failure);
+    }
 
     logProgress(count, count, startTime); // Final progress
     log.info(
@@ -456,6 +497,8 @@ public class GenerationEngine {
    * @param chunkTransform optional fold applied to each chunk before it is enqueued (e.g.
    *     coalescing per-record payloads into one); {@code null} to enqueue the chunk unchanged
    * @param queue this worker's own queue for handing off its chunks, in ascending chunk order
+   * @param error shared first-failure reference; the enqueue loop aborts if the writer (or another
+   *     worker) has already failed, so a dead writer cannot leave this worker blocked forever
    * @param progress shared progress state (total generated counter, target count, start time)
    * @throws InterruptedException if interrupted
    */
@@ -469,6 +512,45 @@ public class GenerationEngine {
       Function<Random, P> produce,
       UnaryOperator<List<P>> chunkTransform,
       BlockingQueue<List<P>> queue,
+      AtomicReference<Throwable> error,
+      ProgressTracker progress)
+      throws InterruptedException {
+
+    workerInit.run();
+    try {
+      generateWorkerChunks(
+          workerId,
+          activeWorkers,
+          totalRecords,
+          totalChunks,
+          randomProvider,
+          produce,
+          chunkTransform,
+          queue,
+          error,
+          progress);
+    } finally {
+      // Always tear down per-worker state (e.g. an entered GeneratorContext), even on failure or
+      // early abort, so a pooled thread is never left with a leaked thread-local.
+      workerCleanup.run();
+    }
+  }
+
+  /**
+   * The chunk-generation loop for one worker. Extracted from {@link #generateWorkerRecords} so the
+   * latter can wrap it in a {@code workerInit}/{@code workerCleanup} try/finally.
+   */
+  @SuppressWarnings("java:S107")
+  private <P> void generateWorkerChunks(
+      int workerId,
+      int activeWorkers,
+      long totalRecords,
+      long totalChunks,
+      RandomProvider randomProvider,
+      Function<Random, P> produce,
+      UnaryOperator<List<P>> chunkTransform,
+      BlockingQueue<List<P>> queue,
+      AtomicReference<Throwable> error,
       ProgressTracker progress)
       throws InterruptedException {
 
@@ -495,12 +577,36 @@ public class GenerationEngine {
       // into fewer (e.g. one coalesced) payloads before it is handed to the writer.
       int recordsInChunk = chunk.size();
       List<P> toEnqueue = chunkTransform == null ? chunk : chunkTransform.apply(chunk);
-      queue.put(toEnqueue); // blocks if queue is full - backpressure
+      if (!enqueue(queue, toEnqueue, error)) {
+        log.debug("Worker {} aborting: run already failed elsewhere", workerId);
+        return; // fail-fast: the writer (or a sibling worker) has failed; stop producing
+      }
       recordChunkProgress(progress, recordsInChunk);
     }
 
     log.debug("Worker {} completed: generated {} records", workerId, workerGenerated);
-    workerCleanup.run();
+  }
+
+  /**
+   * Hand a chunk to the writer with back-pressure, but abort if the run has already failed.
+   *
+   * <p>Blocks on a bounded {@code offer} with a short poll timeout instead of an unbounded {@code
+   * put}: on the happy path {@code offer} returns as soon as the writer frees a slot (the timeout
+   * is never reached), preserving deterministic ordering and back-pressure; if the writer thread
+   * has died the loop notices {@code error} within one poll interval and returns {@code false} so
+   * the worker stops rather than blocking forever (issue #282).
+   *
+   * @return {@code true} if the chunk was enqueued, {@code false} if the run was aborted
+   */
+  private <P> boolean enqueue(
+      BlockingQueue<List<P>> queue, List<P> chunk, AtomicReference<Throwable> error)
+      throws InterruptedException {
+    while (error.get() == null) {
+      if (queue.offer(chunk, QUEUE_OFFER_POLL_MS, TimeUnit.MILLISECONDS)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
