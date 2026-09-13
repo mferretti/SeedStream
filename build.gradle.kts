@@ -148,7 +148,7 @@ subprojects {
 
     dependencies {
         // Lombok for reducing boilerplate
-        val lombok = "org.projectlombok:lombok:1.18.46"
+        val lombok = "org.projectlombok:lombok:1.18.48"
         "compileOnly"(lombok)
         "annotationProcessor"(lombok)
         "testCompileOnly"(lombok)
@@ -156,7 +156,7 @@ subprojects {
 
         // Force newer versions to address security vulnerabilities
         constraints {
-            implementation("com.google.protobuf:protobuf-java:4.36.0") // CVE-2024-7254
+            implementation("com.google.protobuf:protobuf-java:4.36.1") // CVE-2024-7254
         }
 
         // Logging
