@@ -482,17 +482,23 @@ public class ExecuteCommand implements Callable<Integer> {
         GenerationEngine.builder()
             .recordGenerator(
                 random -> {
-                  // Each worker thread needs its own GeneratorContext
-                  try (var ctx = GeneratorContext.enter(factory, geolocation, count)) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> data =
-                        (Map<String, Object>) generator.generate(random, objectType);
-                    return data;
-                  }
+                  // The GeneratorContext is entered once per worker (workerInit) and torn down once
+                  // per worker (workerCleanup) — factory, geolocation and count are job-invariant,
+                  // so entering/closing it per record is pure overhead (issue #286). The per-record
+                  // parent-record stack self-balances (push/pop are paired), so it is empty here.
+                  @SuppressWarnings("unchecked")
+                  Map<String, Object> data =
+                      (Map<String, Object>) generator.generate(random, objectType);
+                  return data;
                 })
             .masterSeed(seed)
             .workerThreads(workerThreads)
-            .workerCleanup(FakerCache::clear);
+            .workerInit(() -> GeneratorContext.enter(factory, geolocation, count))
+            .workerCleanup(
+                () -> {
+                  GeneratorContext.exit();
+                  FakerCache.clear();
+                });
 
     configureWritePath(engineBuilder, destination, serializer);
 

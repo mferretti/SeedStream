@@ -153,11 +153,20 @@ public class GeneratorContext implements AutoCloseable {
     return FACTORY.get() != null;
   }
 
-  @Override
-  public void close() {
+  /**
+   * Remove all thread-local context state for the current thread. Equivalent to {@link #close()},
+   * but callable without holding the {@link GeneratorContext} instance — e.g. from a per-worker
+   * teardown hook that paired a per-worker {@link #enter} with cleanup.
+   */
+  public static void exit() {
     FACTORY.remove();
     GEOLOCATION.remove();
     JOB_COUNT.remove();
     PARENT_RECORD_STACK.remove();
+  }
+
+  @Override
+  public void close() {
+    exit();
   }
 }

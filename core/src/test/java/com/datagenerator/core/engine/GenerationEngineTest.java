@@ -17,7 +17,10 @@
 package com.datagenerator.core.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -219,6 +222,39 @@ class GenerationEngineTest {
     engine.generate(100);
 
     assertThat(cleanupCalled.get()).isTrue();
+  }
+
+  @Test
+  void shouldFailFastWhenWriterThrowsInsteadOfHanging() {
+    // Regression for issue #282: a writer (destination) write failure in the multi-threaded path.
+    // Before the fix the writer thread died without recording the error, workers then blocked
+    // forever on a full bounded queue, and awaitTermination(Long.MAX_VALUE) never returned — the
+    // whole run hung. It must now abort fast by rethrowing the original cause.
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("id", 1);
+    RuntimeException boom = new RuntimeException("destination write failed");
+    GenerationEngine.RecordWriter failingWriter =
+        data -> {
+          throw boom;
+        };
+
+    GenerationEngine engine =
+        GenerationEngine.builder()
+            .recordGenerator(recordGenerator)
+            .recordWriter(failingWriter)
+            .masterSeed(12345L)
+            .workerThreads(4)
+            .queueCapacity(10) // tiny queue so workers hit back-pressure almost immediately
+            .singleThreadedThreshold(1000) // force the multi-threaded path
+            .build();
+
+    // assertTimeoutPreemptively makes a hang a test FAILURE (it aborts the run) instead of
+    // blocking the whole suite forever, which is exactly the bug being guarded against.
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(15),
+        () ->
+            assertThatThrownBy(() -> engine.generate(5000))
+                .isInstanceOf(IllegalStateException.class)
+                .hasCause(boom));
   }
 
   @Test
