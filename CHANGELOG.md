@@ -42,8 +42,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   distribution is uniform over the representable grid. **Breaking:** output differs from prior
   versions for the same seed on any `decimal` field. A pathological grid that overflows `long`
   (`(max-min)*10^scale > ~9.2e18`) falls back to the old continuous interpolation.
+- **`GeneratorContext` is now entered once per worker instead of once per record (#286)** — the CLI
+  record-generator previously opened and closed a fresh `GeneratorContext` on every record (a new
+  `ArrayDeque` for the parent-record stack, `Long` boxing of the job count, and four `ThreadLocal`
+  set + four remove calls), all on the hottest path. The engine gained a per-worker `workerInit`
+  hook (mirroring the existing `workerCleanup`); the context is now entered once per worker and torn
+  down once, wrapped in `try`/`finally` on both the single- and multi-threaded paths so a failed run
+  never leaks the thread-local. Behaviour and determinism are unchanged — purely removes per-record
+  overhead.
 
 ### Fixed
+- **CBEFF `creation_date` broke the same-seed byte-identical guarantee (#281, follow-up #280)** — the
+  CBEFF envelope wrote `Instant.now()` into `creation_date` on every record, so output was never
+  reproducible across runs despite the documented determinism contract. It is now derived
+  deterministically from an FNV-1a hash of the record payload, anchored in a fixed ~10-year window,
+  so the same seed yields byte-identical output. The value is synthetic (not wall-clock); a
+  seed-plumbed alternative that preserves meaningful timestamps is tracked in #280.
+- **`truncate_before_insert` emitted unsupported SQL on MySQL/SQL Server instead of failing fast
+  (#281)** — the destination always appended `CASCADE` (and, with `restart_identity`, `RESTART
+  IDENTITY`), which are PostgreSQL/Oracle-only, so a run against MySQL or SQL Server failed mid-insert
+  with a driver syntax error rather than at startup. `DatabaseDestination.open()` now rejects the
+  option up front for dialects that do not support the emitted clauses, matching the documented
+  PostgreSQL/Oracle scope.
+- **Multi-threaded writer-thread death hung the whole run instead of failing fast (#282)** — if the
+  writer's destination write threw (DB constraint, disk-full, sync Kafka failure), the writer thread
+  died without recording the error, workers then blocked forever on the bounded `queue.put()`, and
+  `awaitTermination(Long.MAX_VALUE)` never returned — the process hung. The writer now records its
+  failure into the shared error reference, workers enqueue via a poll-timeout `offer` loop that
+  watches it and aborts, and the main thread rethrows the original cause, matching the single-threaded
+  fail-fast behaviour. Guarded by a new timeout-bounded regression test.
+- **Database destination locked flat/nested mode from the first record's runtime shape (#283)** — mode
+  was auto-detected from the first written record's values, so a structure with `array[object[...],
+  0..N]` whose first record happened to emit an empty array locked the destination into flat mode and
+  then threw `DestinationException "does not support arrays"` on the first later record that populated
+  it. Nested-ness is now decided from the declared schema (`rawFieldTypes`) in `open()` when a schema
+  is supplied; runtime detection remains only as the no-schema fallback.
+- **Avro encoded arrays of objects with Java `toString()` instead of JSON (#284)** — `array[object[...]]`
+  elements were written as `{qty=3, sku=ABC}` (Java map syntax, non-parseable), while top-level `Map`
+  fields were correctly JSON-encoded. Object-array elements now go through the same JSON path as
+  top-level maps.
+- **Avro froze a null-first field to `STRING` for the whole run (#285)** — the schema was inferred once
+  from the first record's runtime values, so a field that was `null` on record 0 became permanently
+  typed `STRING` and every later `Integer`/`Long`/`Instant` for it was silently stringified. A
+  first-record-null field now gets a widened nullable union with per-record branch resolution, so
+  numeric/boolean values are no longer coerced. Caveat: date/timestamp logical-type precision is not
+  recovered if the true type only appears after record 0 — fully fixing that needs declared types
+  plumbed from the CLI into the serializer.
 - **`IntegerGenerator` hung forever on `int` ranges wider than 2^31 (#254)** — the rejection-sampling
   fallback computed `limit = 2^31 - (2^31 % range)`, which is `0` for any range in `(2^31, 2^32]`, so
   the sampling loop never terminated. `int[-2000000000..2000000000]` and the full-width
