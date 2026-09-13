@@ -185,6 +185,48 @@ class DatabaseDestinationTest {
   }
 
   @Test
+  void shouldRouteToNestedModeWhenSchemaDeclaresArrayOfObjectEvenIfFirstRecordArrayIsEmpty()
+      throws SQLException {
+    // Issue #283: array[object[address], 0..3] legally emits an empty list for some records.
+    // Nested-vs-flat must be decided from the declared schema up front, not re-derived from the
+    // first written record's runtime shape — otherwise a later, populated record blows up with
+    // "does not support arrays" mid-run.
+    try (Statement st = h2Connection.createStatement()) {
+      st.execute("CREATE TABLE IF NOT EXISTS addresses (id INT, city VARCHAR(255), users_id INT)");
+    }
+
+    Map<String, String> schema =
+        Map.of("id", TYPE_INT, "addresses", "array[object[address], 0..3]");
+
+    Map<String, Object> firstRecord = new LinkedHashMap<>();
+    firstRecord.put("id", 1);
+    firstRecord.put("addresses", List.of()); // empty — legal per declared min length 0
+
+    Map<String, Object> addressPayload = new LinkedHashMap<>();
+    addressPayload.put("id", 200);
+    addressPayload.put("city", "Rome");
+
+    Map<String, Object> secondRecord = new LinkedHashMap<>();
+    secondRecord.put("id", 2);
+    secondRecord.put("addresses", List.of(addressPayload)); // populated on a later record
+
+    try (DatabaseDestination dest = new DatabaseDestination(config(), schema)) {
+      dest.open();
+      assertThatCode(
+              () -> {
+                dest.write(firstRecord);
+                dest.write(secondRecord);
+              })
+          .doesNotThrowAnyException();
+      dest.flush();
+    }
+
+    try (Statement st = h2Connection.createStatement()) {
+      st.execute("DROP TABLE IF EXISTS addresses");
+    }
+  }
+
+  @Test
   void shouldFailFastOnArrayField() {
     Map<String, Object> arrayRecord = new LinkedHashMap<>();
     arrayRecord.put("id", 1);

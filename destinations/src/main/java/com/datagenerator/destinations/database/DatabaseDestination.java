@@ -16,7 +16,9 @@
 
 package com.datagenerator.destinations.database;
 
+import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.AbstractDestination;
 import com.datagenerator.destinations.DestinationException;
@@ -262,6 +264,19 @@ public class DatabaseDestination extends AbstractDestination {
           rawFieldTypes.entrySet().stream()
               .collect(Collectors.toMap(Map.Entry::getKey, e -> typeParser.parse(e.getValue())));
       log.debug("Built field schema with {} typed fields", schema.size());
+
+      // Decide flat-vs-nested from the declared schema up front, rather than from the first
+      // written record's runtime shape. A field such as `array[object[..], 0..N]` can legally
+      // emit an empty list for the first record (stripped by stripEmptyLists()), which would
+      // otherwise cause runtime detection to lock flat mode and crash on a later, populated
+      // record (issue #283).
+      if (hasNestedFieldInSchema(schema)) {
+        nestedMode = true;
+        decomposer = new NestedRecordDecomposer(config.isInjectParentFk());
+        log.info(
+            "Nested schema detected — switching to multi-table decomposition mode (table={})",
+            config.getTableName());
+      }
     }
 
     isOpen = true;
@@ -281,8 +296,10 @@ public class DatabaseDestination extends AbstractDestination {
     // rejecting a data that simply has an empty array[object[...]] field.
     Map<String, Object> effectiveRecord = stripEmptyLists(data);
 
-    // Auto-detect nested mode on the first data
-    if (columnNames == null && !nestedMode && hasNestedFields(effectiveRecord)) {
+    // Auto-detect nested mode from the first record's runtime shape, but only when no schema
+    // was supplied at construction — a schema-driven decision was already made in open() and
+    // must not be overridden or re-derived from a single record's values (issue #283).
+    if (schema == null && columnNames == null && !nestedMode && hasNestedFields(effectiveRecord)) {
       nestedMode = true;
       decomposer = new NestedRecordDecomposer(config.isInjectParentFk());
       log.info(
@@ -460,6 +477,22 @@ public class DatabaseDestination extends AbstractDestination {
         return true;
     }
     return false;
+  }
+
+  /**
+   * Declared-schema counterpart of {@link #hasNestedFields(Map)}. Returns {@code true} if any field
+   * is a nested {@code object[...]} or an {@code array[object[...], ...]}, regardless of what any
+   * single record's runtime values happen to contain (issue #283).
+   */
+  private static boolean hasNestedFieldInSchema(Map<String, DataType> schema) {
+    return schema.values().stream().anyMatch(DatabaseDestination::isNestedType);
+  }
+
+  private static boolean isNestedType(DataType type) {
+    if (type instanceof ObjectType) {
+      return true;
+    }
+    return type instanceof ArrayType arrayType && arrayType.getElementType() instanceof ObjectType;
   }
 
   private void writeNested(Map<String, Object> data) {
