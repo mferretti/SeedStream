@@ -18,6 +18,8 @@ package com.datagenerator.formats.avro;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -267,6 +269,46 @@ class AvroSerializerTest {
     pool.awaitTermination(10, TimeUnit.SECONDS);
 
     assertThat(errors.get()).isZero();
+  }
+
+  @Test
+  void shouldSerializeObjectArrayElementsAsParseableJson() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("line_items", List.of(Map.of("sku", "ABC", "qty", 3), Map.of("sku", "XYZ", "qty", 1)));
+
+    GenericRecord decoded = roundTrip(data);
+
+    List<?> items = (List<?>) decoded.get("line_items");
+    assertThat(items).hasSize(2);
+    ObjectMapper mapper = new ObjectMapper();
+    for (Object item : items) {
+      // issue #284: elements must be parseable JSON, not Java Map#toString() syntax such as
+      // "{qty=3, sku=ABC}" (which is not valid JSON and would fail to parse below).
+      JsonNode node = mapper.readTree(item.toString());
+      assertThat(node.has("sku")).isTrue();
+      assertThat(node.has("qty")).isTrue();
+    }
+    assertThat(items.get(0).toString()).doesNotContain("=").contains("\"sku\"");
+  }
+
+  @Test
+  void shouldNotStringifyNumericFieldThatWasNullInFirstRecord() throws Exception {
+    Map<String, Object> r1 = new LinkedHashMap<>();
+    r1.put("score", null);
+    r1.put("name", ALICE);
+
+    Map<String, Object> r2 = new LinkedHashMap<>();
+    r2.put("score", 42);
+    r2.put("name", "Bob");
+
+    GenericRecord decoded1 = roundTrip(r1);
+    assertThat(decoded1.get("score")).isNull();
+
+    GenericRecord decoded2 = roundTrip(r2);
+    // issue #285: a field that was null in the schema-defining first record must not lock to
+    // STRING forever; a later Integer value must be preserved as a numeric Avro type (here Long,
+    // per the widened null-first union), not silently stringified via toString().
+    assertThat(decoded2.get("score")).isInstanceOf(Long.class).isEqualTo(42L);
   }
 
   // --- helpers ---
