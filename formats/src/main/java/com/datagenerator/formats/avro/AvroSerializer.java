@@ -56,11 +56,21 @@ import org.apache.avro.io.EncoderFactory;
  *   <li>Double, Float, BigDecimal → Avro {@code double}
  *   <li>LocalDate → Avro {@code int} with {@code date} logical type (days since epoch)
  *   <li>Instant → Avro {@code long} with {@code timestamp-millis} logical type
- *   <li>List → Avro {@code array} of {@code string}
+ *   <li>List → Avro {@code array} of {@code string}; object/Map elements are JSON-encoded (not
+ *       {@link Object#toString()})
  *   <li>Map (nested object) → Avro {@code string} (JSON-encoded)
  * </ul>
  *
  * <p>All fields are nullable ({@code ["null", type]} union with null default).
+ *
+ * <p><b>Null-first fields:</b> the schema is inferred from the first record only. If a field's
+ * first value is {@code null}, its true type is unknown at schema-build time; rather than locking
+ * the field to {@code STRING} forever (which would silently stringify later non-null numeric values
+ * via {@code toString()}), such fields get a widened union of {@code [null, long, double, boolean,
+ * string]}. The value's runtime type is resolved per-record to pick the matching branch. This loses
+ * date/timestamp logical-type precision for fields whose type is only revealed later as {@link
+ * LocalDate}/{@link Instant} (they fall back to {@code string}/{@code long} respectively), but
+ * never corrupts a numeric/boolean value into a string.
  *
  * <p><b>Thread Safety:</b> Thread-safe. Schema and writer are initialized once via double-checked
  * locking. {@code GenericDatumWriter} is stateless per write and safe to share across threads.
@@ -136,11 +146,33 @@ public class AvroSerializer implements FormatSerializer {
     List<Schema.Field> fields = new ArrayList<>();
     for (Map.Entry<String, Object> entry : data.entrySet()) {
       String fieldName = sanitizeFieldName(entry.getKey());
-      Schema valueSchema = inferSchema(entry.getValue());
-      Schema nullable = Schema.createUnion(Schema.create(Schema.Type.NULL), valueSchema);
+      Schema nullable = buildFieldSchema(entry.getValue());
       fields.add(new Schema.Field(fieldName, nullable, null, Schema.Field.NULL_DEFAULT_VALUE));
     }
     return Schema.createRecord("Record", null, "com.datagenerator", false, fields);
+  }
+
+  /**
+   * Builds the nullable union schema for one field from its first-record value.
+   *
+   * <p>When {@code firstValue} is {@code null} we have no runtime type to infer from (issue #285).
+   * Locking such a field to {@code STRING} would silently stringify later non-null
+   * Integer/Long/Instant/etc. values for the whole run, corrupting both their Avro type and their
+   * encoded representation. Instead we widen the union to the common scalar kinds so the true value
+   * can be encoded natively once it appears; {@link #resolveBranch} picks the matching branch per
+   * record.
+   */
+  private Schema buildFieldSchema(Object firstValue) {
+    Schema nullSchema = Schema.create(Schema.Type.NULL);
+    if (firstValue == null) {
+      return Schema.createUnion(
+          nullSchema,
+          Schema.create(Schema.Type.LONG),
+          Schema.create(Schema.Type.DOUBLE),
+          Schema.create(Schema.Type.BOOLEAN),
+          Schema.create(Schema.Type.STRING));
+    }
+    return Schema.createUnion(nullSchema, inferSchema(firstValue));
   }
 
   private static String sanitizeFieldName(String name) {
@@ -150,8 +182,13 @@ public class AvroSerializer implements FormatSerializer {
     return Character.isDigit(sanitized.charAt(0)) ? "_" + sanitized : sanitized;
   }
 
+  /**
+   * Infers the Avro type for a known, non-null value. Callers must not pass {@code null}; a null
+   * first-record value is handled separately by {@link #buildFieldSchema} since its true type is
+   * unknown (see class javadoc, issue #285).
+   */
   private Schema inferSchema(Object value) {
-    if (value == null || value instanceof String) return Schema.create(Schema.Type.STRING);
+    if (value instanceof String) return Schema.create(Schema.Type.STRING);
     if (value instanceof Long) return Schema.create(Schema.Type.LONG);
     if (value instanceof Integer) return Schema.create(Schema.Type.INT);
     if (value instanceof Boolean) return Schema.create(Schema.Type.BOOLEAN);
@@ -193,12 +230,14 @@ public class AvroSerializer implements FormatSerializer {
   }
 
   /**
-   * Converts a Java value to its Avro representation. The field schema is always a {@code ["null",
-   * actualType]} union; we extract the non-null branch at index 1.
+   * Converts a Java value to its Avro representation. The field schema is a {@code ["null", ...]}
+   * union; for ordinary fields the non-null type is fixed at index 1, but a field whose first
+   * record value was {@code null} carries a widened multi-branch union (see {@link
+   * #buildFieldSchema}), so the matching branch is resolved per-value via {@link #resolveBranch}.
    */
   private Object convertValue(Object value, Schema unionSchema) {
     if (value == null) return null;
-    Schema actual = unionSchema.getTypes().get(1);
+    Schema actual = resolveBranch(value, unionSchema);
     return switch (actual.getType()) {
       case INT ->
           value instanceof LocalDate ld ? (int) ld.toEpochDay() : ((Number) value).intValue();
@@ -211,6 +250,40 @@ public class AvroSerializer implements FormatSerializer {
       case ARRAY -> convertToAvroArray(value, actual);
       default -> value.toString();
     };
+  }
+
+  /**
+   * Picks the union branch matching {@code value}'s runtime type. Ordinary fields have a fixed
+   * two-branch {@code [null, type]} union, so the non-null branch at index 1 is always correct.
+   * Null-first fields (issue #285) carry a widened union; the branch is chosen by the value's Java
+   * type so it is encoded natively instead of falling through to {@code STRING}.
+   */
+  private Schema resolveBranch(Object value, Schema unionSchema) {
+    List<Schema> branches = unionSchema.getTypes();
+    if (branches.size() == 2) {
+      return branches.get(1);
+    }
+    Schema.Type target = resolvePolymorphicType(value);
+    for (Schema branch : branches) {
+      if (branch.getType() == target) {
+        return branch;
+      }
+    }
+    // STRING is always present as the catch-all branch built in buildFieldSchema.
+    return branches.get(branches.size() - 1);
+  }
+
+  private Schema.Type resolvePolymorphicType(Object value) {
+    if (value instanceof Long || value instanceof Integer || value instanceof Instant) {
+      return Schema.Type.LONG;
+    }
+    if (value instanceof Double || value instanceof Float || value instanceof BigDecimal) {
+      return Schema.Type.DOUBLE;
+    }
+    if (value instanceof Boolean) {
+      return Schema.Type.BOOLEAN;
+    }
+    return Schema.Type.STRING;
   }
 
   private String convertToString(Object value) {
@@ -230,7 +303,10 @@ public class AvroSerializer implements FormatSerializer {
     }
     GenericData.Array<String> avroArray = new GenericData.Array<>(list.size(), arraySchema);
     for (Object item : list) {
-      avroArray.add(item == null ? null : item.toString());
+      // issue #284: object/Map elements must be JSON-encoded via convertToString (same mechanism
+      // as top-level Map fields), not Object#toString(), which would emit non-parseable Java map
+      // syntax like "{qty=3, sku=ABC}".
+      avroArray.add(item == null ? null : convertToString(item));
     }
     return avroArray;
   }
