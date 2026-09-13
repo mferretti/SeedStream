@@ -86,7 +86,7 @@ subprojects {
         java {
             // Apply Apache 2.0 license header
             licenseHeaderFile(rootProject.file("config/license-header.txt"))
-            googleJavaFormat()
+            googleJavaFormat("1.25.2")
             // Keep braces on same line (override Google style)
             replaceRegex("Move opening brace to same line", """\n(\s*)\{""", " {")
             removeUnusedImports()
