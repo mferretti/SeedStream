@@ -123,7 +123,15 @@ subprojects {
             // TLS hostname verification silently disabled, HostnameVerificationPolicy#BUILTIN
             // ineffective) and CVE-2026-64607 (connection-pool leak on invalid Content-Encoding).
             // Both fixed in 5.6.4. Force everywhere so OWASP DC never sees 5.6.2 on any config.
-            "org.apache.httpcomponents.client5:httpclient5:5.6.4"
+            "org.apache.httpcomponents.client5:httpclient5:5.6.4",
+            // lz4-java: kafka-clients 4.3.1 pulls at.yawk.lz4:lz4-java 1.10.2, vulnerable to
+            // CVE-2026-59949; 1.11.1 is the fix. Force everywhere.
+            "at.yawk.lz4:lz4-java:1.11.1",
+            // commons-compress already resolves to 1.28.0 via avro 1.12.2 (patched), but
+            // testcontainers requests 1.24.0, which the dependency-submission SBOM reports and
+            // Dependabot flags for CVE-2024-25710 / CVE-2024-26308 (both fixed in 1.26.0). Pin the
+            // already-resolved 1.28.0 so no configuration requests a pre-1.26.0 version.
+            "org.apache.commons:commons-compress:1.28.0"
         )
         // netty ships ~20 coordinated artifacts, all pulled transitively via
         // software.amazon.awssdk:netty-nio-client. 4.1.135.Final was vulnerable to
