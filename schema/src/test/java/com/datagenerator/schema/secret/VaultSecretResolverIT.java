@@ -69,20 +69,23 @@ class VaultSecretResolverIT extends IntegrationTest {
 
   @Test
   void shouldThrowForMultipleFieldsWithoutHashSuffix() {
-    assertThatThrownBy(() -> resolver().resolve("secret/data/multi"))
+    VaultSecretResolver vaultResolver = resolver();
+    assertThatThrownBy(() -> vaultResolver.resolve("secret/data/multi"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("multiple fields");
   }
 
   @Test
   void shouldThrowForNonExistentPath() {
-    assertThatThrownBy(() -> resolver().resolve("secret/data/nonexistent#key"))
+    VaultSecretResolver vaultResolver = resolver();
+    assertThatThrownBy(() -> vaultResolver.resolve("secret/data/nonexistent#key"))
         .isInstanceOf(SecretResolutionException.class);
   }
 
   @Test
   void shouldThrowForMissingFieldInSecret() {
-    assertThatThrownBy(() -> resolver().resolve("secret/data/app#nonexistent"))
+    VaultSecretResolver vaultResolver = resolver();
+    assertThatThrownBy(() -> vaultResolver.resolve("secret/data/app#nonexistent"))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("nonexistent");
   }

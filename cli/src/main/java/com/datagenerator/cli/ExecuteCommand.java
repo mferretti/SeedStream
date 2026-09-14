@@ -135,6 +135,8 @@ public class ExecuteCommand implements Callable<Integer> {
   private static final String CONF_RETRY_DELAY_MS = "retry_delay_ms";
   private static final String CONF_TOPIC = "topic";
   private static final String CONF_BATCH_SIZE = "batch_size";
+  private static final String CONF_USERNAME = "username";
+  private static final String CONF_PASSWORD = "password";
 
   /**
    * Path to the job configuration YAML file.
@@ -685,7 +687,8 @@ public class ExecuteCommand implements Callable<Integer> {
     return new FileDestination(configBuilder.build(), serializer);
   }
 
-  private KafkaDestination createKafkaDestination(
+  // Package-private for unit testing (no broker needed — the ctor only validates + stores).
+  KafkaDestination createKafkaDestination(
       JsonNode conf, FormatSerializer serializer, SecretResolver secretResolver) {
     String bootstrap = conf.get("bootstrap").asText();
     String topic = conf.get(CONF_TOPIC).asText();
@@ -693,29 +696,7 @@ public class ExecuteCommand implements Callable<Integer> {
     KafkaDestinationConfig.KafkaDestinationConfigBuilder configBuilder =
         KafkaDestinationConfig.builder().bootstrap(bootstrap).topic(topic);
 
-    // Optional configuration
-    if (conf.has("sync")) {
-      configBuilder.sync(conf.get("sync").asBoolean());
-    }
-    if (conf.has(CONF_BATCH_SIZE)) {
-      configBuilder.batchSize(conf.get(CONF_BATCH_SIZE).asInt());
-    }
-    if (conf.has("linger_ms")) {
-      configBuilder.lingerMs(conf.get("linger_ms").asInt());
-    }
-    if (conf.has("compression")) {
-      configBuilder.compression(conf.get("compression").asText());
-    }
-    if (conf.has("acks")) {
-      configBuilder.acks(conf.get("acks").asText());
-    }
-
-    if (conf.has(CONF_MAX_RETRIES)) {
-      configBuilder.maxRetries(conf.get(CONF_MAX_RETRIES).asInt());
-    }
-    if (conf.has(CONF_RETRY_DELAY_MS)) {
-      configBuilder.retryDelayMs(conf.get(CONF_RETRY_DELAY_MS).asLong());
-    }
+    applyOptionalKafkaSettings(configBuilder, conf);
 
     // SASL/SSL configuration — credential fields support ${VAR} and ${SECRET:path} substitution
     String securityProtocol =
@@ -726,12 +707,12 @@ public class ExecuteCommand implements Callable<Integer> {
             ? ConfigSubstitutor.substitute(conf.get("sasl_jaas_config").asText(), secretResolver)
             : null;
     String username =
-        conf.has("username")
-            ? ConfigSubstitutor.substitute(conf.get("username").asText(), secretResolver)
+        conf.has(CONF_USERNAME)
+            ? ConfigSubstitutor.substitute(conf.get(CONF_USERNAME).asText(), secretResolver)
             : null;
     String password =
-        conf.has("password")
-            ? ConfigSubstitutor.substitute(conf.get("password").asText(), secretResolver)
+        conf.has(CONF_PASSWORD)
+            ? ConfigSubstitutor.substitute(conf.get(CONF_PASSWORD).asText(), secretResolver)
             : null;
 
     // Synthesize the JAAS config from username/password when no explicit sasl_jaas_config is given.
@@ -748,6 +729,46 @@ public class ExecuteCommand implements Callable<Integer> {
     saslMechanism = sasl.mechanism();
     saslJaasConfig = sasl.jaasConfig();
 
+    applyKafkaSecuritySettings(
+        configBuilder, conf, securityProtocol, saslMechanism, saslJaasConfig, secretResolver);
+
+    return new KafkaDestination(configBuilder.build(), serializer);
+  }
+
+  // Package-private for unit testing.
+  static void applyOptionalKafkaSettings(
+      KafkaDestinationConfig.KafkaDestinationConfigBuilder configBuilder, JsonNode conf) {
+    if (conf.has("sync")) {
+      configBuilder.sync(conf.get("sync").asBoolean());
+    }
+    if (conf.has(CONF_BATCH_SIZE)) {
+      configBuilder.batchSize(conf.get(CONF_BATCH_SIZE).asInt());
+    }
+    if (conf.has("linger_ms")) {
+      configBuilder.lingerMs(conf.get("linger_ms").asInt());
+    }
+    if (conf.has("compression")) {
+      configBuilder.compression(conf.get("compression").asText());
+    }
+    if (conf.has("acks")) {
+      configBuilder.acks(conf.get("acks").asText());
+    }
+    if (conf.has(CONF_MAX_RETRIES)) {
+      configBuilder.maxRetries(conf.get(CONF_MAX_RETRIES).asInt());
+    }
+    if (conf.has(CONF_RETRY_DELAY_MS)) {
+      configBuilder.retryDelayMs(conf.get(CONF_RETRY_DELAY_MS).asLong());
+    }
+  }
+
+  // Package-private for unit testing.
+  static void applyKafkaSecuritySettings(
+      KafkaDestinationConfig.KafkaDestinationConfigBuilder configBuilder,
+      JsonNode conf,
+      String securityProtocol,
+      String saslMechanism,
+      String saslJaasConfig,
+      SecretResolver secretResolver) {
     if (securityProtocol != null) {
       configBuilder.securityProtocol(securityProtocol);
     }
@@ -772,8 +793,6 @@ public class ExecuteCommand implements Callable<Integer> {
       configBuilder.sslKeystorePassword(
           ConfigSubstitutor.substitute(conf.get("ssl_keystore_password").asText(), secretResolver));
     }
-
-    return new KafkaDestination(configBuilder.build(), serializer);
   }
 
   /** Effective SASL mechanism + jaas.config after resolving username/password vs explicit jaas. */
@@ -870,8 +889,10 @@ public class ExecuteCommand implements Callable<Integer> {
     JsonNode conf = jobConfig.getConf();
 
     String jdbcUrl = ConfigSubstitutor.substitute(conf.get("jdbc_url").asText(), secretResolver);
-    String username = ConfigSubstitutor.substitute(conf.get("username").asText(), secretResolver);
-    String password = ConfigSubstitutor.substitute(conf.get("password").asText(), secretResolver);
+    String username =
+        ConfigSubstitutor.substitute(conf.get(CONF_USERNAME).asText(), secretResolver);
+    String password =
+        ConfigSubstitutor.substitute(conf.get(CONF_PASSWORD).asText(), secretResolver);
 
     // Table name: explicit override > structure name (strip .yaml extension if present)
     String structureName = jobConfig.getSource().replaceAll("\\.yaml$", "");

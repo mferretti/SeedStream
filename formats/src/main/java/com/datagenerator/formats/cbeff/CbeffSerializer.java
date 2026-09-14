@@ -72,6 +72,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CbeffSerializer implements FormatSerializer {
 
   public static final String CBEFF_VERSION = "1.1";
+  private static final String CREATION_DATE = "creation_date";
   public static final String DEFAULT_FORMAT_OWNER = "ISO/IEC-JTC1-SC37";
   public static final String DEFAULT_FORMAT_TYPE = "biometric-json";
 
@@ -123,12 +124,12 @@ public class CbeffSerializer implements FormatSerializer {
 
       // Promote a seeded creation_date from the payload when the record declares one (mirrors the
       // subject_id promotion below); otherwise fall back to the deterministic synthetic derivation.
-      Object providedDate = data.get("creation_date");
+      Object providedDate = data.get(CREATION_DATE);
       if (providedDate != null) {
-        envelope.put("creation_date", providedDate);
+        envelope.put(CREATION_DATE, providedDate);
       } else {
         envelope.put(
-            "creation_date",
+            CREATION_DATE,
             DateTimeFormatter.ISO_INSTANT.format(deriveCreationDate(canonicalPayload)));
       }
 
