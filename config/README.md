@@ -28,7 +28,7 @@ config/
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --format json --count 1000"
 ```
 
-**Output**: `cli/output/addresses.json`  
+**Output**: `build/run-output/addresses.json`  
 **Features**: Italian locale, field aliases, char/int ranges
 
 ---
@@ -39,7 +39,7 @@ config/
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format csv --count 10000"
 ```
 
-**Output**: `cli/output/customers.csv`  
+**Output**: `build/run-output/customers.csv`  
 **Features**: Realistic names, emails, addresses, phone numbers (USA locale)
 
 ---
@@ -50,7 +50,7 @@ config/
 ./gradlew :cli:run --args="execute --job config/jobs/file_invoice.yaml --format json --count 500"
 ```
 
-**Output**: `cli/output/invoices.json`  
+**Output**: `build/run-output/invoices.json`  
 **Features**: Nested company objects, arrays of line items (1-20 per invoice), Italian locale
 
 ---
@@ -145,7 +145,7 @@ seed:
   type: embedded
   value: 98765
 conf:
-  path: cli/output/customers
+  path: build/run-output/customers
   compress: false
   append: false
 ```
@@ -155,7 +155,7 @@ conf:
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format json --count 5000"
 ```
 
-**Output**: `cli/output/customers.json`
+**Output**: `build/run-output/customers.json`
 
 ---
 
@@ -365,11 +365,9 @@ export SEED_API_TOKEN=your-api-token
 
 **Use Case**: Centralized seed service, audit logging, dynamic seed rotation
 
-**API Response Example**:
-```json
-{
-  "seed": 123456789
-}
+**API Response Example**: the endpoint must return the seed as a bare integer in the response body (`text/plain`), **not** a JSON envelope. Surrounding whitespace is trimmed.
+```
+123456789
 ```
 
 **Supported auth types**: `bearer`, `basic`, `api_key`
@@ -479,6 +477,8 @@ Generate 10 million records with 12 worker threads:
 
 **Features**: Header row, always-quoted fields, nested objects as JSON strings
 
+**Formula-injection neutralization (CWE-1236)**: any **string** cell (header or value) whose first character is a spreadsheet formula trigger — `=`, `+`, `-`, `@`, TAB, or CR — is prefixed with a single quote (`'`) so Excel/LibreOffice/Sheets treat it as literal text rather than executing it. Typed numbers, dates and nested-JSON cells are not affected. This is always on and not currently configurable, so a downstream **non-spreadsheet** parser may see a leading `'` on such values (e.g. `-5` written as `'-5`) and should strip it if needed.
+
 ---
 
 ### Avro (OCF Container)
@@ -496,7 +496,7 @@ Generate 10 million records with 12 worker threads:
 conf:
   schema_registry_url: "http://localhost:8081"
   schema_registry_auth: "bearer"              # bearer | basic | (omit for none)
-  schema_registry_token: "${ENV:SR_TOKEN}"
+  schema_registry_token: "${SR_TOKEN}"
   # schema_registry_subject: "my-subject"     # optional; defaults to <topic>-value
 ```
 
@@ -513,7 +513,7 @@ conf:
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --format protobuf --count 100"
 ```
 
-**Output** (`customers.protobuf`): Length-prefixed binary records with dynamically generated schema.
+**Output** (`customers.protobuf`): base64-encoded protobuf, **one record per line** (NDJSON-friendly text, not raw/length-prefixed binary). Each serialized message is dynamically schema-generated, then base64-encoded; decode a line with `Base64.getDecoder().decode(line)` before parsing.
 
 ---
 
@@ -522,7 +522,21 @@ conf:
 ./gradlew :cli:run --args="execute --job config/jobs/file_fingerprint_fmr.yaml --format cbeff --count 10"
 ```
 
-**Output** (`fingerprints.cbeff.json`): CBEFF-like JSON envelope wrapping biometric field data per ISO/IEC 19785.
+**Output** (`fingerprints.cbeff`): CBEFF-like JSON envelope wrapping biometric field data per ISO/IEC 19785. (The payload is JSON, but the file extension is `.cbeff`, not `.cbeff.json`.)
+
+The BDB header format identifiers are configurable via the job `conf`:
+
+| Key | Meaning | Default |
+|-----|---------|---------|
+| `cbeff_format_owner` | CBEFF format owner identifier written to the BDB header | `ISO/IEC-JTC1-SC37` |
+| `cbeff_format_type` | CBEFF format type identifier written to the BDB header | `biometric-json` |
+
+```yaml
+conf:
+  path: build/run-output/fingerprints
+  cbeff_format_owner: "ACME-BIO"
+  cbeff_format_type: "vendor-fmr"
+```
 
 ---
 
@@ -533,12 +547,12 @@ Same seed → identical output (bit-for-bit):
 ```bash
 # First run
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --seed 12345 --count 1000"
-sha256sum cli/output/customers.json
+sha256sum build/run-output/customers.json
 
 # Second run (identical output)
-rm cli/output/customers.json
+rm build/run-output/customers.json
 ./gradlew :cli:run --args="execute --job config/jobs/file_customer.yaml --seed 12345 --count 1000"
-sha256sum cli/output/customers.json  # Same hash!
+sha256sum build/run-output/customers.json  # Same hash!
 ```
 
 **Guaranteed**: Even across JVM restarts, different machines, different thread counts.
@@ -660,7 +674,7 @@ credit_card: { datatype: credit_card }
 `iban` honours `geolocation` (like names/addresses). `random_iban` and `sepa_iban` are
 locale-independent — use them for foreign or SEPA-wide counterparty accounts respectively.
 
-**50+ types total** with 20+ aliases. Add more without code via `--faker-types <file>`:
+**52 canonical types** with 33 aliases. The full inventory lives in [docs/DATAFAKER-COVERAGE.md](../docs/DATAFAKER-COVERAGE.md). Add more without code via `--faker-types <file>`:
 - **Method chains** — any no-arg Datafaker chain, e.g. `beer_style: beer.style` → `faker.beer().style()`.
 - **Regex patterns** — a `regex:`-prefixed value generates strings matching a regex. The pattern is
   checked once when the file loads (a broken pattern stops the run with a message naming the field),
@@ -698,7 +712,10 @@ tags:       { datatype: "array[char[5..10], 3..8]" }    # 3–8 strings
 line_items: { datatype: "array[object[line_item], 1..20]" }  # 1–20 nested objects
 ```
 
-Referenced structure files are loaded from `structures_path` (default: `config/structures/`).
+Referenced structure files are loaded from `structures_path`. Resolution order:
+1. If the job sets `structures_path`, that value is used as-is (absolute, or relative to the current working directory).
+2. Otherwise, if the job file lives in a directory named `jobs/`, structures are loaded from its sibling `structures/` directory — i.e. `<parent-of-jobs>/structures/`. This is why the shipped `config/jobs/*.yaml` resolve against `config/structures/` with no explicit key.
+3. Otherwise, it falls back to the literal path `config/structures/` (relative to the working directory).
 
 ### Foreign Key References
 
@@ -717,6 +734,22 @@ order_id:    { datatype: ref[order.id, 1..count] }
 **`count` keyword**: `ref[s.f, 1..count]` — the `count` placeholder expands to the value of `--count` passed to the CLI (or configured in the job). Use it so FK ranges scale automatically without editing YAML when the count changes.
 
 **Limitation**: `count` refers to the *current* job's count. For a parent→child FK chain, run both jobs with the same `--count`, or use a static range derived from the parent job's count.
+
+**Parent reference (`ref[parent.<field>]`)**: copies the value of `<field>` from the **immediately enclosing parent record** (as opposed to `ref[<struct>.<field>, a..b]`, which samples a random id from *another* structure's pool). No range spec — it propagates the parent's actual generated value, guaranteeing referential integrity in nested trees.
+
+- Valid **only** inside a nested `object[...]` or `array[object[...], ...]` field; used at the top level it fails fast (no parent record on the stack).
+- The referenced field must be declared on the parent **before** the nested field that references it, so it is already present when the child is generated.
+- `<field>` is a plain field name (lower-case / underscores); no range is accepted.
+
+```yaml
+# book.yaml — chapters carry their parent book's id
+title:    { datatype: title }
+chapters:
+  datatype: "array[object[chapter], 1..10]"
+# chapter.yaml
+book_id:  { datatype: ref[parent.id] }   # copies the enclosing book's id
+name:     { datatype: title }
+```
 
 ### Field Aliases
 
@@ -765,19 +798,30 @@ seed:
 conf:
   bootstrap: localhost:9092        # broker(s), comma-separated
   topic: addresses
-  batch_size: 1000                 # records per batch (default: 100)
-  linger_ms: 10                    # wait time for batching (default: 0)
+  batch_size: 16384                # producer batch.size in BYTES, Kafka semantics (default: 16384)
+  linger_ms: 10                    # wait time for batching (default: 10)
   compression: gzip                # gzip | snappy | lz4 | zstd | none
   acks: "all"                      # "0" | "1" | "all"
   sync: false                      # false=async (default), true=sync
+  max_retries: 3                   # send retries in sync mode (default: 3)
+  retry_delay_ms: 1000             # initial backoff between retries, ms; doubles each retry (default: 1000)
   # SASL/SSL authentication (optional):
   sasl_mechanism: PLAIN            # PLAIN | SCRAM-SHA-256 | SCRAM-SHA-512
   security_protocol: SASL_SSL      # PLAINTEXT | SSL | SASL_PLAINTEXT | SASL_SSL
   username: ${KAFKA_USERNAME}
   password: ${KAFKA_PASSWORD}
+  # TLS keystore/truststore (optional; passwords support ${VAR} / ${SECRET:path}):
+  ssl_truststore_location: /etc/kafka/truststore.jks
+  ssl_truststore_password: ${KAFKA_TRUSTSTORE_PASSWORD}
+  ssl_keystore_location: /etc/kafka/keystore.jks     # only for mTLS client auth
+  ssl_keystore_password: ${KAFKA_KEYSTORE_PASSWORD}
 ```
 
-Features: async/sync modes, gzip/snappy/lz4/zstd compression, SASL/SSL auth, idempotent producer (`acks=all`), configurable batching.
+- **`batch_size`** is the Kafka producer `batch.size` in **bytes** (default `16384` = 16 KB), *not* a record count. Do not confuse it with the database destination's `batch_size`, which is a record count.
+- **`max_retries` / `retry_delay_ms`** apply in **sync** mode (`sync: true`): up to `max_retries` resends (default 3) with an exponential backoff starting at `retry_delay_ms` (default 1000 ms, doubling each attempt).
+- **`ssl_*`** keys configure the TLS truststore (server verification) and keystore (mTLS client auth). Passwords accept `${VAR}` env and `${SECRET:path}` substitution. See `config/jobs/kafka_address_sasl.yaml` for a worked SASL_SSL example.
+
+Features: async/sync modes, gzip/snappy/lz4/zstd compression, SASL/SSL auth, idempotent producer (`acks=all`), configurable batching, sync-mode retry backoff.
 
 ---
 
@@ -794,14 +838,20 @@ seed:
 conf:
   jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
   username: "dbuser"
-  password: "${ENV:DB_PASSWORD}"   # env var, ${SECRET:enc:AES256GCM:...}, or cloud backend
+  password: "${DB_PASSWORD}"   # env var, ${SECRET:enc:AES256GCM:...}, or cloud backend
   table: "passports"               # optional — defaults to structure name
-  batch_size: 1000
-  pool_size: 5
+  batch_size: 1000                 # records per batch/transaction (default: 1000)
+  pool_size: 5                     # HikariCP pool size (default: 5)
   transaction_strategy: per_batch  # per_batch | per_job | auto_commit
+  max_retries: 3                   # connection attempts during open() (default: 3; 1 disables retries)
+  retry_delay_ms: 1000             # initial backoff between connection retries, ms; doubles each retry (default: 1000)
+  inject_parent_fk: true           # auto-inject {parent_table}_id FK into child records (default: true)
   truncate_before_insert: false    # ⚠️ DESTRUCTIVE — see "CI seeding" below
   restart_identity: false          # also reset IDENTITY/SERIAL sequences (PostgreSQL)
 ```
+
+- **`max_retries` / `retry_delay_ms`** here govern **connection** attempts during `open()` (exponential backoff from `retry_delay_ms`, doubling). Set `max_retries: 1` to disable retries.
+- **`inject_parent_fk`** (default `true`): the nested-record decomposer injects a `{parent_table}_id` FK column into each child record. Set to `false` when child structures already populate the FK themselves via `ref[parent.<field>]`, to avoid a redundant second column.
 
 **CI seeding (`truncate_before_insert`)**: Set to `true` to empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert. Combined with a fixed `seed`, one `execute` gives a clean, deterministic dataset per run — no external teardown script. Defaults to `false`. Notes:
 - ⚠️ **Destructive** — wipes the table (and, via `CASCADE`, its FK dependents). Use only against a disposable/CI database.
@@ -844,8 +894,8 @@ Secrets in job YAML are resolved before execution. Three mechanisms are supporte
 
 ```yaml
 conf:
-  password: "${ENV:DB_PASSWORD}"
-  token: "${ENV:KAFKA_SASL_TOKEN}"
+  password: "${DB_PASSWORD}"
+  token: "${KAFKA_SASL_TOKEN}"
 ```
 
 ### 2. AES-256-GCM Inline Encryption

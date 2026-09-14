@@ -189,14 +189,24 @@ git clone https://github.com/mferretti/SeedStream.git && cd SeedStream
 # Reproducible output — same seed, same data every time
 ./gradlew :cli:run --args="execute --job config/jobs/file_address.yaml --seed 12345 --count 1000"
 
-# Validate a configuration without running
-./gradlew :cli:run --args="validate --job config/jobs/file_invoice.yaml"
+# Validate a NDJSON file of biometric records (FMR / FAC) against ISO/IEC 19794
+./gradlew :cli:run --args="validate records.ndjson"
 
 # Encrypt a credential for embedding in job YAML
 export SEEDSTREAM_ENCRYPTION_KEY=$(openssl rand -hex 32)
 echo -n "my-db-password" | ./gradlew :cli:run --args="encrypt"
 # Or interactively (value hidden at terminal):
 ./gradlew :cli:run --args="encrypt"
+```
+
+> **`validate`** takes a single positional NDJSON file of **biometric records** (not a job YAML) and
+> checks each record against ISO/IEC 19794. The modality is auto-detected from each record's
+> `record_format` field — `FMR` (fingerprint minutiae, 19794-2) or `FAC` (face image, 19794-5);
+> CBEFF-wrapped records (with a top-level `payload` key) are unwrapped automatically. Exit codes:
+> `0` all valid, `1` one or more violations, `2` I/O or parse error. It does **not** validate job
+> configuration.
+
+```bash
 # Output already includes the AES256GCM: prefix, e.g.:  AES256GCM:BASE64CIPHERTEXT...
 # Paste it verbatim into job YAML as: password: "${SECRET:enc:<output>}"
 ```
@@ -395,6 +405,7 @@ See [DESIGN.md](docs/DESIGN.md) for architecture decisions, the multi-threading 
 | Document | Contents |
 |----------|----------|
 | [config/README.md](config/README.md) | Type system reference, job/structure examples, Kafka & database config |
+| [docs/DATAFAKER-COVERAGE.md](docs/DATAFAKER-COVERAGE.md) | Complete Datafaker type inventory: every canonical semantic type and alias |
 | [docs/INSPECT-V1-SPEC.md](docs/INSPECT-V1-SPEC.md) | `inspect` subcommand: type mapping tables, DDL / OpenAPI / JSON Schema / Protobuf rules, review comment taxonomy |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture, threading model, reproducibility, extensibility |
 | [docs/CONTAINER.md](docs/CONTAINER.md) | Running in Docker/Kubernetes/CI: image, `/work` layout, resource sizing, seed-then-test recipes |
@@ -451,7 +462,7 @@ conf:
 
 ```yaml
 conf:
-  password: "${ENV:DB_PASSWORD}"
+  password: "${DB_PASSWORD}"
 ```
 
 ### Option 3 — Cloud secret backends
