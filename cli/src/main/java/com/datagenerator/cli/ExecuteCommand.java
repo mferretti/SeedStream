@@ -836,12 +836,13 @@ public class ExecuteCommand implements Callable<Integer> {
    * @throws IllegalArgumentException if the mechanism cannot be synthesized from username/password
    */
   private static String buildSaslJaasConfig(String mechanism, String username, String password) {
+    String normalizedMechanism = mechanism == null ? null : mechanism.toUpperCase(Locale.ROOT);
     String loginModule =
-        switch (mechanism.toUpperCase(Locale.ROOT)) {
+        switch (normalizedMechanism) {
           case "PLAIN" -> "org.apache.kafka.common.security.plain.PlainLoginModule";
           case "SCRAM-SHA-256", "SCRAM-SHA-512" ->
               "org.apache.kafka.common.security.scram.ScramLoginModule";
-          default ->
+          case null, default ->
               throw new IllegalArgumentException(
                   "Kafka SASL: cannot build a JAAS config from 'username'/'password' for mechanism '"
                       + mechanism
