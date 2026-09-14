@@ -52,6 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   overhead.
 
 ### Fixed
+- **Documented `geolocation` names silently produced US-English data (#295)** — `LocaleMapper` only
+  normalized underscores to hyphens, so the documented underscore spellings `saudi_arabia`,
+  `new_zealand` and `south_africa` never matched the space-separated switch keys, and `ireland`,
+  `czech_republic`, `slovakia`, `uae`, `pakistan`, `nigeria` had no case at all — all fell through to
+  a silent `Locale.US` fallback. The mapper now also normalizes spaces to hyphens (so underscore,
+  space and hyphen spellings converge) and maps the previously-missing locales to their real
+  Datafaker-backed locales. `kenya` and `bangladesh` are removed from the documented list because
+  Datafaker 2.7.0 ships no locale for them. **Behavior change:** a non-blank `geolocation` that is
+  not recognized now fails fast with a `GeneratorException` instead of silently generating US data —
+  a typo or unsupported locale surfaces at generation time. An unset/blank `geolocation` still
+  defaults to US English.
 - **CBEFF `creation_date` broke the same-seed byte-identical guarantee (#281, follow-up #280)** — the
   CBEFF envelope wrote `Instant.now()` into `creation_date` on every record, so output was never
   reproducible across runs despite the documented determinism contract. It is now derived

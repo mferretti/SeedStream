@@ -44,12 +44,47 @@ class LocaleMapperTest {
   }
 
   @Test
-  void shouldDefaultToEnUS() {
+  void shouldDefaultToEnUSonlyWhenUnspecified() {
+    // null/blank means "no geolocation" → US default (not a failure).
     assertThat(LocaleMapper.map(null)).isEqualTo(Locale.US);
     assertThat(LocaleMapper.map("")).isEqualTo(Locale.US);
     assertThat(LocaleMapper.map("   ")).isEqualTo(Locale.US);
-    assertThat(LocaleMapper.map("unknown")).isEqualTo(Locale.US);
-    assertThat(LocaleMapper.map("some-random-place")).isEqualTo(Locale.US);
+  }
+
+  @Test
+  void shouldRejectUnknownGeolocationInsteadOfSilentUSFallback() {
+    // A non-blank but unrecognized value must fail loudly, so a test developer sees the missing
+    // locale rather than silently getting US-English data. (Issue #295.)
+    assertThatThrownBy(() -> LocaleMapper.map("unknown"))
+        .isInstanceOf(GeneratorException.class)
+        .hasMessageContaining("unknown")
+        .hasMessageContaining("Unsupported geolocation");
+    assertThatThrownBy(() -> LocaleMapper.map("some-random-place"))
+        .isInstanceOf(GeneratorException.class);
+  }
+
+  @Test
+  void shouldMapPreviouslyMissingDocumentedLocales() {
+    // These geolocation names were documented but had no switch case, so they silently fell back
+    // to US English. Now mapped to their real Datafaker-backed locales.
+    assertThat(LocaleMapper.map("ireland")).isEqualTo(Locale.of("en", "IE"));
+    assertThat(LocaleMapper.map("nigeria")).isEqualTo(Locale.of("en", "NG"));
+    assertThat(LocaleMapper.map("pakistan")).isEqualTo(Locale.of("en", "PK"));
+    assertThat(LocaleMapper.map("slovakia")).isEqualTo(Locale.of("sk", "SK"));
+    assertThat(LocaleMapper.map("uae")).isEqualTo(Locale.of("ar", "AE"));
+    assertThat(LocaleMapper.map("czech_republic")).isEqualTo(Locale.of("cs", "CZ"));
+  }
+
+  @Test
+  void shouldConvergeUnderscoreSpaceAndHyphenSpellings() {
+    // Documented underscore spellings previously missed the space-separated switch keys.
+    assertThat(LocaleMapper.map("saudi_arabia")).isEqualTo(Locale.of("ar", "SA"));
+    assertThat(LocaleMapper.map("saudi arabia")).isEqualTo(Locale.of("ar", "SA"));
+    assertThat(LocaleMapper.map("saudi-arabia")).isEqualTo(Locale.of("ar", "SA"));
+    assertThat(LocaleMapper.map("new_zealand")).isEqualTo(Locale.of("en", "NZ"));
+    assertThat(LocaleMapper.map("new zealand")).isEqualTo(Locale.of("en", "NZ"));
+    assertThat(LocaleMapper.map("south_africa")).isEqualTo(Locale.of("en", "ZA"));
+    assertThat(LocaleMapper.map("south africa")).isEqualTo(Locale.of("en", "ZA"));
   }
 
   @Test

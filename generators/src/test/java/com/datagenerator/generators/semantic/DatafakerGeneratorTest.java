@@ -25,6 +25,7 @@ import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
+import com.datagenerator.generators.GeneratorException;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Random;
@@ -186,12 +187,13 @@ class DatafakerGeneratorTest {
   }
 
   @Test
-  void shouldFallbackToEnglishForUnknownGeolocation() {
+  void shouldRejectUnknownGeolocation() {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext("unknown_locale_12345", nameType);
 
-    // Should generate valid name (English fallback)
-    assertThat(name).isNotNull().isNotEmpty();
+    // An unrecognized geolocation must fail loudly instead of silently producing US data (#295).
+    assertThatThrownBy(() -> generateWithContext("unknown_locale_12345", nameType))
+        .isInstanceOf(GeneratorException.class)
+        .hasMessageContaining("Unsupported geolocation");
   }
 
   @Test

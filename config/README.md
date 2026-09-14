@@ -773,15 +773,15 @@ name: customer
 geolocation: usa   # drives Datafaker locale for all semantic types
 ```
 
-**Recognized `geolocation` names** (each maps to a Datafaker locale; unrecognized values fall back to US English. Locale data itself is provided by Datafaker):
-- **Americas**: `usa`, `canada`, `mexico`, `brazil`, `argentina`, `chile`
+**Recognized `geolocation` names** (each maps to a Datafaker locale; underscores, spaces and hyphens are interchangeable, e.g. `saudi_arabia` = `saudi arabia` = `saudi-arabia`. Locale data itself is provided by Datafaker):
+- **Americas**: `usa`, `canada`, `mexico`, `brazil`, `argentina`, `chile`, `colombia`, `peru`
 - **Europe**: `uk`, `ireland`, `france`, `germany`, `italy`, `spain`, `portugal`, `netherlands`, `belgium`, `switzerland`, `austria`, `sweden`, `norway`, `denmark`, `finland`, `poland`, `czech_republic`, `slovakia`, `hungary`, `romania`, `ukraine`, `russia`, `greece`, `turkey`
-- **Asia**: `china`, `japan`, `korea`, `india`, `indonesia`, `thailand`, `vietnam`, `malaysia`, `singapore`, `philippines`, `pakistan`, `bangladesh`
+- **Asia**: `china`, `taiwan`, `japan`, `korea`, `india`, `indonesia`, `thailand`, `vietnam`, `malaysia`, `singapore`, `philippines`, `pakistan`
 - **Middle East**: `saudi_arabia`, `uae`, `israel`
 - **Oceania**: `australia`, `new_zealand`
-- **Africa**: `south_africa`, `egypt`, `nigeria`, `kenya`
+- **Africa**: `south_africa`, `egypt`, `nigeria`
 
-Unknown geolocations fall back to English (US) with a warning.
+An unset (or blank) `geolocation` defaults to US English. A non-blank value that is **not** in this list is **rejected with an error** (`GeneratorException`) rather than silently falling back to US English — a typo or an unsupported locale fails the job instead of quietly producing US data.
 
 ---
 
