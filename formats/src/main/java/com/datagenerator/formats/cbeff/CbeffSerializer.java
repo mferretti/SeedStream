@@ -44,13 +44,27 @@ import lombok.extern.slf4j.Slf4j;
  *   "format_type": "biometric-json",
  *   "creation_date": "2026-03-15T10:00:00Z",
  *   "subject_id": "<promoted from payload if present>",
+ *   // creation_date is likewise promoted from the payload when present, else synthesized
  *   "payload": { ...original data... }
  * }
  * }</pre>
  *
- * <p><b>Determinism:</b> {@code creation_date} is derived from a stable hash of the record payload
- * (not wall-clock time), so the same seed produces byte-identical output across runs. See {@link
- * #deriveCreationDate(String)}.
+ * <p><b>Creation date (two modes):</b>
+ *
+ * <ul>
+ *   <li><b>Promoted (preferred):</b> if the record declares a {@code creation_date} field (e.g. a
+ *       seeded {@code timestamp[..]} type), its value is promoted into the envelope verbatim — a
+ *       proper seed-driven, range-honoring timestamp. The field is also retained in the payload,
+ *       exactly like {@code subject_id}.
+ *   <li><b>Synthetic fallback:</b> if the record has no {@code creation_date}, one is derived by
+ *       {@link #deriveCreationDate(String)} — a deterministic hash-fold of the payload. This value
+ *       is <em>synthetic</em>: reproducible but arbitrary within a ~10-year window, tied to the
+ *       payload rather than the job seed (two different jobs emitting an identical record share a
+ *       date). Records needing a seed-meaningful date must declare the field. See issue #280.
+ * </ul>
+ *
+ * <p><b>Determinism:</b> both modes are deterministic (never wall-clock), so the same seed produces
+ * byte-identical output across runs.
  *
  * <p><b>Thread Safety:</b> Stateless. ObjectMapper is thread-safe after configuration.
  */
@@ -106,9 +120,17 @@ public class CbeffSerializer implements FormatSerializer {
       envelope.put("cbeff_version", CBEFF_VERSION);
       envelope.put("format_owner", formatOwner);
       envelope.put("format_type", formatType);
-      envelope.put(
-          "creation_date",
-          DateTimeFormatter.ISO_INSTANT.format(deriveCreationDate(canonicalPayload)));
+
+      // Promote a seeded creation_date from the payload when the record declares one (mirrors the
+      // subject_id promotion below); otherwise fall back to the deterministic synthetic derivation.
+      Object providedDate = data.get("creation_date");
+      if (providedDate != null) {
+        envelope.put("creation_date", providedDate);
+      } else {
+        envelope.put(
+            "creation_date",
+            DateTimeFormatter.ISO_INSTANT.format(deriveCreationDate(canonicalPayload)));
+      }
 
       Object subjectId = data.get("subject_id");
       if (subjectId != null) {

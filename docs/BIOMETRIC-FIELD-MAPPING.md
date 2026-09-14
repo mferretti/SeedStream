@@ -194,7 +194,7 @@ Framework-inspired JSON envelope. Implemented in `CbeffSerializer`.
 | `cbeff_version` | `"1.1"` | CBEFF version | Fixed; references CBEFF 2.x structure concept |
 | `format_owner` | string | BDB Format Owner | Default `"ISO/IEC-JTC1-SC37"`; configurable |
 | `format_type` | string | BDB Format Type | Default `"biometric-json"`; configurable (e.g. `"19794-2-json"`) |
-| `creation_date` | ISO-8601 UTC | SBH Creation Date | Derived deterministically from a hash of the record payload (not wall-clock) so same-seed output stays byte-identical |
+| `creation_date` | ISO-8601 UTC | SBH Creation Date | **Promoted from the payload's `creation_date` field if present** (a proper seeded, range-honoring timestamp); otherwise derived deterministically from a hash of the payload (synthetic — see note below). Never wall-clock, so same-seed output stays byte-identical either way. |
 | `subject_id` | string | — | Promoted from payload's `subject_id` field if present |
 | `payload` | object | Biometric Data Block (BDB) | The full original generated record |
 
@@ -216,6 +216,41 @@ Framework-inspired JSON envelope. Implemented in `CbeffSerializer`.
   }
 }
 ```
+
+### `creation_date`: seeded vs. synthetic
+
+The envelope's `creation_date` has two modes, decided per-record:
+
+**1. Seeded (preferred)** — the structure declares a `creation_date` field. Its seeded value is
+promoted into the envelope and honors the configured range. Deterministic *per seed*: seed 42
+always yields the same date, seed 99 a different one.
+
+```yaml
+# config/structures/fingerprint_minutiae.yaml
+name: fingerprint_minutiae
+data:
+  subject_id:
+    datatype: char[8..20]
+  creation_date:                          # <-- declared → promoted into the envelope
+    datatype: timestamp[2023-01-01T00:00:00Z..2024-12-31T23:59:59Z]
+  # ...other fields...
+```
+→ `"creation_date": "2024-08-10T10:12:08Z"` (seeded, inside the declared window)
+
+A ready-to-run example ships as `config/structures/fingerprint_minutiae_dated.yaml` +
+`config/jobs/file_fingerprint_minutiae_dated.yaml`.
+
+**2. Synthetic fallback** — the structure declares no `creation_date`. The serializer derives one
+from a hash of the payload. Still deterministic (never wall-clock), but the value is **synthetic**:
+arbitrary within a ~10-year window and tied to the *payload*, not the job seed. Two different jobs
+that emit an identical record get the same date.
+
+```yaml
+# structure has no creation_date field
+```
+→ `"creation_date": "2027-11-02T14:07:53Z"` (synthetic; reproducible but meaningless)
+
+> Records that need a seed-meaningful creation date **must** declare the field. See issue #280.
 
 ---
 
