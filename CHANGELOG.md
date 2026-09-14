@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > session-zone conversion; re-run the job to normalise it. `DATETIME` columns and other database
 > engines are unaffected.
 
+> ### ⚠️ `bic` output changes under `geolocation`, and unknown `geolocation` now errors
+>
+> `bic` is now locale-aware (see *Fixed*), so the same seed produces a **different BIC** for any
+> structure that sets `geolocation` and uses `bic`; switch the field to `random_bic` to keep the old
+> locale-independent value. Separately, a non-blank `geolocation` that is not a recognized name now
+> **fails the job** with a `GeneratorException` instead of silently falling back to US English — a
+> previously-silent typo or unsupported locale will now stop a run. An unset/blank `geolocation`
+> still defaults to US English.
+
 ### Changed
 - **`decimal` generator now reaches its inclusive `max` (#260)** — the old algorithm was
   `min + nextDouble() * (max - min)`, and `nextDouble()` returns `[0.0, 1.0)`, so `max` was
@@ -50,8 +59,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   down once, wrapped in `try`/`finally` on both the single- and multi-threaded paths so a failed run
   never leaks the thread-local. Behaviour and determinism are unchanged — purely removes per-record
   overhead.
+- **Dependency updates** — several batched Dependabot cycles merged since 0.7.0: #237 (#225–#236),
+  #252 (#239–#250), #270 (#264–#268) and #288 (#273–#279), plus individual CI-action and library
+  bumps. Regression-tested together; no new CVEs introduced. Security-driven version *forces* (netty,
+  httpclient5, log4j) are listed under **Security** below.
 
 ### Fixed
+- **`bic` did not honour `geolocation` (#177, #208)** — the `bic` type emitted a random-country BIC
+  regardless of the structure's locale, inconsistent with the locale-aware name/address/`iban`. It
+  now splices the resolved locale's ISO country into positions 5–6 (uppercased per ISO 9362), so
+  `geolocation: italy` yields an `…IT…` BIC. The prior locale-independent behaviour is preserved
+  under the new **`random_bic`** type. **Behavior change:** the same seed produces different BIC
+  values than before for any structure that sets `geolocation` and uses `bic`.
 - **Documented `geolocation` names silently produced US-English data (#295)** — `LocaleMapper` only
   normalized underscores to hyphens, so the documented underscore spellings `saudi_arabia`,
   `new_zealand` and `south_africa` never matched the space-separated switch keys, and `ireland`,
@@ -136,12 +155,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SaaS demo environments use case (#82)** — `use-cases/saas-demo-environments/`: a runnable CRM fixture (`users · accounts · contacts · deals · activities`, schema, structures, jobs, `seed.sh`) that truncates and reseeds a disposable PostgreSQL database with a fixed seed, so a prospect-facing demo tenant gets a convincing, fully linked pipeline with no customer PII, byte-for-byte identical on every reseed.
 - **Performance and load-testing use case (#81)** — `use-cases/performance-load-testing/`: a runnable analytics-event fixture (schema, structure, Kafka + Postgres jobs, `loadtest.sh`) for load-testing *your own* Kafka/Postgres at high volume — mixed-cardinality data so indexes behave like production, timed run with a records/sec summary. Distinct from the internal `benchmarks/` module, which benchmarks SeedStream itself; the README cross-links `benchmarks/README.md` and `docs/PERFORMANCE.md` rather than duplicating them. No GitHub workflow or fingerprint file — perf runs are long and excluded from CI, matching the `dora-gdpr-sepa-payments`/`dev-env-bootstrapping` use cases
 - **Opt-in parallel gzip via `compress_mode: per_chunk` (#210)** — file destinations now support an alternative compression strategy: each generation chunk is gzipped independently on workers and concatenated as a multi-member RFC 1952 gzip, removing compression from the writer-thread bottleneck. Decompressed output is byte-identical to `stream` mode (default), and member boundaries depend only on chunk size and record count, never thread count — so per-chunk `.gz` files are byte-identical across parallel runs for a given seed. Compressed `.gz` bytes differ between modes due to per-member dictionary boundaries; the uncompressed stream remains the hard determinism guarantee. Requires `compress: true` and an NDJSON-style format (JSON/NDJSON only; CSV/Avro unchanged). Gated on new `compress_mode` YAML key (`stream` = default, `per_chunk` = opt-in).
+- **`./seedstream` launcher wrapper** — a convenience launcher script so the CLI can be invoked as `./seedstream <command>` instead of the full `./gradlew :cli:run --args="…"` form. Docs and samples updated to the wrapper form.
+- **`inspect`: standalone JSON Schema input (#89)** — the `inspect` subcommand can now bootstrap structure YAML from a plain JSON Schema document, alongside the existing OpenAPI / SQL DDL / Protobuf inputs. `$ref` → `object[...]`, arrays of `$ref` → `array[object[...], min..max]`; constructs with no clean SeedStream equivalent are flagged with a `# review` comment rather than mis-mapped.
+- **`locale_currency` semantic type (#208)** — emits the ISO 4217 currency for the resolved locale's country (e.g. `italy` → `EUR`, `usa` → `USD`), falling back to a random currency when the locale has no country/currency. Complements the existing locale-independent `currency` type.
+- **Developer environment bootstrapping use case (#79, #216)** — `use-cases/dev-env-bootstrapping/`: a runnable fixture that seeds a local/disposable database with a fixed seed so a freshly-cloned developer environment comes up with realistic, referentially-consistent data on first run.
 
 ### Security
 - **Two dead CVE suppressions removed** — the classic-`httpcore` entry (CVE-2026-54428 / CVE-2026-54399) and the netty entry (CVE-2026-56816) were matching nothing: zero occurrences across every module's report, on `main` and on the bump branch alike, while genuinely suppressed CVEs (CVE-2023-36415, CVE-2026-33117) still showed up under *Suppressed Vulnerabilities*. NVD has narrowed both CPE ranges since the entries were added, so neither CVE is flagged against this dependency set any more. Removed as dead weight, matching the 2026-07-07 precedent; three suppressions remain, all expiring 2026-10-10. The affected artifacts are still resolved (`httpcore` 4.4.16, netty 4.1.136.Final), so a re-broadened CPE fails the CVSS ≥ 7.0 gate and forces a fresh triage instead of passing unnoticed. The full triage reasoning for both is preserved in the suppression file's header comment
 - **CVE reports were silently no longer uploaded after the OWASP plugin bump** — `dependency-check-gradle` changed the `DependencyCheckExtension` `outputDirectory` default from `reports` (12.2.2) to `dependency-check` (13.0.0), so reports were written to `build/dependency-check/` while the Security Scan globbed `**/build/reports/dependency-check-report.html`. `actions/upload-artifact` only *warns* when a glob matches nothing, so the job stayed green while producing no CVE audit artifact at all. `outputDirectory` is now pinned to `build/reports` so the path no longer depends on a plugin default, and the upload uses `if-no-files-found: error` so a missing security report fails the job instead of passing unnoticed. Note that `outputDirectory` became a `DirectoryProperty` in 13.0.0 and takes a `File` rather than a `String`
 - **`httpclient5` forced to 5.6.4 to clear CVE-2026-71290 (CRITICAL) and CVE-2026-64607** — the 2026-08-23 scheduled Security Scan failed the CVSS ≥ 7.0 gate on `:benchmarks` against `httpclient5` 5.6.2. CVE-2026-71290 (CVSS 9.1) silently disables TLS hostname verification on the **async** transport — `HostnameVerificationPolicy#BUILTIN` has no effect, so a network attacker can impersonate a server with a valid certificate for a different domain; affects 5.4 → 5.6.3, fixed in 5.6.4. The same 5.6.4 also fixes the previously-accepted below-gate CVE-2026-64607 (MEDIUM 5.3, connection-pool leak on invalid `Content-Encoding`; affects 5.0-alpha1 → 5.6.2). `httpclient5` is pulled transitively via AWS SDK `apache5-client` (`:benchmarks`) and Azure Key Vault secrets (`:schema`); `build.gradle.kts` now forces 5.6.4 across all configurations, matching the `httpcore5-h2` / netty real-fix pattern — not suppressed
 - **CVE-2026-56816 suppressed as a netty CPE false positive** (expiry 2026-10-29) — the 2026-07-31 scan failed the CVSS ≥ 7.0 gate on `:benchmarks` against all 19 `netty` 4.1.136.Final artifacts. The flaw is `Http3FrameCodec.decodeFrame` trusting the wire-specified `payLoadLength` for reserved HTTP/3 frame types (unbounded buffering → memory-exhaustion DoS); it ships only in `netty-codec-http3` on the 4.2.x line and is fixed in 4.2.16.Final. This project forces netty 4.1.136.Final — which holds the fix for CVE-2026-44891/55831/55833 — and the 4.1.x line has no HTTP/3 support, resolving zero `netty-codec-http3` artifacts on any configuration. NVD's CPE carries `versionEndExcluding 4.2.16` with no `versionStartIncluding`, so it over-matches the entire 4.1.x line, the same shape as the existing `httpcore` 4.4.16 entry. Moving to 4.2.x is not a remedy: it is a separate release line, not a patch for 4.1.x. Confirmed not a regression from the AWS SDK 2.49.3 bump — `main` and the Dependabot branch failed identically, on fresh NVD data
+- **netty forced to 4.1.137.Final (#206/#207, then #253)** — all ~20 `io.netty:netty-*` artifacts (pulled transitively via `awssdk:netty-nio-client`) are pinned across every configuration. 4.1.135 was vulnerable to CVE-2026-44891 / CVE-2026-55831 / CVE-2026-55833 (fixed in 4.1.136); 4.1.136 was in turn vulnerable to **CVE-2026-62380** (netty-codec-socks SOCKS4/5 client-encoder null-byte/CRLF/credential injection, CVSS > 7.0), fixed in 4.1.137. AWS SDK 2.54.1 already requests 4.1.137, so the force now tracks that rather than downgrading it. `netty-tcnative*` and `netty-bom` follow their own versioning and are left alone. Also bumped log4j to 2.26.1 in the same window (#207).
 
 ### Documentation
 - **Closed a batch of doc/code gaps found by a coverage audit (#290, #291, #293, #294, #296, #297, #298, #299, #300, #301, #302, #303, #304, #305, #306)** — no behavior change, docs only:
