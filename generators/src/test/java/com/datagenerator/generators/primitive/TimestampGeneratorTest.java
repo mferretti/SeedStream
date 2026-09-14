@@ -48,6 +48,60 @@ class TimestampGeneratorTest {
   }
 
   @Test
+  void shouldNeverProduceTimestampOutsideBoundsAcrossManySeeds() {
+    // Hard bounds check for the #280 example window (2023-01-01 .. 2024-12-31), full ISO form.
+    Instant min = Instant.parse("2023-01-01T00:00:00Z");
+    Instant max = Instant.parse("2024-12-31T23:59:59Z");
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.TIMESTAMP, "2023-01-01T00:00:00", "2024-12-31T23:59:59");
+
+    for (long seed = 0; seed < 500; seed++) {
+      Random random = new Random(seed);
+      for (int i = 0; i < 1_000; i++) {
+        Instant value = (Instant) generator.generate(random, type);
+        assertThat(value).isAfterOrEqualTo(min).isBeforeOrEqualTo(max);
+      }
+    }
+  }
+
+  @Test
+  void shouldReachBothInclusiveEndpoints() {
+    // Tiny 2-second window: [start, start+2s]. Over many seeds the generator must be able to emit
+    // BOTH the start and the end instant (inclusive on both ends) and nothing outside.
+    Instant start = Instant.parse("2024-06-15T12:00:00Z");
+    Instant end = start.plusSeconds(2);
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.TIMESTAMP, "2024-06-15T12:00:00", "2024-06-15T12:00:02");
+
+    boolean hitStart = false;
+    boolean hitEnd = false;
+    for (long seed = 0; seed < 2_000; seed++) {
+      Instant value = (Instant) generator.generate(new Random(seed), type);
+      assertThat(value).isAfterOrEqualTo(start).isBeforeOrEqualTo(end);
+      hitStart |= value.equals(start);
+      hitEnd |= value.equals(end);
+    }
+    assertThat(hitStart).as("start endpoint reachable").isTrue();
+    assertThat(hitEnd).as("end endpoint reachable").isTrue();
+  }
+
+  @Test
+  void shouldRejectBareDateInTimestampType() {
+    // The literal `timestamp[2023-01-01..2024-12-31]` is INVALID: a timestamp needs a datetime.
+    // Bare dates belong to the `date[..]` type. Proven here so the distinction is
+    // regression-locked.
+    PrimitiveType type =
+        new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, "2023-01-01", "2024-12-31");
+
+    var rnd = RANDOM;
+    assertThatThrownBy(() -> generator.generate(rnd, type))
+        .isInstanceOf(GeneratorException.class)
+        .hasMessageContaining("minValue");
+  }
+
+  @Test
   void shouldBeDeterministicWithSameSeed() {
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, TS_MIN, TS_MAX);
     Random r1 = new Random(77L);

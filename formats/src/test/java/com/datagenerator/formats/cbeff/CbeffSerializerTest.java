@@ -163,6 +163,32 @@ class CbeffSerializerTest {
   }
 
   @Test
+  void shouldPromoteCreationDateFromPayloadWhenPresent() throws Exception {
+    String seededDate = "2023-06-15T12:34:56Z";
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("creation_date", seededDate);
+    data.put(FIELD_QUALITY, 77);
+    JsonNode envelope = mapper.readTree(serializer.serialize(data));
+
+    // Envelope uses the seeded value verbatim, not the synthetic hash-fold.
+    assertThat(envelope.get("creation_date").asText()).isEqualTo(seededDate);
+    // And it remains in the payload, like subject_id.
+    assertThat(envelope.get(FIELD_PAYLOAD).get("creation_date").asText()).isEqualTo(seededDate);
+  }
+
+  @Test
+  void shouldSynthesizeCreationDateWhenAbsentFromPayload() throws Exception {
+    // No creation_date in the record → falls back to the deterministic synthetic derivation.
+    JsonNode withField =
+        mapper.readTree(serializer.serialize(Map.of("creation_date", "2023-06-15T12:34:56Z")));
+    JsonNode withoutField = mapper.readTree(serializer.serialize(Map.of(KEY_FIELD, FIELD_VALUE)));
+
+    assertThat(withField.get("creation_date").asText()).isEqualTo("2023-06-15T12:34:56Z");
+    assertThat(withoutField.get("creation_date").asText())
+        .matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z");
+  }
+
+  @Test
   void shouldProduceValidJsonRoundTrip() throws Exception {
     Map<String, Object> data = Map.of("x", 100, "y", 200, "type", "ending");
     String output = serializer.serialize(data);

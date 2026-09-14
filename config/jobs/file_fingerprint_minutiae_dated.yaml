@@ -1,0 +1,11 @@
+# Demonstrates a SEEDED CBEFF creation_date: the structure declares `creation_date`, so the cbeff
+# serializer promotes it into the envelope instead of synthesizing one. Run with:
+#   ./gradlew :cli:run --args="execute --job config/jobs/file_fingerprint_minutiae_dated.yaml --format cbeff --count 5"
+# The envelope creation_date lands inside 2023-01-01..2024-12-31 and is reproducible per seed.
+source: fingerprint_minutiae_dated.yaml
+type: file
+seed:
+  type: embedded
+  value: 42
+conf:
+  path: build/run-output/fingerprint_minutiae_dated

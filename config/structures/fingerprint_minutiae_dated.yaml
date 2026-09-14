@@ -1,0 +1,30 @@
+name: fingerprint_minutiae_dated
+# Same as fingerprint_minutiae, but declares a seeded `creation_date`. When serialized with the
+# `cbeff` format, this field is PROMOTED into the CBEFF envelope's creation_date — a proper
+# seed-driven, range-honoring timestamp — instead of the synthetic hash-fold fallback used when
+# no such field is declared. See docs/BIOMETRIC-FIELD-MAPPING.md ("seeded vs. synthetic") and #280.
+data:
+  record_format:
+    datatype: enum[FMR]
+  version:
+    datatype: enum[19794-2:2011,19794-2:2005]
+  subject_id:
+    datatype: char[8..20]
+  creation_date:
+    datatype: timestamp[2023-01-01T00:00:00Z..2024-12-31T23:59:59Z]
+  sample_id:
+    datatype: int[0..9]
+  finger_position:
+    datatype: enum[left_thumb,left_index,left_middle,left_ring,left_little,right_thumb,right_index,right_middle,right_ring,right_little]
+  impression_type:
+    datatype: enum[live_scan_plain,live_scan_rolled,nonlive_scan_plain,nonlive_scan_rolled,latent]
+  image_width:
+    datatype: int[300..1000]
+  image_height:
+    datatype: int[300..1000]
+  resolution_dpi:
+    datatype: enum[500,1000]
+  quality:
+    datatype: int[0..100]
+  minutiae:
+    datatype: array[object[fingerprint_minutia], 30..80]
