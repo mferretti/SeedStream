@@ -6,7 +6,7 @@
 
 ---
 
-## Currently Implemented Types (50 canonical types + 34 aliases)
+## Currently Implemented Types (52 canonical types + 33 aliases)
 
 All types are registered in `DatafakerRegistry` (`core/src/main/java/.../registry/DatafakerRegistry.java`).
 Aliases are case-insensitive and normalized at lookup time.
@@ -50,7 +50,7 @@ Aliases are case-insensitive and normalized at lookup time.
 | `email` | `faker.internet().emailAddress()` | — |
 | `phone_number` | `faker.phoneNumber().phoneNumber()` | `phonenumber`, `phone` |
 
-### Finance & Business (11 types)
+### Finance & Business (13 types)
 
 | Type | Datafaker call | Aliases |
 |---|---|---|
@@ -261,7 +261,7 @@ can produce.
 | **Person & Identity** | 11 | ~13 | 85% |
 | **Address** | 11 | ~16 | 69% |
 | **Contact** | 2 | ~2 | 100% |
-| **Finance & Business** | 11 | ~17 | 65% |
+| **Finance & Business** | 13 | ~17 | 76% |
 | **Internet** | 5 | ~13 | 38% |
 | **Codes & Identifiers** | 2 | ~7 | 29% |
 | **Commerce** | 5 | ~5 | 100% |
@@ -274,9 +274,9 @@ can produce.
 | **Food & Drink** | 0 | ~5 | 0% (config) |
 | **Nature & Science** | 0 | ~4 | 0% (config) |
 | **Vehicles & Aviation** | 0 | ~6 | 0% (config) |
-| **TOTAL** | **48** | **~113+** | **42% built-in** |
+| **TOTAL** | **52** | **~113+** | **46% built-in** |
 
-> "42%" is the built-in/name-hint share. Effective availability without code is far higher — only the
+> "46%" is the built-in/name-hint share. Effective availability without code is far higher — only the
 > handful of parameterized generators above are genuinely out of reach until someone writes a lambda.
 
 ---
@@ -361,4 +361,4 @@ Drop a JAR containing pre-registered types into the `extras/` directory — the 
 
 ---
 
-**Last Updated**: March 10, 2026
+**Last Updated**: September 14, 2026 (type/alias counts reconciled with `DatafakerRegistry`)

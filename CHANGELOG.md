@@ -132,6 +132,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`httpclient5` forced to 5.6.4 to clear CVE-2026-71290 (CRITICAL) and CVE-2026-64607** — the 2026-08-23 scheduled Security Scan failed the CVSS ≥ 7.0 gate on `:benchmarks` against `httpclient5` 5.6.2. CVE-2026-71290 (CVSS 9.1) silently disables TLS hostname verification on the **async** transport — `HostnameVerificationPolicy#BUILTIN` has no effect, so a network attacker can impersonate a server with a valid certificate for a different domain; affects 5.4 → 5.6.3, fixed in 5.6.4. The same 5.6.4 also fixes the previously-accepted below-gate CVE-2026-64607 (MEDIUM 5.3, connection-pool leak on invalid `Content-Encoding`; affects 5.0-alpha1 → 5.6.2). `httpclient5` is pulled transitively via AWS SDK `apache5-client` (`:benchmarks`) and Azure Key Vault secrets (`:schema`); `build.gradle.kts` now forces 5.6.4 across all configurations, matching the `httpcore5-h2` / netty real-fix pattern — not suppressed
 - **CVE-2026-56816 suppressed as a netty CPE false positive** (expiry 2026-10-29) — the 2026-07-31 scan failed the CVSS ≥ 7.0 gate on `:benchmarks` against all 19 `netty` 4.1.136.Final artifacts. The flaw is `Http3FrameCodec.decodeFrame` trusting the wire-specified `payLoadLength` for reserved HTTP/3 frame types (unbounded buffering → memory-exhaustion DoS); it ships only in `netty-codec-http3` on the 4.2.x line and is fixed in 4.2.16.Final. This project forces netty 4.1.136.Final — which holds the fix for CVE-2026-44891/55831/55833 — and the 4.1.x line has no HTTP/3 support, resolving zero `netty-codec-http3` artifacts on any configuration. NVD's CPE carries `versionEndExcluding 4.2.16` with no `versionStartIncluding`, so it over-matches the entire 4.1.x line, the same shape as the existing `httpcore` 4.4.16 entry. Moving to 4.2.x is not a remedy: it is a separate release line, not a patch for 4.1.x. Confirmed not a regression from the AWS SDK 2.49.3 bump — `main` and the Dependabot branch failed identically, on fresh NVD data
 
+### Documentation
+- **Closed a batch of doc/code gaps found by a coverage audit (#290, #291, #293, #294, #296, #297, #298, #299, #300, #301, #302, #303, #304, #305, #306)** — no behavior change, docs only:
+  - Corrected the env-var secret syntax throughout the README/config reference from the never-implemented `${ENV:NAME}` to the actual `${NAME}` (`${SECRET:path}` unchanged) (#290)
+  - Fixed the `validate` subcommand docs (README + CHANGELOG 0.4.0): it validates a positional NDJSON file of biometric records (FMR/FAC, ISO/IEC 19794, exit 0/1/2), not a job YAML — the old `validate --job` example never worked (#291)
+  - Documented Kafka `batch_size` as bytes/`16384` (Kafka `batch.size`), not records/100 (#293)
+  - Corrected the remote-seed API contract to a bare-integer body, not a `{"seed":…}` JSON envelope (#294)
+  - Corrected the Protobuf output description to base64-per-line (NDJSON), not length-prefixed binary (#296), and the CBEFF output filename to `.cbeff`, not `.cbeff.json` (#297)
+  - Fixed quickstart/reproducibility output paths from the non-existent `cli/output/` to the shipped `build/run-output/` (#298)
+  - Documented previously-undocumented job keys: DB `inject_parent_fk` (#299); Kafka `ssl_truststore_*`/`ssl_keystore_*` (#300); `max_retries`/`retry_delay_ms` on Kafka and DB (#301); CBEFF `cbeff_format_owner`/`cbeff_format_type` (#303)
+  - Documented the `ref[parent.<field>]` parent-reference type (#302), the CSV formula-injection neutralization / CWE-1236 (#304), and the `structures_path` sibling-`jobs/` inference rule (#305)
+  - Refreshed the Datafaker type counts (52 canonical + 33 aliases; Finance 13) in the config reference and `docs/DATAFAKER-COVERAGE.md`, and linked the coverage doc from the README documentation index (#306)
+
 ---
 
 ## [0.7.0] - 2026-07-14
@@ -371,7 +383,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Biometric structure definitions**: Face and fingerprint data schemas (`config/structures/`)
 - **Biometric job definitions**: Pre-built jobs for face/fingerprint test data generation
 - **`BiometricValidator`**: Validates biometric field constraints (dimensions, quality scores, ISO/IEC 19794 ranges)
-- **`validate` CLI subcommand**: Validates YAML configurations without executing a job
+- **`validate` CLI subcommand**: Validates a NDJSON file of biometric records against ISO/IEC 19794 (FMR / FAC, modality auto-detected from `record_format`); exit codes 0/1/2
 
 #### Formats
 - **CBEFF format** (`CbeffSerializer`): CBEFF-like JSON envelope format for biometric payloads
