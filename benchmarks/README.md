@@ -41,6 +41,23 @@ JFR profiles saved to: `build/jfr/*.jfr`
 
 **Results:** See [../docs/E2E-TEST-RESULTS.md](../docs/E2E-TEST-RESULTS.md)
 
+### Required job files
+
+`run_e2e_test.sh` iterates every `DESTINATIONS` × `FORMATS` combination and loads
+`config/jobs/e2e_test_{destination}_{format}.yaml` for each. Every cell of that grid must have a
+matching job file, or the harness silently records that combination as `SKIPPED,Job file not found`
+(it does not fail the run). Current grid — destinations `file`, `kafka`; formats `json`, `csv`,
+`protobuf` — so these must all exist:
+
+```
+config/jobs/e2e_test_file_json.yaml      config/jobs/e2e_test_kafka_json.yaml
+config/jobs/e2e_test_file_csv.yaml       config/jobs/e2e_test_kafka_csv.yaml
+config/jobs/e2e_test_file_protobuf.yaml  config/jobs/e2e_test_kafka_protobuf.yaml
+```
+
+Plus the database jobs (`e2e_test_database_invoice.yaml`, `e2e_test_database_passport.yaml`). When
+adding a destination or format to the arrays above, add the corresponding job file(s) too.
+
 ---
 
 ## Component Benchmarks (JMH)

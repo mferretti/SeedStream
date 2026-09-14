@@ -248,13 +248,15 @@ conf:
   compression: snappy
   acks: "all"
   sync: false
-  security_protocol: SASL_SSL
-  sasl_mechanism: SCRAM-SHA-512
-  sasl_jaas_config: |
-    org.apache.kafka.common.security.scram.ScramLoginModule required
-    username="${KAFKA_USER}"
-    password="${KAFKA_PASSWORD}";
+  security_protocol: SASL_SSL       # required with username/password
+  sasl_mechanism: SCRAM-SHA-512     # PLAIN | SCRAM-SHA-256 | SCRAM-SHA-512 (default PLAIN)
+  username: ${KAFKA_USER}
+  password: ${KAFKA_PASSWORD}
 ```
+
+The `username`/`password` keys are the supported way to supply SASL credentials: SeedStream builds the `sasl.jaas.config` login-module string for the chosen `sasl_mechanism`, and both values honour `${VAR}` / `${SECRET:path}` substitution.
+
+> **Do not put `${...}` inside a raw `sasl_jaas_config` block.** Substitution is whole-string only, so a placeholder embedded in a multi-line JAAS value is sent to the broker literally and never resolved — use the `username`/`password` keys instead. If you do supply an explicit `sasl_jaas_config`, it takes precedence and `username`/`password` are ignored (with a warning). `username`/`password` require `security_protocol` to be set (e.g. `SASL_SSL`); only `PLAIN` / `SCRAM-SHA-256` / `SCRAM-SHA-512` can be synthesized — for `GSSAPI` / `OAUTHBEARER` supply `sasl_jaas_config` yourself.
 
 **Usage**:
 ```bash
@@ -819,6 +821,7 @@ conf:
 
 - **`batch_size`** is the Kafka producer `batch.size` in **bytes** (default `16384` = 16 KB), *not* a record count. Do not confuse it with the database destination's `batch_size`, which is a record count.
 - **`max_retries` / `retry_delay_ms`** apply in **sync** mode (`sync: true`): up to `max_retries` resends (default 3) with an exponential backoff starting at `retry_delay_ms` (default 1000 ms, doubling each attempt).
+- **`username` / `password`** supply SASL credentials: SeedStream synthesizes the `sasl.jaas.config` login module for the chosen `sasl_mechanism` (`PLAIN` / `SCRAM-SHA-256` / `SCRAM-SHA-512`; default `PLAIN`). Both require `security_protocol` to be set and honour `${VAR}` / `${SECRET:path}` substitution. An explicit `sasl_jaas_config` overrides them (with a warning); do **not** embed `${...}` inside a raw `sasl_jaas_config` block — it is not interpolated. `GSSAPI` / `OAUTHBEARER` need an explicit `sasl_jaas_config`.
 - **`ssl_*`** keys configure the TLS truststore (server verification) and keystore (mTLS client auth). Passwords accept `${VAR}` env and `${SECRET:path}` substitution. See `config/jobs/kafka_address_sasl.yaml` for a worked SASL_SSL example.
 
 Features: async/sync modes, gzip/snappy/lz4/zstd compression, SASL/SSL auth, idempotent producer (`acks=all`), configurable batching, sync-mode retry backoff.

@@ -13,9 +13,8 @@ conf:
   sync: false
   security_protocol: SASL_SSL
   sasl_mechanism: SCRAM-SHA-512
-  sasl_jaas_config: |
-    org.apache.kafka.common.security.scram.ScramLoginModule required
-    username="user"
-    password="secret";
+  # SeedStream builds sasl.jaas.config from these; both honour ${VAR} / ${SECRET:path}
+  username: ${KAFKA_USER}
+  password: ${KAFKA_PASSWORD}
   ssl_truststore_location: /path/to/truststore.jks
-  ssl_truststore_password: truststore-password
+  ssl_truststore_password: ${KAFKA_TRUSTSTORE_PASSWORD}

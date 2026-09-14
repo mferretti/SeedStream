@@ -147,7 +147,7 @@ public class LocaleMapper {
           case "ar-ae", "uae" -> Locale.of("ar", "AE");
           case "ar-eg", "egypt" -> Locale.of("ar", "EG");
 
-          default ->
+          case null, default ->
               throw new GeneratorException(
                   "Unsupported geolocation '"
                       + geolocation
