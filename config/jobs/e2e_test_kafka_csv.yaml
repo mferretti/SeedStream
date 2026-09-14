@@ -1,0 +1,17 @@
+# End-to-End Benchmark: Invoice → Kafka → CSV
+# Used for E2E performance testing with nested object structure
+# (CSV flattens nested objects/arrays to JSON-string cells)
+
+source: invoice.yaml
+type: kafka
+seed:
+  type: embedded
+  value: 42
+conf:
+  bootstrap: localhost:9092
+  topic: benchmark-topic
+  sync: false
+  acks: "1"
+  batch_size: 65536
+  linger_ms: 20
+  compression: snappy
