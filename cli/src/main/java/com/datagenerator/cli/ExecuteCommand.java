@@ -718,15 +718,44 @@ public class ExecuteCommand implements Callable<Integer> {
     }
 
     // SASL/SSL configuration — credential fields support ${VAR} and ${SECRET:path} substitution
-    if (conf.has("security_protocol")) {
-      configBuilder.securityProtocol(conf.get("security_protocol").asText());
+    String securityProtocol =
+        conf.has("security_protocol") ? conf.get("security_protocol").asText() : null;
+    String saslMechanism = conf.has("sasl_mechanism") ? conf.get("sasl_mechanism").asText() : null;
+    String saslJaasConfig =
+        conf.has("sasl_jaas_config")
+            ? ConfigSubstitutor.substitute(conf.get("sasl_jaas_config").asText(), secretResolver)
+            : null;
+    String username =
+        conf.has("username")
+            ? ConfigSubstitutor.substitute(conf.get("username").asText(), secretResolver)
+            : null;
+    String password =
+        conf.has("password")
+            ? ConfigSubstitutor.substitute(conf.get("password").asText(), secretResolver)
+            : null;
+
+    // Synthesize the JAAS config from username/password when no explicit sasl_jaas_config is given.
+    // Substitution is whole-string only, so ${...} placeholders embedded inside a raw
+    // sasl_jaas_config block are NOT resolved — the username/password keys are the supported way to
+    // inject SASL secrets.
+    if ((username != null || password != null) && saslJaasConfig != null) {
+      log.warn(
+          "Kafka destination: both 'sasl_jaas_config' and 'username'/'password' are set; using the"
+              + " explicit 'sasl_jaas_config' and ignoring 'username'/'password'.");
     }
-    if (conf.has("sasl_mechanism")) {
-      configBuilder.saslMechanism(conf.get("sasl_mechanism").asText());
+    ResolvedSasl sasl =
+        resolveSasl(securityProtocol, saslMechanism, saslJaasConfig, username, password);
+    saslMechanism = sasl.mechanism();
+    saslJaasConfig = sasl.jaasConfig();
+
+    if (securityProtocol != null) {
+      configBuilder.securityProtocol(securityProtocol);
     }
-    if (conf.has("sasl_jaas_config")) {
-      configBuilder.saslJaasConfig(
-          ConfigSubstitutor.substitute(conf.get("sasl_jaas_config").asText(), secretResolver));
+    if (saslMechanism != null) {
+      configBuilder.saslMechanism(saslMechanism);
+    }
+    if (saslJaasConfig != null) {
+      configBuilder.saslJaasConfig(saslJaasConfig);
     }
     if (conf.has("ssl_truststore_location")) {
       configBuilder.sslTruststoreLocation(conf.get("ssl_truststore_location").asText());
@@ -745,6 +774,94 @@ public class ExecuteCommand implements Callable<Integer> {
     }
 
     return new KafkaDestination(configBuilder.build(), serializer);
+  }
+
+  /** Effective SASL mechanism + jaas.config after resolving username/password vs explicit jaas. */
+  record ResolvedSasl(String mechanism, String jaasConfig) {}
+
+  /**
+   * Resolve the effective Kafka SASL mechanism and {@code sasl.jaas.config}. When {@code username}/
+   * {@code password} are supplied (and no explicit {@code jaas} is given), the JAAS config is
+   * synthesized for the mechanism (defaulting to {@code PLAIN}). An explicit {@code jaas} always
+   * takes precedence over username/password. Pure and side-effect free so it is unit-testable
+   * without a broker; the caller logs the precedence warning.
+   *
+   * @param securityProtocol configured security protocol, or {@code null}
+   * @param saslMechanism configured mechanism, or {@code null}
+   * @param jaas explicit {@code sasl_jaas_config}, or {@code null}
+   * @param username SASL username (already substituted), or {@code null}
+   * @param password SASL password (already substituted), or {@code null}
+   * @return effective mechanism (possibly defaulted) and jaas config (explicit, synthesized, or
+   *     {@code null})
+   * @throws IllegalArgumentException if only one of username/password is set, if security_protocol
+   *     is missing while credentials are set, or if the mechanism cannot be synthesized
+   */
+  static ResolvedSasl resolveSasl(
+      String securityProtocol,
+      String saslMechanism,
+      String jaas,
+      String username,
+      String password) {
+    // No credentials to synthesize from → pass configured values through unchanged.
+    if (username == null && password == null) {
+      return new ResolvedSasl(saslMechanism, jaas);
+    }
+    // Explicit jaas wins (caller warns that username/password are ignored).
+    if (jaas != null) {
+      return new ResolvedSasl(saslMechanism, jaas);
+    }
+    if (username == null || password == null) {
+      throw new IllegalArgumentException(
+          "Kafka SASL: both 'username' and 'password' are required to build the JAAS config (only"
+              + " one was provided).");
+    }
+    if (securityProtocol == null) {
+      throw new IllegalArgumentException(
+          "Kafka SASL: 'security_protocol' is required when 'username'/'password' are set (e.g."
+              + " SASL_SSL or SASL_PLAINTEXT) — refusing to guess the transport.");
+    }
+    String mechanism = saslMechanism != null ? saslMechanism : "PLAIN";
+    return new ResolvedSasl(mechanism, buildSaslJaasConfig(mechanism, username, password));
+  }
+
+  /**
+   * Build a Kafka {@code sasl.jaas.config} string from a username/password for the given SASL
+   * mechanism. Only user/password mechanisms are supported; GSSAPI/OAUTHBEARER must supply an
+   * explicit {@code sasl_jaas_config}.
+   *
+   * @param mechanism SASL mechanism (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512)
+   * @param username SASL username (already substituted)
+   * @param password SASL password (already substituted)
+   * @return the JAAS login-module config line
+   * @throws IllegalArgumentException if the mechanism cannot be synthesized from username/password
+   */
+  private static String buildSaslJaasConfig(String mechanism, String username, String password) {
+    String loginModule =
+        switch (mechanism.toUpperCase(Locale.ROOT)) {
+          case "PLAIN" -> "org.apache.kafka.common.security.plain.PlainLoginModule";
+          case "SCRAM-SHA-256", "SCRAM-SHA-512" ->
+              "org.apache.kafka.common.security.scram.ScramLoginModule";
+          default ->
+              throw new IllegalArgumentException(
+                  "Kafka SASL: cannot build a JAAS config from 'username'/'password' for mechanism '"
+                      + mechanism
+                      + "'. Supported: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512. For GSSAPI/OAUTHBEARER,"
+                      + " set 'sasl_jaas_config' explicitly.");
+        };
+    return loginModule
+        + " required username=\""
+        + escapeJaasValue(username)
+        + "\" password=\""
+        + escapeJaasValue(password)
+        + "\";";
+  }
+
+  /**
+   * Escape a value for embedding inside a double-quoted JAAS config field ({@code \} and {@code
+   * "}).
+   */
+  private static String escapeJaasValue(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
   }
 
   private DatabaseDestination createDatabaseDestination(

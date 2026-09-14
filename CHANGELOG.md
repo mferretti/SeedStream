@@ -65,6 +65,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   httpclient5, log4j) are listed under **Security** below.
 
 ### Fixed
+- **Kafka `username`/`password` were silently ignored (#292)** — the Kafka destination builder never
+  read the documented `username`/`password` SASL keys, so a job relying on them authenticated with
+  nothing and failed against a SASL broker; credentials had to be hand-written into a raw
+  `sasl_jaas_config` block, where `${...}` placeholders are not interpolated either. SeedStream now
+  synthesizes `sasl.jaas.config` from `username`/`password` for the configured `sasl_mechanism`
+  (`PLAIN` / `SCRAM-SHA-256` / `SCRAM-SHA-512`, default `PLAIN`), with both values honouring
+  `${VAR}` / `${SECRET:path}` substitution and JAAS-escaped. An explicit `sasl_jaas_config` still
+  takes precedence (with a warning). Fail-fast validation: only one of `username`/`password` set, a
+  missing `security_protocol`, or a non-user/password mechanism (GSSAPI/OAUTHBEARER) is rejected at
+  startup rather than producing a broken producer.
 - **`bic` did not honour `geolocation` (#177, #208)** — the `bic` type emitted a random-country BIC
   regardless of the structure's locale, inconsistent with the locale-aware name/address/`iban`. It
   now splices the resolved locale's ISO country into positions 5–6 (uppercased per ISO 9362), so
