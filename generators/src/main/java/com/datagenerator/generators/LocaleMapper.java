@@ -57,10 +57,17 @@ public class LocaleMapper {
   }
 
   /**
-   * Map geolocation string to Locale, defaulting to en-US.
+   * Map a geolocation string to a {@link Locale}.
    *
-   * @param geolocation Geolocation name (e.g., "italy", "usa", "france") or null
-   * @return Java Locale (defaults to US English if unknown or null)
+   * <p>A {@code null} or blank geolocation means "unspecified" and resolves to {@link Locale#US}. A
+   * non-blank but unrecognized value is rejected with a {@link GeneratorException} rather than
+   * silently falling back to US English, so a typo or an unsupported locale surfaces at generation
+   * time instead of producing wrong (US) data for a job that asked for something else.
+   *
+   * @param geolocation Geolocation name (e.g., "italy", "usa", "france"), or null/blank for the
+   *     default
+   * @return Java Locale; {@link Locale#US} only when {@code geolocation} is null or blank
+   * @throws GeneratorException if {@code geolocation} is non-blank but has no locale mapping
    */
   public static Locale map(String geolocation) {
     if (geolocation == null || geolocation.isBlank()) {
@@ -73,20 +80,26 @@ public class LocaleMapper {
 
   @SuppressWarnings("java:S1479")
   private static Locale compute(String geolocation) {
-    String normalized = geolocation.toLowerCase(Locale.ROOT).trim().replace("_", "-");
+    // Normalize both underscores and spaces to hyphens so documented spellings like
+    // "saudi_arabia", "new zealand" and "new-zealand" all converge on the same switch key.
+    String normalized =
+        geolocation.toLowerCase(Locale.ROOT).trim().replace('_', '-').replace(' ', '-');
 
     Locale locale =
         switch (normalized) {
           // English variants
-          case "en-us", "en", "usa", "us", "english", "united states" -> Locale.US;
-          case "en-gb", "uk", "united kingdom", "britain" -> Locale.UK;
+          case "en-us", "en", "usa", "us", "english", "united-states" -> Locale.US;
+          case "en-gb", "uk", "united-kingdom", "britain" -> Locale.UK;
           case "en-ca", "canada" -> Locale.CANADA;
           case "en-au", "australia", "australian" -> Locale.of("en", "AU");
-          case "en-nz", "new zealand" -> Locale.of("en", "NZ");
-          case "en-za", "south africa" -> Locale.of("en", "ZA");
+          case "en-nz", "new-zealand" -> Locale.of("en", "NZ");
+          case "en-za", "south-africa" -> Locale.of("en", "ZA");
           case "en-in", "india", "indian" -> Locale.of("en", "IN");
           case "en-sg", "singapore" -> Locale.of("en", "SG");
           case "en-ph", "philippines" -> Locale.of("en", "PH");
+          case "en-ie", "ireland" -> Locale.of("en", "IE");
+          case "en-ng", "nigeria" -> Locale.of("en", "NG");
+          case "en-pk", "pakistan" -> Locale.of("en", "PK");
 
           // European locales
           case "it", "it-it", "italy", "italian" -> Locale.ITALY;
@@ -109,7 +122,8 @@ public class LocaleMapper {
           case "da", "da-dk", "denmark", "danish" -> Locale.of("da", "DK");
           case "fi", "fi-fi", "finland", "finnish" -> Locale.of("fi", "FI");
           case "pl", "pl-pl", "poland", "polish" -> Locale.of("pl", "PL");
-          case "cs", "cs-cz", "czech", "czechia" -> Locale.of("cs", "CZ");
+          case "cs", "cs-cz", "czech", "czechia", "czech-republic" -> Locale.of("cs", "CZ");
+          case "sk", "sk-sk", "slovakia" -> Locale.of("sk", "SK");
           case "hu", "hu-hu", "hungary", "hungarian" -> Locale.of("hu", "HU");
           case "ro", "ro-ro", "romania", "romanian" -> Locale.of("ro", "RO");
           case "el", "el-gr", "greece", "greek" -> Locale.of("el", "GR");
@@ -119,7 +133,7 @@ public class LocaleMapper {
           case "zh", "zh-cn", "china", "chinese" -> Locale.CHINA;
           case "zh-tw", "taiwan" -> Locale.TAIWAN;
           case "ja", "ja-jp", "japan", "japanese" -> Locale.JAPAN;
-          case "ko", "ko-kr", "korea", "korean", "south korea" -> Locale.KOREA;
+          case "ko", "ko-kr", "korea", "korean", "south-korea" -> Locale.KOREA;
           case "id", "id-id", "indonesia", "indonesian" -> Locale.of("id", "ID");
           case "vi", "vi-vn", "vietnam", "vietnamese" -> Locale.of("vi", "VN");
           case "th", "th-th", "thailand", "thai" -> Locale.of("th", "TH");
@@ -129,14 +143,17 @@ public class LocaleMapper {
           case "ru", "ru-ru", "russia", "russian" -> Locale.of("ru", "RU");
           case "uk-ua", "ukraine", "ukrainian" -> Locale.of("uk", "UA");
           case "he", "he-il", "israel", "hebrew" -> Locale.of("he", "IL");
-          case "ar", "ar-sa", "saudi arabia", "arabic" -> Locale.of("ar", "SA");
+          case "ar", "ar-sa", "saudi-arabia", "arabic" -> Locale.of("ar", "SA");
+          case "ar-ae", "uae" -> Locale.of("ar", "AE");
           case "ar-eg", "egypt" -> Locale.of("ar", "EG");
 
-          case null -> Locale.US;
-          default -> {
-            log.warn("Unknown geolocation '{}', defaulting to US English", geolocation);
-            yield Locale.US;
-          }
+          default ->
+              throw new GeneratorException(
+                  "Unsupported geolocation '"
+                      + geolocation
+                      + "': no locale mapping exists, so it would silently produce US-English data. "
+                      + "Supported geolocation names are listed in config/README.md; if this locale "
+                      + "should be supported, add a mapping in LocaleMapper.");
         };
 
     log.debug("Mapped geolocation '{}' to locale '{}'", geolocation, locale);
