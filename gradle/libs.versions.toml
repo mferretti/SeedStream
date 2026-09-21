@@ -22,7 +22,7 @@ hibernate-validator = "9.1.3.Final"
 jakarta-el = "4.0.2"
 
 # Schema inspection
-jsqlparser = "5.3"
+jsqlparser = "5.4"
 
 # I/O & Serialization
 opencsv = "5.12.0"
