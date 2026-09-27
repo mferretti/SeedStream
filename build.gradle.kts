@@ -126,7 +126,7 @@ subprojects {
             "org.apache.httpcomponents.client5:httpclient5:5.6.4",
             // lz4-java: kafka-clients 4.3.1 pulls at.yawk.lz4:lz4-java 1.10.2, vulnerable to
             // CVE-2026-59949; 1.11.1 is the fix. Force everywhere.
-            "at.yawk.lz4:lz4-java:1.11.1",
+            "at.yawk.lz4:lz4-java:1.11.3",
             // commons-compress already resolves to 1.28.0 via avro 1.12.2 (patched), but
             // testcontainers requests 1.24.0, which the dependency-submission SBOM reports and
             // Dependabot flags for CVE-2024-25710 / CVE-2024-26308 (both fixed in 1.26.0). Pin the
@@ -164,7 +164,7 @@ subprojects {
 
         // Force newer versions to address security vulnerabilities
         constraints {
-            implementation("com.google.protobuf:protobuf-java:4.36.1") // CVE-2024-7254
+            implementation("com.google.protobuf:protobuf-java:4.36.2") // CVE-2024-7254
         }
 
         // Logging
