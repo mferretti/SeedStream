@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -54,8 +55,10 @@ import net.sf.jsqlparser.statement.create.table.Index;
  */
 public class DdlInspector {
 
-  private static final Pattern PARENS = Pattern.compile("[()]");
   private static final Pattern COMMA = Pattern.compile(",");
+  // Inline "REFERENCES table(col)": group 1 = table, group 2 = referenced column (optional).
+  private static final Pattern INLINE_REFERENCE =
+      Pattern.compile("(?i)REFERENCES\\s+([\\w.\"`]+)(?:\\s*\\(\\s*([\\w\"`]+)\\s*\\))?");
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
   private static final Pattern CREATE_TABLE_QUICK =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
@@ -258,30 +261,10 @@ public class DdlInspector {
 
   /** Best-effort structured parse of an inline {@code ... REFERENCES table(column)} column spec. */
   private Optional<ForeignKeyRef> inlineForeignKeyRef(String columnName, List<String> specs) {
-    if (specs == null) {
-      return Optional.empty();
-    }
-    for (int i = 0; i < specs.size(); i++) {
-      if (!"REFERENCES".equalsIgnoreCase(specs.get(i)) || i + 1 >= specs.size()) {
-        continue;
-      }
-      String token = specs.get(i + 1);
-      String table = token;
-      String referenced = "id";
-      int paren = token.indexOf('(');
-      if (paren >= 0) {
-        table = token.substring(0, paren);
-        referenced = token.substring(paren + 1).replace(")", "");
-      } else if (i + 2 < specs.size() && specs.get(i + 2).startsWith("(")) {
-        referenced = PARENS.matcher(specs.get(i + 2)).replaceAll("");
-      }
-      return Optional.of(
-          new ForeignKeyRef(
-              List.of(columnName),
-              Names.toSnakeCase(unquote(table)),
-              List.of(unquote(referenced))));
-    }
-    return Optional.empty();
+    return parseInlineReference(specs)
+        .map(
+            ref ->
+                new ForeignKeyRef(List.of(columnName), Names.toSnakeCase(ref[0]), List.of(ref[1])));
   }
 
   /** Resolves a foreign-key reference for a column from table-level then inline constraints. */
@@ -319,33 +302,29 @@ public class DdlInspector {
 
   /** Best-effort parse of an inline {@code ... REFERENCES table(column)} column spec. */
   private Optional<String> inlineForeignKey(List<String> specs) {
-    if (specs == null) {
+    return parseInlineReference(specs)
+        .map(
+            ref ->
+                "ref[" + Names.toSnakeCase(ref[0]) + "." + ref[1] + ", " + Defaults.REF_POOL + "]");
+  }
+
+  /**
+   * Extracts {@code [table, referencedColumn]} from an inline {@code ... REFERENCES table(col)}
+   * column spec. Tolerant of JSQLParser tokenization: 5.3 split {@code REFERENCES}, {@code table}
+   * and {@code (col)} into separate spec tokens, while 5.4 emits the whole clause as one token.
+   * Joining the specs and matching against the clause handles both. Referenced column defaults to
+   * {@code id} when the DDL omits it. Returned names are unquoted, table not yet snake-cased.
+   */
+  private Optional<String[]> parseInlineReference(List<String> specs) {
+    if (specs == null || specs.isEmpty()) {
       return Optional.empty();
     }
-    for (int i = 0; i < specs.size(); i++) {
-      if (!"REFERENCES".equalsIgnoreCase(specs.get(i)) || i + 1 >= specs.size()) {
-        continue;
-      }
-      String token = specs.get(i + 1);
-      String table = token;
-      String referenced = "id";
-      int paren = token.indexOf('(');
-      if (paren >= 0) {
-        table = token.substring(0, paren);
-        referenced = token.substring(paren + 1).replace(")", "");
-      } else if (i + 2 < specs.size() && specs.get(i + 2).startsWith("(")) {
-        referenced = PARENS.matcher(specs.get(i + 2)).replaceAll("");
-      }
-      return Optional.of(
-          "ref["
-              + Names.toSnakeCase(unquote(table))
-              + "."
-              + unquote(referenced)
-              + ", "
-              + Defaults.REF_POOL
-              + "]");
+    Matcher matcher = INLINE_REFERENCE.matcher(String.join(" ", specs));
+    if (!matcher.find()) {
+      return Optional.empty();
     }
-    return Optional.empty();
+    String referenced = matcher.group(2) != null ? matcher.group(2) : "id";
+    return Optional.of(new String[] {unquote(matcher.group(1)), unquote(referenced)});
   }
 
   /**
