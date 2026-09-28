@@ -3,7 +3,7 @@
 
 [versions]
 # Core Libraries
-jackson = "2.22.2"
+jackson = "2.22.3"
 lombok = "1.18.48"
 slf4j = "2.0.19"
 logback = "1.6.3"
