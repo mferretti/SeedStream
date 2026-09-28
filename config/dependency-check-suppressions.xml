@@ -94,4 +94,20 @@
         <cve>CVE-2026-33117</cve>
     </suppress>
 
+    <suppress until="2026-10-10Z">
+        <notes>CVE-2021-22569 / CVE-2022-3171 / CVE-2024-7254: CPE false positives against
+        dev.cel:protobuf 0.13.0 (Google CEL-Java, transitive via the gRPC/CEL chain in
+        :benchmarks only). OWASP DC matches this artifact to cpe:google:protobuf-java:0.13.0
+        and cpe:protobuf:protobuf:0.13.0, inheriting protobuf-java's CVEs — but 0.13.0 is
+        dev.cel's own version, not protobuf-java's. The real com.google.protobuf:protobuf-java
+        in the tree resolves to 4.36.2 (CVE-2024-7254 fixed in 4.27.5; CVE-2022-3171 and
+        CVE-2021-22569 fixed in the 3.16.1/3.19.2/3.20.0 line), so no vulnerable protobuf-java
+        code path is present. Benchmark-only, never shipped in the CLI. Re-verify the CPE
+        mapping at expiry.</notes>
+        <packageUrl regex="true">^pkg:maven/dev\.cel/protobuf@.*$</packageUrl>
+        <cve>CVE-2021-22569</cve>
+        <cve>CVE-2022-3171</cve>
+        <cve>CVE-2024-7254</cve>
+    </suppress>
+
 </suppressions>
