@@ -47,7 +47,7 @@ if (sonarHost != null) {
 
 allprojects {
     group = "com.datagenerator"
-    version = "0.7.0"
+    version = "0.8.0"
     description = "High-performance test data generator for enterprise applications"
 
     repositories {

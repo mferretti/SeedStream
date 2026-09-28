@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-28
+
 > ### ⚠️ Stored timestamps change if your JVM is not on UTC
 >
 > Database timestamp columns are now written in UTC instead of the JVM's default zone (see *Fixed*).
@@ -60,8 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never leaks the thread-local. Behaviour and determinism are unchanged — purely removes per-record
   overhead.
 - **Dependency updates** — several batched Dependabot cycles merged since 0.7.0: #237 (#225–#236),
-  #252 (#239–#250), #270 (#264–#268) and #288 (#273–#279), plus individual CI-action and library
-  bumps. Regression-tested together; no new CVEs introduced. Security-driven version *forces* (netty,
+  #252 (#239–#250), #270 (#264–#268), #288 (#273–#279), #308, #329 (#308, #321–#328) and #340
+  (#331–#339), plus individual CI-action and library bumps. Regression-tested together; no new CVEs
+  introduced. Security-driven version *forces* (netty,
   httpclient5, log4j) are listed under **Security** below.
 
 ### Fixed

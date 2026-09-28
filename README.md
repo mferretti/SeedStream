@@ -69,7 +69,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition — integration-tested against Postgres, MySQL, Oracle, and SQL Server)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
-- 🔌 **Extensible Type System**: 48+ Datafaker semantic types with runtime registration (`DatafakerRegistry`)
+- 🔌 **Extensible Type System**: 52 canonical Datafaker semantic types + 33 aliases, with runtime registration (`DatafakerRegistry`)
 - 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec, JSON Schema, SQL DDL, or compiled Protobuf descriptor set — no hand-writing required
 - 🔐 **Secret Management**: AES-256-GCM encrypted credentials in YAML; HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, Google Secret Manager backends
 
