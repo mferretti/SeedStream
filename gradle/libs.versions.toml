@@ -6,7 +6,7 @@
 jackson = "2.22.2"
 lombok = "1.18.48"
 slf4j = "2.0.19"
-logback = "1.6.3"
+logback = "1.6.4"
 picocli = "4.7.7"
 
 # Data Generation
