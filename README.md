@@ -499,8 +499,8 @@ The determinism guarantee in particular is locked by a regression test that gene
 
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
-**Known open issues (as of 2026-08-16):** none exploitable and nothing at or above the CVSS 7.0
-gate. Transitive fixes applied by forcing patched versions; three CPE false positives
+**Known open issues (as of 2026-09-28):** none exploitable and nothing at or above the CVSS 7.0
+gate. Transitive fixes applied by forcing patched versions; four CPE false positives
 suppressed, all expiring 2026-10-10.
 
 The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive via
@@ -515,6 +515,7 @@ upstream CVE records:
 | CVE-2026-33117 | azure-core / identity / json | False positive — flaw is in keyvault-*keys* local crypto; we use keyvault-*secrets*. Suppressed |
 | CVE-2023-36415, CVE-2024-35255 | azure-identity / msal4j | CPE false positives (confirmed 2026-07-07). Suppressed |
 | CVE-2026-56816 | netty 4.1.136 (19 artifacts) | False positive — flaw is in `Http3FrameCodec` (netty-codec-http3, 4.2.x only, fixed 4.2.16); we resolve netty 4.1.x with no HTTP/3 on any configuration. NVD's CPE had no `versionStartIncluding`, so it over-matched all of 4.1.x. **No longer flagged**; suppression removed 2026-08-16 |
+| CVE-2021-22569, CVE-2022-3171, CVE-2024-7254 | `dev.cel:protobuf` 0.13.0 (`:benchmarks`) | False positive — protobuf-java CVEs mis-attributed by CPE to Google's CEL-Java `protobuf` artifact, whose own 0.13.0 version DC reads as `protobuf-java:0.13.0`. The real `protobuf-java` resolves to 4.36.2 (all three fixed upstream); benchmark-only, never shipped. Suppressed 2026-09-28 (CVE-2022-3171 / CVE-2024-7254 were gate blockers on the 2026-09-27 scan) |
 
 **2026-08-16 review.** The classic-`httpcore` and netty rows stopped producing a finding at all —
 zero occurrences across every module, on `main` and on the bump branch alike, while genuinely
