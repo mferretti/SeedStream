@@ -13,14 +13,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Highlights
 
-- **UTC-stable database timestamps (#80, #218)** — `TIMESTAMP` columns now store the same instant regardless of the JVM's or the MySQL host's time zone, restoring cross-machine seed reproducibility. See the upgrade notes below if you have rows written by an earlier version.
-- **Kafka `username`/`password` SASL now works (#292)** — the documented SASL keys were silently ignored; SeedStream now synthesizes `sasl.jaas.config` (`PLAIN` / `SCRAM-SHA-256` / `SCRAM-SHA-512`) with `${VAR}` / `${SECRET:path}` substitution, and fails fast on misconfiguration.
-- **`decimal` reaches its inclusive `max`, and `bic`/currency go locale-aware (#260, #177, #208)** — `decimal[min..max]` now draws from a uniform grid so `max` is actually emitted; `bic` honours `geolocation` (old behaviour preserved under `random_bic`), and a new `locale_currency` type maps the locale to its ISO 4217 currency.
-- **`inspect` bootstraps structures from JSON Schema (#89)** — alongside the existing OpenAPI / SQL DDL / Protobuf inputs.
-- **Opt-in parallel gzip via `compress_mode: per_chunk` (#210)**, plus a once-per-worker `GeneratorContext` (#286) — compression off the writer thread and no per-record context churn, determinism unchanged.
-- **Five runnable `use-cases/`** — CI-pipeline seeding, SaaS demo environments, performance/load testing, and dev-env bootstrapping (#79–#83).
-- **Reliability fixes** — a dying writer thread no longer hangs the run (#282); Avro no longer stringifies object arrays or freezes null-first fields (#284, #285); `int` ranges wider than 2³¹ no longer spin forever (#254); Kafka async no longer drops failed records (#258); `timestamp now-` ranges and CBEFF dates are reproducible again (#255, #281).
-- **Security** — `httpclient5` forced to 5.6.4 (CVE-2026-71290, CRITICAL async-TLS hostname-verification bypass), netty 4.1.137 (CVE-2026-62380), log4j 2.26.1; two dead CVE suppressions removed.
+- **Determinism restored in five places** — the same-seed, byte-identical guarantee
+  was silently false on five paths, all fixed: database `TIMESTAMP` columns bound in
+  the JVM's default zone (#80) and re-converted server-side by MySQL's session zone
+  (#218); `timestamp[now-Nd..now]` bounds re-resolved against the wall clock on every
+  record (#255); CBEFF `creation_date` writing `Instant.now()` (#281); and `FakerCache`
+  serving a stale-seeded `Faker` instead of failing (#261). The first was caught by the
+  new CI seeding use case, whose fingerprint differed between a local run and GitHub
+  Actions. See the upgrade notes below for rows written by an earlier version.
+- **`use-cases/` goes from one to five** — CI-pipeline seeding (#80), SaaS demo
+  environments (#82), performance and load testing (#81) and dev-env bootstrapping (#79)
+  join the ISO 20022 SEPA payments scenario (#83). The CI one runs in its own workflow
+  against a PostgreSQL service container and asserts two consecutive seeds match each
+  other and the committed fingerprint.
+- **Failures that were silent are now loud** — Kafka `username`/`password` were read by
+  nobody and are now synthesized into `sasl.jaas.config` with fail-fast validation (#292);
+  Kafka async reported success while dropping failed records (#258); an unrecognized
+  `geolocation` fell back to US English, and nine documented locale names never matched
+  at all (#295); and the Security Scan stayed green while uploading no CVE report.
+- **Correctness and hangs** — `decimal[min..max]` never emitted `max` (#260); `int` ranges
+  wider than 2³¹ spun a core forever (#254); a dying writer thread deadlocked the whole
+  run instead of failing (#282); Avro stringified object arrays (#284) and froze
+  null-first fields to `STRING` (#285).
+- **New capability** — `inspect` bootstraps structures from a standalone JSON Schema (#89);
+  `bic` honours `geolocation` with the old behaviour kept as `random_bic` (#177, #208) and
+  a new `locale_currency` type (#208); opt-in parallel gzip via `compress_mode: per_chunk`
+  (#210); `GeneratorContext` entered once per worker rather than per record (#286); and a
+  `./seedstream` launcher wrapper.
+- **Security** — `httpclient5` forced to 5.6.4 (CVE-2026-71290, CVSS 9.1: TLS hostname
+  verification silently disabled on the async transport), netty 4.1.137 (CVE-2026-62380),
+  log4j 2.26.1; two dead CVE suppressions removed.
 
 > ### ⚠️ Stored timestamps change if your JVM is not on UTC
 >
