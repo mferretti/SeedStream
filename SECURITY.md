@@ -6,9 +6,9 @@ We release security updates for the following versions:
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 0.6.x   | :white_check_mark: | Current stable release |
-| 0.5.x   | :x:                | No longer supported |
-| < 0.5   | :x:                | No longer supported |
+| 0.8.x   | :white_check_mark: | Current stable release |
+| 0.7.x   | :x:                | No longer supported |
+| < 0.7   | :x:                | No longer supported |
 
 **Recommendation**: Always use the latest release for the most up-to-date security fixes.
 
@@ -24,11 +24,16 @@ We release security updates for the following versions:
 | **Suppressions** | ⏳ time-boxed | Every suppression carries an expiry date; CI re-fails on expiry. See README Security section |
 
 **Key Dependency Versions:**
-- Jackson: 2.22.0
-- Kafka: 4.3.0
-- Protobuf: 4.35.1
-- MySQL Connector: 8.4.0
+- Jackson: 2.22.3
+- Kafka: 4.3.1
+- Protobuf: 4.36.2
+- MySQL Connector: 26.7.0
 - All other dependencies pinned in `gradle/libs.versions.toml`
+
+**Forced versions for security** (in `build.gradle.kts`, overriding transitive resolution):
+- httpclient5: 5.6.4 (CVE-2026-71290, CVE-2026-64607)
+- httpcore5-h2: 5.4.4 (CVE-2026-54428, CVE-2026-54399)
+- netty: 4.1.137.Final (CVE-2026-44891, CVE-2026-55831, CVE-2026-55833, CVE-2026-62380)
 
 **Dependency Management**: Centralized in `gradle/libs.versions.toml` ([Gradle Version Catalog](https://docs.gradle.org/current/userguide/platforms.html))
 
@@ -229,4 +234,4 @@ For vulnerability reports, use the private channels described above.
 
 ---
 
-**Last Updated**: June 4, 2026
+**Last Updated**: September 28, 2026
