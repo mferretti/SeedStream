@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.0] - 2026-09-28
 
+### Highlights
+
+- **UTC-stable database timestamps (#80, #218)** — `TIMESTAMP` columns now store the same instant regardless of the JVM's or the MySQL host's time zone, restoring cross-machine seed reproducibility. See the upgrade notes below if you have rows written by an earlier version.
+- **Kafka `username`/`password` SASL now works (#292)** — the documented SASL keys were silently ignored; SeedStream now synthesizes `sasl.jaas.config` (`PLAIN` / `SCRAM-SHA-256` / `SCRAM-SHA-512`) with `${VAR}` / `${SECRET:path}` substitution, and fails fast on misconfiguration.
+- **`decimal` reaches its inclusive `max`, and `bic`/currency go locale-aware (#260, #177, #208)** — `decimal[min..max]` now draws from a uniform grid so `max` is actually emitted; `bic` honours `geolocation` (old behaviour preserved under `random_bic`), and a new `locale_currency` type maps the locale to its ISO 4217 currency.
+- **`inspect` bootstraps structures from JSON Schema (#89)** — alongside the existing OpenAPI / SQL DDL / Protobuf inputs.
+- **Opt-in parallel gzip via `compress_mode: per_chunk` (#210)**, plus a once-per-worker `GeneratorContext` (#286) — compression off the writer thread and no per-record context churn, determinism unchanged.
+- **Five runnable `use-cases/`** — CI-pipeline seeding, SaaS demo environments, performance/load testing, and dev-env bootstrapping (#79–#83).
+- **Reliability fixes** — a dying writer thread no longer hangs the run (#282); Avro no longer stringifies object arrays or freezes null-first fields (#284, #285); `int` ranges wider than 2³¹ no longer spin forever (#254); Kafka async no longer drops failed records (#258); `timestamp now-` ranges and CBEFF dates are reproducible again (#255, #281).
+- **Security** — `httpclient5` forced to 5.6.4 (CVE-2026-71290, CRITICAL async-TLS hostname-verification bypass), netty 4.1.137 (CVE-2026-62380), log4j 2.26.1; two dead CVE suppressions removed.
+
 > ### ⚠️ Stored timestamps change if your JVM is not on UTC
 >
 > Database timestamp columns are now written in UTC instead of the JVM's default zone (see *Fixed*).
@@ -588,7 +599,7 @@ Not publicly released. Internal prototype for architecture validation.
 
 ## Roadmap
 
-### v0.7.0 (Planned)
+### v0.9.0 (Planned)
 - Statistical distributions (normal, Zipfian, exponential)
 - Advanced Datafaker correlations and constraints
 - Binary FMR serializer (ISO/IEC 19794-2, pending spec access)
@@ -597,7 +608,6 @@ Not publicly released. Internal prototype for architecture validation.
 - REST API module
 - Plugin architecture (ServiceLoader-based extensibility)
 - Data masking and anonymization
-- Docker image
 - Metrics and monitoring (Prometheus, Grafana)
 
 ---
