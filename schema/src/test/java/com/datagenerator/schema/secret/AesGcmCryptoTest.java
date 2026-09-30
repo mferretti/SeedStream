@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AesGcmCryptoTest {
 
@@ -149,6 +151,53 @@ class AesGcmCryptoTest {
   void hexToKeyThrowsOnNullInput() {
     assertThatThrownBy(() -> AesGcmCrypto.hexToKey(null))
         .isInstanceOf(SecretResolutionException.class);
+  }
+
+  @Test
+  void hexToKeyDecodesEveryBytePositionIncludingSignBoundaries() {
+    // 00 01 ... 1b then 7f 80 fe ff: checks ordering, the last byte and signed-byte conversion.
+    StringBuilder hex = new StringBuilder();
+    for (int i = 0; i < 28; i++) {
+      hex.append("%02x".formatted(i));
+    }
+    hex.append("7f80feff");
+
+    byte[] key = AesGcmCrypto.hexToKey(hex.toString());
+
+    assertThat(key).hasSize(32);
+    for (int i = 0; i < 28; i++) {
+      assertThat(key[i]).isEqualTo((byte) i);
+    }
+    assertThat(Arrays.copyOfRange(key, 28, 32))
+        .containsExactly((byte) 0x7F, (byte) 0x80, (byte) 0xFE, (byte) 0xFF);
+  }
+
+  @Test
+  void hexToKeyAcceptsMixedCase() {
+    assertThat(AesGcmCrypto.hexToKey("aB".repeat(32))).containsOnly((byte) 0xAB);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1",
+        "0x00000000000000000000000000000000000000000000000000000000000000",
+        "gg00000000000000000000000000000000000000000000000000000000000000",
+        " 000000000000000000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000000000000000000z"
+      })
+  void hexToKeyThrowsWhenKeyHasRightLengthButNonHexCharacters(String hex) {
+    assertThat(hex).hasSize(64);
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey(hex))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("non-hex");
+  }
+
+  @Test
+  void hexToKeyThrowsOnTooLongHex() {
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey("a".repeat(65)))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("65 characters");
   }
 
   @Test
