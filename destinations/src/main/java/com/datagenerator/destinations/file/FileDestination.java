@@ -33,8 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.Schema;
 import org.apache.avro.file.CodecFactory;
+import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 
@@ -96,6 +99,8 @@ public class FileDestination extends AbstractDestination {
   private final boolean isAvro;
   private OutputStream avroRawOut;
   private DataFileWriter<GenericRecord> avroFileWriter;
+  // Existing non-empty container to append to (append mode); null means write a fresh container.
+  private Path avroAppendTarget;
 
   /**
    * Create file destination with configuration and serializer.
@@ -142,11 +147,20 @@ public class FileDestination extends AbstractDestination {
       if (isAvro) {
         // Avro Object Container Format — DataFileWriter handles its own buffering and compression.
         // The DataFileWriter is initialized lazily on first write when the schema is known.
-        avroRawOut = Files.newOutputStream(filePath, openOptions);
+        // Appending to an existing container must reuse its header and sync marker; writing a
+        // second header mid-file makes the whole file unreadable.
+        boolean appendToExisting =
+            config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
+        avroAppendTarget = appendToExisting ? filePath : null;
+        if (!appendToExisting) {
+          avroRawOut = Files.newOutputStream(filePath, openOptions);
+        }
       } else {
         if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
           filePath = Path.of(filePath.toString() + ".gz");
         }
+        // Appending to a non-empty file: its header row (CSV) is already there (#344).
+        headerWritten = config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
         OutputStream base = Files.newOutputStream(filePath, openOptions);
         // When perChunkGzip is true, do NOT wrap GZIPOutputStream here; each chunk is gzipped
         // on the worker thread and the writer concatenates the members.
@@ -315,14 +329,34 @@ public class FileDestination extends AbstractDestination {
         avroSer.ensureInitialized(data);
         GenericDatumWriter<GenericRecord> dw = new GenericDatumWriter<>(avroSer.getSchema());
         avroFileWriter = new DataFileWriter<>(dw);
-        if (config.isCompress()) {
-          avroFileWriter.setCodec(CodecFactory.deflateCodec(6));
+        if (avroAppendTarget != null) {
+          requireSameAvroSchema(avroAppendTarget, avroSer.getSchema());
+          avroFileWriter.appendTo(avroAppendTarget.toFile()); // keeps the file's own codec
+        } else {
+          if (config.isCompress()) {
+            avroFileWriter.setCodec(CodecFactory.deflateCodec(6));
+          }
+          avroFileWriter.create(avroSer.getSchema(), avroRawOut);
         }
-        avroFileWriter.create(avroSer.getSchema(), avroRawOut);
       }
       avroFileWriter.append(avroSer.buildGenericRecord(data));
     } catch (IOException e) {
       throw new DestinationException("Failed to write Avro record", e);
+    }
+  }
+
+  private static void requireSameAvroSchema(Path file, Schema recordSchema) throws IOException {
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(file.toFile(), new GenericDatumReader<>())) {
+      if (!reader.getSchema().equals(recordSchema)) {
+        throw new DestinationException(
+            "Cannot append to Avro file "
+                + file
+                + ": its schema differs from the records being written. Existing: "
+                + reader.getSchema()
+                + ", new: "
+                + recordSchema);
+      }
     }
   }
 
