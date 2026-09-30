@@ -192,21 +192,28 @@ above for the *instance*, while the per-record index seed pins the *values*.
 **Function**: `deriveRecordSeed(long globalIndex) → long` (and the analogous per-worker
 `deriveSeed(masterSeed, workerId)` used only for instance initialization).
 
-**Algorithm**:
+**Algorithm** (SplitMix64):
 ```java
-long seed = masterSeed;
-seed ^= globalIndex;    // Mix in the global record index
-seed ^= (seed << 21);   // Bit avalanche (spread changes)
-seed ^= (seed >>> 35);  // Spread high bits to low
-seed ^= (seed << 4);    // Final mixing
-return seed;
+return mix64(mix64(masterSeed) + globalIndex * 0x9E3779B97F4A7C15L);
+
+static long mix64(long z) {           // SplitMix64 finalizer, bijective
+  z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+  z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+  return z ^ (z >>> 31);
+}
 ```
+
+The master seed is mixed **before** the index is combined in. The pre-0.9 algorithm XORed the
+index into the raw seed first (`masterSeed ^ globalIndex`, then shifts), so `(s, i)` and `(s', i')`
+collided whenever `s ^ i == s' ^ i'`: seed 1 reproduced seed 0's records pairwise swapped (#343).
 
 **Properties**:
 - **Deterministic**: Same index always produces the same seed → same record value.
 - **Partition-independent**: The value at index `i` does not depend on thread/core count.
 - **Distinct**: Adjacent indices produce very different seeds (avalanche effect).
-- **Fast**: Simple bit operations, no cryptographic overhead.
+- **Seed-independent**: Different master seeds produce unrelated record-seed streams, not permutations
+  of one another.
+- **Fast**: Two multiply-xorshift rounds, no cryptographic overhead.
 
 **Why Not Hash Functions?**: Hash functions (SHA-256, MD5) are overkill. We need speed and
 determinism, not cryptographic security. Simple XOR mixing is sufficient for pseudo-random seed

@@ -19,6 +19,7 @@ package com.datagenerator.core.seed;
 import static org.assertj.core.api.Assertions.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -30,6 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.Test;
 
 class RandomProviderTest {
@@ -213,5 +215,68 @@ class RandomProviderTest {
     // After cleanup, accessing again should create a new instance
     Random afterCleanup = provider.getRandom();
     assertThat(afterCleanup).isNotNull();
+  }
+
+  @Test
+  void shouldNotReuseRecordSeedsOfAnotherMasterSeedWhenSeedsAreAdjacent() {
+    // Seed 0 and seed 1 must produce unrelated datasets, not the same records reordered.
+    Set<Long> seedZero = new HashSet<>();
+    Set<Long> seedOne = new HashSet<>();
+    RandomProvider zero = new RandomProvider(0L);
+    RandomProvider one = new RandomProvider(1L);
+    for (long i = 0; i < 1_000; i++) {
+      seedZero.add(zero.deriveRecordSeed(i));
+      seedOne.add(one.deriveRecordSeed(i));
+    }
+
+    assertThat(seedOne).doesNotContainAnyElementsOf(seedZero);
+  }
+
+  @Test
+  void shouldNotCollideRecordSeedsAcrossMasterSeedsWhenXorOfSeedAndIndexMatches() {
+    // (seed=s, index=i) and (seed=s', index=i') with s ^ i == s' ^ i' must not share a record seed.
+    RandomProvider a = new RandomProvider(42L);
+    RandomProvider b = new RandomProvider(42L ^ 7L);
+
+    assertThat(b.deriveRecordSeed(7L)).isNotEqualTo(a.deriveRecordSeed(0L));
+  }
+
+  @Test
+  void shouldNeverShareRecordSeedsAcrossManyMasterSeedsWhenIndicesOverlap() {
+    // 64 master seeds (incl. low-bit neighbours) x 1024 indices: every record seed must be unique.
+    Set<Long> all = new HashSet<>();
+    for (long seed = 0; seed < 64; seed++) {
+      RandomProvider provider = new RandomProvider(seed);
+      for (long i = 0; i < 1024; i++) {
+        assertThat(all.add(provider.deriveRecordSeed(i)))
+            .as("record seed of (seed=%d, index=%d) already produced by another pair", seed, i)
+            .isTrue();
+      }
+    }
+  }
+
+  @Test
+  void shouldMatchPinnedSplitMix64RecordSeedsWhenMasterSeedIs42() {
+    // Reproducibility contract: these values are the published output for seed 42. Independently
+    // cross-checked against a reference SplitMix64 implementation. A change here changes every
+    // generated dataset and must be a deliberate, CHANGELOG-noted break.
+    RandomProvider provider = new RandomProvider(42L);
+
+    assertThat(LongStream.range(0, 4).map(provider::deriveRecordSeed).toArray())
+        .containsExactly(
+            -7500032730674233179L,
+            -7450291807549245335L,
+            2958219263312191191L,
+            3069497704473277141L);
+  }
+
+  @Test
+  void shouldDeriveDistinctRecordSeedsWhenMasterSeedIsAtLongExtremes() {
+    RandomProvider min = new RandomProvider(Long.MIN_VALUE);
+    RandomProvider max = new RandomProvider(Long.MAX_VALUE);
+
+    assertThat(min.deriveRecordSeed(0)).isEqualTo(2015616772291713742L);
+    assertThat(max.deriveRecordSeed(0)).isEqualTo(8281782516245842002L);
+    assertThat(min.deriveRecordSeed(Long.MAX_VALUE)).isNotEqualTo(min.deriveRecordSeed(0));
   }
 }

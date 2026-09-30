@@ -17,7 +17,9 @@
 package com.datagenerator.formats.avro;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.datagenerator.formats.SerializationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
@@ -25,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,11 +37,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DecoderFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class AvroSerializerTest {
 
@@ -309,6 +317,184 @@ class AvroSerializerTest {
     // STRING forever; a later Integer value must be preserved as a numeric Avro type (here Long,
     // per the widened null-first union), not silently stringified via toString().
     assertThat(decoded2.get("score")).isInstanceOf(Long.class).isEqualTo(42L);
+  }
+
+  @Test
+  void shouldThrowSerializationExceptionWhenLaterRecordHasIncompatibleType() {
+    Map<String, Object> first = new LinkedHashMap<>();
+    first.put("age", 30);
+    serializer.serialize(first);
+
+    Map<String, Object> drifted = new LinkedHashMap<>();
+    drifted.put("age", "thirty");
+
+    assertThatThrownBy(() -> serializer.serialize(drifted))
+        .isInstanceOf(SerializationException.class)
+        .hasMessageContaining("age");
+  }
+
+  @Test
+  void shouldRoundTripNullElementsWhenListContainsNulls() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("tags", Arrays.asList("a", null, "c"));
+
+    GenericRecord decoded = roundTrip(data);
+
+    List<?> tags = (List<?>) decoded.get("tags");
+    assertThat(tags).hasSize(3);
+    assertThat(tags.get(0)).hasToString("a");
+    assertThat(tags.get(1)).isNull();
+    assertThat(tags.get(2)).hasToString("c");
+  }
+
+  @Test
+  void shouldRoundTripNullElementsWhenFirstRecordListHadNone() throws Exception {
+    Map<String, Object> first = new LinkedHashMap<>();
+    first.put("tags", List.of("x"));
+    roundTrip(first);
+
+    Map<String, Object> second = new LinkedHashMap<>();
+    second.put("tags", Arrays.asList(null, "y"));
+
+    List<?> tags = (List<?>) roundTrip(second).get("tags");
+    assertThat(tags.get(0)).isNull();
+    assertThat(tags.get(1)).hasToString("y");
+  }
+
+  static Stream<Arguments> incompatibleLaterValues() {
+    return Stream.of(
+        Arguments.of(30, "thirty"), // INT
+        Arguments.of(30L, "thirty"), // LONG
+        Arguments.of(1.5d, "one and a half"), // DOUBLE
+        Arguments.of(new BigDecimal("1.50"), "x"), // DECIMAL -> DOUBLE
+        Arguments.of(true, "yes"), // BOOLEAN
+        Arguments.of(LocalDate.of(2024, 1, 1), "2024-01-01"), // date
+        Arguments.of(Instant.EPOCH, "1970-01-01T00:00:00Z")); // timestamp-millis
+  }
+
+  @ParameterizedTest
+  @MethodSource("incompatibleLaterValues")
+  void shouldThrowSerializationExceptionNamingFieldWhenLaterValueDoesNotMatchSchema(
+      Object first, Object drifted) {
+    Map<String, Object> r1 = new LinkedHashMap<>();
+    r1.put("field", first);
+    serializer.serialize(r1);
+
+    Map<String, Object> r2 = new LinkedHashMap<>();
+    r2.put("field", drifted);
+
+    assertThatThrownBy(() -> serializer.serialize(r2))
+        .isInstanceOf(SerializationException.class)
+        .hasMessageContaining("'field'")
+        .hasCauseInstanceOf(ClassCastException.class);
+  }
+
+  @Test
+  void shouldKeepSerializingWhenPreviousRecordFailedOnTypeDrift() throws Exception {
+    Map<String, Object> first = new LinkedHashMap<>();
+    first.put("age", 30);
+    roundTrip(first);
+    Map<String, Object> drifted = new LinkedHashMap<>();
+    drifted.put("age", "thirty");
+    assertThatThrownBy(() -> serializer.serialize(drifted))
+        .isInstanceOf(SerializationException.class);
+
+    Map<String, Object> next = new LinkedHashMap<>();
+    next.put("age", 31);
+    assertThat(roundTrip(next).get("age")).isEqualTo(31);
+  }
+
+  @Test
+  void shouldRoundTripEmptyListAsEmptyArray() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("tags", List.of());
+
+    assertThat((List<?>) roundTrip(data).get("tags")).isEmpty();
+  }
+
+  @Test
+  void shouldRoundTripWholeListFieldAsNullWhenLaterRecordHasNoList() throws Exception {
+    Map<String, Object> first = new LinkedHashMap<>();
+    first.put("tags", List.of("a"));
+    roundTrip(first);
+
+    Map<String, Object> second = new LinkedHashMap<>();
+    second.put("tags", null);
+
+    assertThat(roundTrip(second).get("tags")).isNull();
+  }
+
+  @Test
+  void shouldRoundTripOnlyNullElementsWhenListHasNoValues() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("tags", Arrays.asList(null, null));
+
+    assertThat((List<?>) roundTrip(data).get("tags")).containsExactly(null, null);
+  }
+
+  @Test
+  void shouldStringifyNumericListElements() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("nums", List.of(1, 22, 333));
+
+    List<?> nums = (List<?>) roundTrip(data).get("nums");
+    assertThat(nums).extracting(Object::toString).containsExactly("1", "22", "333");
+  }
+
+  @Test
+  void shouldDeclareNullableStringElementsInArraySchema() {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("tags", List.of("a"));
+    serializer.serialize(data);
+
+    Schema array = serializer.getSchema().getField("tags").schema().getTypes().get(1);
+    assertThat(array.getType()).isEqualTo(Schema.Type.ARRAY);
+    assertThat(array.getElementType().getTypes())
+        .extracting(Schema::getType)
+        .containsExactly(Schema.Type.NULL, Schema.Type.STRING);
+  }
+
+  @Test
+  void shouldSerializeMissingKeyInLaterRecordAsNull() throws Exception {
+    Map<String, Object> first = new LinkedHashMap<>();
+    first.put("name", ALICE);
+    first.put("age", 30);
+    roundTrip(first);
+
+    Map<String, Object> second = new LinkedHashMap<>();
+    second.put("name", "Bob");
+
+    GenericRecord decoded = roundTrip(second);
+    assertThat(decoded.get("name")).hasToString("Bob");
+    assertThat(decoded.get("age")).isNull();
+  }
+
+  @Test
+  void shouldTruncateInstantToMillisWhenEncodingTimestamp() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("ts", Instant.parse("2024-05-06T07:08:09.123456789Z"));
+
+    assertThat(roundTrip(data).get("ts"))
+        .isEqualTo(Instant.parse("2024-05-06T07:08:09.123Z").toEpochMilli());
+  }
+
+  @Test
+  void shouldRoundTripPreEpochDateAndInstant() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("d", LocalDate.of(1969, Month.DECEMBER, 31));
+    data.put("ts", Instant.parse("1969-12-31T23:59:59Z"));
+
+    GenericRecord decoded = roundTrip(data);
+    assertThat(decoded.get("d")).isEqualTo(-1);
+    assertThat(decoded.get("ts")).isEqualTo(-1000L);
+  }
+
+  @Test
+  void shouldRoundTripUnicodeStrings() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("name", "Zoë 北京 🚀");
+
+    assertThat(roundTrip(data).get("name")).hasToString("Zoë 北京 🚀");
   }
 
   // --- helpers ---

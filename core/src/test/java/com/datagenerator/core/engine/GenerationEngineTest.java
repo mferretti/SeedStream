@@ -146,6 +146,76 @@ class GenerationEngineTest {
   }
 
   @Test
+  void shouldProduceUnrelatedRecordsWhenMasterSeedsDiffer() throws InterruptedException {
+    // Different seeds must give different data, not the same records reordered (#343). Each
+    // record carries a full 64-bit draw, so any shared value means a shared record seed.
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("value", random.nextLong());
+
+    for (long[] pair : new long[][] {{0L, 1L}, {42L, 43L}, {-1L, 0L}}) {
+      List<Map<String, Object>> first = new ArrayList<>();
+      List<Map<String, Object>> second = new ArrayList<>();
+      GenerationEngine.builder()
+          .recordGenerator(recordGenerator)
+          .recordWriter(first::add)
+          .masterSeed(pair[0])
+          .build()
+          .generate(1000);
+      GenerationEngine.builder()
+          .recordGenerator(recordGenerator)
+          .recordWriter(second::add)
+          .masterSeed(pair[1])
+          .build()
+          .generate(1000);
+
+      assertThat(second)
+          .as("seed %d vs seed %d", pair[0], pair[1])
+          .doesNotContainAnyElementsOf(first);
+    }
+  }
+
+  @Test
+  void shouldMatchPinnedOutputForSeed42OnEveryPath() throws InterruptedException {
+    // Reproducibility contract at engine level: record i is seeded by deriveRecordSeed(i) on both
+    // the single- and multi-threaded paths. Pinned values change only with a deliberate,
+    // CHANGELOG-noted break.
+    GenerationEngine.RecordGenerator recordGenerator = random -> Map.of("value", random.nextLong());
+    List<Map<String, Object>> expected =
+        List.of(
+            Map.of("value", -8648005261870449984L),
+            Map.of("value", -6114816096494344529L),
+            Map.of("value", 8827921627204153144L),
+            Map.of("value", 5877018063529567188L),
+            Map.of("value", -8473771810665744886L));
+
+    List<Map<String, Object>> single = new ArrayList<>();
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordWriter(single::add)
+        .masterSeed(42L)
+        .singleThreadedThreshold(Integer.MAX_VALUE)
+        .build()
+        .generate(5);
+    assertThat(single).containsExactlyElementsOf(expected);
+
+    List<Map<String, Object>> multi = new ArrayList<>();
+    GenerationEngine.RecordWriter writer =
+        data -> {
+          synchronized (multi) {
+            multi.add(data);
+          }
+        };
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordWriter(writer)
+        .masterSeed(42L)
+        .workerThreads(4)
+        .singleThreadedThreshold(1)
+        .build()
+        .generate(5);
+    assertThat(multi).containsExactlyElementsOf(expected);
+  }
+
+  @Test
   void shouldHandleDifferentWorkerThreadCounts() throws InterruptedException {
     // Given: Record generator
     AtomicInteger idCounter = new AtomicInteger(0);

@@ -56,8 +56,8 @@ import org.apache.avro.io.EncoderFactory;
  *   <li>Double, Float, BigDecimal → Avro {@code double}
  *   <li>LocalDate → Avro {@code int} with {@code date} logical type (days since epoch)
  *   <li>Instant → Avro {@code long} with {@code timestamp-millis} logical type
- *   <li>List → Avro {@code array} of {@code string}; object/Map elements are JSON-encoded (not
- *       {@link Object#toString()})
+ *   <li>List → Avro {@code array} of {@code ["null", "string"]}; null elements are preserved,
+ *       object/Map elements are JSON-encoded (not {@link Object#toString()})
  *   <li>Map (nested object) → Avro {@code string} (JSON-encoded)
  * </ul>
  *
@@ -201,7 +201,9 @@ public class AvroSerializer implements FormatSerializer {
       return LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG));
     }
     if (value instanceof List) {
-      return Schema.createArray(Schema.create(Schema.Type.STRING));
+      // Elements are nullable: generated lists may carry null entries (#348).
+      return Schema.createArray(
+          Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)));
     }
     // Map (nested object) → JSON string
     return Schema.create(Schema.Type.STRING);
@@ -223,7 +225,19 @@ public class AvroSerializer implements FormatSerializer {
       String fieldName = sanitizeFieldName(entry.getKey());
       Schema.Field field = schema.getField(fieldName);
       if (field != null) {
-        avroRecord.put(fieldName, convertValue(entry.getValue(), field.schema()));
+        try {
+          avroRecord.put(fieldName, convertValue(entry.getValue(), field.schema()));
+        } catch (ClassCastException e) {
+          // The schema is fixed by the first record; a later record with an incompatible type for
+          // this field cannot be encoded (#348).
+          throw new SerializationException(
+              "Avro field '%s': value of type %s does not match schema type %s"
+                  .formatted(
+                      fieldName,
+                      entry.getValue().getClass().getSimpleName(),
+                      resolveBranch(entry.getValue(), field.schema()).getType()),
+              e);
+        }
       }
     }
     return avroRecord;
@@ -245,7 +259,7 @@ public class AvroSerializer implements FormatSerializer {
           value instanceof Instant inst ? inst.toEpochMilli() : ((Number) value).longValue();
       case DOUBLE ->
           value instanceof BigDecimal bd ? bd.doubleValue() : ((Number) value).doubleValue();
-      case BOOLEAN -> value;
+      case BOOLEAN -> (Boolean) value;
       case STRING -> convertToString(value);
       case ARRAY -> convertToAvroArray(value, actual);
       default -> value.toString();

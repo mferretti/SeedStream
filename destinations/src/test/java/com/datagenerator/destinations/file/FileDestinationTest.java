@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datagenerator.destinations.DestinationException;
+import com.datagenerator.formats.SerializationException;
 import com.datagenerator.formats.avro.AvroSerializer;
 import com.datagenerator.formats.csv.CsvSerializer;
 import com.datagenerator.formats.json.JsonSerializer;
@@ -29,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -273,6 +275,61 @@ class FileDestinationTest {
     assertThat(records.get(0).get("age")).isEqualTo(30);
     assertThat(records.get(1).get("name")).hasToString("Bob");
     assertThat(records.get(1).get("age")).isEqualTo(25);
+  }
+
+  @Test
+  void shouldPreserveNullsInAvroContainerFileWhenListsAndFieldsContainNulls() throws Exception {
+    Path outputFile = tempDir.resolve("nulls.avro");
+    FileDestinationConfig config = configBuilder.filePath(outputFile).build();
+
+    Map<String, Object> record1 = new LinkedHashMap<>();
+    record1.put("name", ALICE);
+    record1.put("tags", List.of("a", "b"));
+
+    Map<String, Object> record2 = new LinkedHashMap<>();
+    record2.put("name", null);
+    record2.put("tags", Arrays.asList(null, "c", null));
+
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      destination.write(record1);
+      destination.write(record2);
+    }
+
+    List<GenericRecord> records = new ArrayList<>();
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      reader.forEach(records::add);
+    }
+    assertThat(records).hasSize(2);
+    assertThat(records.get(1).get("name")).isNull();
+    List<?> tags = (List<?>) records.get(1).get("tags");
+    assertThat(tags).hasSize(3);
+    assertThat(tags.get(0)).isNull();
+    assertThat(tags.get(1)).hasToString("c");
+    assertThat(tags.get(2)).isNull();
+  }
+
+  @Test
+  void shouldKeepAvroContainerFileReadableWhenARecordFailsOnTypeDrift() throws Exception {
+    Path outputFile = tempDir.resolve("drift.avro");
+    FileDestinationConfig config = configBuilder.filePath(outputFile).build();
+
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("age", 30)));
+      assertThatThrownBy(() -> destination.write(new LinkedHashMap<>(Map.of("age", "thirty"))))
+          .isInstanceOf(SerializationException.class)
+          .hasMessageContaining("'age'");
+      destination.write(new LinkedHashMap<>(Map.of("age", 31)));
+    }
+
+    List<Object> ages = new ArrayList<>();
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      reader.forEach(r -> ages.add(r.get("age")));
+    }
+    assertThat(ages).containsExactly(30, 31);
   }
 
   @Test
