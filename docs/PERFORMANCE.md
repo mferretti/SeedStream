@@ -84,6 +84,8 @@ All benchmarks run with **JMH** (Java Microbenchmark Harness) on development har
 | Boolean | **252M ops/s** | 10M ops/s | ✅ 25× |
 | Enum | **142M ops/s** | 10M ops/s | ✅ 14× |
 | Integer | **63M ops/s** | 10M ops/s | ✅ 6.3× |
+| Serial | **216–221M ops/s** (one add, no RNG; `UniqueGeneratorBenchmark.serialGenerator`) | 10M ops/s | ✅ ~21× |
+| Unique | **29–43M ops/s** | 10M ops/s | ✅ |
 | Date (LocalDate) | **22M ops/s** | 10M ops/s | ✅ 2.2× |
 | String (char) | **12.4M ops/s** | 10M ops/s | ✅ 1.2× |
 | Timestamp | **4.5M ops/s** | 10M ops/s | ⚠️ 0.45× |
@@ -96,6 +98,29 @@ strings with `LocalDate.parse()`. The same commit cached Integer/Char bounds, bu
 
 Timestamp and Decimal remain below target (`Instant` / `BigDecimal` construction cost), but are still ~8×
 above the fastest measured full-pipeline rate, so this is not a practical constraint.
+
+### `unique` generator (#212)
+
+**Method**: JMH single-thread, same run as the integer baseline (14–17 ns/op). `unique` = keyed 4-round Feistel permutation of the record index with cycle-walking over the next power of four.
+
+**JMH**: 23–34 ns/op (29–43M ops/s) when the range size is at or just below a power of four (e.g. 4096 → 42.8M, 1,000,000 → 39.8M, 2400 → 29.4M); worst case when the range is just above a power of four: 78–87 ns/op (4097 → 12.8M, 1,048,577 → 11.5M), because cycle-walking averages ~4 passes. All above NFR-1.
+
+**End-to-end** (engine clock, 1M records, primitives-only structure `perf_probe_primitive` plus one 4th field, file/json, reference laptop: 6-core/12-thread Ryzen 5 PRO 4650U), comparing `uid: unique[1..1000000]` against `uid: int[1..1000000]` (control, same serialized size), medians of 7–10 runs:
+
+| threads | unique vs int field |
+|---------|:---:|
+| 1 | +1.3% (noise); worst-case range (1..1048577) −5.7% |
+| 2 | +3.7% (noise) |
+| 4 | −1.4% (noise) |
+| 8 | −11% to −12% (typical and worst-case range alike) |
+
+**Jobs that do not use `unique`**: no measurable change (+0.8% at 1 and 8 threads vs the previous release). The per-record index costs one array write.
+
+**Interpretation** (hypothesis, not proven): the loss appears only when worker threads exceed physical cores (8 > 6), so two SMT threads share one core. That is consistent with contention on the core's multiplier: the Feistel is a chain of ~10 dependent 64-bit multiplies per value. It was not confirmed with hardware counters. It is not the cycle-walk: typical and worst-case ranges lose the same at 8 threads.
+
+**Practical note**: the default `--threads` is `Runtime.availableProcessors()`, which counts logical CPUs (SMT included), so on SMT machines the default runs more workers than physical cores. For generation-heavy jobs with `unique`, `--threads <physical cores>` may be as fast or faster. Measure on your hardware.
+
+**Tip**: pick a range size at or just below a power of four (e.g. 1..1000000 rather than 1..1048577) to keep cycle-walking near one pass. This only matters single-threaded, and only a few percent.
 
 ### Realistic Data Generation (Datafaker)
 

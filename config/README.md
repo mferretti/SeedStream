@@ -753,6 +753,75 @@ book_id:  { datatype: ref[parent.id] }   # copies the enclosing book's id
 name:     { datatype: title }
 ```
 
+### Unique Value Keys
+
+Integer keys that never repeat within a job, for natural keys and composite keys such as M:N join-table pairs.
+
+```yaml
+# Single column (implicit group), fixed range:
+account_no: { datatype: unique[100000..999999] }
+
+# Single column, dynamic range (scales to job --count):
+account_no: { datatype: unique[1..count] }
+
+# Composite key (explicit group — all fields in group form one tuple), fixed:
+task_id:    { datatype: unique[pair, 1..200] }
+label_id:   { datatype: unique[pair, 1..12] }
+
+# Composite key, dynamic:
+task_id:    { datatype: unique[pair, 1..count] }
+label_id:   { datatype: unique[pair, 1..count] }
+```
+
+**Semantics**: Within a job, each unique value is collision-free (all records distinct), deterministic for a given seed and count, and identical across any thread count. The output is a 64-bit integer. **Requirement**: the range size (max-min+1) must be ≥ `--count`; for a group, the product of all field ranges must be ≥ count. The job fails at startup (before any table is truncated) if the range is too small. **Restriction**: unique fields cannot be used inside `array[...]` — array elements share their record's index, so values would collide.
+
+**Prefix stability**: Fixed-range `unique[min..max]` is prefix-stable — the first N records are identical when --count changes, as long as the definition (ranges, group name, field names, group members) stays the same. Dynamic-range `unique[1..count]` is **not** prefix-stable: changing --count reshuffles the entire sequence. Same seed + same count = byte-identical output.
+
+For throughput and thread-count considerations, see docs/PERFORMANCE.md § "`unique` generator (#212)".
+
+### Serial Keys
+
+Auto-incrementing integer keys tied to the record's position (min + record index), for database `SERIAL` / `BIGSERIAL` columns and other sequence-like natural keys.
+
+```yaml
+# Default: starts at 1, increments by 1
+id: { datatype: serial }
+
+# Custom start value:
+id: { datatype: serial[100000] }
+```
+
+**Semantics**: Within a job, the value for record `i` is `min + i` (0-indexed). Independent of seed, thread count, and `--count` — the output is deterministic and identical across runs regardless of machine or parallelism. The output is a 64-bit integer. **Restriction**: not allowed inside `array[...]` — array elements share their record's index, so values would collide. **Prefix stability**: always prefix-stable — the first N records are identical even when --count changes.
+
+Database destinations bind it as `BIGINT`. For performance details, see docs/PERFORMANCE.md.
+
+### Foreign Keys with Unique Constraint
+
+A foreign key column that is itself a unique/primary key in a child table (1:1 relationship):
+
+```yaml
+# Static range (typical):
+customer_id: { datatype: ref[customer.id, 1..50000, unique] }
+
+# Dynamic range (scales to job --count; use same --count for parent + child):
+customer_id: { datatype: ref[customer.id, 1..count, unique] }
+
+# Named composite FK group (1:1 join table):
+parent_id: { datatype: ref[parent_table.id, 1..count, unique=composite_key] }
+other_id:  { datatype: ref[other.id, 1..count, unique=composite_key] }
+```
+
+**Semantics**: Behaves identically to `unique[range]` / `unique[group, range]` but documents that the column references a foreign table. The `unique` annotation signals that the FK is also a unique key in this table (1:1 relationship). **Prefix stability**: same as the underlying range — fixed `1..N` is prefix-stable, dynamic `1..count` is not.
+
+### Stability Table
+
+| Type | Prefix-stable when --count changes |
+|---|---|
+| `serial` | yes |
+| `unique[1..N]` (fixed) | yes |
+| `unique[1..count]` | no — reshuffles |
+| `ref[t.c, 1..count]` | no (values depend on the bound) |
+
 ### Field Aliases
 
 ```yaml

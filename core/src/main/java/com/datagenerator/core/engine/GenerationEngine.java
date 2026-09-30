@@ -278,6 +278,7 @@ public class GenerationEngine {
     } finally {
       // Always tear down per-worker state (e.g. an entered GeneratorContext), even if generation
       // throws — otherwise a leaked thread-local would poison a later job on this reused thread.
+      RecordIndex.clear();
       workerCleanup.run();
     }
     log.info("Single-threaded generation complete");
@@ -292,7 +293,9 @@ public class GenerationEngine {
       RandomProvider randomProvider,
       Random random,
       long startTime) {
+    long[] idx = RecordIndex.holder();
     for (long i = 0; i < count; i++) {
+      idx[0] = i;
       random.setSeed(randomProvider.deriveRecordSeed(i));
       consume.accept(produce.apply(random));
       if ((i + 1) % logBatchSize == 0) {
@@ -314,7 +317,9 @@ public class GenerationEngine {
       Random random,
       long startTime) {
     List<P> buffer = new ArrayList<>(chunkSize);
+    long[] idx = RecordIndex.holder();
     for (long i = 0; i < count; i++) {
+      idx[0] = i;
       random.setSeed(randomProvider.deriveRecordSeed(i));
       buffer.add(produce.apply(random));
 
@@ -532,6 +537,7 @@ public class GenerationEngine {
     } finally {
       // Always tear down per-worker state (e.g. an entered GeneratorContext), even on failure or
       // early abort, so a pooled thread is never left with a leaked thread-local.
+      RecordIndex.clear();
       workerCleanup.run();
     }
   }
@@ -557,6 +563,7 @@ public class GenerationEngine {
     // Thread-local Random, reseeded per record from the record's global index.
     Random random = randomProvider.getRandom();
     long workerGenerated = 0;
+    long[] idx = RecordIndex.holder();
 
     for (long c = workerId; c < totalChunks; c += activeWorkers) {
       long start = c * chunkSize;
@@ -564,6 +571,7 @@ public class GenerationEngine {
       List<P> chunk = new ArrayList<>((int) (end - start));
 
       for (long globalIndex = start; globalIndex < end; globalIndex++) {
+        idx[0] = globalIndex;
         random.setSeed(randomProvider.deriveRecordSeed(globalIndex));
         chunk.add(produce.apply(random));
         workerGenerated++;

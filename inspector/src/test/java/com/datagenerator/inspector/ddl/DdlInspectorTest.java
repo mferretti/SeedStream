@@ -65,7 +65,7 @@ class DdlInspectorTest {
         .containsEntry("created_at", "timestamp[now-365d..now]")
         .containsEntry("balance", "decimal[0.0..9999.99]")
         .containsEntry("bio", "char[1..500]")
-        .containsEntry("id", "int[1..999999]");
+        .containsEntry("id", "serial");
   }
 
   @Test

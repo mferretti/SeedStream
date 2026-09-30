@@ -1089,7 +1089,74 @@ orders:
 
 ---
 
-### 4. Advanced Distributions (Normal, Zipfian, Exponential)
+### 4. Unique Value Keys
+
+**Status**: ✅ Implemented (unreleased, #212)
+
+**Performance**: see docs/PERFORMANCE.md § "`unique` generator (#212)".
+
+**Syntax**:
+```yaml
+account_no:  unique[100000..999999]    # single column, fixed range (implicit group)
+account_no:  unique[1..count]          # single column, dynamic range (scales to --count)
+task_id:     unique[pair, 1..200]      # composite key: fields in group 'pair', fixed
+task_id:     unique[pair, 1..count]    # composite key, dynamic range
+label_id:    unique[pair, 1..12]       # (task_id, label_id) tuple is unique, fixed
+label_id:    unique[pair, 1..count]    # (task_id, label_id) tuple is unique, dynamic
+```
+
+**Semantics**: Each value in a group is collision-free across the job, deterministic for (seed, count), and identical across any thread count. Values are 64-bit integers determined by a keyed 4-round Feistel permutation of the global record index with cycle-walking. Requires the product of range sizes (max-min+1) ≥ count; validated at startup before any table is truncated. Consumes no random draws — adding a unique field does not shift other fields' values.
+
+**Count resolution**: For `unique[min..count]`, `count` resolves to the job's `--count` when the structure is loaded: `ExecuteCommand` builds `new StructureRegistry(loader, count)`, and `resolveUniqueGroups` sizes the group from it. A registry without a count (0) rejects `..count` unique fields. For multi-level FK chains (parent → child → grandchild), run all jobs with the same `--count`, or use static ranges derived from the parent job's count.
+
+**Prefix stability**: Fixed-range `unique[min..max]` is prefix-stable — the first N records' values remain identical if --count increases (as long as the definition stays the same). Dynamic-range `unique[1..count]` is **not** prefix-stable: changing --count reshuffles the entire sequence. Same seed + same count = byte-identical output.
+
+**Constraints**: Not allowed inside `array[...]` because array elements share their record's index (values would collide). Allowed at top level and inside 1:1 `object[...]` fields (which share the parent's index).
+
+### Serial Keys
+
+**Status**: ✅ Implemented (unreleased, #212)
+
+**Syntax**:
+```yaml
+id:    serial           # starts at 1, increments by record index
+id:    serial[100000]   # starts at min, increments by record index
+```
+
+**Semantics**: For record `i` (0-indexed), the value is `min + i`. Deterministic and identical across runs regardless of seed, thread count, or machine. Values are 64-bit integers. Prefix-stable by design — the first N records are always identical even when --count changes, as long as the definition stays the same.
+
+**Implementation**: Resolution via `StructureRegistry` at generation time, independent of seed and thread-local Random state.
+
+**Constraints**: Not allowed inside `array[...]` — array elements share their record's index, so values would collide.
+
+### Foreign Key References with Unique Constraint
+
+**Status**: ✅ Implemented (unreleased, #212)
+
+**Syntax**:
+```yaml
+customer_id:  ref[customer.id, 1..50000, unique]           # 1:1 FK with fixed range
+customer_id:  ref[customer.id, 1..count, unique]           # 1:1 FK with dynamic range
+parent_id:    ref[parent.id, 1..count, unique=composite]   # composite 1:1 FK (group name)
+other_id:     ref[other.id, 1..count, unique=composite]    # same group = one tuple
+```
+
+**Semantics**: The FK column is itself a unique or primary key in the child table (1:1 relationship). Behaves identically to `unique[range]` / `unique[group, range]`, but the table and column documentation clarifies the referential intent. Values are sampled from a pool within the given range, collision-free within the job. **Prefix stability**: same as the underlying range — fixed `1..N` is prefix-stable, dynamic `1..count` is not.
+
+**For multi-table nesting**: `object[child]` auto-resolves the child structure; any FK in the child declaration with `unique` or `unique=groupName` flags is honored in decomposition.
+
+### Stability Table
+
+| Type | Prefix-stable when --count changes |
+|---|---|
+| `serial` | yes |
+| `unique[1..N]` (fixed) | yes |
+| `unique[1..count]` | no — reshuffles |
+| `ref[t.c, 1..count]` | no (values depend on the bound) |
+
+---
+
+### 5. Advanced Distributions (Normal, Zipfian, Exponential)
 
 **Question**: Should we support statistical distributions for numeric types?
 
@@ -1110,7 +1177,7 @@ age: int[18..65, distribution=normal, mean=35, stddev=10]
 
 ---
 
-### 5. Plugin Architecture (Extensibility)
+### 6. Plugin Architecture (Extensibility)
 
 **Status**: 🔄 Foundation Complete (March 2026)
 

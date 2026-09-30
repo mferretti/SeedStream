@@ -71,6 +71,20 @@ ref[other_structure.field, 1..5000]    # or an explicit range
 - `count` resolves to the job's `--count`, so the emitted YAML scales at any volume.
 - Circular references are detected and fail fast.
 
+**Unique keys (unique)** — integers that never repeat within a job (same for any `--threads`):
+```
+unique[1..1000000]          # single column, fixed range (natural key, collision-free PK)
+unique[1..count]            # single column, dynamic range (scales to job --count; not prefix-stable when --count changes)
+unique[pair, 1..200]        # fields sharing a group name form ONE composite key:
+unique[pair, 1..12]         #   the (a, b) tuple never repeats — M:N join tables with UNIQUE(a, b)
+unique[pair, 1..count]      # composite key, dynamic range
+```
+- Range size must be ≥ `--count` (for a group: the product of sizes); an exact fit is fine. The job
+  fails at startup, before any truncate, if it's too small. Size ranges from the planned count.
+- Fixed ranges like `unique[1..N]` are **prefix-stable** — the first K records stay identical when --count increases. Dynamic ranges like `unique[1..count]` are **not** prefix-stable — changing --count reshuffles the entire sequence.
+- Not allowed inside `array[...]` (elements share the record's index). OK at top level / 1:1 `object[...]`.
+- For join tables whose ids must stay inside parent pools, use the parent pool sizes as the ranges for fixed mode (`unique[tl, 1..500]` × `unique[tl, 1..20]`), or scale both to `1..count` and run parent + child jobs at the same --count.
+
 **Semantic (Datafaker — locale-aware)** — a bare registry key, e.g. `datatype: email`. The built-in
 keys (verify against `DatafakerRegistry` if unsure — do **not** invent keys):
 ```
@@ -238,6 +252,10 @@ NDJSON file), `encrypt` (AES-256 helper).
 | Sub-documents (address in order) | `object[address]` — create address.yaml too |
 | Variable collections (line items) | `array[object[item], min..max]` |
 | Cross-record reference (order → customer) | `ref[customer.id, 1..count]` |
+| Database auto-increment PK (SERIAL/BIGSERIAL) | `serial` or `serial[startValue]` (independent of seed, tied to record index) |
+| Unique key / M:N join pair with `UNIQUE(a, b)` | `unique[1..N]` / `unique[pair, 1..N]` (prefix-stable across --count changes) |
+| Row count varies without editing YAML | `unique[1..count]` (not prefix-stable; reshuffles when --count changes) |
+| 1:1 foreign key / join table with FK as PK | `ref[parent.id, 1..N, unique]` or `ref[p.id, 1..count, unique=groupName]` for composite |
 | Patterned string (ISO id, SKU) | `--faker-types` with a `regex:` entry |
 | Kafka streaming load test | batch_size ≥ 1000, lz4, sync: false |
 | Reproducible test data | explicit `seed.value`, commit the job YAML |

@@ -339,6 +339,64 @@ class ExecuteCommandTest {
     }
   }
 
+  // ── unique[...] (issue #212) ───────────────────────────────────────────────────────────────
+
+  private Path writeUniqueJob(String datatype) throws IOException {
+    Files.writeString(
+        structDir.resolve("uniq.yaml"),
+        "name: uniq\ndata:\n  id:\n    datatype: \"" + datatype + "\"\n");
+    return writeJobYaml(
+        "structures/uniq.yaml",
+        "type: file",
+        "seed:",
+        "  type: embedded",
+        "  value: 42",
+        "conf:",
+        "  path: " + outDir.toAbsolutePath() + "/output");
+  }
+
+  @Test
+  void uniqueFieldOutputIsDistinctAndIdenticalAcrossThreadCounts() throws Exception {
+    Path jobFile = writeUniqueJob("unique[1..1000]");
+    byte[] reference = null;
+    for (int threads : new int[] {1, 4, 8}) {
+      Path output = outDir.resolve(OUTPUT_JSON);
+      Files.deleteIfExists(output);
+      int code =
+          execute(
+              OPT_JOB, jobFile.toString(), OPT_COUNT, "775", "--threads", String.valueOf(threads));
+      assertThat(code).isZero();
+      byte[] bytes = Files.readAllBytes(output);
+      if (reference == null) {
+        reference = bytes;
+        assertThat(Files.readAllLines(output)).doesNotHaveDuplicates().hasSize(775);
+      } else {
+        assertThat(bytes).as("threads=%d", threads).isEqualTo(reference);
+      }
+    }
+  }
+
+  @Test
+  void uniqueValidationFailsBeforeDestinationIsOpened() throws Exception {
+    Path jobFile = writeUniqueJob("unique[1..10]");
+    Path output = outDir.resolve(OUTPUT_JSON);
+
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "11");
+
+    assertThat(code).isNotZero();
+    assertThat(output).doesNotExist();
+  }
+
+  @Test
+  void uniqueInsideArrayFailsBeforeDestinationIsOpened() throws Exception {
+    Path jobFile = writeUniqueJob("array[unique[1..10], 1..3]");
+
+    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "2");
+
+    assertThat(code).isNotZero();
+    assertThat(outDir.resolve(OUTPUT_JSON)).doesNotExist();
+  }
+
   // ── Per-chunk gzip mode (issue #210): deterministic multi-member .gz ──────────────────
 
   @Test

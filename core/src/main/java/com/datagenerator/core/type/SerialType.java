@@ -16,24 +16,15 @@
 
 package com.datagenerator.core.type;
 
-/**
- * Base class for all data types in the generation system. Each type knows how to validate and
- * describe itself.
- */
-public sealed interface DataType
-    permits PrimitiveType,
-        EnumType,
-        ObjectType,
-        ArrayType,
-        ReferenceType,
-        ParentReferenceType,
-        UniqueType,
-        SerialType,
-        CustomDatafakerType {
-  /**
-   * Returns a human-readable description of this type (e.g., "char[3..15]", "array[int, 5..10]").
-   *
-   * @return human-readable type description
-   */
-  String describe();
+import lombok.Value;
+
+/** A sequential integer column: {@code serial} (starts at 1) or {@code serial[min]}. */
+@Value
+public class SerialType implements DataType {
+  long min;
+
+  @Override
+  public String describe() {
+    return min == 1 ? "serial" : "serial[" + min + "]";
+  }
 }

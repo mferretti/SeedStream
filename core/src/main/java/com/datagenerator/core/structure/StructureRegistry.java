@@ -17,12 +17,18 @@
 package com.datagenerator.core.structure;
 
 import com.datagenerator.core.exception.CircularReferenceException;
+import com.datagenerator.core.exception.TypeParseException;
+import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.UniqueType;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,8 +42,18 @@ public class StructureRegistry {
   private final StructureLoader loader;
   private final ThreadLocal<Deque<String>> loadingStack = ThreadLocal.withInitial(ArrayDeque::new);
 
+  private final long jobCount;
+
   public StructureRegistry(StructureLoader structureLoader) {
+    this(structureLoader, 0L);
+  }
+
+  /**
+   * @param jobCount the job's record count, used to resolve {@code unique[min..count]}; 0 = unknown
+   */
+  public StructureRegistry(StructureLoader structureLoader, long jobCount) {
     this.loader = structureLoader;
+    this.jobCount = jobCount;
   }
 
   /**
@@ -66,7 +82,9 @@ public class StructureRegistry {
     // Add to stack and load
     stack.push(structureName);
     try {
-      Map<String, DataType> fields = loader.load(structureName, structuresPath, this);
+      Map<String, DataType> fields =
+          resolveUniqueGroups(
+              structureName, loader.load(structureName, structuresPath, this), jobCount);
       structureCache.put(structureName, fields);
       return fields;
     } finally {
@@ -75,6 +93,117 @@ public class StructureRegistry {
         loadingStack.remove(); // Clean up thread-local
       }
     }
+  }
+
+  /**
+   * Resolves {@link UniqueType} layouts: groups unique fields by explicit group (or field name),
+   * computes domain, mixed-radix divisors, Feistel half-bits and group hash, and returns a copy of
+   * the map (same order) with each unique field replaced by its resolved copy.
+   *
+   * <p>Members of each unique group are ordered by field name (natural String order) when computing
+   * divisors, not by map iteration order, ensuring divisors are stable across different map
+   * insertion orders and load paths where iteration order may differ.
+   *
+   * @throws TypeParseException if a group's domain overflows a long
+   */
+  public static Map<String, DataType> resolveUniqueGroups(
+      String structureName, Map<String, DataType> fields) {
+    return resolveUniqueGroups(structureName, fields, 0L);
+  }
+
+  /**
+   * As {@link #resolveUniqueGroups(String, Map)}, resolving {@code min..count} ranges against
+   * {@code jobCount}.
+   *
+   * @throws TypeParseException if a {@code ..count} range is used and jobCount is unknown (<= 0) or
+   *     smaller than the range minimum
+   */
+  public static Map<String, DataType> resolveUniqueGroups(
+      String structureName, Map<String, DataType> fields, long jobCount) {
+    Map<String, List<String>> groups = new LinkedHashMap<>();
+    fields.forEach(
+        (name, type) -> {
+          if (type instanceof UniqueType u) {
+            groups
+                .computeIfAbsent(u.getGroup() != null ? u.getGroup() : name, g -> new ArrayList<>())
+                .add(name);
+          }
+        });
+    if (groups.isEmpty()) {
+      return fields;
+    }
+    Map<String, DataType> resolved = new LinkedHashMap<>(fields);
+    groups.forEach(
+        (group, names) -> {
+          String key = structureName + "." + group;
+          long domain = 1;
+          for (String n : names) {
+            UniqueType u = (UniqueType) fields.get(n);
+            try {
+              domain = Math.multiplyExact(domain, sizeOf(structureName, n, u, jobCount));
+            } catch (ArithmeticException e) {
+              throw new TypeParseException("unique group domain too large: " + key);
+            }
+          }
+          long hash = fnv1a64(key);
+          int h = halfBits(domain);
+          // Sort members by field name to ensure divisors are computed in a stable order,
+          // independent of map iteration order (which can vary across loads).
+          List<String> sortedNames = names.stream().sorted().toList();
+          Map<String, Long> divisorMap = new HashMap<>();
+          long divisor = domain;
+          for (String n : sortedNames) {
+            divisor /= sizeOf(structureName, n, (UniqueType) fields.get(n), jobCount);
+            divisorMap.put(n, divisor);
+          }
+          // Update resolved map in original field order, but use divisors from sorted names
+          for (String n : names) {
+            UniqueType u = (UniqueType) fields.get(n);
+            long size = sizeOf(structureName, n, u, jobCount);
+            long max = u.isMaxIsCount() ? jobCount : u.getMax();
+            resolved.put(n, u.withLayout(max, key, hash, domain, divisorMap.get(n), size, h));
+          }
+        });
+    return resolved;
+  }
+
+  private static long sizeOf(String structureName, String field, UniqueType u, long jobCount) {
+    if (!u.isMaxIsCount()) {
+      return Math.addExact(Math.subtractExact(u.getMax(), u.getMin()), 1);
+    }
+    if (jobCount <= 0) {
+      throw new TypeParseException(
+          "%s in %s.%s needs the job --count; it is not available here"
+              .formatted(u.describe(), structureName, field));
+    }
+    if (jobCount < u.getMin()) {
+      throw new TypeParseException(
+          "%s in %s.%s is empty: --count (%d) is below the range minimum (%d)"
+              .formatted(u.describe(), structureName, field, jobCount, u.getMin()));
+    }
+    try {
+      return Math.addExact(Math.subtractExact(jobCount, u.getMin()), 1);
+    } catch (ArithmeticException e) {
+      throw new TypeParseException("unique group domain too large: " + structureName + "." + field);
+    }
+  }
+
+  /** Stable 64-bit FNV-1a over the UTF-8 bytes of {@code s}. */
+  public static long fnv1a64(String s) {
+    long h = 0xcbf29ce484222325L;
+    for (byte b : s.getBytes(StandardCharsets.UTF_8)) {
+      h = (h ^ (b & 0xff)) * 0x100000001b3L;
+    }
+    return h;
+  }
+
+  /** Smallest h >= 1 such that 4^h >= domain. */
+  public static int halfBits(long domain) {
+    int h = 1;
+    while (h < 32 && (1L << (2 * h)) < domain) {
+      h++;
+    }
+    return h;
   }
 
   /**
@@ -94,7 +223,7 @@ public class StructureRegistry {
     if (type instanceof ObjectType objectType) {
       // This will trigger loading and cycle detection
       loadStructure(objectType.getStructureName(), structuresPath);
-    } else if (type instanceof com.datagenerator.core.type.ArrayType arrayType) {
+    } else if (type instanceof ArrayType arrayType) {
       validateType(arrayType.getElementType(), structuresPath);
     }
   }

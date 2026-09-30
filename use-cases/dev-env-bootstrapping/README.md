@@ -74,9 +74,9 @@ to the known-good baseline every time. To reseed data without recreating the sch
 - **`parent_task_id` is left NULL.** Self-referencing FKs need deferrable constraints or an ordered
   pass SeedStream does not do today → no subtask hierarchy is generated. Tracked in
   [#213](https://github.com/mferretti/SeedStream/issues/213).
-- **`task_labels` pairs can repeat.** With random refs a `(task_id, label_id)` pair may appear twice;
-  that's why the join table has a surrogate PK and no `UNIQUE(task_id,label_id)`. A `unique` generator
-  ([#212](https://github.com/mferretti/SeedStream/issues/212)) would let you add that constraint.
+- **`task_labels` pairs are unique.** The join table carries `UNIQUE(task_id, label_id)` enforced by
+  the `unique` type generator ([#212](https://github.com/mferretti/SeedStream/issues/212)), so no
+  duplicate task-label pairs are generated.
 - **Counts are uniform-ish / hand-tuned.** Ranges are static literals tied to the bootstrap counts,
   not auto-derived from parent volumes.
 - **Postgres-shaped.** IDENTITY + `DROP … CASCADE`. Adapt DDL for other engines.

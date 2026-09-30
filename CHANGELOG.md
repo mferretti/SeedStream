@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`unique` value type for collision-free generated keys (#212)** — `unique[min..max]` or `unique[group, min..max]` generates 64-bit integers that never repeat within a job, identical for a given seed and count on any thread count. Fields sharing a group name form one composite key, so an M:N join table can now carry `UNIQUE(a, b)`, and the `dev-env-bootstrapping` use case does. The range size (for a group, the product of range sizes) must be ≥ `--count`; this is checked at startup, before any table is truncated. Not allowed inside `array[...]`, whose elements share their record's index. Implemented as a keyed Feistel permutation of the global record index, so it consumes no random draws and leaves other fields' values unchanged. Database destinations bind it as `BIGINT`. Output for structures that do not use `unique` is byte-identical to 0.8.0.
+
+  Performance (reference laptop, 6 cores / 12 threads): 29–43M values/s in JMH (11.5–12.8M worst case, when the range size is just above a power of four), against 63–73M for `int`. End to end on a primitives-only structure, a `unique` field costs the same as an `int` field at 1–4 threads, but **11–12% less throughput at 8 threads**, once workers outnumber physical cores. The likely cause is SMT threads contending for the core's multiplier; this has not been confirmed with hardware counters. The default `--threads` counts logical CPUs, so on SMT machines `--threads <physical cores>` may be as fast or faster for `unique`-heavy jobs. Details in `docs/PERFORMANCE.md`
+- **`unique[1..count]` — dynamic-range unique keys** — extends the fixed-range `unique[1..N]` with a `count` keyword, so the range scales to the job's `--count` at runtime. `unique[1..count]` is **not** prefix-stable (changing --count reshuffles the entire sequence), unlike fixed `unique[1..N]` which is prefix-stable. Same seed + same count = byte-identical output.
+- **`serial` / `serial[min]` — auto-increment keys** — ties a value to the record's position (`min + record index`, default `min=1`), independent of seed and thread count. Prefix-stable by design; deterministic across runs and machines. Database destinations bind it as `BIGINT`. JMH: 216–221M ops/s (one add, no RNG draw) vs 60–76M for `int` in the same run.
+- **`ref[t.c, R, unique]` / `ref[t.c, R, unique=g]` — foreign keys with unique constraint** — documents that the FK column is itself a unique/primary key in the child table (1:1 relationship). Behaves identically to `unique[R]` / `unique[g, R]` but clarifies referential intent. `R` can be fixed (`1..N`) or dynamic (`1..count`); prefix stability follows the range type.
+- **DDL inspector key mapping (#212)** — `inspect` now emits `serial`, `unique`, and `ref[…, unique]` when mapping database keys: single-column integer PK → `serial`; `SERIAL`/`BIGSERIAL` column → `serial`; single-column integer `UNIQUE` → `unique[1..count]`; FK that is a single-column PK/UNIQUE (1:1) → `ref[p.c, 1..count, unique]`; composite PK/UNIQUE → members tagged `unique[pk|uq1, 1..count]` or FK members `ref[…, unique=pk|uq1]` (group name matches the constraint); non-integer/non-FK keys → types unchanged with field comment "not enforced — values may collide" and warning. Composite groups of k members on `1..count` fail at startup if count^k overflows a long.
+- **Prefix-stability test** — `PrefixStabilityTest` validates that fixed-range `unique[1..N]` and `serial` remain prefix-stable when --count increases (first N records unchanged), and that dynamic-range `unique[1..count]` reshuffles correctly.
+- **Reproducibility contract test for `unique`** — `UniqueSequenceReproducibilityTest` (unit suite) asserts byte-identical output across two runs and across 1/4/8 threads, and pins the exact seed-42 sequence. Any change to the permutation fails it, so a change in output for a given seed must be a deliberate, CHANGELOG-noted break
+- **Slow end-to-end tests against PostgreSQL** (`./gradlew :cli:slowTest`) — `UniqueDatabaseE2EIT` seeds the `dev-env-bootstrapping` use case with its `UNIQUE(task_id,label_id)` constraint, checks thread-count determinism, and proves an oversized `--count` is rejected before `truncate_before_insert` empties the table. `InspectToExecuteE2EIT` runs DDL → `inspect` → `execute` → PostgreSQL, verifying that emitted `serial` and `unique` types round-trip correctly.
+- **`UniqueGeneratorBenchmark`** (JMH) — `unique` against the `int` baseline across best-case and worst-case range sizes
+
 ## [0.8.0] - 2026-09-28
 
 ### Highlights
@@ -622,8 +635,9 @@ Not publicly released. Internal prototype for architecture validation.
 ## Roadmap
 
 ### v0.9.0 (Planned)
+- `unique` value type for collision-free generated keys, built on a per-record index context (#212)
+- Self-referencing foreign keys (#213)
 - Statistical distributions (normal, Zipfian, exponential)
-- Advanced Datafaker correlations and constraints
 - Binary FMR serializer (ISO/IEC 19794-2, pending spec access)
 
 ### v1.0.0 (Planned)
