@@ -34,29 +34,40 @@ public class TypeParser {
     // Default constructor
   }
 
+  // Structure, field and group names: lowercase snake_case, digits allowed after the first
+  // character (inspect keeps them, e.g. Item2 -> item2, package v1, #355).
+  private static final String IDENT = "[a-z_][a-z0-9_]*";
+
   private static final Pattern PRIMITIVE_PATTERN =
       Pattern.compile(
           "^(char|int|decimal|date|timestamp)\\[((?:(?!\\.\\.)[^\\]])++)\\.\\.([^\\]]++)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");
-  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[([a-z_]+)\\]$");
+  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[(" + IDENT + ")\\]$");
   private static final Pattern ARRAY_PATTERN =
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
   private static final Pattern UNIQUE_PATTERN =
-      Pattern.compile("^unique\\[(?:([a-z_][a-z0-9_]*)\\s*,\\s*)?(-?\\d+)\\.\\.(-?\\d+|count)\\]$");
+      Pattern.compile("^unique\\[(?:(" + IDENT + ")\\s*,\\s*)?(-?\\d+)\\.\\.(-?\\d+|count)\\]$");
   private static final Pattern SERIAL_PATTERN = Pattern.compile("^serial(?:\\[(-?\\d+)\\])?$");
   private static final Pattern REF_UNIQUE_PATTERN =
       Pattern.compile(
-          "^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=([a-z_][a-z0-9_]*))?\\]$");
+          "^ref\\[("
+              + IDENT
+              + ")\\.("
+              + IDENT
+              + "),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=("
+              + IDENT
+              + "))?\\]$");
   private static final Pattern PARENT_REF_PATTERN =
-      Pattern.compile("^ref\\[parent\\.([a-z_]+)\\]$");
+      Pattern.compile("^ref\\[parent\\.(" + IDENT + ")\\]$");
 
-  private static final Pattern REF_PATTERN = Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+)\\]$");
+  private static final Pattern REF_PATTERN =
+      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + ")\\]$");
 
   private static final Pattern REF_RANGE_PATTERN =
-      Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + "),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
 
   private static final Pattern REF_COUNT_PATTERN =
-      Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.count\\]$");
+      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + "),\\s*(-?\\d+)\\.\\.count\\]$");
 
   /**
    * Parse a datatype string into a DataType object.

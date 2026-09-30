@@ -125,6 +125,34 @@ class InspectExecuteRoundTripTest {
     assertThat(records).hasSize(3).allSatisfy(a -> assertThat(a.has("b_id")).isTrue());
   }
 
+  @Test
+  void digitBearingTableAndColumnNamesRoundTripThroughExecute() throws Exception {
+    // inspect keeps digits in snake-cased names (#355); execute must accept its own output.
+    String ddl =
+        """
+        CREATE TABLE region2 (id BIGINT PRIMARY KEY, name VARCHAR(40));
+        CREATE TABLE store_v1 (
+          id         BIGINT PRIMARY KEY,
+          region2_id BIGINT,
+          line1      VARCHAR(80),
+          CONSTRAINT fk_r FOREIGN KEY (region2_id) REFERENCES region2(id)
+        );
+        """;
+    Path structures = inspect(ddl, "--nest");
+
+    assertThat(Files.readString(structures.resolve("region2.yaml"))).contains("object[store_v1]");
+
+    List<JsonNode> records = execute(structures, "region2", 3);
+
+    assertThat(records).hasSize(3);
+    for (JsonNode region : records) {
+      JsonNode stores = region.get("store_v1s");
+      assertThat(stores).as("region2 embeds store_v1s").isNotNull();
+      assertThat(stores.isArray()).isTrue();
+      assertThat(stores).isNotEmpty().allSatisfy(s -> assertThat(s.has("line1")).isTrue());
+    }
+  }
+
   /** Runs {@code inspect} on the given DDL and returns the structures output directory. */
   private Path inspect(String ddl, String... extraArgs) throws Exception {
     Path sql = tempDir.resolve("schema.sql");

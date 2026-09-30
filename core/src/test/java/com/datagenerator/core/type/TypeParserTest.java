@@ -496,4 +496,40 @@ class TypeParserTest {
     assertThatThrownBy(() -> parser.parse("ref[t.c, 1..10, uniq]"))
         .isInstanceOf(TypeParseException.class);
   }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "object[item2]|item2",
+        "object[v1_order_item]|v1_order_item",
+        "ref[order2.line1]|order2",
+        "ref[orders.address_line1, 1..5]|orders",
+        "ref[orders.address_line1, 1..count]|orders",
+        "ref[t2.c3, 1..count, unique]|t2",
+        "ref[parent.line1]|parent"
+      })
+  void shouldAcceptDigitsInStructureAndFieldNamesAfterFirstCharacter(
+      String typeString, String expectedTarget) {
+    // inspect snake-cases names like Item2 / address_line1 / package v1 keeping the digits.
+    DataType type = parser.parse(typeString);
+
+    String target =
+        switch (type) {
+          case ObjectType o -> o.getStructureName();
+          case ReferenceType r -> r.getTargetStructure();
+          case UniqueType u -> u.getRefTarget().substring(0, u.getRefTarget().indexOf('.'));
+          case ParentReferenceType p -> "parent";
+          default -> throw new AssertionError("unexpected type " + type);
+        };
+    assertThat(target).isEqualTo(expectedTarget);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {"object[2items]", "ref[1orders.id]", "ref[orders.1id]"})
+  void shouldRejectNamesStartingWithDigit(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString)).isInstanceOf(TypeParseException.class);
+  }
 }
