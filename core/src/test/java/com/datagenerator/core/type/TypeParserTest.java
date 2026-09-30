@@ -353,7 +353,64 @@ class TypeParserTest {
   void shouldThrowTypeParseExceptionWhenNumericBoundOverflows(String typeString) {
     assertThatThrownBy(() -> parser.parse(typeString))
         .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("99999999999")
+        .hasMessageContaining(typeString)
+        .hasCauseInstanceOf(NumberFormatException.class);
+  }
+
+  @Test
+  void shouldAcceptBoundsExactlyAtTypeLimits() {
+    ArrayType array = (ArrayType) parser.parse("array[int[1..2], 0..2147483647]");
+    assertThat(array.getMaxLength()).isEqualTo(Integer.MAX_VALUE);
+
+    ReferenceType ref = (ReferenceType) parser.parse("ref[user.id, 1..9223372036854775807]");
+    assertThat(ref.getMax()).isEqualTo(Long.MAX_VALUE);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "array[int[1..2], 0..2147483648]",
+        "ref[user.id, 1..9223372036854775808]",
+        "ref[user.id, 9223372036854775808..count]"
+      })
+  void shouldRejectBoundsOneAboveTypeLimits(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("out of range");
+  }
+
+  @Test
+  void shouldThrowTypeParseExceptionWhenNestedArrayBoundOverflows() {
+    assertThatThrownBy(() -> parser.parse("array[array[int[1..2], 1..99999999999], 1..2]"))
+        .isInstanceOf(TypeParseException.class)
         .hasMessageContaining("99999999999");
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "int[",
+        "array[int[1..2], 1..]",
+        "array[, 1..2]",
+        "ref[a.b, ..5]",
+        "ref[a.b, 5..1]",
+        "ref[a.b, 1..99999999999999999999, unique]",
+        "unique[1..x]",
+        "unique[99999999999999999999..count]",
+        "unique[5..1]",
+        "serial[99999999999999999999]",
+        "enum[,]",
+        "object[Foo]",
+        "array[int[1..2], 99999999999..1]"
+      })
+  void shouldOnlyEverThrowTypeParseExceptionWhenInputIsMalformed(String typeString) {
+    // Contract: callers (config loading) catch TypeParseException to report the bad field; any
+    // other exception type escapes as a stack trace.
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isExactlyInstanceOf(TypeParseException.class);
   }
 
   @Test

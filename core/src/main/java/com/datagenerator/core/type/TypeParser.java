@@ -85,13 +85,13 @@ public class TypeParser {
       return parseUnique(
           m.group(5), m.group(3), m.group(4), m.group(1) + "." + m.group(2), typeString);
     m = REF_COUNT_PATTERN.matcher(trimmed);
-    if (m.matches()) return parseRefCount(m);
+    if (m.matches()) return parseRefCount(m, typeString);
     m = REF_RANGE_PATTERN.matcher(trimmed);
     if (m.matches()) return parseRefRange(m, typeString);
     m = REF_PATTERN.matcher(trimmed);
     if (m.matches()) return new ReferenceType(m.group(1), m.group(2), null, null, false);
     m = ARRAY_PATTERN.matcher(trimmed);
-    if (m.matches()) return parseArray(m);
+    if (m.matches()) return parseArray(m, typeString);
 
     m = UNIQUE_PATTERN.matcher(trimmed);
     if (m.matches()) return parseUnique(m.group(1), m.group(2), m.group(3), null, typeString);
@@ -123,13 +123,14 @@ public class TypeParser {
     return new EnumType(values);
   }
 
-  private static DataType parseRefCount(Matcher m) {
-    return new ReferenceType(m.group(1), m.group(2), Long.parseLong(m.group(3)), null, true);
+  private static DataType parseRefCount(Matcher m, String typeString) {
+    return new ReferenceType(
+        m.group(1), m.group(2), parseLongBound(m.group(3), typeString), null, true);
   }
 
   private static DataType parseRefRange(Matcher m, String typeString) {
-    long min = Long.parseLong(m.group(3));
-    long max = Long.parseLong(m.group(4));
+    long min = parseLongBound(m.group(3), typeString);
+    long max = parseLongBound(m.group(4), typeString);
     if (min > max) {
       throw new TypeParseException(
           "Invalid ref range: min (%d) > max (%d) in: %s".formatted(min, max, typeString));
@@ -161,13 +162,36 @@ public class TypeParser {
     }
   }
 
-  private DataType parseArray(Matcher m) {
-    int minLength = Integer.parseInt(m.group(2));
-    int maxLength = Integer.parseInt(m.group(3));
+  private DataType parseArray(Matcher m, String typeString) {
+    int minLength = parseIntBound(m.group(2), typeString);
+    int maxLength = parseIntBound(m.group(3), typeString);
     if (minLength < 0 || maxLength < minLength) {
       throw new TypeParseException(
           "Invalid array length constraints: min=" + minLength + ", max=" + maxLength);
     }
     return new ArrayType(parse(m.group(1).trim()), minLength, maxLength);
+  }
+
+  // The patterns only admit digits, so a NumberFormatException here always means overflow (#346).
+  private static long parseLongBound(String value, String typeString) {
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException e) {
+      throw new TypeParseException(
+          "Numeric bound %s is out of range (max %d) in: %s"
+              .formatted(value, Long.MAX_VALUE, typeString),
+          e);
+    }
+  }
+
+  private static int parseIntBound(String value, String typeString) {
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      throw new TypeParseException(
+          "Numeric bound %s is out of range (max %d) in: %s"
+              .formatted(value, Integer.MAX_VALUE, typeString),
+          e);
+    }
   }
 }
