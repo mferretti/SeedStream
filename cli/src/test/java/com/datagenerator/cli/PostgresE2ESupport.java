@@ -86,14 +86,14 @@ abstract class PostgresE2ESupport {
   static void runSql(String sql) throws SQLException {
     try (Connection c = connect();
         Statement st = c.createStatement()) {
-      st.execute(sql);
+      st.execute(sql); // nosemgrep: test-only, hard-coded SQL on throwaway container
     }
   }
 
   static String queryString(String sql) throws SQLException {
     try (Connection c = connect();
         Statement st = c.createStatement();
-        ResultSet rs = st.executeQuery(sql)) {
+        ResultSet rs = st.executeQuery(sql)) { // nosemgrep: test-only, hard-coded SQL
       assertThat(rs.next()).as(sql).isTrue();
       return rs.getString(1);
     }
