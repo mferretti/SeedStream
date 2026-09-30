@@ -166,6 +166,25 @@ class FileDestinationTest {
   }
 
   @Test
+  void shouldNotRewriteCsvHeaderWhenAppendingToNonEmptyFile() throws Exception {
+    Path outputFile = tempDir.resolve("output.csv");
+
+    FileDestinationConfig config1 = configBuilder.filePath(outputFile).build();
+    try (FileDestination destination = new FileDestination(config1, new CsvSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", "John")));
+    }
+
+    FileDestinationConfig config2 = configBuilder.filePath(outputFile).append(true).build();
+    try (FileDestination destination = new FileDestination(config2, new CsvSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", "Jane")));
+    }
+
+    assertThat(Files.readAllLines(outputFile)).containsExactly("\"name\"", "\"John\"", "\"Jane\"");
+  }
+
+  @Test
   void shouldOverwriteFileByDefault() throws Exception {
     Path outputFile = tempDir.resolve(OUTPUT_JSON);
 

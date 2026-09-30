@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.schema.exception.SecretResolutionException;
 import java.util.Arrays;
+import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -95,11 +96,16 @@ class AesGcmCryptoTest {
   @Test
   void decryptWithTamperedCiphertextThrows() {
     String ciphertext = AesGcmCrypto.encrypt(key, "secret");
-    // flip last character of base64 payload
-    String tampered = ciphertext.substring(0, ciphertext.length() - 1) + "X";
+    // Flip one bit of the last decoded byte (GCM tag) so the tamper is never a no-op.
+    int payloadStart = ciphertext.indexOf(':') + 1;
+    byte[] payload = Base64.getDecoder().decode(ciphertext.substring(payloadStart));
+    payload[payload.length - 1] ^= 0x01;
+    String tampered =
+        ciphertext.substring(0, payloadStart) + Base64.getEncoder().encodeToString(payload);
 
     assertThatThrownBy(() -> AesGcmCrypto.decrypt(key, tampered))
-        .isInstanceOf(SecretResolutionException.class);
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("authentication tag mismatch");
   }
 
   @Test
@@ -143,6 +149,15 @@ class AesGcmCryptoTest {
   void hexToKeyThrowsOnNullInput() {
     assertThatThrownBy(() -> AesGcmCrypto.hexToKey(null))
         .isInstanceOf(SecretResolutionException.class);
+  }
+
+  @Test
+  void hexToKeyThrowsWhenKeyContainsSignCharacters() {
+    // Integer.parseUnsignedInt accepts a leading '+', so "+1" must not slip through as 0x01.
+    String hex = "+1".repeat(32);
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey(hex))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("non-hex");
   }
 
   @Test

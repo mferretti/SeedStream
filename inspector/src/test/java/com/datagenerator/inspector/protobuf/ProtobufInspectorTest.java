@@ -662,4 +662,39 @@ class ProtobufInspectorTest {
     String comment = inspection.comments().getOrDefault("choice", Map.of()).get("blob");
     assertThat(comment).isNotNull().contains("oneof");
   }
+
+  @Test
+  void shouldEmitDistinctStructureNamesWhenNestedMessagesShareShortName() throws IOException {
+    // Order.Item and Invoice.Item are different messages; both snake-case to "item".
+    DescriptorProto order =
+        DescriptorProto.newBuilder()
+            .setName("Order")
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .addNestedType(
+                DescriptorProto.newBuilder()
+                    .setName("Item")
+                    .addField(optionalField("sku", 1, Type.TYPE_STRING)))
+            .build();
+    DescriptorProto invoice =
+        DescriptorProto.newBuilder()
+            .setName("Invoice")
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .addNestedType(
+                DescriptorProto.newBuilder()
+                    .setName("Item")
+                    .addField(optionalField("amount", 1, Type.TYPE_DOUBLE)))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("billing.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(order)
+            .addMessageType(invoice)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    assertThat(inspection.structures()).extracting(DataStructure::getName).doesNotHaveDuplicates();
+  }
 }

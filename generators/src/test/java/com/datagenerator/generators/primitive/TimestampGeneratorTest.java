@@ -261,4 +261,13 @@ class TimestampGeneratorTest {
         .isFalse();
     assertThat(generator.supports(new PrimitiveType(PrimitiveType.Kind.INT, "0", "100"))).isFalse();
   }
+
+  @Test
+  void shouldHonourUtcOffsetWhenBoundsCarryOne() {
+    // 05:00 at +05:00 is midnight UTC; the offset must not be dropped and read as UTC.
+    String bound = "2024-01-01T05:00:00+05:00";
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, bound, bound);
+
+    assertThat(generator.generate(RANDOM, type)).isEqualTo(Instant.parse("2024-01-01T00:00:00Z"));
+  }
 }

@@ -341,6 +341,21 @@ class TypeParserTest {
         .isEqualTo("product_name");
   }
 
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "array[int[1..2], 1..99999999999]",
+        "array[int[1..2], 99999999999..99999999999]",
+        "ref[user.id, 1..99999999999999999999]",
+        "ref[user.id, 99999999999999999999..count]"
+      })
+  void shouldThrowTypeParseExceptionWhenNumericBoundOverflows(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("99999999999");
+  }
+
   @Test
   void shouldParsePromotionCodeAliases() {
     assertThat(((CustomDatafakerType) parser.parse("promotioncode")).getTypeName())

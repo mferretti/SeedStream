@@ -61,4 +61,23 @@ class StructureYamlWriterTest {
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("unsafe name");
   }
+
+  @Test
+  void shouldKeepReviewCommentWhenFieldNameIsNotAWordToken(@TempDir Path outputDir)
+      throws Exception {
+    // OpenAPI / JSON Schema keep raw property names, so "postal-code" or "@type" reach the writer.
+    DataStructure structure =
+        new DataStructure(
+            "customer",
+            null,
+            Map.of(
+                "postal-code", new FieldDefinition("char[1..50]", null),
+                "@type", new FieldDefinition("char[1..50]", null)));
+    Map<String, String> comments = Map.of("postal-code", "REVIEW zip", "@type", "REVIEW type");
+
+    writer.write(structure, outputDir, true, comments);
+
+    String yaml = Files.readString(outputDir.resolve("customer.yaml"));
+    assertThat(yaml).contains("# REVIEW zip").contains("# REVIEW type");
+  }
 }
