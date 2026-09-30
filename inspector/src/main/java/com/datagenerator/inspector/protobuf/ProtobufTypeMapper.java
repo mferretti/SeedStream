@@ -41,12 +41,12 @@ public final class ProtobufTypeMapper {
   }
 
   /**
-   * @param structureName resolves the structure name emitted for a message type; must agree with
-   *     the names the inspector gives the structures themselves so {@code object[...]} references
-   *     resolve (#350)
+   * @param namer resolves the structure name emitted for a message type; must agree with the names
+   *     the inspector gives the structures themselves so {@code object[...]} references resolve
+   *     (#350)
    */
-  public ProtobufTypeMapper(Function<Descriptor, String> structureName) {
-    this.structureName = structureName;
+  public ProtobufTypeMapper(Function<Descriptor, String> namer) {
+    this.structureName = namer;
   }
 
   private static final Set<String> UNKNOWN_MESSAGE_TYPES =

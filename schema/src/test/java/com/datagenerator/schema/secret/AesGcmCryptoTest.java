@@ -162,13 +162,13 @@ class AesGcmCryptoTest {
     }
     hex.append("7f80feff");
 
-    byte[] key = AesGcmCrypto.hexToKey(hex.toString());
+    byte[] decoded = AesGcmCrypto.hexToKey(hex.toString());
 
-    assertThat(key).hasSize(32);
+    assertThat(decoded).hasSize(32);
     for (int i = 0; i < 28; i++) {
-      assertThat(key[i]).isEqualTo((byte) i);
+      assertThat(decoded[i]).isEqualTo((byte) i);
     }
-    assertThat(Arrays.copyOfRange(key, 28, 32))
+    assertThat(Arrays.copyOfRange(decoded, 28, 32))
         .containsExactly((byte) 0x7F, (byte) 0x80, (byte) 0xFE, (byte) 0xFF);
   }
 

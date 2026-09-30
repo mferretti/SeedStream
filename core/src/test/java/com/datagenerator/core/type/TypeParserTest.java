@@ -520,6 +520,7 @@ class TypeParserTest {
           case ReferenceType r -> r.getTargetStructure();
           case UniqueType u -> u.getRefTarget().substring(0, u.getRefTarget().indexOf('.'));
           case ParentReferenceType p -> "parent";
+          case null -> throw new AssertionError("parser returned null for " + typeString);
           default -> throw new AssertionError("unexpected type " + type);
         };
     assertThat(target).isEqualTo(expectedTarget);
