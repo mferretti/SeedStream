@@ -62,6 +62,9 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class RandomProvider {
+  /** Golden-ratio increment (SplitMix64) spacing consecutive record indices. */
+  private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
+
   private final long masterSeed;
   private final AtomicInteger workerIdCounter = new AtomicInteger(0);
   private final ThreadLocal<Random> threadLocalRandom;
@@ -138,19 +141,25 @@ public class RandomProvider {
    *
    * <p>This is the key to thread-count- and machine-invariant output: record {@code i} is seeded
    * the same way no matter how the work is partitioned, so the generated value for index {@code i}
-   * is identical across any thread count or core count. Same avalanche mixing as {@link
-   * #deriveSeed(long, int)} but keyed on a {@code long} record index instead of a worker ID.
+   * is identical across any thread count or core count.
+   *
+   * <p>The master seed is mixed on its own <i>before</i> the index is combined in (SplitMix64
+   * finalizer, then golden-ratio increment per index, then the finalizer again). Combining first
+   * ({@code masterSeed ^ index}) made {@code (s, i)} and {@code (s', i')} collide whenever {@code s
+   * ^ i == s' ^ i'}, so e.g. seed 1 reproduced seed 0's records pairwise swapped (#343).
    *
    * @param index global record index (0-based)
    * @return derived seed for that record
    */
   public long deriveRecordSeed(long index) {
-    long seed = masterSeed;
-    seed ^= index; // Mix in record index
-    seed ^= (seed << 21); // Bit avalanche
-    seed ^= (seed >>> 35); // Spread bits
-    seed ^= (seed << 4); // Final mixing
-    return seed;
+    return mix64(mix64(masterSeed) + index * GOLDEN_GAMMA);
+  }
+
+  /** SplitMix64 finalizer (Steele et al.): a bijective 64-bit avalanche mix. */
+  private static long mix64(long z) {
+    z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+    z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+    return z ^ (z >>> 31);
   }
 
   /**
