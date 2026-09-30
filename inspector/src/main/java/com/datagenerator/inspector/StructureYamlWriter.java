@@ -24,9 +24,9 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -40,7 +40,10 @@ import java.util.regex.Pattern;
  */
 public class StructureYamlWriter {
 
-  private static final Pattern FIELD_KEY_LINE = Pattern.compile("^ {2}(\\w+):\\s*$");
+  // A field key under `data:` is the only 2-space-indented mapping key Jackson emits. The key text
+  // itself is not parsed (it may be quoted or contain any character, #349): fields are matched by
+  // position against the structure's field order, which is the order they are serialized in.
+  private static final Pattern FIELD_KEY_LINE = Pattern.compile("^ {2}\\S.*:\\s*$");
   private static final String DATATYPE_LINE_PREFIX = "    datatype:";
 
   private final YAMLMapper yaml =
@@ -61,7 +64,9 @@ public class StructureYamlWriter {
     try {
       Files.createDirectories(outputDir);
       String body = yaml.writeValueAsString(toOrderedMap(structure));
-      Files.writeString(file, annotate(body, comments == null ? Map.of() : comments));
+      Files.writeString(
+          file,
+          annotate(body, comments == null ? Map.of() : comments, structure.getData().keySet()));
       return true;
     } catch (IOException e) {
       throw new InspectorException("Failed to write structure: " + file, e);
@@ -89,18 +94,18 @@ public class StructureYamlWriter {
   }
 
   /** Appends {@code # comment} to the {@code datatype:} line of each commented field. */
-  private String annotate(String body, Map<String, String> comments) {
+  private String annotate(String body, Map<String, String> comments, Iterable<String> fieldOrder) {
     if (comments.isEmpty()) {
       return body;
     }
     String[] lines = body.split("\n", -1);
     StringBuilder out = new StringBuilder(body.length() + 64);
+    Iterator<String> fields = fieldOrder.iterator();
     String currentField = null;
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i];
-      Matcher keyMatch = FIELD_KEY_LINE.matcher(line);
-      if (keyMatch.matches()) {
-        currentField = keyMatch.group(1);
+      if (FIELD_KEY_LINE.matcher(line).matches()) {
+        currentField = fields.hasNext() ? fields.next() : null;
       } else if (currentField != null
           && line.startsWith(DATATYPE_LINE_PREFIX)
           && comments.containsKey(currentField)) {
