@@ -40,6 +40,7 @@ public class GeneratorContext implements AutoCloseable {
   private static final ThreadLocal<DataGeneratorFactory> FACTORY = new ThreadLocal<>();
   private static final ThreadLocal<String> GEOLOCATION = new ThreadLocal<>();
   private static final ThreadLocal<Long> JOB_COUNT = new ThreadLocal<>();
+  private static final ThreadLocal<Long> MASTER_SEED = new ThreadLocal<>();
   private static final ThreadLocal<java.util.Deque<java.util.Map<String, Object>>>
       PARENT_RECORD_STACK = new ThreadLocal<>();
 
@@ -55,12 +56,28 @@ public class GeneratorContext implements AutoCloseable {
    */
   public static GeneratorContext enter(
       DataGeneratorFactory factory, String geolocation, long jobCount) {
+    return enter(factory, geolocation, jobCount, 0L);
+  }
+
+  /**
+   * Enter a new generator context carrying the job's master seed (used by {@code unique[...]} to
+   * key its permutation).
+   *
+   * @param factory the factory to use for nested generation
+   * @param geolocation the geolocation for locale-specific data (can be null)
+   * @param jobCount total record count for this job
+   * @param masterSeed resolved job seed
+   * @return AutoCloseable context (use with try-with-resources)
+   */
+  public static GeneratorContext enter(
+      DataGeneratorFactory factory, String geolocation, long jobCount, long masterSeed) {
     if (FACTORY.get() != null) {
       throw new IllegalStateException("GeneratorContext already active in this thread");
     }
     FACTORY.set(factory);
     GEOLOCATION.set(geolocation);
     JOB_COUNT.set(jobCount);
+    MASTER_SEED.set(masterSeed);
     PARENT_RECORD_STACK.set(new java.util.ArrayDeque<>());
     return new GeneratorContext();
   }
@@ -114,6 +131,16 @@ public class GeneratorContext implements AutoCloseable {
   }
 
   /**
+   * Get the job's master seed from context.
+   *
+   * @return the master seed for this thread (0 if not set)
+   */
+  public static long getMasterSeed() {
+    Long seed = MASTER_SEED.get();
+    return seed != null ? seed : 0L;
+  }
+
+  /**
    * Push a partial record onto the parent-record stack. Called by {@link
    * com.datagenerator.generators.composite.ObjectGenerator} before generating a nested field so
    * that {@code ref[parent.*]} generators can access the enclosing record's already-generated
@@ -162,6 +189,7 @@ public class GeneratorContext implements AutoCloseable {
     FACTORY.remove();
     GEOLOCATION.remove();
     JOB_COUNT.remove();
+    MASTER_SEED.remove();
     PARENT_RECORD_STACK.remove();
   }
 

@@ -25,6 +25,8 @@ import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.ParentReferenceType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
+import com.datagenerator.core.type.SerialType;
+import com.datagenerator.core.type.UniqueType;
 import com.datagenerator.generators.composite.ArrayGenerator;
 import com.datagenerator.generators.composite.ObjectGenerator;
 import com.datagenerator.generators.composite.ParentReferenceGenerator;
@@ -35,7 +37,9 @@ import com.datagenerator.generators.primitive.DateGenerator;
 import com.datagenerator.generators.primitive.DecimalGenerator;
 import com.datagenerator.generators.primitive.EnumGenerator;
 import com.datagenerator.generators.primitive.IntegerGenerator;
+import com.datagenerator.generators.primitive.SerialGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
+import com.datagenerator.generators.primitive.UniqueGenerator;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
 import java.nio.file.Path;
 import java.util.EnumMap;
@@ -88,6 +92,8 @@ public class DataGeneratorFactory {
     STATELESS_TYPE_MAP.put(ArrayType.class, new ArrayGenerator());
     STATELESS_TYPE_MAP.put(ReferenceType.class, new ReferenceGenerator());
     STATELESS_TYPE_MAP.put(ParentReferenceType.class, new ParentReferenceGenerator());
+    STATELESS_TYPE_MAP.put(UniqueType.class, new UniqueGenerator());
+    STATELESS_TYPE_MAP.put(SerialType.class, new SerialGenerator());
     // NOTE: ObjectGenerator is stateful and added per-instance in the constructor
   }
 

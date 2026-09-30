@@ -68,6 +68,7 @@ High-performance, seed-based test data generator for enterprise applications. Ge
 - 📝 **Multiple Formats**: JSON (NDJSON), CSV (RFC 4180), Protobuf (binary), Avro (OCF + Confluent Schema Registry wire format), CBEFF (biometric envelope)
 - 💾 **Multiple Destinations**: File (NIO, gzip), Kafka (SASL/SSL, async/sync), JDBC databases (HikariCP, nested decomposition — integration-tested against Postgres, MySQL, Oracle, and SQL Server)
 - 🔗 **Foreign Key References**: `ref[table.field, min..count]` — FK columns that scale automatically with `--count`
+- 🔑 **Unique Keys**: `serial`, `unique[min..max]` / `unique[1..count]`, `unique[group, min..max]` — auto-increment, collision-free, and composite keys, all deterministic on any thread count
 - ⚙️ **YAML Configuration**: Declarative structure and job definitions — no code required
 - 🔌 **Extensible Type System**: 52 canonical Datafaker semantic types + 33 aliases, with runtime registration (`DatafakerRegistry`)
 - 🔍 **Schema Inspection**: Bootstrap structure YAML from an existing OpenAPI 3.x spec, JSON Schema, SQL DDL, or compiled Protobuf descriptor set — no hand-writing required

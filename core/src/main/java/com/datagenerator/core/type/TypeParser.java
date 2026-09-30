@@ -41,6 +41,12 @@ public class TypeParser {
   private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[([a-z_]+)\\]$");
   private static final Pattern ARRAY_PATTERN =
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+  private static final Pattern UNIQUE_PATTERN =
+      Pattern.compile("^unique\\[(?:([a-z_][a-z0-9_]*)\\s*,\\s*)?(-?\\d+)\\.\\.(-?\\d+|count)\\]$");
+  private static final Pattern SERIAL_PATTERN = Pattern.compile("^serial(?:\\[(-?\\d+)\\])?$");
+  private static final Pattern REF_UNIQUE_PATTERN =
+      Pattern.compile(
+          "^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=([a-z_][a-z0-9_]*))?\\]$");
   private static final Pattern PARENT_REF_PATTERN =
       Pattern.compile("^ref\\[parent\\.([a-z_]+)\\]$");
 
@@ -74,6 +80,10 @@ public class TypeParser {
     if (m.matches()) return new ObjectType(m.group(1));
     m = PARENT_REF_PATTERN.matcher(trimmed);
     if (m.matches()) return new ParentReferenceType(m.group(1));
+    m = REF_UNIQUE_PATTERN.matcher(trimmed);
+    if (m.matches())
+      return parseUnique(
+          m.group(5), m.group(3), m.group(4), m.group(1) + "." + m.group(2), typeString);
     m = REF_COUNT_PATTERN.matcher(trimmed);
     if (m.matches()) return parseRefCount(m);
     m = REF_RANGE_PATTERN.matcher(trimmed);
@@ -82,6 +92,11 @@ public class TypeParser {
     if (m.matches()) return new ReferenceType(m.group(1), m.group(2), null, null, false);
     m = ARRAY_PATTERN.matcher(trimmed);
     if (m.matches()) return parseArray(m);
+
+    m = UNIQUE_PATTERN.matcher(trimmed);
+    if (m.matches()) return parseUnique(m.group(1), m.group(2), m.group(3), null, typeString);
+    m = SERIAL_PATTERN.matcher(trimmed);
+    if (m.matches()) return parseSerial(m, typeString);
 
     if (DatafakerRegistry.isRegistered(trimmed)) {
       return new CustomDatafakerType(DatafakerRegistry.getCanonicalName(trimmed));
@@ -120,6 +135,30 @@ public class TypeParser {
           "Invalid ref range: min (%d) > max (%d) in: %s".formatted(min, max, typeString));
     }
     return new ReferenceType(m.group(1), m.group(2), min, max, false);
+  }
+
+  private static DataType parseUnique(
+      String group, String minStr, String maxStr, String refTarget, String typeString) {
+    try {
+      long min = Long.parseLong(minStr);
+      boolean isCount = "count".equals(maxStr);
+      long max = isCount ? 0 : Long.parseLong(maxStr);
+      if (!isCount && min > max) {
+        throw new TypeParseException(
+            "Invalid unique range: min (%d) > max (%d) in: %s".formatted(min, max, typeString));
+      }
+      return new UniqueType(group, min, max, isCount, refTarget);
+    } catch (NumberFormatException e) {
+      throw new TypeParseException("Invalid unique range in: " + typeString);
+    }
+  }
+
+  private static DataType parseSerial(Matcher m, String typeString) {
+    try {
+      return new SerialType(m.group(1) == null ? 1L : Long.parseLong(m.group(1)));
+    } catch (NumberFormatException e) {
+      throw new TypeParseException("Invalid serial start in: " + typeString);
+    }
   }
 
   private DataType parseArray(Matcher m) {

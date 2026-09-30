@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -82,6 +83,15 @@ public final class NestingPlanner {
 
   /** Plans and applies nesting, returning the rewritten structures plus comments and warnings. */
   public Inspection plan(List<TableInfo> tables, NestingOptions opts) {
+    return plan(tables, opts, table -> {});
+  }
+
+  /**
+   * As {@link #plan(List, NestingOptions)}, additionally calling {@code rootFinalizer} on every
+   * table that was not folded into a parent, after nesting is applied.
+   */
+  public Inspection plan(
+      List<TableInfo> tables, NestingOptions opts, Consumer<TableInfo> rootFinalizer) {
     Map<String, TableInfo> byName =
         tables.stream()
             .collect(Collectors.toMap(t -> t.name().toLowerCase(Locale.ROOT), t -> t, (a, b) -> a));
@@ -91,6 +101,11 @@ public final class NestingPlanner {
     removeCyclicEdges(candidates, tables, opts, warnings);
     List<Edge> chosen = chooseEmbeddings(candidates, byName, warnings);
     applyEmbeddings(chosen, byName, opts, warnings);
+    Set<String> embedded =
+        chosen.stream().map(e -> e.child().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+    tables.stream()
+        .filter(t -> !embedded.contains(t.name().toLowerCase(Locale.ROOT)))
+        .forEach(rootFinalizer);
 
     return buildInspection(tables, warnings);
   }

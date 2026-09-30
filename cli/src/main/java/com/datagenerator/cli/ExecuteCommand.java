@@ -456,6 +456,10 @@ public class ExecuteCommand implements Callable<Integer> {
         dataStructure.getName(),
         dataStructure.getData().size());
 
+    // 3a. Validate unique[...] fields before anything is opened (open() may truncate tables)
+    StructureRegistry registry = createStructureRegistry(structuresPath, count);
+    new UniqueFieldValidator(registry, structuresPath, count).validate(dataStructure.getName());
+
     // 4. Create format serializer
     FormatSerializer serializer = createSerializer(format, jobConfig, secretResolver);
     log.info("Created serializer: {}", serializer.getFormatName());
@@ -466,7 +470,6 @@ public class ExecuteCommand implements Callable<Integer> {
     log.info("Created destination: {}", destination.getDestinationType());
 
     // 6. Set up generation context
-    StructureRegistry registry = createStructureRegistry(structuresPath);
     DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
 
     // 7. Generate and write records using GenerationEngine
@@ -495,7 +498,7 @@ public class ExecuteCommand implements Callable<Integer> {
                 })
             .masterSeed(seed)
             .workerThreads(workerThreads)
-            .workerInit(() -> GeneratorContext.enter(factory, geolocation, count))
+            .workerInit(() -> GeneratorContext.enter(factory, geolocation, count, seed))
             .workerCleanup(
                 () -> {
                   GeneratorContext.exit();
@@ -954,7 +957,7 @@ public class ExecuteCommand implements Callable<Integer> {
   }
 
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
-  private StructureRegistry createStructureRegistry(Path structuresPath) {
+  private StructureRegistry createStructureRegistry(Path structuresPath, long count) {
     StructureLoader loader =
         (structureName, basePath, registry) -> {
           try {
@@ -974,7 +977,7 @@ public class ExecuteCommand implements Callable<Integer> {
           }
         };
 
-    return new StructureRegistry(loader);
+    return new StructureRegistry(loader, count);
   }
 
   /**

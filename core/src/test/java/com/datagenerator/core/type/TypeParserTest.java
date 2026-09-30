@@ -350,4 +350,78 @@ class TypeParserTest {
     assertThat(((CustomDatafakerType) parser.parse("coupon")).getTypeName())
         .isEqualTo(TYPE_PROMOTION_CODE);
   }
+
+  @Test
+  void shouldParseUniqueWhenImplicitGroup() {
+    DataType t = parser.parse("unique[100000..999999]");
+    assertThat(t).isInstanceOf(UniqueType.class);
+    UniqueType u = (UniqueType) t;
+    assertThat(u.getGroup()).isNull();
+    assertThat(u.getMin()).isEqualTo(100000L);
+    assertThat(u.getMax()).isEqualTo(999999L);
+    assertThat(u.isResolved()).isFalse();
+  }
+
+  @Test
+  void shouldParseUniqueWhenNamedGroup() {
+    UniqueType u = (UniqueType) parser.parse("unique[pair, 1..200]");
+    assertThat(u.getGroup()).isEqualTo("pair");
+    assertThat(u.getMin()).isEqualTo(1L);
+    assertThat(u.getMax()).isEqualTo(200L);
+    assertThat(u.describe()).isEqualTo("unique[pair, 1..200]");
+  }
+
+  @Test
+  void shouldRejectUniqueWhenMinGreaterThanMax() {
+    assertThatThrownBy(() -> parser.parse("unique[5..1]")).isInstanceOf(TypeParseException.class);
+  }
+
+  @Test
+  void shouldRejectUniqueWhenGroupNameInvalid() {
+    assertThatThrownBy(() -> parser.parse("unique[Pair, 1..3]"))
+        .isInstanceOf(TypeParseException.class);
+  }
+
+  @Test
+  void shouldParseSerialWhenBareOrWithMin() {
+    assertThat(parser.parse("serial")).isEqualTo(new SerialType(1));
+    assertThat(parser.parse("serial[-5]")).isEqualTo(new SerialType(-5));
+    assertThat(parser.parse("serial").describe()).isEqualTo("serial");
+    assertThat(parser.parse("serial[7]").describe()).isEqualTo("serial[7]");
+  }
+
+  @Test
+  void shouldRejectSerialWhenStartNotNumeric() {
+    assertThatThrownBy(() -> parser.parse("serial[x]")).isInstanceOf(TypeParseException.class);
+  }
+
+  @Test
+  void shouldParseUniqueWhenMaxIsCount() {
+    UniqueType u = (UniqueType) parser.parse("unique[1..count]");
+    assertThat(u.isMaxIsCount()).isTrue();
+    assertThat(u.getMax()).isZero();
+    assertThat(u.describe()).isEqualTo("unique[1..count]");
+    UniqueType g = (UniqueType) parser.parse("unique[g1, 1..count]");
+    assertThat(g.getGroup()).isEqualTo("g1");
+    assertThat(g.describe()).isEqualTo("unique[g1, 1..count]");
+  }
+
+  @Test
+  void shouldParseRefUniqueWhenImplicitOrNamedGroup() {
+    UniqueType a = (UniqueType) parser.parse("ref[customers.id, 1..count, unique]");
+    assertThat(a.getRefTarget()).isEqualTo("customers.id");
+    assertThat(a.isMaxIsCount()).isTrue();
+    assertThat(a.getGroup()).isNull();
+    assertThat(a.describe()).isEqualTo("ref[customers.id, 1..count, unique]");
+    UniqueType b = (UniqueType) parser.parse("ref[customers.id, 1..500, unique=pk]");
+    assertThat(b.getGroup()).isEqualTo("pk");
+    assertThat(b.getMax()).isEqualTo(500L);
+    assertThat(b.describe()).isEqualTo("ref[customers.id, 1..500, unique=pk]");
+  }
+
+  @Test
+  void shouldRejectRefUniqueWhenKeywordMisspelled() {
+    assertThatThrownBy(() -> parser.parse("ref[t.c, 1..10, uniq]"))
+        .isInstanceOf(TypeParseException.class);
+  }
 }

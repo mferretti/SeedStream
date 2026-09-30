@@ -22,6 +22,11 @@ dependencies {
     // Runtime dependencies for destinations
     runtimeOnly(libs.kafka.clients)
     // JDBC drivers are NOT bundled — users drop them into extras/ at runtime
+
+    // Slow end-to-end tests (execute/inspect → real PostgreSQL); run via slowTest
+    testImplementation(libs.postgresql)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
 }
 
 application {

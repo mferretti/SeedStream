@@ -214,9 +214,24 @@ These stay out of v1 — but the reason matters, because two of them are *not* i
   satisfied by construction and an optional/`required:false` field has no meaningful recipe
   representation (the inspector always emits the field). **Nothing to map.**
 - **Primary-key / uniqueness handling.** A PK is `NOT NULL` + `UNIQUE`; the not-null half is free
-  (above), but the engine has **no uniqueness guarantee** — an `int[1..999999]` PK can emit
-  duplicate ids. Enforcing uniqueness is a *generation-engine* policy (a new `unique` concept in the
-  type system), not a recipe-shape the inspector can express. **Tracked engine follow-up.**
+  (above). The engine now provides the missing piece: `serial` for database auto-increment columns,
+  `unique[1..count]` for collision-free keys, and `ref[…, unique]` for 1:1 FKs (#212). The inspector
+  emits these types as follows:
+
+  **DDL key mapping:**
+  - Single-column integer PK (e.g. `id BIGINT PRIMARY KEY`) → `serial` (independent of seed, ordered by record index).
+  - `SERIAL` / `BIGSERIAL` / `SMALLSERIAL` column not in any key → `serial` (same semantics).
+  - Single-column integer `UNIQUE` constraint → `unique[1..count]` (collision-free, **not** prefix-stable when --count changes).
+  - FK column that is a single-column PK/UNIQUE (1:1 relationship) → `ref[parent.column, 1..count, unique]` (documents referential intent).
+  - Composite PK or composite `UNIQUE` constraint → members tagged `unique[pk, 1..count]` / `unique[uq1, 1..count]` / etc. (pk for primary key, uq1/uq2/… for UNIQUE constraints in declaration order; the group name ensures the tuple is unique).
+  - FK members in a composite PK/UNIQUE → `ref[parent.col, 1..count, unique=pk]` / `ref[parent.col, 1..count, unique=uq1]` (group name matches the composite constraint).
+  - A column in multiple keys (e.g. a PK that is also part of a UNIQUE) → PK wins, then first UNIQUE; a warning is logged.
+  - Key containing any non-integer, non-FK column (varchar, decimal, date, etc.) → types unchanged, field comment `# not enforced — values may collide`, and a warning.
+  - Single UUID key → unchanged, no special handling.
+  - Tables folded as nested children (`object[child]`, `array[object[child], ...]`) → PK and UNIQUE handling unchanged within the nested structure.
+  - Composite groups of k members on a `1..count` range have count^k combinations; if that overflows a long (e.g. 3+ members on >~2M rows), the job fails at startup with a size-exceeded error.
+
+  **Limitation**: `ref[…]` table and column names cannot contain digits (TypeParser pattern constraint, pre-existing).
 
 Now implemented (previously listed here):
 - DDL multi-word / vendor-specific types — see §7c type folding.

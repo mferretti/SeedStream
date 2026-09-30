@@ -21,6 +21,8 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
+import com.datagenerator.core.type.SerialType;
+import com.datagenerator.core.type.UniqueType;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -159,7 +161,7 @@ public class JdbcTypeMapper {
       return;
     }
 
-    if (type instanceof ReferenceType) {
+    if (type instanceof ReferenceType || type instanceof UniqueType || type instanceof SerialType) {
       // ref[] generates Long; bind as BIGINT (fits INT columns when value is in range)
       ps.setLong(
           index,
@@ -194,7 +196,8 @@ public class JdbcTypeMapper {
         case TIMESTAMP -> Types.TIMESTAMP;
       };
     }
-    if (type instanceof ReferenceType) return Types.BIGINT;
+    if (type instanceof ReferenceType || type instanceof UniqueType || type instanceof SerialType)
+      return Types.BIGINT;
     return Types.VARCHAR; // EnumType, CustomDatafakerType
   }
 

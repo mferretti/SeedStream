@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
@@ -62,6 +63,18 @@ public class DdlInspector {
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
   private static final Pattern CREATE_TABLE_QUICK =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
+
+  private static final Set<String> SERIAL_TYPES =
+      Set.of("SERIAL", "BIGSERIAL", "SMALLSERIAL", "SERIAL4", "SERIAL8");
+  private static final Set<String> UUID_TYPES = Set.of("UUID", "UNIQUEIDENTIFIER");
+  private static final String NOT_ENFORCED = "UNIQUE/PRIMARY KEY not enforced — values may collide";
+
+  /** Key constraints and type facts of one table, kept aside until nesting is decided. */
+  private record TableKeys(
+      List<List<String>> primary,
+      List<List<String>> uniques,
+      Set<String> serialColumns,
+      Set<String> uuidColumns) {}
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
@@ -98,8 +111,9 @@ public class DdlInspector {
     List<TableInfo> tables = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
     List<String> failures = new ArrayList<>();
+    Map<String, TableKeys> keys = new LinkedHashMap<>();
     for (String raw : rawStatements) {
-      processStatement(raw, tables, warnings, failures, bestEffort);
+      processStatement(raw, tables, keys, warnings, failures, bestEffort);
     }
 
     if (!bestEffort && !failures.isEmpty()) {
@@ -116,12 +130,14 @@ public class DdlInspector {
       throw new InspectorException("No CREATE TABLE statements found in " + sqlFile);
     }
 
+    Consumer<TableInfo> keyMapper = table -> applyKeys(table, keys.get(table.name()), warnings);
     if (nesting.enabled()) {
-      Inspection nested = new NestingPlanner().plan(tables, nesting);
+      Inspection nested = new NestingPlanner().plan(tables, nesting, keyMapper);
       List<String> all = new ArrayList<>(warnings);
       all.addAll(nested.warnings());
       return Inspection.of(nested.structures(), nested.comments(), all);
     }
+    tables.forEach(keyMapper);
     return toInspection(tables, warnings);
   }
 
@@ -133,6 +149,7 @@ public class DdlInspector {
   private void processStatement(
       String raw,
       List<TableInfo> tables,
+      Map<String, TableKeys> keys,
       List<String> warnings,
       List<String> failures,
       boolean bestEffort) {
@@ -148,7 +165,7 @@ public class DdlInspector {
       return;
     }
     if (statement instanceof CreateTable createTable) {
-      TableInfo table = toTableInfo(createTable, tables.size(), warnings);
+      TableInfo table = toTableInfo(createTable, tables.size(), warnings, keys);
       if (table != null) {
         tables.add(table);
       } else {
@@ -172,7 +189,8 @@ public class DdlInspector {
     return Inspection.of(structures, comments, warnings);
   }
 
-  private TableInfo toTableInfo(CreateTable createTable, int order, List<String> warnings) {
+  private TableInfo toTableInfo(
+      CreateTable createTable, int order, List<String> warnings, Map<String, TableKeys> keys) {
     String name = Names.toSnakeCase(unquote(createTable.getTable().getName()));
     List<ColumnDefinition> columns = createTable.getColumnDefinitions();
     if (columns == null || columns.isEmpty()) {
@@ -183,12 +201,20 @@ public class DdlInspector {
     Map<String, String> foreignKeys = tableForeignKeys(createTable);
     LinkedHashMap<String, FieldDefinition> data = new LinkedHashMap<>();
     LinkedHashMap<String, String> fieldComments = new LinkedHashMap<>();
+    Set<String> serialColumns = new LinkedHashSet<>();
+    Set<String> uuidColumns = new LinkedHashSet<>();
 
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
       String datatype = resolveForeignKey(columnName, column, foreignKeys).orElse(null);
       if (datatype == null) {
         ColDataType colType = column.getColDataType();
+        String sqlType = baseTypeName(colType).toUpperCase(Locale.ROOT);
+        if (SERIAL_TYPES.contains(sqlType)) {
+          serialColumns.add(columnName.toLowerCase(Locale.ROOT));
+        } else if (UUID_TYPES.contains(sqlType)) {
+          uuidColumns.add(columnName.toLowerCase(Locale.ROOT));
+        }
         MappedType mapped = mapper.map(columnName, baseTypeName(colType), typeArguments(colType));
         if (mapped.flagged()) {
           fieldComments.put(columnName, mapped.comment());
@@ -198,27 +224,37 @@ public class DdlInspector {
       data.put(columnName, new FieldDefinition(datatype, null));
     }
 
+    List<List<String>> primary = keyConstraints(createTable, columns, "PRIMARY");
+    List<List<String>> uniques = keyConstraints(createTable, columns, "UNIQUE");
+    keys.put(name, new TableKeys(primary, uniques, serialColumns, uuidColumns));
     return new TableInfo(
         name,
         data,
         fieldComments,
-        keyConstraintColumns(createTable, columns, "PRIMARY"),
-        keyConstraintColumns(createTable, columns, "UNIQUE"),
+        flatten(primary),
+        flatten(uniques),
         foreignKeyRefs(createTable, columns),
         order);
   }
 
-  /**
-   * Collects the column names carrying a key constraint of the given kind ({@code PRIMARY} or
-   * {@code UNIQUE}), from both inline column specs and table-level index constraints.
-   */
-  private Set<String> keyConstraintColumns(
-      CreateTable createTable, List<ColumnDefinition> columns, String kind) {
+  private Set<String> flatten(List<List<String>> constraints) {
     Set<String> result = new LinkedHashSet<>();
+    constraints.forEach(result::addAll);
+    return result;
+  }
+
+  /**
+   * Collects one column list per key constraint of the given kind ({@code PRIMARY} or {@code
+   * UNIQUE}): each inline column spec is a single-column constraint, each table-level index one
+   * (possibly composite) constraint.
+   */
+  private List<List<String>> keyConstraints(
+      CreateTable createTable, List<ColumnDefinition> columns, String kind) {
+    List<List<String>> result = new ArrayList<>();
     for (ColumnDefinition column : columns) {
       List<String> specs = column.getColumnSpecs();
       if (specs != null && specs.stream().anyMatch(kind::equalsIgnoreCase)) {
-        result.add(unquote(column.getColumnName()));
+        result.add(List.of(unquote(column.getColumnName())));
       }
     }
     List<Index> indexes = createTable.getIndexes();
@@ -229,11 +265,154 @@ public class DdlInspector {
         }
         String type = index.getType();
         if (type != null && type.toUpperCase(Locale.ROOT).startsWith(kind)) {
-          index.getColumnsNames().forEach(c -> result.add(unquote(c)));
+          result.add(index.getColumnsNames().stream().map(this::unquote).toList());
         }
       }
     }
     return result;
+  }
+
+  /**
+   * Rewrites key columns of a table so generated data honours PRIMARY KEY / UNIQUE constraints:
+   * integer keys become {@code serial} / {@code unique[1..count]} / {@code ref[..., unique]},
+   * anything else is left as-is with a "not enforced" comment. Each column gets at most one key
+   * role (PK first, then UNIQUE in declaration order). See {@code docs/INSPECT-V1-SPEC.md}.
+   */
+  private void applyKeys(TableInfo table, TableKeys keys, List<String> warnings) {
+    if (keys == null) {
+      return;
+    }
+    Set<String> foreignColumns = new LinkedHashSet<>();
+    // Only columns still emitted as ref[...]; nesting may have rewritten or dropped an FK column.
+    table.foreignKeys().stream()
+        .flatMap(fk -> fk.localColumns().stream())
+        .filter(c -> isRef(table.data().get(actualKey(table, c))))
+        .forEach(c -> foreignColumns.add(lower(c)));
+    Set<String> claimed = new LinkedHashSet<>();
+    keys.primary()
+        .forEach(c -> applyKey(table, keys, "pk", true, c, claimed, foreignColumns, warnings));
+    for (int i = 0; i < keys.uniques().size(); i++) {
+      applyKey(
+          table,
+          keys,
+          "uq" + (i + 1),
+          false,
+          keys.uniques().get(i),
+          claimed,
+          foreignColumns,
+          warnings);
+    }
+    for (String column : List.copyOf(table.data().keySet())) {
+      String key = lower(column);
+      if (keys.serialColumns().contains(key)
+          && !claimed.contains(key)
+          && !foreignColumns.contains(key)) {
+        setKeyType(table, column, "serial");
+      }
+    }
+  }
+
+  private void applyKey(
+      TableInfo table,
+      TableKeys keys,
+      String group,
+      boolean primary,
+      List<String> declared,
+      Set<String> claimed,
+      Set<String> foreignColumns,
+      List<String> warnings) {
+    String label = (primary ? "PRIMARY KEY(" : "UNIQUE(") + String.join(", ", declared) + ")";
+    List<String> columns = new ArrayList<>();
+    for (String column : declared) {
+      if (claimed.add(lower(column))) {
+        columns.add(column);
+      } else {
+        warnings.add(
+            table.name()
+                + "."
+                + column
+                + ": also in "
+                + label
+                + " — only the first key is enforced");
+      }
+    }
+    if (columns.isEmpty()) {
+      return;
+    }
+    boolean enforceable =
+        columns.stream()
+            .allMatch(
+                c ->
+                    foreignColumns.contains(lower(c))
+                        || isIntegerType(table.data().get(actualKey(table, c))));
+    if (!enforceable) {
+      boolean singleUuid =
+          columns.size() == 1 && keys.uuidColumns().contains(lower(columns.get(0)));
+      if (!singleUuid) {
+        columns.forEach(c -> addComment(table, c, NOT_ENFORCED));
+        warnings.add(
+            table.name()
+                + ": "
+                + label
+                + " not enforced — non-integer column(s), values may collide");
+      }
+      return;
+    }
+    boolean single = columns.size() == 1;
+    for (String column : columns) {
+      String datatype;
+      if (foreignColumns.contains(lower(column))) {
+        String target = refTarget(table.data().get(actualKey(table, column)).getDatatype());
+        datatype =
+            "ref["
+                + target
+                + ", "
+                + Defaults.REF_POOL
+                + ", unique"
+                + (single ? "" : "=" + group)
+                + "]";
+      } else if (single) {
+        datatype = primary ? "serial" : "unique[" + Defaults.REF_POOL + "]";
+      } else {
+        datatype = "unique[" + group + ", " + Defaults.REF_POOL + "]";
+      }
+      setKeyType(table, column, datatype);
+    }
+  }
+
+  private void setKeyType(TableInfo table, String column, String datatype) {
+    String key = actualKey(table, column);
+    table.data().put(key, new FieldDefinition(datatype, null));
+    table.comments().remove(key); // default-range / name-hint notes no longer apply
+  }
+
+  private void addComment(TableInfo table, String column, String comment) {
+    String key = actualKey(table, column);
+    table.comments().merge(key, comment, (old, added) -> old + "; " + added);
+  }
+
+  private String actualKey(TableInfo table, String column) {
+    return table.data().keySet().stream()
+        .filter(k -> k.equalsIgnoreCase(column))
+        .findFirst()
+        .orElse(column);
+  }
+
+  private boolean isIntegerType(FieldDefinition field) {
+    return field != null && field.getDatatype().startsWith("int[");
+  }
+
+  private boolean isRef(FieldDefinition field) {
+    return field != null && field.getDatatype().startsWith("ref[");
+  }
+
+  /** {@code ref[customers.id, 1..count]} → {@code customers.id}. */
+  private String refTarget(String refDatatype) {
+    return refDatatype.substring("ref[".length(), refDatatype.indexOf(',')).trim();
+  }
+
+  private String lower(String value) {
+    return value.toLowerCase(Locale.ROOT);
   }
 
   /** Collects FK constraints (table-level and inline {@code REFERENCES}) as structured edges. */

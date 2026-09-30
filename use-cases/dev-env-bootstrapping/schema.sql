@@ -45,10 +45,11 @@ CREATE TABLE comments (
   author_id BIGINT       NOT NULL REFERENCES users(id)
 );
 
--- Join table (M:N task↔label). Surrogate PK, no UNIQUE(task_id,label_id): with random refs a
--- (task,label) pair can repeat. Add the UNIQUE constraint once a `unique` generator lands — see README.
+-- Join table (M:N task↔label). Surrogate PK with UNIQUE(task_id,label_id) composite key via the
+-- `unique` type generator — ensuring no duplicate task-label pairs.
 CREATE TABLE task_labels (
   id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   task_id  BIGINT NOT NULL REFERENCES tasks(id),
-  label_id BIGINT NOT NULL REFERENCES labels(id)
+  label_id BIGINT NOT NULL REFERENCES labels(id),
+  UNIQUE (task_id, label_id)
 );
