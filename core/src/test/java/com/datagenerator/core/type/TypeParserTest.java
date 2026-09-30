@@ -341,6 +341,78 @@ class TypeParserTest {
         .isEqualTo("product_name");
   }
 
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "array[int[1..2], 1..99999999999]",
+        "array[int[1..2], 99999999999..99999999999]",
+        "ref[user.id, 1..99999999999999999999]",
+        "ref[user.id, 99999999999999999999..count]"
+      })
+  void shouldThrowTypeParseExceptionWhenNumericBoundOverflows(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("99999999999")
+        .hasMessageContaining(typeString)
+        .hasCauseInstanceOf(NumberFormatException.class);
+  }
+
+  @Test
+  void shouldAcceptBoundsExactlyAtTypeLimits() {
+    ArrayType array = (ArrayType) parser.parse("array[int[1..2], 0..2147483647]");
+    assertThat(array.getMaxLength()).isEqualTo(Integer.MAX_VALUE);
+
+    ReferenceType ref = (ReferenceType) parser.parse("ref[user.id, 1..9223372036854775807]");
+    assertThat(ref.getMax()).isEqualTo(Long.MAX_VALUE);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "array[int[1..2], 0..2147483648]",
+        "ref[user.id, 1..9223372036854775808]",
+        "ref[user.id, 9223372036854775808..count]"
+      })
+  void shouldRejectBoundsOneAboveTypeLimits(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("out of range");
+  }
+
+  @Test
+  void shouldThrowTypeParseExceptionWhenNestedArrayBoundOverflows() {
+    assertThatThrownBy(() -> parser.parse("array[array[int[1..2], 1..99999999999], 1..2]"))
+        .isInstanceOf(TypeParseException.class)
+        .hasMessageContaining("99999999999");
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "int[",
+        "array[int[1..2], 1..]",
+        "array[, 1..2]",
+        "ref[a.b, ..5]",
+        "ref[a.b, 5..1]",
+        "ref[a.b, 1..99999999999999999999, unique]",
+        "unique[1..x]",
+        "unique[99999999999999999999..count]",
+        "unique[5..1]",
+        "serial[99999999999999999999]",
+        "enum[,]",
+        "object[Foo]",
+        "array[int[1..2], 99999999999..1]"
+      })
+  void shouldOnlyEverThrowTypeParseExceptionWhenInputIsMalformed(String typeString) {
+    // Contract: callers (config loading) catch TypeParseException to report the bad field; any
+    // other exception type escapes as a stack trace.
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isExactlyInstanceOf(TypeParseException.class);
+  }
+
   @Test
   void shouldParsePromotionCodeAliases() {
     assertThat(((CustomDatafakerType) parser.parse("promotioncode")).getTypeName())
@@ -423,5 +495,42 @@ class TypeParserTest {
   void shouldRejectRefUniqueWhenKeywordMisspelled() {
     assertThatThrownBy(() -> parser.parse("ref[t.c, 1..10, uniq]"))
         .isInstanceOf(TypeParseException.class);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "object[item2]|item2",
+        "object[v1_order_item]|v1_order_item",
+        "ref[order2.line1]|order2",
+        "ref[orders.address_line1, 1..5]|orders",
+        "ref[orders.address_line1, 1..count]|orders",
+        "ref[t2.c3, 1..count, unique]|t2",
+        "ref[parent.line1]|parent"
+      })
+  void shouldAcceptDigitsInStructureAndFieldNamesAfterFirstCharacter(
+      String typeString, String expectedTarget) {
+    // inspect snake-cases names like Item2 / address_line1 / package v1 keeping the digits.
+    DataType type = parser.parse(typeString);
+
+    String target =
+        switch (type) {
+          case ObjectType o -> o.getStructureName();
+          case ReferenceType r -> r.getTargetStructure();
+          case UniqueType u -> u.getRefTarget().substring(0, u.getRefTarget().indexOf('.'));
+          case ParentReferenceType p -> "parent";
+          case null -> throw new AssertionError("parser returned null for " + typeString);
+          default -> throw new AssertionError("unexpected type " + type);
+        };
+    assertThat(target).isEqualTo(expectedTarget);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {"object[2items]", "ref[1orders.id]", "ref[orders.1id]"})
+  void shouldRejectNamesStartingWithDigit(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString)).isInstanceOf(TypeParseException.class);
   }
 }

@@ -24,9 +24,11 @@ import com.datagenerator.generators.GeneratorValidation;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAccessor;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -145,8 +147,13 @@ public class TimestampGenerator implements DataGenerator {
 
     // Try ISO-8601 format
     try {
-      LocalDateTime dateTime = LocalDateTime.parse(value, FORMATTER);
-      return dateTime.toInstant(ZoneOffset.UTC);
+      // Honour an explicit offset or zone ("...+05:00", "...Z", "...[Europe/Rome]"); a bound
+      // without one is UTC. LocalDateTime.parse would accept the offset and drop it (#345).
+      TemporalAccessor parsed =
+          FORMATTER.parseBest(value, ZonedDateTime::from, LocalDateTime::from);
+      return parsed instanceof ZonedDateTime zoned
+          ? zoned.toInstant()
+          : ((LocalDateTime) parsed).toInstant(ZoneOffset.UTC);
     } catch (DateTimeParseException e) {
       throw new GeneratorException(
           "Invalid "

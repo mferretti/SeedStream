@@ -35,7 +35,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -661,5 +664,184 @@ class ProtobufInspectorTest {
 
     String comment = inspection.comments().getOrDefault("choice", Map.of()).get("blob");
     assertThat(comment).isNotNull().contains("oneof");
+  }
+
+  @Test
+  void shouldEmitDistinctStructureNamesWhenNestedMessagesShareShortName() throws IOException {
+    // Order.Item and Invoice.Item are different messages; both snake-case to "item".
+    DescriptorProto order =
+        DescriptorProto.newBuilder()
+            .setName("Order")
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .addNestedType(
+                DescriptorProto.newBuilder()
+                    .setName("Item")
+                    .addField(optionalField("sku", 1, Type.TYPE_STRING)))
+            .build();
+    DescriptorProto invoice =
+        DescriptorProto.newBuilder()
+            .setName("Invoice")
+            .addField(optionalField("id", 1, Type.TYPE_INT64))
+            .addNestedType(
+                DescriptorProto.newBuilder()
+                    .setName("Item")
+                    .addField(optionalField("amount", 1, Type.TYPE_DOUBLE)))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("billing.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(order)
+            .addMessageType(invoice)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    assertThat(inspection.structures()).extracting(DataStructure::getName).doesNotHaveDuplicates();
+  }
+
+  private static FieldDescriptorProto messageField(
+      String name, int num, String typeName, Label label) {
+    return FieldDescriptorProto.newBuilder()
+        .setName(name)
+        .setNumber(num)
+        .setType(Type.TYPE_MESSAGE)
+        .setTypeName(typeName)
+        .setLabel(label)
+        .build();
+  }
+
+  private static FileDescriptorProto file(String name, String pkg, DescriptorProto... messages) {
+    FileDescriptorProto.Builder b =
+        FileDescriptorProto.newBuilder().setName(name).setPackage(pkg).setSyntax("proto3");
+    for (DescriptorProto m : messages) {
+      b.addMessageType(m);
+    }
+    return b.build();
+  }
+
+  private static DescriptorProto message(String name, FieldDescriptorProto... fields) {
+    DescriptorProto.Builder b = DescriptorProto.newBuilder().setName(name);
+    for (FieldDescriptorProto f : fields) {
+      b.addField(f);
+    }
+    return b.build();
+  }
+
+  @Test
+  void shouldQualifyCollidingNestedMessagesAndPointReferencesAtThem() throws IOException {
+    DescriptorProto order =
+        DescriptorProto.newBuilder()
+            .setName("Order")
+            .addField(messageField("items", 1, ".pkg.Order.Item", Label.LABEL_REPEATED))
+            .addNestedType(message("Item", optionalField("sku", 1, Type.TYPE_STRING)))
+            .build();
+    DescriptorProto invoice =
+        DescriptorProto.newBuilder()
+            .setName("Invoice")
+            .addField(messageField("line", 1, ".pkg.Invoice.Item", Label.LABEL_OPTIONAL))
+            .addNestedType(message("Item", optionalField("amount", 1, Type.TYPE_DOUBLE)))
+            .build();
+    DescriptorProto cart =
+        message("Cart", messageField("pick", 1, ".pkg.Order.Item", Label.LABEL_OPTIONAL));
+
+    Inspection inspection =
+        new ProtobufInspector()
+            .inspect(buildAndWrite(file("billing.proto", "pkg", order, invoice, cart)));
+
+    assertThat(inspection.structures())
+        .extracting(DataStructure::getName)
+        .containsExactlyInAnyOrder("order", "order_item", "invoice", "invoice_item", "cart");
+    assertThat(datatypesOf(inspection, "order_item")).containsOnlyKeys("sku");
+    assertThat(datatypesOf(inspection, "invoice_item")).containsOnlyKeys("amount");
+    assertThat(datatypesOf(inspection, "order").get("items"))
+        .startsWith("array[object[order_item]");
+    assertThat(datatypesOf(inspection, "invoice")).containsEntry("line", "object[invoice_item]");
+    assertThat(datatypesOf(inspection, "cart")).containsEntry("pick", "object[order_item]");
+    assertThat(inspection.warnings())
+        .anySatisfy(w -> assertThat(w).contains("pkg.Order.Item").contains("order_item"))
+        .anySatisfy(w -> assertThat(w).contains("pkg.Invoice.Item").contains("invoice_item"));
+  }
+
+  @Test
+  void shouldQualifyByPackageWhenTopLevelMessagesCollideAcrossPackages() throws IOException {
+    FileDescriptorProto v1 =
+        file("v1.proto", "shop.v1", message("Item", optionalField("sku", 1, Type.TYPE_STRING)));
+    FileDescriptorProto v2 =
+        file("v2.proto", "shop.v2", message("Item", optionalField("code", 1, Type.TYPE_STRING)));
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(v1, v2));
+
+    assertThat(inspection.structures())
+        .extracting(DataStructure::getName)
+        .containsExactlyInAnyOrder("shop_v1_item", "shop_v2_item");
+    assertThat(datatypesOf(inspection, "shop_v1_item")).containsOnlyKeys("sku");
+    assertThat(datatypesOf(inspection, "shop_v2_item")).containsOnlyKeys("code");
+  }
+
+  @Test
+  void shouldKeepShortNamesAndWarnNothingWhenNoNamesCollide() throws IOException {
+    DescriptorProto order =
+        DescriptorProto.newBuilder()
+            .setName("Order")
+            .addField(messageField("item", 1, ".pkg.Order.LineItem", Label.LABEL_OPTIONAL))
+            .addNestedType(message("LineItem", optionalField("sku", 1, Type.TYPE_STRING)))
+            .build();
+
+    Inspection inspection =
+        new ProtobufInspector().inspect(buildAndWrite(file("o.proto", "pkg", order)));
+
+    assertThat(inspection.structures())
+        .extracting(DataStructure::getName)
+        .containsExactlyInAnyOrder("order", "line_item");
+    assertThat(datatypesOf(inspection, "order")).containsEntry("item", "object[line_item]");
+    assertThat(inspection.warnings()).noneMatch(w -> w.contains("emitted as"));
+  }
+
+  @Test
+  void shouldOnlyReferenceEmittedStructuresWhenNamesAreQualified() throws IOException {
+    DescriptorProto a =
+        DescriptorProto.newBuilder()
+            .setName("A")
+            .addField(messageField("x", 1, ".p.A.Node", Label.LABEL_OPTIONAL))
+            .addNestedType(message("Node", optionalField("v", 1, Type.TYPE_INT32)))
+            .build();
+    DescriptorProto b =
+        DescriptorProto.newBuilder()
+            .setName("B")
+            .addField(messageField("x", 1, ".p.B.Node", Label.LABEL_REPEATED))
+            .addNestedType(message("Node", optionalField("w", 1, Type.TYPE_INT32)))
+            .build();
+
+    Inspection inspection =
+        new ProtobufInspector().inspect(buildAndWrite(file("n.proto", "p", a, b)));
+
+    Set<String> emitted =
+        inspection.structures().stream().map(DataStructure::getName).collect(Collectors.toSet());
+    List<String> referenced =
+        inspection.structures().stream()
+            .flatMap(st -> st.getData().values().stream())
+            .map(fd -> fd.getDatatype())
+            .flatMap(dt -> Pattern.compile("object\\[([a-z0-9_]+)]").matcher(dt).results())
+            .map(m -> m.group(1))
+            .toList();
+    assertThat(referenced).isNotEmpty();
+    assertThat(emitted).containsAll(referenced);
+  }
+
+  @Test
+  void shouldFailWithClearErrorWhenNamesStayAmbiguousAfterQualification() throws IOException {
+    // Packages "x_a" and "x.a" both qualify B to "x_a_b".
+    FileDescriptorProto f1 =
+        file("f1.proto", "x_a", message("B", optionalField("p", 1, Type.TYPE_INT32)));
+    FileDescriptorProto f2 =
+        file("f2.proto", "x.a", message("B", optionalField("q", 1, Type.TYPE_INT32)));
+    Path set = buildAndWrite(f1, f2);
+
+    assertThatThrownBy(() -> new ProtobufInspector().inspect(set))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("ambiguous")
+        .hasMessageContaining("x_a_b");
   }
 }

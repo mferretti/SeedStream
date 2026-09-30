@@ -22,6 +22,7 @@ import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HexFormat;
 import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -133,12 +134,10 @@ public final class AesGcmCrypto {
               + (hex == null ? "null" : hex.length() + " characters"));
     }
     try {
-      byte[] key = new byte[KEY_BYTES];
-      for (int i = 0; i < KEY_BYTES; i++) {
-        key[i] = (byte) Integer.parseUnsignedInt(hex.substring(i * 2, i * 2 + 2), 16);
-      }
-      return key;
-    } catch (NumberFormatException e) {
+      // HexFormat accepts only [0-9a-fA-F]; Integer.parseUnsignedInt also took a leading '+'
+      // (#347).
+      return HexFormat.of().parseHex(hex);
+    } catch (IllegalArgumentException e) {
       throw new SecretResolutionException("Encryption key contains non-hex characters", e);
     }
   }

@@ -166,6 +166,136 @@ class FileDestinationTest {
   }
 
   @Test
+  void shouldNotRewriteCsvHeaderWhenAppendingToNonEmptyFile() throws Exception {
+    Path outputFile = tempDir.resolve("output.csv");
+
+    FileDestinationConfig config1 = configBuilder.filePath(outputFile).build();
+    try (FileDestination destination = new FileDestination(config1, new CsvSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", "John")));
+    }
+
+    FileDestinationConfig config2 = configBuilder.filePath(outputFile).append(true).build();
+    try (FileDestination destination = new FileDestination(config2, new CsvSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", "Jane")));
+    }
+
+    assertThat(Files.readAllLines(outputFile)).containsExactly("\"name\"", "\"John\"", "\"Jane\"");
+  }
+
+  @Test
+  void shouldWriteCsvHeaderWhenAppendingToMissingFile() throws Exception {
+    Path outputFile = tempDir.resolve("fresh.csv");
+
+    FileDestinationConfig config = configBuilder.filePath(outputFile).append(true).build();
+    try (FileDestination destination = new FileDestination(config, new CsvSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", "Jane")));
+    }
+
+    assertThat(Files.readAllLines(outputFile)).containsExactly("\"name\"", "\"Jane\"");
+  }
+
+  @Test
+  void shouldWriteCsvHeaderWhenAppendingToEmptyFile() throws Exception {
+    Path outputFile = tempDir.resolve("empty.csv");
+    Files.createFile(outputFile);
+
+    FileDestinationConfig config = configBuilder.filePath(outputFile).append(true).build();
+    try (FileDestination destination = new FileDestination(config, new CsvSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", "Jane")));
+    }
+
+    assertThat(Files.readAllLines(outputFile)).containsExactly("\"name\"", "\"Jane\"");
+  }
+
+  @Test
+  void shouldNotRewriteCsvHeaderWhenAppendingToNonEmptyGzipFile() throws Exception {
+    Path outputFile = tempDir.resolve("output.csv");
+
+    for (String name : List.of("John", "Jane")) {
+      FileDestinationConfig config =
+          configBuilder.filePath(outputFile).compress(true).append(true).build();
+      try (FileDestination destination = new FileDestination(config, new CsvSerializer())) {
+        destination.open();
+        destination.write(new LinkedHashMap<>(Map.of("name", name)));
+      }
+    }
+
+    List<String> lines = new ArrayList<>();
+    try (BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(
+                new GZIPInputStream(Files.newInputStream(tempDir.resolve("output.csv.gz"))),
+                StandardCharsets.UTF_8))) {
+      reader.lines().forEach(lines::add);
+    }
+    assertThat(lines).containsExactly("\"name\"", "\"John\"", "\"Jane\"");
+  }
+
+  @Test
+  void shouldProduceReadableAvroContainerWhenAppendingToExistingFile() throws Exception {
+    Path outputFile = tempDir.resolve("append.avro");
+
+    for (String name : List.of(ALICE, "Bob")) {
+      FileDestinationConfig config = configBuilder.filePath(outputFile).append(true).build();
+      try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+        destination.open();
+        destination.write(new LinkedHashMap<>(Map.of("name", name)));
+      }
+    }
+
+    List<String> names = new ArrayList<>();
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      reader.forEach(r -> names.add(r.get("name").toString()));
+    }
+    assertThat(names).containsExactly(ALICE, "Bob");
+  }
+
+  @Test
+  void shouldRejectAvroAppendAndKeepFileIntactWhenSchemaDiffers() throws Exception {
+    Path outputFile = tempDir.resolve("mismatch.avro");
+    FileDestinationConfig config = configBuilder.filePath(outputFile).append(true).build();
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", ALICE)));
+    }
+
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      assertThatThrownBy(() -> destination.write(new LinkedHashMap<>(Map.of("age", 30))))
+          .isInstanceOf(DestinationException.class)
+          .hasMessageContaining("schema differs");
+    }
+
+    List<String> names = new ArrayList<>();
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      reader.forEach(r -> names.add(r.get("name").toString()));
+    }
+    assertThat(names).containsExactly(ALICE);
+  }
+
+  @Test
+  void shouldCreateAvroContainerWhenAppendingToMissingFile() throws Exception {
+    Path outputFile = tempDir.resolve("fresh.avro");
+    FileDestinationConfig config = configBuilder.filePath(outputFile).append(true).build();
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      destination.write(new LinkedHashMap<>(Map.of("name", ALICE)));
+    }
+
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(outputFile.toFile(), new GenericDatumReader<>())) {
+      assertThat(reader.next().get("name")).hasToString(ALICE);
+      assertThat(reader.hasNext()).isFalse();
+    }
+  }
+
+  @Test
   void shouldOverwriteFileByDefault() throws Exception {
     Path outputFile = tempDir.resolve(OUTPUT_JSON);
 

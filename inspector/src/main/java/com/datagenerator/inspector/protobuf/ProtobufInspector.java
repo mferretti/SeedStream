@@ -32,10 +32,17 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Reads a compiled protobuf {@code FileDescriptorSet} ({@code .desc}/{@code .binpb}/{@code
@@ -45,8 +52,6 @@ import java.util.Map;
 public class ProtobufInspector {
 
   static final long MAX_DESCRIPTOR_BYTES = 64L * 1024 * 1024;
-
-  private final ProtobufTypeMapper mapper = new ProtobufTypeMapper();
 
   static void validateSize(long size) {
     if (size > MAX_DESCRIPTOR_BYTES) {
@@ -69,12 +74,18 @@ public class ProtobufInspector {
     Map<String, Map<String, String>> comments = new LinkedHashMap<>();
     List<String> warnings = new ArrayList<>();
 
-    for (FileDescriptor fd : fileDescriptors) {
-      for (Descriptor message : allMessages(fd)) {
-        DataStructure structure = toStructure(message, comments, warnings);
-        if (structure != null) {
-          structures.add(structure);
-        }
+    List<Descriptor> messages =
+        fileDescriptors.stream().flatMap(fd -> allMessages(fd).stream()).toList();
+    Map<String, String> names = assignStructureNames(messages, warnings);
+    ProtobufTypeMapper mapper =
+        new ProtobufTypeMapper(
+            d -> names.getOrDefault(d.getFullName(), Names.toSnakeCase(d.getName())));
+
+    for (Descriptor message : messages) {
+      DataStructure structure =
+          toStructure(message, names.get(message.getFullName()), mapper, comments, warnings);
+      if (structure != null) {
+        structures.add(structure);
       }
     }
 
@@ -135,9 +146,79 @@ public class ProtobufInspector {
     }
   }
 
+  /**
+   * Assigns each message (by full name) a structure name. The snake-cased short name is used when
+   * it is unique; messages sharing a short name (e.g. {@code Order.Item} and {@code Invoice.Item},
+   * or {@code v1.Item} and {@code v2.Item}) are qualified by their enclosing messages and then, if
+   * still ambiguous, by their package, so no structure overwrites another (#350).
+   *
+   * @throws InspectorException if names are still ambiguous after full qualification
+   */
+  static Map<String, String> assignStructureNames(
+      List<Descriptor> messages, List<String> warnings) {
+    Map<String, String> names = new LinkedHashMap<>();
+    messages.forEach(d -> names.put(d.getFullName(), Names.toSnakeCase(d.getName())));
+    for (boolean withPackage : new boolean[] {false, true}) {
+      Set<String> ambiguous = duplicates(names.values());
+      if (ambiguous.isEmpty()) {
+        break;
+      }
+      for (Descriptor d : messages) {
+        if (ambiguous.contains(names.get(d.getFullName()))) {
+          names.put(d.getFullName(), qualifiedName(d, withPackage));
+        }
+      }
+    }
+    Set<String> ambiguous = duplicates(names.values());
+    if (!ambiguous.isEmpty()) {
+      throw new InspectorException(
+          "Cannot derive unique structure names for protobuf messages; ambiguous: " + ambiguous);
+    }
+    for (Descriptor d : messages) {
+      String shortName = Names.toSnakeCase(d.getName());
+      String name = names.get(d.getFullName());
+      if (!name.equals(shortName)) {
+        warnings.add(
+            "message '"
+                + d.getFullName()
+                + "' emitted as '"
+                + name
+                + "' — short name '"
+                + shortName
+                + "' is shared by another message");
+      }
+    }
+    return names;
+  }
+
+  private static String qualifiedName(Descriptor d, boolean withPackage) {
+    Deque<String> parts = new ArrayDeque<>();
+    for (Descriptor c = d; c != null; c = c.getContainingType()) {
+      parts.addFirst(Names.toSnakeCase(c.getName()));
+    }
+    String pkg = d.getFile().getPackage();
+    if (withPackage && !pkg.isEmpty()) {
+      List<String> pkgParts = Arrays.stream(pkg.split("\\.")).map(Names::toSnakeCase).toList();
+      for (int i = pkgParts.size() - 1; i >= 0; i--) {
+        parts.addFirst(pkgParts.get(i));
+      }
+    }
+    return String.join("_", parts);
+  }
+
+  private static Set<String> duplicates(Collection<String> values) {
+    Set<String> seen = new HashSet<>();
+    Set<String> dups = new LinkedHashSet<>();
+    values.forEach(v -> (seen.add(v) ? seen : dups).add(v));
+    return dups;
+  }
+
   private DataStructure toStructure(
-      Descriptor descriptor, Map<String, Map<String, String>> comments, List<String> warnings) {
-    String name = Names.toSnakeCase(descriptor.getName());
+      Descriptor descriptor,
+      String name,
+      ProtobufTypeMapper mapper,
+      Map<String, Map<String, String>> comments,
+      List<String> warnings) {
 
     if (descriptor.getFields().isEmpty()) {
       warnings.add("message '" + descriptor.getName() + "' has no fields — skipped");

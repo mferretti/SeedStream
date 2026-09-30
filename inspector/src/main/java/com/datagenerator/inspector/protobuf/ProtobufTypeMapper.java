@@ -21,15 +21,33 @@ import com.datagenerator.inspector.FakerTypes;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.NameHints;
 import com.datagenerator.inspector.Names;
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.function.Function;
 
 /**
  * Maps a single protobuf {@link FieldDescriptor} to a SeedStream datatype string. Mirrors the
  * resolution logic of {@code SchemaTypeMapper} adapted for the protobuf type system.
  */
 public final class ProtobufTypeMapper {
+
+  private final Function<Descriptor, String> structureName;
+
+  /** Names referenced message structures by their snake-cased short name. */
+  public ProtobufTypeMapper() {
+    this(d -> Names.toSnakeCase(d.getName()));
+  }
+
+  /**
+   * @param namer resolves the structure name emitted for a message type; must agree with the names
+   *     the inspector gives the structures themselves so {@code object[...]} references resolve
+   *     (#350)
+   */
+  public ProtobufTypeMapper(Function<Descriptor, String> namer) {
+    this.structureName = namer;
+  }
 
   private static final Set<String> UNKNOWN_MESSAGE_TYPES =
       Set.of(
@@ -97,6 +115,6 @@ public final class ProtobufTypeMapper {
     if (UNKNOWN_MESSAGE_TYPES.contains(fn)) {
       return MappedType.unknownType(Defaults.STRING);
     }
-    return MappedType.declared("object[" + Names.toSnakeCase(f.getMessageType().getName()) + "]");
+    return MappedType.declared("object[" + structureName.apply(f.getMessageType()) + "]");
   }
 }

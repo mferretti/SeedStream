@@ -20,8 +20,11 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.schema.exception.SecretResolutionException;
 import java.util.Arrays;
+import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AesGcmCryptoTest {
 
@@ -95,11 +98,16 @@ class AesGcmCryptoTest {
   @Test
   void decryptWithTamperedCiphertextThrows() {
     String ciphertext = AesGcmCrypto.encrypt(key, "secret");
-    // flip last character of base64 payload
-    String tampered = ciphertext.substring(0, ciphertext.length() - 1) + "X";
+    // Flip one bit of the last decoded byte (GCM tag) so the tamper is never a no-op.
+    int payloadStart = ciphertext.indexOf(':') + 1;
+    byte[] payload = Base64.getDecoder().decode(ciphertext.substring(payloadStart));
+    payload[payload.length - 1] ^= 0x01;
+    String tampered =
+        ciphertext.substring(0, payloadStart) + Base64.getEncoder().encodeToString(payload);
 
     assertThatThrownBy(() -> AesGcmCrypto.decrypt(key, tampered))
-        .isInstanceOf(SecretResolutionException.class);
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("authentication tag mismatch");
   }
 
   @Test
@@ -143,6 +151,62 @@ class AesGcmCryptoTest {
   void hexToKeyThrowsOnNullInput() {
     assertThatThrownBy(() -> AesGcmCrypto.hexToKey(null))
         .isInstanceOf(SecretResolutionException.class);
+  }
+
+  @Test
+  void hexToKeyDecodesEveryBytePositionIncludingSignBoundaries() {
+    // 00 01 ... 1b then 7f 80 fe ff: checks ordering, the last byte and signed-byte conversion.
+    StringBuilder hex = new StringBuilder();
+    for (int i = 0; i < 28; i++) {
+      hex.append("%02x".formatted(i));
+    }
+    hex.append("7f80feff");
+
+    byte[] decoded = AesGcmCrypto.hexToKey(hex.toString());
+
+    assertThat(decoded).hasSize(32);
+    for (int i = 0; i < 28; i++) {
+      assertThat(decoded[i]).isEqualTo((byte) i);
+    }
+    assertThat(Arrays.copyOfRange(decoded, 28, 32))
+        .containsExactly((byte) 0x7F, (byte) 0x80, (byte) 0xFE, (byte) 0xFF);
+  }
+
+  @Test
+  void hexToKeyAcceptsMixedCase() {
+    assertThat(AesGcmCrypto.hexToKey("aB".repeat(32))).containsOnly((byte) 0xAB);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1",
+        "0x00000000000000000000000000000000000000000000000000000000000000",
+        "gg00000000000000000000000000000000000000000000000000000000000000",
+        " 000000000000000000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000000000000000000z"
+      })
+  void hexToKeyThrowsWhenKeyHasRightLengthButNonHexCharacters(String hex) {
+    assertThat(hex).hasSize(64);
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey(hex))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("non-hex");
+  }
+
+  @Test
+  void hexToKeyThrowsOnTooLongHex() {
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey("a".repeat(65)))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("65 characters");
+  }
+
+  @Test
+  void hexToKeyThrowsWhenKeyContainsSignCharacters() {
+    // Integer.parseUnsignedInt accepts a leading '+', so "+1" must not slip through as 0x01.
+    String hex = "+1".repeat(32);
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey(hex))
+        .isInstanceOf(SecretResolutionException.class)
+        .hasMessageContaining("non-hex");
   }
 
   @Test

@@ -34,29 +34,40 @@ public class TypeParser {
     // Default constructor
   }
 
+  // Structure, field and group names: lowercase snake_case, digits allowed after the first
+  // character (inspect keeps them, e.g. Item2 -> item2, package v1, #355).
+  private static final String IDENT = "[a-z_][a-z0-9_]*";
+
   private static final Pattern PRIMITIVE_PATTERN =
       Pattern.compile(
           "^(char|int|decimal|date|timestamp)\\[((?:(?!\\.\\.)[^\\]])++)\\.\\.([^\\]]++)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");
-  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[([a-z_]+)\\]$");
+  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[(" + IDENT + ")\\]$");
   private static final Pattern ARRAY_PATTERN =
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
   private static final Pattern UNIQUE_PATTERN =
-      Pattern.compile("^unique\\[(?:([a-z_][a-z0-9_]*)\\s*,\\s*)?(-?\\d+)\\.\\.(-?\\d+|count)\\]$");
+      Pattern.compile("^unique\\[(?:(" + IDENT + ")\\s*,\\s*)?(-?\\d+)\\.\\.(-?\\d+|count)\\]$");
   private static final Pattern SERIAL_PATTERN = Pattern.compile("^serial(?:\\[(-?\\d+)\\])?$");
   private static final Pattern REF_UNIQUE_PATTERN =
       Pattern.compile(
-          "^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=([a-z_][a-z0-9_]*))?\\]$");
+          "^ref\\[("
+              + IDENT
+              + ")\\.("
+              + IDENT
+              + "),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=("
+              + IDENT
+              + "))?\\]$");
   private static final Pattern PARENT_REF_PATTERN =
-      Pattern.compile("^ref\\[parent\\.([a-z_]+)\\]$");
+      Pattern.compile("^ref\\[parent\\.(" + IDENT + ")\\]$");
 
-  private static final Pattern REF_PATTERN = Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+)\\]$");
+  private static final Pattern REF_PATTERN =
+      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + ")\\]$");
 
   private static final Pattern REF_RANGE_PATTERN =
-      Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + "),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
 
   private static final Pattern REF_COUNT_PATTERN =
-      Pattern.compile("^ref\\[([a-z_]+)\\.([a-z_]+),\\s*(-?\\d+)\\.\\.count\\]$");
+      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + "),\\s*(-?\\d+)\\.\\.count\\]$");
 
   /**
    * Parse a datatype string into a DataType object.
@@ -85,13 +96,13 @@ public class TypeParser {
       return parseUnique(
           m.group(5), m.group(3), m.group(4), m.group(1) + "." + m.group(2), typeString);
     m = REF_COUNT_PATTERN.matcher(trimmed);
-    if (m.matches()) return parseRefCount(m);
+    if (m.matches()) return parseRefCount(m, typeString);
     m = REF_RANGE_PATTERN.matcher(trimmed);
     if (m.matches()) return parseRefRange(m, typeString);
     m = REF_PATTERN.matcher(trimmed);
     if (m.matches()) return new ReferenceType(m.group(1), m.group(2), null, null, false);
     m = ARRAY_PATTERN.matcher(trimmed);
-    if (m.matches()) return parseArray(m);
+    if (m.matches()) return parseArray(m, typeString);
 
     m = UNIQUE_PATTERN.matcher(trimmed);
     if (m.matches()) return parseUnique(m.group(1), m.group(2), m.group(3), null, typeString);
@@ -123,13 +134,14 @@ public class TypeParser {
     return new EnumType(values);
   }
 
-  private static DataType parseRefCount(Matcher m) {
-    return new ReferenceType(m.group(1), m.group(2), Long.parseLong(m.group(3)), null, true);
+  private static DataType parseRefCount(Matcher m, String typeString) {
+    return new ReferenceType(
+        m.group(1), m.group(2), parseLongBound(m.group(3), typeString), null, true);
   }
 
   private static DataType parseRefRange(Matcher m, String typeString) {
-    long min = Long.parseLong(m.group(3));
-    long max = Long.parseLong(m.group(4));
+    long min = parseLongBound(m.group(3), typeString);
+    long max = parseLongBound(m.group(4), typeString);
     if (min > max) {
       throw new TypeParseException(
           "Invalid ref range: min (%d) > max (%d) in: %s".formatted(min, max, typeString));
@@ -161,13 +173,36 @@ public class TypeParser {
     }
   }
 
-  private DataType parseArray(Matcher m) {
-    int minLength = Integer.parseInt(m.group(2));
-    int maxLength = Integer.parseInt(m.group(3));
+  private DataType parseArray(Matcher m, String typeString) {
+    int minLength = parseIntBound(m.group(2), typeString);
+    int maxLength = parseIntBound(m.group(3), typeString);
     if (minLength < 0 || maxLength < minLength) {
       throw new TypeParseException(
           "Invalid array length constraints: min=" + minLength + ", max=" + maxLength);
     }
     return new ArrayType(parse(m.group(1).trim()), minLength, maxLength);
+  }
+
+  // The patterns only admit digits, so a NumberFormatException here always means overflow (#346).
+  private static long parseLongBound(String value, String typeString) {
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException e) {
+      throw new TypeParseException(
+          "Numeric bound %s is out of range (max %d) in: %s"
+              .formatted(value, Long.MAX_VALUE, typeString),
+          e);
+    }
+  }
+
+  private static int parseIntBound(String value, String typeString) {
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      throw new TypeParseException(
+          "Numeric bound %s is out of range (max %d) in: %s"
+              .formatted(value, Integer.MAX_VALUE, typeString),
+          e);
+    }
   }
 }
