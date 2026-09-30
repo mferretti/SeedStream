@@ -18,11 +18,15 @@ package com.datagenerator.generators.primitive;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.PrimitiveType;
+import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.generators.GeneratorException;
 import java.time.Instant;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class TimestampGeneratorTest {
 
@@ -267,6 +271,65 @@ class TimestampGeneratorTest {
     // 05:00 at +05:00 is midnight UTC; the offset must not be dropped and read as UTC.
     String bound = "2024-01-01T05:00:00+05:00";
     PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, bound, bound);
+
+    assertThat(generator.generate(RANDOM, type)).isEqualTo(Instant.parse("2024-01-01T00:00:00Z"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "2024-01-01T00:00:00Z, 2024-01-01T00:00:00Z",
+    "2024-01-01T00:00:00, 2024-01-01T00:00:00Z",
+    "2023-12-31T20:30:00-03:30, 2024-01-01T00:00:00Z",
+    "2024-01-01T01:00:00+01:00, 2024-01-01T00:00:00Z"
+  })
+  void shouldResolveBoundToUtcInstantWhenOffsetIsPresentOrAbsent(String bound, String expected) {
+    PrimitiveType type = new PrimitiveType(PrimitiveType.Kind.TIMESTAMP, bound, bound);
+
+    assertThat(generator.generate(new Random(1), type)).isEqualTo(Instant.parse(expected));
+  }
+
+  @Test
+  void shouldStayWithinOffsetAdjustedRangeWhenBoundsMixOffsetAndUtc() {
+    // min = 10:00+05:00 = 05:00Z, max = 06:00Z: a one-hour window in UTC.
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.TIMESTAMP, "2024-01-01T10:00:00+05:00", "2024-01-01T06:00:00Z");
+    Instant min = Instant.parse("2024-01-01T05:00:00Z");
+    Instant max = Instant.parse("2024-01-01T06:00:00Z");
+    Random random = new Random(7);
+
+    for (int i = 0; i < 500; i++) {
+      assertThat((Instant) generator.generate(random, type)).isBetween(min, max);
+    }
+  }
+
+  @Test
+  void shouldRejectRangeWhenOffsetMakesMinLaterThanMax() {
+    // Wall clocks look ordered (06:00 < 10:00) but 06:00-05:00 = 11:00Z is after 10:00Z.
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.TIMESTAMP, "2024-01-01T06:00:00-05:00", "2024-01-01T10:00:00Z");
+
+    var rnd = RANDOM;
+    assertThatThrownBy(() -> generator.generate(rnd, type)).isInstanceOf(GeneratorException.class);
+  }
+
+  @Test
+  void shouldRejectBoundWhenOffsetIsOutOfRange() {
+    PrimitiveType type =
+        new PrimitiveType(
+            PrimitiveType.Kind.TIMESTAMP, "2024-01-01T00:00:00+25:00", "2024-12-31T00:00:00Z");
+
+    var rnd = RANDOM;
+    assertThatThrownBy(() -> generator.generate(rnd, type))
+        .isInstanceOf(GeneratorException.class)
+        .hasMessageContaining("minValue");
+  }
+
+  @Test
+  void shouldHonourOffsetWhenTypeComesFromYamlSyntax() {
+    DataType type =
+        new TypeParser().parse("timestamp[2024-01-01T05:00:00+05:00..2024-01-01T05:00:00+05:00]");
 
     assertThat(generator.generate(RANDOM, type)).isEqualTo(Instant.parse("2024-01-01T00:00:00Z"));
   }
