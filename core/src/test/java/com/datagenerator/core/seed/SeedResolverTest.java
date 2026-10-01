@@ -38,6 +38,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 
 class SeedResolverTest {
@@ -74,6 +75,28 @@ class SeedResolverTest {
     long seed = resolver.resolve(config);
 
     assertThat(seed).isEqualTo(99999L);
+  }
+
+  @Test
+  void shouldResolveEachFileIndependentlyWhenOneResolverReadsSeveralFiles() throws Exception {
+    Path first = tempDir.resolve("seed1.txt");
+    Path second = tempDir.resolve("seed2.txt");
+    Files.writeString(first, "111");
+    Files.writeString(second, "222");
+
+    assertThat(resolver.resolve(new SeedConfig.FileSeed("file", first.toString()))).isEqualTo(111L);
+    assertThat(resolver.resolve(new SeedConfig.FileSeed("file", second.toString())))
+        .isEqualTo(222L);
+  }
+
+  @ParameterizedTest
+  @ValueSource(longs = {Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE - 1000})
+  void shouldResolveFileSeedAtLongExtremes(long value) throws Exception {
+    Path seedFile = tempDir.resolve("extreme-seed.txt");
+    Files.writeString(seedFile, String.valueOf(value));
+
+    assertThat(resolver.resolve(new SeedConfig.FileSeed("file", seedFile.toString())))
+        .isEqualTo(value);
   }
 
   @Test
