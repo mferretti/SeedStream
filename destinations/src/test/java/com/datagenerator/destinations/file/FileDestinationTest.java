@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -46,6 +48,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class FileDestinationTest {
   private static final String ALICE = "Alice";
@@ -899,5 +902,66 @@ class FileDestinationTest {
       case "avro" -> new AvroSerializer();
       default -> new JsonSerializer();
     };
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void shouldWriteByteIdenticalAvroFilesWhenSameRecordsAreWrittenTwice(boolean compress)
+      throws Exception {
+    Path first = writeAvro(tempDir.resolve("first.avro"), compress);
+    Path second = writeAvro(tempDir.resolve("second.avro"), compress);
+
+    assertThat(Files.readAllBytes(second)).isEqualTo(Files.readAllBytes(first));
+  }
+
+  @Test
+  void shouldUseSchemaDerivedSyncMarkerInAvroFile() throws Exception {
+    Path file = writeAvro(tempDir.resolve("sync.avro"), false);
+
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(file.toFile(), new GenericDatumReader<>())) {
+      byte[] expected = FileDestination.syncMarker(reader.getSchema());
+      assertThat(expected).hasSize(16);
+      // The header ends with the 16-byte sync marker; it must be the schema-derived one.
+      byte[] bytes = Files.readAllBytes(file);
+      assertThat(indexOf(bytes, expected)).isPositive();
+    }
+  }
+
+  @Test
+  void shouldDeriveDifferentSyncMarkersForDifferentSchemas() {
+    Schema a = SchemaBuilder.record("R").fields().requiredString("name").endRecord();
+    Schema b = SchemaBuilder.record("R").fields().requiredLong("name").endRecord();
+
+    assertThat(FileDestination.syncMarker(a))
+        .isEqualTo(FileDestination.syncMarker(a))
+        .isNotEqualTo(FileDestination.syncMarker(b));
+  }
+
+  private Path writeAvro(Path file, boolean compress) {
+    FileDestinationConfig config = configBuilder.filePath(file).compress(compress).build();
+    try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
+      destination.open();
+      for (int i = 0; i < 50; i++) {
+        Map<String, Object> rec = new LinkedHashMap<>();
+        rec.put("name", "n" + i);
+        rec.put("age", i);
+        destination.write(rec);
+      }
+    }
+    return file;
+  }
+
+  private static int indexOf(byte[] haystack, byte[] needle) {
+    outer:
+    for (int i = 0; i <= haystack.length - needle.length; i++) {
+      for (int j = 0; j < needle.length; j++) {
+        if (haystack[i + j] != needle[j]) {
+          continue outer;
+        }
+      }
+      return i;
+    }
+    return -1;
   }
 }
