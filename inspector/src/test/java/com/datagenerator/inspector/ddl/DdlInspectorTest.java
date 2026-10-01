@@ -16,16 +16,15 @@
 
 package com.datagenerator.inspector.ddl;
 
+import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
-import com.datagenerator.schema.model.DataStructure;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -110,15 +109,5 @@ class DdlInspectorTest {
     Path sql = dir.resolve("schema.sql");
     Files.writeString(sql, DDL);
     return new DdlInspector().inspect(sql);
-  }
-
-  private Map<String, String> datatypesOf(Inspection inspection, String structureName) {
-    DataStructure structure =
-        inspection.structures().stream()
-            .filter(s -> s.getName().equals(structureName))
-            .findFirst()
-            .orElseThrow();
-    return structure.getData().entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype(), (a, b) -> a));
   }
 }

@@ -160,27 +160,43 @@ class DatabaseDestinationTest {
 
   @Test
   void shouldHandleNestedObjectViaStage2Decomposition() throws SQLException {
-    // Stage 2: nested objects are auto-decomposed into child-table inserts (no exception thrown)
+    // Stage 2: a nested object becomes a row in its own table, linked by an injected parent FK.
     try (Statement st = h2Connection.createStatement()) {
       st.execute("CREATE TABLE IF NOT EXISTS address (id INT, city VARCHAR(255), users_id INT)");
     }
+    try {
+      Map<String, Object> address = new LinkedHashMap<>();
+      address.put("id", 200);
+      address.put("city", "Rome");
 
-    Map<String, Object> address = new LinkedHashMap<>();
-    address.put("id", 200);
-    address.put("city", "Rome");
+      Map<String, Object> nestedRecord = new LinkedHashMap<>();
+      nestedRecord.put("id", 1);
+      nestedRecord.put("address", address);
 
-    Map<String, Object> nestedRecord = new LinkedHashMap<>();
-    nestedRecord.put("id", 1);
-    nestedRecord.put("address", address);
+      try (DatabaseDestination dest = new DatabaseDestination(config())) {
+        dest.open();
+        dest.write(nestedRecord);
+        dest.flush();
+      }
 
-    try (DatabaseDestination dest = new DatabaseDestination(config())) {
-      dest.open();
-      assertThatCode(() -> dest.write(nestedRecord)).doesNotThrowAnyException();
-      dest.flush();
-    }
-
-    try (Statement st = h2Connection.createStatement()) {
-      st.execute("DROP TABLE IF EXISTS address");
+      try (Statement st = h2Connection.createStatement();
+          ResultSet parent = st.executeQuery("SELECT id FROM users")) {
+        assertThat(parent.next()).isTrue();
+        assertThat(parent.getInt("id")).isEqualTo(1);
+        assertThat(parent.next()).isFalse();
+      }
+      try (Statement st = h2Connection.createStatement();
+          ResultSet child = st.executeQuery("SELECT id, city, users_id FROM address")) {
+        assertThat(child.next()).as("nested object written to its own table").isTrue();
+        assertThat(child.getInt("id")).isEqualTo(200);
+        assertThat(child.getString("city")).isEqualTo("Rome");
+        assertThat(child.getInt("users_id")).as("injected parent FK").isEqualTo(1);
+        assertThat(child.next()).isFalse();
+      }
+    } finally {
+      try (Statement st = h2Connection.createStatement()) {
+        st.execute("DROP TABLE IF EXISTS address");
+      }
     }
   }
 

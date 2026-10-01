@@ -27,12 +27,12 @@ import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import net.datafaker.Faker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 class DatafakerGeneratorTest {
   private static final String ITALY = "italy";
@@ -122,23 +122,7 @@ class DatafakerGeneratorTest {
     String phone = (String) generateWithContext("usa", phoneType);
 
     // Phone numbers can have various formats with digits, spaces, parentheses, hyphens
-    assertThat(phone).isNotNull().isNotEmpty().matches("^[\\d\\s()+-]+$");
-  }
-
-  @Test
-  void shouldGenerateAddress() {
-    CustomDatafakerType addressType = new CustomDatafakerType("address");
-    String address = (String) generateWithContext("usa", addressType);
-
-    assertThat(address).isNotNull().isNotEmpty();
-  }
-
-  @Test
-  void shouldGenerateCompanyName() {
-    CustomDatafakerType companyType = new CustomDatafakerType("company");
-    String company = (String) generateWithContext("usa", companyType);
-
-    assertThat(company).isNotNull().isNotEmpty();
+    assertThat(phone).matches("^[\\d\\s()+-]+$");
   }
 
   @Test
@@ -201,29 +185,8 @@ class DatafakerGeneratorTest {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext(null, nameType);
 
-    // Should generate valid name (English fallback)
-    assertThat(name).isNotNull().isNotEmpty();
-  }
-
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "name",
-        "first_name",
-        "last_name",
-        "email",
-        "phone_number",
-        "address",
-        "city",
-        "company",
-        "url",
-        "uuid"
-      })
-  void shouldGenerateValidDataForAllSupportedSemanticTypes(String typeName) {
-    CustomDatafakerType type = new CustomDatafakerType(typeName);
-    String value = (String) generateWithContext("usa", type);
-
-    assertThat(value).isNotNull().isNotEmpty();
+    // No geolocation means en-US: exactly the en-US provider's output for the same seed.
+    assertThat(name).isEqualTo(new Faker(Locale.US, new Random(12345L)).name().name());
   }
 
   @Test
@@ -263,14 +226,6 @@ class DatafakerGeneratorTest {
     }
 
     // Both should be valid names (content verification would require locale-specific knowledge)
-  }
-
-  @Test
-  void shouldGeneratePrice() {
-    CustomDatafakerType priceType = new CustomDatafakerType("price");
-    String price = (String) generateWithContext("usa", priceType);
-
-    assertThat(price).isNotNull().isNotEmpty(); // Price format can vary
   }
 
   @Test

@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,7 +70,8 @@ class DataStructureParserTest {
 
     assertThatThrownBy(() -> parser.parse(nonExistent))
         .isInstanceOf(SchemaParseException.class)
-        .hasMessageContaining("not found");
+        .hasMessageContaining("not found")
+        .hasMessageContaining("missing.yaml");
   }
 
   @Test
@@ -84,9 +86,13 @@ class DataStructureParserTest {
     Path file = tempDir.resolve("invalid.yaml");
     Files.writeString(file, yaml);
 
+    // The message must name the violated property, and only that one.
     assertThatThrownBy(() -> parser.parse(file))
         .isInstanceOf(SchemaParseException.class)
-        .hasMessageContaining("Validation failed");
+        .hasMessageContaining("Validation failed")
+        .hasMessageContaining("invalid.yaml")
+        .hasMessageContaining("name:")
+        .hasMessageNotContaining("data:");
   }
 
   @Test
@@ -102,7 +108,20 @@ class DataStructureParserTest {
 
     assertThatThrownBy(() -> parser.parse(file))
         .isInstanceOf(SchemaParseException.class)
-        .hasMessageContaining("Validation failed");
+        .hasMessageContaining("Validation failed")
+        .hasMessageContaining("data:")
+        .hasMessageNotContaining("name:");
+  }
+
+  @Test
+  void shouldFailWithReadErrorWhenYamlIsMalformed() throws Exception {
+    Path file = tempDir.resolve("broken.yaml");
+    Files.writeString(file, "name: test\ndata:\n  field1: [unclosed\n");
+
+    assertThatThrownBy(() -> parser.parse(file))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("broken.yaml")
+        .hasCauseInstanceOf(IOException.class);
   }
 
   @Test

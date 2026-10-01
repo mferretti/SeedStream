@@ -16,6 +16,7 @@
 
 package com.datagenerator.inspector.protobuf;
 
+import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.inspector.Inspection;
@@ -78,16 +79,6 @@ class ProtobufInspectorTest {
       setBuilder.addFile(p);
     }
     return writeDescriptorSet(setBuilder.build());
-  }
-
-  private Map<String, String> datatypesOf(Inspection inspection, String structureName) {
-    DataStructure structure =
-        inspection.structures().stream()
-            .filter(s -> s.getName().equals(structureName))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Structure not found: " + structureName));
-    return structure.getData().entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype(), (a, b) -> a));
   }
 
   // ---------------------------------------------------------------------------
@@ -356,20 +347,23 @@ class ProtobufInspectorTest {
   }
 
   @Test
-  void shouldThrowInspectorExceptionForInvalidBytes() throws IOException {
+  void shouldThrowInspectorExceptionForTruncatedDescriptorSet() throws IOException {
+    // Field 1 (file) is length-delimited and claims 5 bytes but only 1 follows: always invalid.
     Path bad = tempDir.resolve("bad.desc");
-    Files.write(bad, new byte[] {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
-    // Corrupt content — parsing may succeed with proto3 leniency or fail, but inspector
-    // should handle both: if parsing fails it throws; if it succeeds it emits empty structures.
-    // We only verify that the call does not throw an unexpected exception type.
-    ProtobufInspector inspector = new ProtobufInspector();
-    // Either returns an inspection or throws InspectorException — never anything else
-    try {
-      Inspection result = inspector.inspect(bad);
-      assertThat(result).isNotNull();
-    } catch (InspectorException e) {
-      assertThat(e).hasMessageContaining("protobuf descriptor set");
-    }
+    Files.write(bad, new byte[] {0x0A, 0x05, 0x01});
+
+    assertThatThrownBy(() -> new ProtobufInspector().inspect(bad))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("protobuf descriptor set")
+        .hasMessageContaining("bad.desc");
+  }
+
+  @Test
+  void shouldReturnNoStructuresForEmptyDescriptorSet() throws IOException {
+    Path empty = tempDir.resolve("empty.desc");
+    Files.write(empty, new byte[0]);
+
+    assertThat(new ProtobufInspector().inspect(empty).structures()).isEmpty();
   }
 
   @Test

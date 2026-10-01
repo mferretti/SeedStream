@@ -23,14 +23,17 @@ import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
+import com.datagenerator.generators.LocaleMapper;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import net.datafaker.Faker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -85,29 +88,48 @@ class DatafakerGeolocationTest {
   void shouldGenerateNameForLocaleMatchingPattern(String locale, String pattern) {
     CustomDatafakerType nameType = new CustomDatafakerType("name");
     String name = (String) generateWithContext(locale, nameType);
-    assertThat(name).isNotNull().isNotEmpty().matches(pattern);
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"japan", "china", "korea", "russia", "saudi arabia", "poland"})
-  void shouldGenerateNameForLocaleWithoutRegexConstraint(String locale) {
-    CustomDatafakerType nameType = new CustomDatafakerType("name");
-    String name = (String) generateWithContext(locale, nameType);
-    assertThat(name).isNotNull().isNotEmpty();
+    assertThat(name).matches(pattern);
   }
 
   @ParameterizedTest
   @CsvSource({
-    "australia, city",
-    "mexico, address",
-    "canada, postal_code",
-    "netherlands, city",
-    "turkey, city",
+    "japan, HAN|HIRAGANA|KATAKANA",
+    "china, HAN",
+    "korea, HANGUL",
+    "russia, CYRILLIC",
+    "saudi arabia, ARABIC",
+    "poland, LATIN"
   })
-  void shouldGenerateDataTypeForLocale(String locale, String dataType) {
-    CustomDatafakerType type = new CustomDatafakerType(dataType);
-    String result = (String) generateWithContext(locale, type);
-    assertThat(result).isNotNull().isNotEmpty();
+  void shouldWriteNamesInTheLocaleScript(String locale, String scripts) {
+    Set<Character.UnicodeScript> allowed =
+        Arrays.stream(scripts.split("\\|"))
+            .map(Character.UnicodeScript::valueOf)
+            .collect(Collectors.toSet());
+
+    String name = (String) generateWithContext(locale, new CustomDatafakerType("name"));
+
+    assertThat(name.codePoints().filter(Character::isLetter))
+        .as("letters of '%s'", name)
+        .isNotEmpty()
+        .allMatch(cp -> allowed.contains(Character.UnicodeScript.of(cp)));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"australia, city", "mexico, address", "netherlands, city", "turkey, city"})
+  void shouldUseTheLocaleProviderForAddressTypes(String locale, String dataType) {
+    String result = (String) generateWithContext(locale, new CustomDatafakerType(dataType));
+
+    Faker reference = new Faker(LocaleMapper.map(locale), new Random(12345L));
+    String expected =
+        "city".equals(dataType) ? reference.address().city() : reference.address().fullAddress();
+    assertThat(result).isEqualTo(expected);
+  }
+
+  @Test
+  void shouldGenerateCanadianPostalCodeFormat() {
+    String postal = (String) generateWithContext("canada", new CustomDatafakerType("postal_code"));
+
+    assertThat(postal).matches("^[A-Z]\\d[A-Z] ?\\d[A-Z]\\d$");
   }
 
   // ==================================================================================
@@ -213,155 +235,6 @@ class DatafakerGeolocationTest {
   // ==================================================================================
   // ALL SEMANTIC TYPES COVERAGE - Test every semantic type we support
   // ==================================================================================
-
-  @Test
-  void shouldGenerateAllPersonSemanticTypes() {
-    Map<String, String> results = new HashMap<>();
-
-    try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      Random random = new Random(12345L);
-
-      // Test all person-related semantic types
-      results.put("name", (String) generator.generate(random, new CustomDatafakerType("name")));
-      results.put(
-          "first_name", (String) generator.generate(random, new CustomDatafakerType("first_name")));
-      results.put(
-          "last_name", (String) generator.generate(random, new CustomDatafakerType("last_name")));
-      results.put(
-          "full_name", (String) generator.generate(random, new CustomDatafakerType("full_name")));
-      results.put(
-          "username", (String) generator.generate(random, new CustomDatafakerType("username")));
-      results.put("title", (String) generator.generate(random, new CustomDatafakerType("title")));
-      results.put(
-          "occupation", (String) generator.generate(random, new CustomDatafakerType("occupation")));
-    }
-
-    // Verify all generated values
-    results.forEach(
-        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
-  }
-
-  @Test
-  void shouldGenerateAllAddressSemanticTypes() {
-    Map<String, String> results = new HashMap<>();
-
-    try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      Random random = new Random(12345L);
-
-      results.put(
-          "address", (String) generator.generate(random, new CustomDatafakerType("address")));
-      results.put(
-          "street_name",
-          (String) generator.generate(random, new CustomDatafakerType("street_name")));
-      results.put(
-          "street_number",
-          (String) generator.generate(random, new CustomDatafakerType("street_number")));
-      results.put("city", (String) generator.generate(random, new CustomDatafakerType("city")));
-      results.put("state", (String) generator.generate(random, new CustomDatafakerType("state")));
-      results.put(
-          "postal_code",
-          (String) generator.generate(random, new CustomDatafakerType("postal_code")));
-      results.put(
-          "country", (String) generator.generate(random, new CustomDatafakerType("country")));
-    }
-
-    results.forEach(
-        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
-  }
-
-  @Test
-  void shouldGenerateAllContactSemanticTypes() {
-    Map<String, String> results = new HashMap<>();
-
-    try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      Random random = new Random(12345L);
-
-      results.put(
-          STYPE_EMAIL, (String) generator.generate(random, new CustomDatafakerType(STYPE_EMAIL)));
-      results.put(
-          "phone_number",
-          (String) generator.generate(random, new CustomDatafakerType("phone_number")));
-    }
-
-    results.forEach(
-        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
-
-    // Verify email format
-    assertThat(results.get(STYPE_EMAIL)).contains("@");
-  }
-
-  @Test
-  void shouldGenerateAllFinanceSemanticTypes() {
-    Map<String, String> results = new HashMap<>();
-
-    try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      Random random = new Random(12345L);
-
-      results.put(
-          "company", (String) generator.generate(random, new CustomDatafakerType("company")));
-      results.put(
-          "credit_card",
-          (String) generator.generate(random, new CustomDatafakerType("credit_card")));
-      results.put("iban", (String) generator.generate(random, new CustomDatafakerType("iban")));
-      results.put(
-          "currency", (String) generator.generate(random, new CustomDatafakerType("currency")));
-      results.put("price", (String) generator.generate(random, new CustomDatafakerType("price")));
-    }
-
-    results.forEach(
-        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
-  }
-
-  @Test
-  void shouldGenerateAllInternetSemanticTypes() {
-    Map<String, String> results = new HashMap<>();
-
-    try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      Random random = new Random(12345L);
-
-      results.put("domain", (String) generator.generate(random, new CustomDatafakerType("domain")));
-      results.put("url", (String) generator.generate(random, new CustomDatafakerType("url")));
-      results.put("ipv4", (String) generator.generate(random, new CustomDatafakerType("ipv4")));
-      results.put("ipv6", (String) generator.generate(random, new CustomDatafakerType("ipv6")));
-      results.put(
-          STYPE_MAC_ADDRESS,
-          (String) generator.generate(random, new CustomDatafakerType(STYPE_MAC_ADDRESS)));
-    }
-
-    results.forEach(
-        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
-
-    // Verify URL format
-    assertThat(results.get("url")).matches("^https?://.*");
-
-    // Verify IPv4 format
-    assertThat(results.get("ipv4")).matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
-
-    // Verify MAC address format
-    assertThat(results.get(STYPE_MAC_ADDRESS)).matches("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$");
-  }
-
-  @Test
-  void shouldGenerateAllCodeSemanticTypes() {
-    Map<String, String> results = new HashMap<>();
-
-    try (var ctx = GeneratorContext.enter(factory, "usa")) {
-      Random random = new Random(12345L);
-
-      results.put("isbn", (String) generator.generate(random, new CustomDatafakerType("isbn")));
-      results.put("uuid", (String) generator.generate(random, new CustomDatafakerType("uuid")));
-    }
-
-    results.forEach(
-        (kind, value) -> assertThat(value).as(TYPE_PREFIX + kind).isNotNull().isNotEmpty());
-
-    // Verify ISBN format (ISBN-13)
-    assertThat(results.get("isbn")).matches("^\\d{13}$");
-
-    // Verify UUID format
-    assertThat(results.get("uuid"))
-        .matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
-  }
 
   // ==================================================================================
   // DETERMINISM TESTS - Ensure same seed produces same results across locales

@@ -165,7 +165,8 @@ public class DatafakerRegistry {
     register("random_bic", (faker, random) -> randomBic(faker));
     register("cvv", (faker, random) -> String.valueOf(faker.number().numberBetween(100, 999)));
     registerAlias("cvc", "cvv");
-    register("credit_card_type", (faker, random) -> faker.finance().creditCard().split(" ")[0]);
+    // Dedicated provider: finance().creditCard() is a dashed number, not a type (#380).
+    register("credit_card_type", (faker, random) -> faker.business().creditCardType());
     registerAlias("creditcardtype", "credit_card_type");
     register(TYPE_STOCK_MARKET, (faker, random) -> faker.stock().nsdqSymbol());
     registerAlias("stockmarket", TYPE_STOCK_MARKET);

@@ -355,4 +355,27 @@ class ProtobufSerializerRoundTripTest {
       pool.shutdownNow();
     }
   }
+
+  @Test
+  void shouldReportProtobufFormatName() {
+    assertThat(serializer.getFormatName()).isEqualTo("protobuf");
+  }
+
+  @Test
+  void shouldEncodeEmptyRecordAsEmptyMessage() {
+    assertThat(Base64.getDecoder().decode(serializer.serialize(new LinkedHashMap<>()))).isEmpty();
+  }
+
+  @Test
+  void shouldBeMoreCompactThanEquivalentJson() throws Exception {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("firstName", "Christopher");
+    data.put("lastName", "Montgomery");
+    data.put("age", 42);
+    data.put("balance", new BigDecimal("12345.67"));
+
+    byte[] binary = Base64.getDecoder().decode(serializer.serialize(data));
+
+    assertThat(binary).hasSizeLessThan(JSON.writeValueAsBytes(data).length);
+  }
 }

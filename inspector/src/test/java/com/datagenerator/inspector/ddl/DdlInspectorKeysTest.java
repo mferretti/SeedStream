@@ -16,6 +16,7 @@
 
 package com.datagenerator.inspector.ddl;
 
+import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.type.TypeParser;
@@ -25,7 +26,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,19 +36,23 @@ class DdlInspectorKeysTest {
   @Test
   void shouldMapSinglePrimaryKeyToSerial(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id BIGINT PRIMARY KEY, n INT);");
-    assertThat(types(in, "t")).containsEntry("id", "serial").containsEntry("n", "int[1..999999]");
+    assertThat(datatypesOf(in, "t"))
+        .containsEntry("id", "serial")
+        .containsEntry("n", "int[1..999999]");
   }
 
   @Test
   void shouldMapSerialColumnWithoutKeyToSerial(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (seq BIGSERIAL, n INT);");
-    assertThat(types(in, "t")).containsEntry("seq", "serial").containsEntry("n", "int[1..999999]");
+    assertThat(datatypesOf(in, "t"))
+        .containsEntry("seq", "serial")
+        .containsEntry("n", "int[1..999999]");
   }
 
   @Test
   void shouldMapSingleUniqueIntToUniqueRange(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id INT PRIMARY KEY, code INT UNIQUE);");
-    assertThat(types(in, "t")).containsEntry("code", "unique[1..count]");
+    assertThat(datatypesOf(in, "t")).containsEntry("code", "unique[1..count]");
   }
 
   @Test
@@ -66,7 +70,7 @@ class DdlInspectorKeysTest {
               PRIMARY KEY (a_id, b_id)
             );
             """);
-    assertThat(types(in, "ab"))
+    assertThat(datatypesOf(in, "ab"))
         .containsEntry("a_id", "ref[a.id, 1..count, unique=pk]")
         .containsEntry("b_id", "ref[b.id, 1..count, unique=pk]");
   }
@@ -80,7 +84,7 @@ class DdlInspectorKeysTest {
             CREATE TABLE a (id BIGINT PRIMARY KEY);
             CREATE TABLE a_detail (a_id BIGINT PRIMARY KEY REFERENCES a(id));
             """);
-    assertThat(types(in, "a_detail")).containsEntry("a_id", "ref[a.id, 1..count, unique]");
+    assertThat(datatypesOf(in, "a_detail")).containsEntry("a_id", "ref[a.id, 1..count, unique]");
   }
 
   @Test
@@ -97,7 +101,7 @@ class DdlInspectorKeysTest {
               UNIQUE (a_id, slot)
             );
             """);
-    assertThat(types(in, "t"))
+    assertThat(datatypesOf(in, "t"))
         .containsEntry("a_id", "ref[a.id, 1..count, unique=uq1]")
         .containsEntry("slot", "unique[uq1, 1..count]");
   }
@@ -105,7 +109,7 @@ class DdlInspectorKeysTest {
   @Test
   void shouldLetPrimaryKeyWinOverlapAndWarn(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id BIGINT PRIMARY KEY UNIQUE);");
-    assertThat(types(in, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial");
     assertThat(in.warnings()).contains("t.id: also in UNIQUE(id) — only the first key is enforced");
   }
 
@@ -113,7 +117,7 @@ class DdlInspectorKeysTest {
   void shouldLeaveNonIntegerUniqueUnchangedWithCommentAndWarning(@TempDir Path dir)
       throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id BIGINT PRIMARY KEY, sku VARCHAR(20) UNIQUE);");
-    assertThat(types(in, "t")).containsEntry("sku", "char[1..20]");
+    assertThat(datatypesOf(in, "t")).containsEntry("sku", "char[1..20]");
     assertThat(in.comments().get("t")).containsEntry("sku", NOT_ENFORCED);
     assertThat(in.warnings()).anyMatch(w -> w.contains("UNIQUE(sku) not enforced"));
   }
@@ -121,7 +125,7 @@ class DdlInspectorKeysTest {
   @Test
   void shouldLeaveUuidPrimaryKeyUncommented(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id UUID PRIMARY KEY, n INT);");
-    assertThat(types(in, "t").get("id")).isNotEqualTo("serial");
+    assertThat(datatypesOf(in, "t").get("id")).isNotEqualTo("serial");
     assertThat(in.comments().getOrDefault("t", Map.of())).doesNotContainKey("id");
     assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
   }
@@ -142,8 +146,8 @@ class DdlInspectorKeysTest {
                     );
                     """),
                 NestingOptions.parse("auto", null));
-    assertThat(types(in, "p")).containsEntry("id", "serial");
-    assertThat(types(in, "c")).containsEntry("id", "int[1..999999]");
+    assertThat(datatypesOf(in, "p")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "c")).containsEntry("id", "int[1..999999]");
   }
 
   @Test
@@ -182,15 +186,5 @@ class DdlInspectorKeysTest {
 
   private Inspection inspect(Path dir, String ddl) throws IOException {
     return new DdlInspector().inspect(write(dir, ddl));
-  }
-
-  private Map<String, String> types(Inspection inspection, String name) {
-    DataStructure structure =
-        inspection.structures().stream()
-            .filter(s -> s.getName().equals(name))
-            .findFirst()
-            .orElseThrow();
-    return structure.getData().entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype()));
   }
 }

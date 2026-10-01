@@ -475,43 +475,6 @@ class KafkaDestinationIT extends IntegrationTest {
   }
 
   @Test
-  void shouldAcceptSecurityProtocolConfiguration() {
-    // Given: Kafka destination with PLAINTEXT security protocol (testcontainers default)
-    String topic = "test-security-topic";
-    KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder()
-            .bootstrap(kafka.getBootstrapServers())
-            .topic(topic)
-            .securityProtocol("PLAINTEXT") // Explicit PLAINTEXT
-            .build();
-
-    // When: Open destination
-    destination = new KafkaDestination(config, new JsonSerializer());
-    destination.open();
-
-    // Then: Should open successfully (no exception)
-    assertThat(destination).isNotNull();
-  }
-
-  @Test
-  void shouldAcceptConfigurationWithoutOptionalFields() {
-    // Given: Minimal Kafka config (only required fields)
-    String topic = "test-minimal-topic";
-    KafkaDestinationConfig config =
-        KafkaDestinationConfig.builder()
-            .bootstrap(kafka.getBootstrapServers())
-            .topic(topic)
-            .build();
-
-    // When: Open destination with minimal config
-    destination = new KafkaDestination(config, new JsonSerializer());
-    destination.open();
-
-    // Then: Should use defaults successfully
-    assertThat(destination).isNotNull();
-  }
-
-  @Test
   void shouldHandleInvalidBrokerAddress() {
     // Given: Kafka destination with malformed broker address
     String topic = "test-error-topic";

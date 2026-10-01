@@ -16,6 +16,7 @@
 
 package com.datagenerator.inspector.openapi;
 
+import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.inspector.Inspection;
@@ -25,7 +26,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -134,15 +134,5 @@ class OpenApiInspectorTest {
     Path spec = dir.resolve("api.yaml");
     Files.writeString(spec, SPEC);
     return new OpenApiInspector().inspect(spec);
-  }
-
-  private Map<String, String> datatypesOf(Inspection inspection, String structureName) {
-    DataStructure structure =
-        inspection.structures().stream()
-            .filter(s -> s.getName().equals(structureName))
-            .findFirst()
-            .orElseThrow();
-    return structure.getData().entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype(), (a, b) -> a));
   }
 }

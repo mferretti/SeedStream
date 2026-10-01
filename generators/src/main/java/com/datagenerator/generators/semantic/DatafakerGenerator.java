@@ -72,6 +72,10 @@ public class DatafakerGenerator implements DataGenerator {
   }
 
   @Override
+  // Datafaker signals missing locale data with a plain java.lang.RuntimeException (e.g.
+  // "name.suffix
+  // resulted in null expression"); there is no narrower type to catch for the en-US fallback.
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public Object generate(Random random, DataType type) {
     if (!(type instanceof CustomDatafakerType customType)) {
       throw new GeneratorException(
@@ -86,6 +90,37 @@ public class DatafakerGenerator implements DataGenerator {
     Faker faker = FakerCache.getOrCreate(locale, random);
 
     // Generate value via registry
-    return DatafakerRegistry.generate(customType.getTypeName(), faker, random);
+    String typeName = customType.getTypeName();
+    try {
+      return DatafakerRegistry.generate(typeName, faker, random);
+    } catch (RuntimeException e) {
+      if (Locale.US.equals(locale)) {
+        throw generationFailure(typeName, locale, e);
+      }
+      // Datafaker lacks some data for some locales (e.g. Italian name suffixes, #379). Fall back to
+      // US English with the same thread-local Random, so output stays deterministic; if English
+      // fails too, the original error is the meaningful one.
+      log.debug(
+          "Type '{}' unavailable for locale {}, falling back to en-US: {}",
+          typeName,
+          locale,
+          e.getMessage());
+      try {
+        return DatafakerRegistry.generate(
+            typeName, FakerCache.getOrCreate(Locale.US, random), random);
+      } catch (RuntimeException fallbackFailure) {
+        GeneratorException failure = generationFailure(typeName, locale, e);
+        failure.addSuppressed(fallbackFailure);
+        throw failure;
+      }
+    }
+  }
+
+  private static GeneratorException generationFailure(
+      String typeName, Locale locale, RuntimeException cause) {
+    return new GeneratorException(
+        "Cannot generate Datafaker type '%s' for locale %s: %s"
+            .formatted(typeName, locale, cause.getMessage()),
+        cause);
   }
 }

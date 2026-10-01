@@ -105,8 +105,8 @@ class NameHintsTest {
   }
 
   @Test
-  void shouldMatchLastNameForSurname() {
-    // "surname" does not tokenize to "last" or "name" — should not match
+  void shouldNotHintSurnameBecauseNoHintTokenMatches() {
+    // "surname" does not tokenize to "last" or "name", so no hint applies
     assertThat(NameHints.forFieldName("surname")).isEmpty();
   }
 
