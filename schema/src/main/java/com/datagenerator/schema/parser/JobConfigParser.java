@@ -16,6 +16,7 @@
 
 package com.datagenerator.schema.parser;
 
+import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.JobConfig;
 import java.nio.file.Path;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,13 @@ public class JobConfigParser extends AbstractYamlParser<JobConfig> {
   public JobConfig parse(Path filePath) {
     log.debug("Parsing job config from: {}", filePath);
     JobConfig config = parseFile(filePath, JobConfig.class, "job config");
+    // `conf:` with no value binds to a NullNode, which @NotNull accepts; a scalar is just as
+    // unusable. Destinations read named settings from it, so it must be a mapping (#383).
+    if (!config.getConf().isObject()) {
+      throw new SchemaParseException(
+          "Validation failed for %s: conf: must be a mapping of destination settings, got %s"
+              .formatted(filePath, config.getConf().getNodeType()));
+    }
     log.info(
         "Successfully parsed job config: source={}, type={}", config.getSource(), config.getType());
     return config;
