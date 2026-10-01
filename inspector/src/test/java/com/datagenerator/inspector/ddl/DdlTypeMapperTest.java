@@ -25,6 +25,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class DdlTypeMapperTest {
@@ -269,5 +270,69 @@ class DdlTypeMapperTest {
   void emptySqlTypeFallsBackToUnknown() {
     MappedType mt = mapper.map("col", "", List.of());
     assertThat(mt.reason()).isEqualTo(Reason.UNKNOWN_TYPE);
+  }
+
+  // ── #377: column capacity, BIT, DATETIME2 ───────────────────────────────────
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "DECIMAL|4,2|decimal[0.00..99.99]",
+        "NUMERIC|5,2|decimal[0.00..999.99]",
+        "NUMBER|1|decimal[0..9]",
+        "DEC|3,0|decimal[0..999]",
+        "DECIMAL|2,2|decimal[0.00..0.99]",
+        "decimal|4,1|decimal[0.0..999.9]",
+        "DECIMAL|6,1|decimal[0.0..9999.99]",
+        "DECIMAL|10,2|decimal[0.0..9999.99]",
+        "NUMERIC|38,10|decimal[0.0..9999.99]",
+        "DECIMAL||decimal[0.0..9999.99]",
+        "FLOAT|2|decimal[0.0..9999.99]",
+        "REAL||decimal[0.0..9999.99]",
+        "MONEY||decimal[0.0..9999.99]"
+      })
+  void shouldCapDecimalRangeToFixedPointCapacity(String type, String args, String expected) {
+    List<String> argList = args == null ? List.of() : List.of(args.split(","));
+
+    assertThat(mapper.map("amount", type, argList).datatype()).isEqualTo(expected);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "SMALLINT, int[1..32767]",
+    "INT2, int[1..32767]",
+    "SMALLSERIAL, int[1..32767]",
+    "TINYINT, int[1..127]",
+    "tinyint, int[1..127]",
+    "MEDIUMINT, int[1..999999]",
+    "INT, int[1..999999]",
+    "BIGINT, int[1..999999]"
+  })
+  void shouldCapIntegerRangeToColumnWidth(String type, String expected) {
+    assertThat(mapper.map("n", type, List.of()).datatype()).isEqualTo(expected);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "1"})
+  void shouldMapBitWithoutLengthOrLengthOneToBoolean(String length) {
+    List<String> args = length.isEmpty() ? List.of() : List.of(length);
+
+    MappedType mt = mapper.map("flag", "BIT", args);
+    assertThat(mt.datatype()).isEqualTo("boolean");
+    assertThat(mt.flagged()).isFalse();
+  }
+
+  @Test
+  void shouldKeepMultiBitStringAsFlaggedUnknownType() {
+    MappedType mt = mapper.map("bits", "BIT", List.of("8"));
+
+    assertThat(mt.reason()).isEqualTo(Reason.UNKNOWN_TYPE);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"DATETIME2", "datetime2", "DATETIMEOFFSET"})
+  void shouldMapSqlServerHighPrecisionDateTimesToTimestamp(String type) {
+    assertThat(mapper.map("at", type, List.of("7")).datatype()).isEqualTo(Defaults.TIMESTAMP);
   }
 }

@@ -60,6 +60,7 @@ public class DdlInspector {
   // Inline "REFERENCES table(col)": group 1 = table, group 2 = referenced column (optional).
   private static final Pattern INLINE_REFERENCE =
       Pattern.compile("(?i)REFERENCES\\s+([\\w.\"`]+)(?:\\s*\\(\\s*([\\w\"`]+)\\s*\\))?");
+  private static final Pattern SORT_DIRECTION = Pattern.compile("(?i)\\s+(ASC|DESC)$");
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
   private static final Pattern CREATE_TABLE_QUICK =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
@@ -265,7 +266,7 @@ public class DdlInspector {
         }
         String type = index.getType();
         if (type != null && type.toUpperCase(Locale.ROOT).startsWith(kind)) {
-          result.add(index.getColumnsNames().stream().map(this::unquote).toList());
+          result.add(index.getColumnsNames().stream().map(this::keyColumn).toList());
         }
       }
     }
@@ -545,6 +546,14 @@ public class DdlInspector {
       return "id";
     }
     return index < columns.size() ? columns.get(index) : columns.get(0);
+  }
+
+  /**
+   * A key constraint's column, without its sort direction: {@code PRIMARY KEY ([id] ASC)} (the SSMS
+   * default) reports the column as {@code "id ASC"}, which matched no field (#377).
+   */
+  private String keyColumn(String indexColumn) {
+    return unquote(SORT_DIRECTION.matcher(indexColumn.trim()).replaceAll(""));
   }
 
   private String unquote(String identifier) {

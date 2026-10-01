@@ -63,6 +63,13 @@ public class DdlPreprocessor {
    * Matches {@code IDENTITY(seed, increment)} — the MSSQL auto-increment column property.
    * JSQLParser does not recognise this construct and throws a parse exception.
    */
+  /**
+   * Oracle {@code RAW(n)} (binary, the usual GUID column): JSQLParser cannot parse it, which in
+   * strict mode aborted the whole script (#377). Rewritten to {@code VARBINARY(n)}, which parses
+   * and maps to the flagged unknown-type fallback.
+   */
+  private static final Pattern ORACLE_RAW = Pattern.compile("(?i)\\bRAW(\\s*\\()");
+
   private static final Pattern IDENTITY =
       Pattern.compile("(?i)\\bIDENTITY\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)");
 
@@ -102,6 +109,9 @@ public class DdlPreprocessor {
 
     // Strip IDENTITY(seed,increment) column property
     s = IDENTITY.matcher(s).replaceAll("");
+
+    // Oracle RAW(n) -> VARBINARY(n) (parseable, still an unknown type)
+    s = ORACLE_RAW.matcher(s).replaceAll("VARBINARY$1");
 
     // Truncate trailing table options after the balanced closing paren of the column list
     s = truncateTrailingOptions(s);
