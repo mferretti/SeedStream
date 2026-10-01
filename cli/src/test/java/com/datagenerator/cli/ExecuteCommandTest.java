@@ -1004,7 +1004,8 @@ class ExecuteCommandTest {
     assertThat(r.exit()).as(r.err()).isZero();
     assertThat(Files.readAllLines(outDir.resolve(OUTPUT_JSON))).hasSize(3);
 
-    Files.setPosixFilePermissions(seedFile, PosixFilePermissions.fromString("rw-r--r--"));
+    Files.setPosixFilePermissions( // nosemgrep: deliberately insecure, proves the check rejects it
+        seedFile, PosixFilePermissions.fromString("rw-r--r--"));
     CliTestSupport.Result loose = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
     assertThat(loose.exit()).isEqualTo(1);
     assertThat(loose.err()).contains("Seed file has insecure permissions");

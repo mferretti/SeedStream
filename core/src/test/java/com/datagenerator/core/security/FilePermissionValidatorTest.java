@@ -103,7 +103,8 @@ class FilePermissionValidatorTest {
     validator.validateConfigFile(file);
     assertThat(warnings()).isEmpty();
 
-    Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-rw-rw-"));
+    Files.setPosixFilePermissions( // nosemgrep: deliberately insecure, proves the warning fires
+        file, PosixFilePermissions.fromString("rw-rw-rw-"));
     validator.validateConfigFile(file);
 
     assertThat(warnings()).hasSize(1);

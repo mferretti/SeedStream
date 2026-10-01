@@ -589,7 +589,7 @@ public class ExecuteCommand implements Callable<Integer> {
       long resolvedSeed = new SeedResolver().resolve(seedConfig);
       log.debug("Resolved seed from config: {}", resolvedSeed);
       return resolvedSeed;
-    } catch (RuntimeException e) {
+    } catch (SeedResolutionException e) {
       throw new SeedResolutionException(
           "Cannot resolve the configured seed ("
               + e.getMessage()

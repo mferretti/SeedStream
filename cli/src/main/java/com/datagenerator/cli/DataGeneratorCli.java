@@ -76,9 +76,8 @@ public class DataGeneratorCli implements Runnable {
     Set<String> seen = new HashSet<>();
     seen.add(String.valueOf(ex.getMessage()));
     int depth = 0;
-    for (Throwable c = ex.getCause();
-        c != null && c != ex && depth < 8;
-        c = c.getCause(), depth++) {
+    // The depth cap also guards against self-referencing cause chains.
+    for (Throwable c = ex.getCause(); c != null && depth < 8; c = c.getCause(), depth++) {
       String msg = c.getMessage();
       if (msg != null && !msg.isBlank() && seen.add(msg) && !out.toString().contains(msg)) {
         out.append(System.lineSeparator()).append("  caused by: ").append(msg);

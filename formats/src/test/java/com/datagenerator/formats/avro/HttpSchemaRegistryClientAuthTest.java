@@ -42,7 +42,8 @@ class HttpSchemaRegistryClientAuthTest {
 
   @BeforeEach
   void startServer() throws IOException {
-    server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+    InetSocketAddress loopback = new InetSocketAddress(InetAddress.getLoopbackAddress(), 0);
+    server = HttpServer.create(loopback, 0); // nosemgrep: test-only loopback server
     server.createContext(
         "/",
         ex -> {

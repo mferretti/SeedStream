@@ -60,7 +60,8 @@ class SeedResolverRemoteHttpTest {
 
   @BeforeEach
   void startServer() throws IOException {
-    server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+    InetSocketAddress loopback = new InetSocketAddress(InetAddress.getLoopbackAddress(), 0);
+    server = HttpServer.create(loopback, 0); // nosemgrep: test-only loopback server
     server.createContext(SEED_PATH, this::handleSeed);
     server.createContext("/redirect", this::handleRedirect);
     server.createContext("/redirect-target", this::handleRedirectTarget);
@@ -250,7 +251,9 @@ class SeedResolverRemoteHttpTest {
   @Test
   void shouldWrapConnectionRefusedInSeedResolutionException() throws IOException {
     int closedPort;
-    try (ServerSocket socket = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+    InetAddress loopback = InetAddress.getLoopbackAddress();
+    // Plain socket only reserves a free loopback port, to prove connection-refused handling.
+    try (ServerSocket socket = new ServerSocket(0, 1, loopback)) { // nosemgrep: loopback port probe
       closedPort = socket.getLocalPort();
     }
     String deadUrl = "http://127.0.0.1:" + closedPort + SEED_PATH;

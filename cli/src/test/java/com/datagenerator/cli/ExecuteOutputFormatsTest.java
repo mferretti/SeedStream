@@ -282,9 +282,9 @@ class ExecuteOutputFormatsTest {
     private final byte[] data;
     private int pos;
 
-    Reader(byte[] data, int pos) {
-      this.data = data;
-      this.pos = pos;
+    Reader(byte[] bytes, int start) {
+      this.data = bytes;
+      this.pos = start;
     }
 
     boolean hasMore() {
@@ -395,6 +395,7 @@ class ExecuteOutputFormatsTest {
       String name = type.isObject() ? type.get("type").asText() : type.asText();
       String logical = type.isObject() ? type.path("logicalType").asText() : "";
       return switch (name) {
+        case null -> throw new IllegalStateException("avro type without a name: " + type);
         case "null" -> null;
         case "boolean" -> in.bytes(1)[0] != 0;
         case "int" ->

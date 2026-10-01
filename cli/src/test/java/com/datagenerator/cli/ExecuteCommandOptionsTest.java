@@ -203,7 +203,8 @@ class ExecuteCommandOptionsTest {
   void shouldRejectSeedFileReadableByOthersWhenSeedTypeIsFile() throws IOException {
     Path seedFile = tempDir.resolve("seed-open.txt");
     Files.writeString(seedFile, "7");
-    Files.setPosixFilePermissions(seedFile, PosixFilePermissions.fromString("rw-r--r--"));
+    Files.setPosixFilePermissions( // nosemgrep: deliberately insecure, proves the check rejects it
+        seedFile, PosixFilePermissions.fromString("rw-r--r--"));
     String fileSeed = "seed:\n  type: file\n  path: %s\n".formatted(seedFile.toAbsolutePath());
     Path out = newOutDir();
 

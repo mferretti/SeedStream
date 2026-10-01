@@ -129,7 +129,7 @@ class DatafakerLocaleSpecificityTest {
                 v.codePoints()
                     .allMatch(
                         c ->
-                            Character.UnicodeScript.of(c) == Character.UnicodeScript.CYRILLIC
+                            Character.UnicodeScript.CYRILLIC.equals(Character.UnicodeScript.of(c))
                                 || c == '-'
                                 || c == ' '));
   }

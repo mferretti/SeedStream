@@ -900,7 +900,7 @@ class FileDestinationTest {
     return switch (format) {
       case "csv" -> new CsvSerializer();
       case "avro" -> new AvroSerializer();
-      default -> new JsonSerializer();
+      case null, default -> new JsonSerializer();
     };
   }
 
@@ -953,15 +953,8 @@ class FileDestinationTest {
   }
 
   private static int indexOf(byte[] haystack, byte[] needle) {
-    outer:
-    for (int i = 0; i <= haystack.length - needle.length; i++) {
-      for (int j = 0; j < needle.length; j++) {
-        if (haystack[i + j] != needle[j]) {
-          continue outer;
-        }
-      }
-      return i;
-    }
-    return -1;
+    // ISO-8859-1 maps every byte to one char, so a String search is an exact byte search.
+    return new String(haystack, StandardCharsets.ISO_8859_1)
+        .indexOf(new String(needle, StandardCharsets.ISO_8859_1));
   }
 }

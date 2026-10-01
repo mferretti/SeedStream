@@ -149,6 +149,7 @@ public class DataGeneratorFactory {
 
   private void preflight(DataType type, Set<String> visitedStructures) {
     switch (type) {
+      case null -> throw new GeneratorException("Cannot preflight a null type");
       case PrimitiveType p -> create(p).generate(new Random(0), p);
       case ArrayType a -> {
         ArrayGenerator.validateLength(a.getMinLength(), a.getMaxLength());

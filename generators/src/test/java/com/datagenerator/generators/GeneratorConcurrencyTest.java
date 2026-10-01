@@ -36,6 +36,8 @@ import com.datagenerator.generators.primitive.TimestampGenerator;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
 import com.datagenerator.generators.semantic.FakerCache;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -108,7 +110,7 @@ class GeneratorConcurrencyTest {
             "date-per-thread-range",
             (Supplier<DataGenerator>) DateGenerator::new,
             (IntFunction<DataType>)
-                t -> prim(Kind.DATE, "2020-01-01", "2020-01-" + String.format("%02d", t + 2))),
+                t -> prim(Kind.DATE, "2020-01-01", LocalDate.of(2020, 1, t + 2).toString())),
         Arguments.of(
             "timestamp-per-thread-range",
             (Supplier<DataGenerator>) TimestampGenerator::new,
@@ -117,7 +119,7 @@ class GeneratorConcurrencyTest {
                     prim(
                         Kind.TIMESTAMP,
                         "2020-01-01T00:00:00",
-                        "2020-01-01T00:00:" + String.format("%02d", t + 10))));
+                        LocalDateTime.of(2020, 1, 1, 0, 0, t + 10).toString())));
   }
 
   @ParameterizedTest(name = "{0}")
