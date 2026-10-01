@@ -49,11 +49,12 @@ public abstract sealed class SeedConfig {
   @Value
   @EqualsAndHashCode(callSuper = false)
   public static class EmbeddedSeed extends SeedConfig {
-    long value;
+    // Boxed + @NotNull: an omitted value must fail, not silently become seed 0.
+    @NotNull Long value;
 
     @JsonCreator
     @SuppressWarnings("checkstyle:HiddenField")
-    public EmbeddedSeed(@JsonProperty("type") String type, @JsonProperty("value") long value) {
+    public EmbeddedSeed(@JsonProperty("type") String type, @JsonProperty("value") Long value) {
       super(type);
       this.value = value;
     }

@@ -69,6 +69,13 @@ config/
 
 ## Data Structure Examples
 
+**Rules for every structure (record definition) file:**
+- `name` must equal the file name without `.yaml` (`address.yaml` → `name: address`) and be a
+  lowercase identifier (`[a-z_][a-z0-9_]*`). Structures are referenced and loaded by that name
+  (the job's `source`, `object[name]`), so a mismatch is rejected when the file is loaded.
+- Duplicate keys (two fields with the same name, two `name:` lines) are rejected instead of the
+  last one silently winning. The same applies to job files.
+
 ### Simple Primitives
 
 #### `address.yaml` - Italian Addresses
@@ -316,7 +323,8 @@ seed:
   value: 12345
 ```
 
-**Most common**. Seed value directly in configuration.
+**Most common**. Seed value directly in configuration. `value` is required: an embedded seed
+without it is rejected (it used to silently become `0`).
 
 ---
 

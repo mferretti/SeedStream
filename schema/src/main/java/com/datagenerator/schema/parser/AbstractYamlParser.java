@@ -17,6 +17,7 @@
 package com.datagenerator.schema.parser;
 
 import com.datagenerator.schema.exception.SchemaParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -32,8 +33,10 @@ import java.util.stream.Collectors;
 abstract class AbstractYamlParser<T> {
 
   protected static final ObjectMapper yamlMapper =
-      // Reject unknown fields at config parse time to surface typos early.
-      new ObjectMapper(new YAMLFactory()).enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+      // Reject unknown fields and duplicate keys at config parse time to surface typos early
+      // (a duplicated key used to be last-wins, silently dropping the first definition).
+      new ObjectMapper(new YAMLFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION))
+          .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
   protected static final Validator validator =
       Validation.buildDefaultValidatorFactory().getValidator();
 

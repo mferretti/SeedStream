@@ -1,4 +1,4 @@
-name: invoice
+name: db_invoice
 geolocation: italy
 data:
   id:

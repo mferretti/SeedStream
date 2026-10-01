@@ -25,8 +25,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DataStructureParserHardeningTest {
   private final DataStructureParser parser = new DataStructureParser();
@@ -47,7 +53,7 @@ class DataStructureParserHardeningTest {
   void shouldMapAliasAndGeolocationToTheirOwnFields() throws Exception {
     DataStructure s =
         parse(
-            "name: n\ngeolocation: germany\ndata:\n  a:\n    datatype: int[1..2]\n    alias: x\n"
+            "name: s\ngeolocation: germany\ndata:\n  a:\n    datatype: int[1..2]\n    alias: x\n"
                 + "  b:\n    datatype: boolean\n");
     assertThat(s.getGeolocation()).isEqualTo("germany");
     assertThat(s.getData().get("a").getAlias()).isEqualTo("x");
@@ -57,7 +63,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldLeaveGeolocationNullWhenAbsent() throws Exception {
-    assertThat(parse("name: n\ndata:\n  a:\n    datatype: boolean\n").getGeolocation()).isNull();
+    assertThat(parse("name: s\ndata:\n  a:\n    datatype: boolean\n").getGeolocation()).isNull();
   }
 
   @Test
@@ -65,7 +71,7 @@ class DataStructureParserHardeningTest {
     // documents: alias collisions are not checked at parse time
     DataStructure s =
         parse(
-            "name: n\ndata:\n  a:\n    datatype: boolean\n    alias: b\n  b:\n"
+            "name: s\ndata:\n  a:\n    datatype: boolean\n    alias: b\n  b:\n"
                 + "    datatype: boolean\n");
     assertThat(s.getData().get("a").getAlias()).isEqualTo("b");
   }
@@ -74,7 +80,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldNameFieldWhenDatatypeMissing() throws Exception {
-    Path f = write("name: n\ndata:\n  good:\n    datatype: boolean\n  broken:\n    alias: z\n");
+    Path f = write("name: s\ndata:\n  good:\n    datatype: boolean\n  broken:\n    alias: z\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("Validation failed")
@@ -84,7 +90,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldFailWhenFieldIsScalarInsteadOfMap() throws Exception {
-    Path f = write("name: n\ndata:\n  a: int[1..2]\n");
+    Path f = write("name: s\ndata:\n  a: int[1..2]\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining(f.toString())
@@ -93,7 +99,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldFailWhenDataIsListInsteadOfMap() throws Exception {
-    Path f = write("name: n\ndata:\n  - datatype: boolean\n");
+    Path f = write("name: s\ndata:\n  - datatype: boolean\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("Failed to read data structure")
@@ -105,7 +111,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldFailWhenDataIsMissing() throws Exception {
-    Path f = write("name: n\n");
+    Path f = write("name: s\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("data: must not be empty")
@@ -123,7 +129,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldRejectUnknownFieldOption() throws Exception {
-    Path f = write("name: n\ndata:\n  a:\n    datatype: boolean\n    aliass: z\n");
+    Path f = write("name: s\ndata:\n  a:\n    datatype: boolean\n    aliass: z\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .cause()
@@ -132,7 +138,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldRejectUnknownTopLevelKey() throws Exception {
-    Path f = write("name: n\ngeolocaton: it\ndata:\n  a:\n    datatype: boolean\n");
+    Path f = write("name: s\ngeolocaton: it\ndata:\n  a:\n    datatype: boolean\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .cause()
@@ -160,7 +166,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldFailWhenTopLevelIsAList() throws Exception {
-    Path f = write("- name: n\n");
+    Path f = write("- name: s\n");
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining(f.toString())
@@ -170,20 +176,25 @@ class DataStructureParserHardeningTest {
   // ---- duplicates / special names / order ----
 
   @Test
-  void shouldKeepLastDefinitionWhenFieldKeyIsDuplicated() throws Exception {
-    // documents silent last-wins on duplicate YAML keys (no error, first definition is lost)
-    DataStructure s =
-        parse(
-            "name: n\ndata:\n  a:\n    datatype: int[1..2]\n  b:\n    datatype: boolean\n"
+  void shouldRejectDuplicatedFieldKeyInsteadOfDroppingTheFirstDefinition() throws Exception {
+    Path f =
+        write(
+            "name: s\ndata:\n  a:\n    datatype: int[1..2]\n  b:\n    datatype: boolean\n"
                 + "  a:\n    datatype: char[3..4]\n");
-    assertThat(s.getData()).hasSize(2);
-    assertThat(s.getData().get("a").getDatatype()).isEqualTo("char[3..4]");
+
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasStackTraceContaining("Duplicate field 'a'");
   }
 
   @Test
-  void shouldKeepLastNameWhenNameKeyIsDuplicated() throws Exception {
-    DataStructure s = parse("name: first\nname: second\ndata:\n  a:\n    datatype: boolean\n");
-    assertThat(s.getName()).isEqualTo("second");
+  void shouldRejectDuplicatedNameKey() throws Exception {
+    Path f = write("name: s\nname: s\ndata:\n  a:\n    datatype: boolean\n");
+
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("s.yaml")
+        .hasStackTraceContaining("Duplicate field 'name'");
   }
 
   @Test
@@ -192,7 +203,7 @@ class DataStructureParserHardeningTest {
         parse(
             String.join(
                 "\n",
-                "name: n",
+                "name: s",
                 "data:",
                 "  zeta:",
                 "    datatype: boolean",
@@ -220,7 +231,7 @@ class DataStructureParserHardeningTest {
 
   @Test
   void shouldKeepOrderForManyFieldsNotSortedAlphabetically() throws Exception {
-    StringBuilder y = new StringBuilder("name: n\ndata:\n");
+    StringBuilder y = new StringBuilder("name: s\ndata:\n");
     for (int i = 30; i >= 1; i--) {
       y.append("  f").append(i).append(":\n    datatype: boolean\n");
     }
@@ -230,25 +241,49 @@ class DataStructureParserHardeningTest {
     assertThat(s.getData()).hasSize(30);
   }
 
-  @Test
-  void shouldAcceptNameWithPathSeparatorsAndDotsWithoutValidation() throws Exception {
-    // documents: name is not sanitised; callers must not use it to build file paths unchecked
-    assertThat(parse("name: ../../etc/passwd\ndata:\n  a:\n    datatype: boolean\n").getName())
-        .isEqualTo("../../etc/passwd");
-    assertThat(parse("name: a/b\\c\ndata:\n  a:\n    datatype: boolean\n").getName())
-        .isEqualTo("a/b\\c");
+  @ParameterizedTest
+  @ValueSource(strings = {"../../etc/passwd", "a/b", "Order", "line-item", "2nd"})
+  void shouldRejectNameThatIsNotALowercaseIdentifier(String name) throws Exception {
+    Path f = write("name: \"" + name + "\"\ndata:\n  a:\n    datatype: boolean\n");
+
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("name:")
+        .hasMessageContaining("lowercase identifier");
   }
 
   @Test
-  void shouldAcceptBlankNameWithoutValidation() throws Exception {
-    // documents: @NotNull only; empty string name passes validation
-    assertThat(parse("name: \"\"\ndata:\n  a:\n    datatype: boolean\n").getName()).isEmpty();
+  void shouldRejectNameThatDiffersFromTheFileName() throws Exception {
+    Path f = write("name: client\ndata:\n  a:\n    datatype: boolean\n");
+
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("name: 'client' must match the file name ('s')");
+  }
+
+  @Test
+  void shouldAcceptNameEqualToFileNameWithYmlExtension() throws Exception {
+    Path f =
+        Files.writeString(
+            tempDir.resolve("orders_2.yml"),
+            "name: orders_2\ndata:\n  a:\n    datatype: boolean\n");
+
+    assertThat(parser.parse(f).getName()).isEqualTo("orders_2");
+  }
+
+  @Test
+  void shouldRejectBlankName() throws Exception {
+    Path f = write("name: \"\"\ndata:\n  a:\n    datatype: boolean\n");
+
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("name:");
   }
 
   @Test
   void shouldAcceptEmptyDatatypeStringWithoutValidation() throws Exception {
     // documents: datatype syntax is not checked by the schema module
-    assertThat(parse("name: n\ndata:\n  a:\n    datatype: \"\"\n").getData().get("a").getDatatype())
+    assertThat(parse("name: s\ndata:\n  a:\n    datatype: \"\"\n").getData().get("a").getDatatype())
         .isEmpty();
   }
 
@@ -261,7 +296,7 @@ class DataStructureParserHardeningTest {
             String.join(
                 "\n",
                 "# comment line",
-                "name: order",
+                "name: s",
                 "geolocation: italy",
                 "data:",
                 "  id:",
@@ -291,7 +326,7 @@ class DataStructureParserHardeningTest {
                 "  lines:",
                 "    datatype: array[object[line_item], 1..50]",
                 ""));
-    assertThat(s.getName()).isEqualTo("order");
+    assertThat(s.getName()).isEqualTo("s");
     assertThat(s.getGeolocation()).isEqualTo("italy");
     assertThat(s.getData()).hasSize(12);
     assertThat(s.getData().keySet())
@@ -327,5 +362,34 @@ class DataStructureParserHardeningTest {
     assertThat(d).as(field).isNotNull();
     assertThat(d.getDatatype()).as(field + " datatype").isEqualTo(datatype);
     assertThat(d.getAlias()).as(field + " alias").isEqualTo(alias);
+  }
+
+  static Stream<Path> shippedRecordDefinitions() throws IOException {
+    List<Path> files = new ArrayList<>();
+    for (Path root : List.of(Path.of("../config/structures"), Path.of("../use-cases"))) {
+      try (Stream<Path> walk = Files.walk(root)) {
+        walk.filter(
+                p -> {
+                  Path parent = p.getParent();
+                  return parent != null && parent.endsWith("structures");
+                })
+            .filter(p -> p.toString().endsWith(".yaml"))
+            .forEach(files::add);
+      }
+    }
+    return files.stream().sorted();
+  }
+
+  @ParameterizedTest
+  @MethodSource("shippedRecordDefinitions")
+  void shouldParseEveryShippedRecordDefinitionWithMatchingName(Path file) {
+    DataStructure structure = parser.parse(file);
+
+    assertThat(file.getFileName()).hasToString(structure.getName() + ".yaml");
+  }
+
+  @Test
+  void shouldFindShippedRecordDefinitions() throws IOException {
+    assertThat(shippedRecordDefinitions()).hasSizeGreaterThan(20);
   }
 }

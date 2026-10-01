@@ -16,9 +16,12 @@
 
 package com.datagenerator.schema.parser;
 
+import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.core.util.LogUtils;
+import com.datagenerator.schema.exception.SchemaParseException;
 import com.datagenerator.schema.model.DataStructure;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -27,6 +30,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class DataStructureParser extends AbstractYamlParser<DataStructure> {
+
+  private static final Pattern NAME = Pattern.compile(TypeParser.IDENT);
 
   /**
    * Parse a data structure definition from a YAML file.
@@ -38,6 +43,7 @@ public class DataStructureParser extends AbstractYamlParser<DataStructure> {
   public DataStructure parse(Path filePath) {
     log.debug("Parsing data structure from: {}", filePath);
     DataStructure structure = parseFile(filePath, DataStructure.class, "data structure");
+    requireNameMatchesFile(structure.getName(), filePath);
     if (log.isTraceEnabled() && LogUtils.shouldTrace()) {
       log.trace(
           "Parsed structure: name={}, fields={}, geolocation={}",
@@ -47,5 +53,26 @@ public class DataStructureParser extends AbstractYamlParser<DataStructure> {
     }
     log.info("Successfully parsed data structure: {}", structure.getName());
     return structure;
+  }
+
+  /**
+   * A record definition's {@code name} is how it is referenced ({@code object[name]}, the job's
+   * root) and resolved to {@code <name>.yaml}, so it must be a plain identifier equal to its own
+   * file name. A mismatch used to fail later with a confusing error, and a path-like name made
+   * {@code execute} generate from a different file than the job named.
+   */
+  private static void requireNameMatchesFile(String name, Path filePath) {
+    Path fileName = filePath.getFileName();
+    String expected = fileName == null ? "" : fileName.toString().replaceFirst("\\.ya?ml$", "");
+    if (!NAME.matcher(name).matches()) {
+      throw new SchemaParseException(
+          "Validation failed for %s: name: '%s' must be a lowercase identifier ([a-z_][a-z0-9_]*)"
+              .formatted(filePath, name));
+    }
+    if (!name.equals(expected)) {
+      throw new SchemaParseException(
+          "Validation failed for %s: name: '%s' must match the file name ('%s')"
+              .formatted(filePath, name, expected));
+    }
   }
 }

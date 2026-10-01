@@ -352,10 +352,12 @@ class JobConfigParserHardeningTest {
   }
 
   @Test
-  void shouldDefaultEmbeddedSeedValueToZeroWhenValueOmitted() throws Exception {
-    // documents current behaviour: primitive long silently defaults to 0 when 'value' is absent
-    JobConfig c = parse(HEAD + "seed:\n  type: embedded\n" + MIN_TAIL);
-    assertThat(((SeedConfig.EmbeddedSeed) c.getSeed()).getValue()).isZero();
+  void shouldRejectEmbeddedSeedWithoutValue() throws Exception {
+    // An omitted value must fail, not silently become seed 0.
+    Path f = write(HEAD + "seed:\n  type: embedded\n" + MIN_TAIL);
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining("seed.value: must not be null");
   }
 
   // ---- structures_path / secrets ----
@@ -449,10 +451,11 @@ class JobConfigParserHardeningTest {
   }
 
   @Test
-  void shouldKeepLastValueWhenConfHasDuplicateKeys() throws Exception {
-    // documents silent last-wins on duplicate keys
-    JobConfig c = parse(HEAD + "conf:\n  k: first\n  k: second\n");
-    assertThat(c.getConf().get("k").asText()).isEqualTo("second");
+  void shouldRejectDuplicateKeysInsideConf() throws Exception {
+    Path f = write(HEAD + "conf:\n  k: first\n  k: second\n");
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasStackTraceContaining("Duplicate field 'k'");
   }
 
   // ---- file-level problems ----

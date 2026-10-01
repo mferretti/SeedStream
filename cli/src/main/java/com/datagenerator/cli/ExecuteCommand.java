@@ -473,7 +473,7 @@ public class ExecuteCommand implements Callable<Integer> {
         dataStructure.getData().size());
 
     // 3a. Validate unique[...] fields before anything is opened (open() may truncate tables)
-    StructureRegistry registry = createStructureRegistry(structuresPath, count);
+    StructureRegistry registry = createStructureRegistry(structuresPath, count, dataStructure);
     new UniqueFieldValidator(registry, structuresPath, count).validate(dataStructure.getName());
 
     // 3b. Check every field's constraints (ranges, array lengths) before anything is opened:
@@ -982,13 +982,17 @@ public class ExecuteCommand implements Callable<Integer> {
   }
 
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
-  private StructureRegistry createStructureRegistry(Path structuresPath, long count) {
+  private StructureRegistry createStructureRegistry(
+      Path structuresPath, long jobCount, DataStructure root) {
     StructureLoader loader =
         (structureName, basePath, registry) -> {
           try {
-            DataStructureParser parser = new DataStructureParser();
-            Path structureFile = basePath.resolve(structureName + ".yaml");
-            DataStructure structure = parser.parse(structureFile);
+            // The root was already parsed from the job's source (and its name checked against
+            // its file name), so reuse it instead of reading the same file a second time.
+            DataStructure structure =
+                structureName.equals(root.getName())
+                    ? root
+                    : new DataStructureParser().parse(basePath.resolve(structureName + ".yaml"));
 
             // Convert Map<String, FieldDefinition> to Map<String, DataType>, keeping the YAML
             // declaration order: it drives generation and every output layout (CSV columns,
@@ -1006,7 +1010,7 @@ public class ExecuteCommand implements Callable<Integer> {
           }
         };
 
-    return new StructureRegistry(loader, count);
+    return new StructureRegistry(loader, jobCount);
   }
 
   /**

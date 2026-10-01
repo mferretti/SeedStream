@@ -154,7 +154,7 @@ class DataStructureParserTest {
                 datatype: char[1..10]
             """;
 
-    Path file = tempDir.resolve("no-alias.yaml");
+    Path file = tempDir.resolve("test.yaml");
     Files.writeString(file, yaml);
 
     DataStructure structure = parser.parse(file);

@@ -34,7 +34,7 @@ public class DataStructure {
 
   String geolocation;
 
-  @NotEmpty @Valid Map<String, FieldDefinition> data;
+  @NotEmpty Map<String, @Valid FieldDefinition> data;
 
   @JsonCreator
   @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator requires params named after fields
