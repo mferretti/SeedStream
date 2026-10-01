@@ -23,8 +23,10 @@ import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import net.datafaker.Faker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -61,14 +63,7 @@ class DatafakerNewTypesTest {
   void shouldGeneratePrefix() {
     String prefix = (String) generateWithContext("usa", "prefix");
     // Common prefixes: Mr., Mrs., Ms., Dr., etc.
-    assertThat(prefix).isNotNull().isNotEmpty().matches("^[A-Za-z.]+$");
-  }
-
-  @Test
-  void shouldGenerateSuffix() {
-    String suffix = (String) generateWithContext("usa", "suffix");
-    // Common suffixes: Jr., Sr., III, etc.
-    assertThat(suffix).isNotNull().isNotEmpty();
+    assertThat(prefix).matches("^[A-Za-z.]+$");
   }
 
   @Test
@@ -80,13 +75,6 @@ class DatafakerNewTypesTest {
         .hasSizeGreaterThanOrEqualTo(8)
         .hasSizeLessThanOrEqualTo(20)
         .matches("^[A-Za-z0-9]+$");
-  }
-
-  @Test
-  void shouldGenerateSSN() {
-    String ssn = (String) generateWithContext("usa", "ssn");
-    // SSN format varies by locale
-    assertThat(ssn).isNotNull().isNotEmpty();
   }
 
   // ===== Address Extensions =====
@@ -117,7 +105,7 @@ class DatafakerNewTypesTest {
   void shouldGenerateTimeZone() {
     String timeZone = (String) generateWithContext("usa", "time_zone");
     // Time zones like "America/New_York", "Europe/Rome"
-    assertThat(timeZone).isNotNull().isNotEmpty().matches("^[A-Za-z_/]+$");
+    assertThat(timeZone).matches("^[A-Za-z_/]+$");
   }
 
   // ===== Finance Extensions =====
@@ -130,7 +118,7 @@ class DatafakerNewTypesTest {
     // (positions 5-6); DatafakerRegistry.conformantBic() normalizes to uppercase.
     // Upstream:
     // https://github.com/datafaker-net/datafaker/commit/d4267942d61314017cba303f98cd607d071409f4
-    assertThat(bic).isNotNull().isNotEmpty().matches("^[A-Z0-9]{8,11}$");
+    assertThat(bic).matches("^[A-Z0-9]{8,11}$");
   }
 
   @Test
@@ -145,14 +133,17 @@ class DatafakerNewTypesTest {
   void shouldGenerateCreditCardType() {
     String cardType = (String) generateWithContext("usa", "credit_card_type");
     // Common card types: Visa, Mastercard, Discover, Amex, etc.
-    assertThat(cardType).isNotNull().isNotEmpty();
+    // A card brand, not a card number (#380): exactly Datafaker's credit-card-type provider.
+    assertThat(cardType).doesNotContainPattern("\\d");
+    assertThat(cardType)
+        .isEqualTo(new Faker(Locale.US, new Random(42L)).business().creditCardType());
   }
 
   @Test
   void shouldGenerateStockMarket() {
     String ticker = (String) generateWithContext("usa", "stock_market");
     // Stock ticker symbols are typically 1-5 uppercase letters
-    assertThat(ticker).isNotNull().isNotEmpty().matches("^[A-Z]{1,5}$");
+    assertThat(ticker).matches("^[A-Z]{1,5}$");
   }
 
   // ===== Commerce Types =====
@@ -161,35 +152,21 @@ class DatafakerNewTypesTest {
   void shouldGenerateProductName() {
     String productName = (String) generateWithContext("usa", TYPE_PRODUCT_NAME);
     // Product names like "Ergonomic Steel Chair"
-    assertThat(productName).isNotNull().isNotEmpty().hasSizeGreaterThan(5);
-  }
-
-  @Test
-  void shouldGenerateDepartment() {
-    String department = (String) generateWithContext("usa", "department");
-    // Department names like "Electronics", "Clothing"
-    assertThat(department).isNotNull().isNotEmpty();
+    assertThat(productName).hasSizeGreaterThan(5);
   }
 
   @Test
   void shouldGenerateColor() {
     String color = (String) generateWithContext("usa", TYPE_COLOR);
     // Color names like "red", "blue", "sky blue"
-    assertThat(color).isNotNull().isNotEmpty().matches("^[a-z\\s]+$");
-  }
-
-  @Test
-  void shouldGenerateMaterial() {
-    String material = (String) generateWithContext("usa", "material");
-    // Materials like "Cotton", "Steel", "Plastic"
-    assertThat(material).isNotNull().isNotEmpty();
+    assertThat(color).matches("^[a-z\\s]+$");
   }
 
   @Test
   void shouldGeneratePromotionCode() {
     String promoCode = (String) generateWithContext("usa", "promotion_code");
     // Promo codes like "SAVE20", "SaleCool194130"
-    assertThat(promoCode).isNotNull().isNotEmpty().hasSizeGreaterThan(3);
+    assertThat(promoCode).hasSizeGreaterThan(3);
   }
 
   // ===== Text/Lorem Types =====

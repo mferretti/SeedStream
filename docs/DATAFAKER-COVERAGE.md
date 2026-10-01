@@ -65,7 +65,7 @@ Aliases are case-insensitive and normalized at lookup time.
 | `bic` | `faker.finance().bic()` with the locale country spliced into positions 5-6 — locale-aware (see #177), uppercased per ISO 9362 | `swift` |
 | `random_bic` | `faker.finance().bic()` — random-country BIC (pre-#177 behavior), uppercased | — |
 | `cvv` | `faker.number().numberBetween(100, 999)` | `cvc` |
-| `credit_card_type` | `faker.finance().creditCard().split(" ")[0]` | `creditcardtype` |
+| `credit_card_type` | `faker.business().creditCardType()` | `creditcardtype` |
 | `stock_market` | `faker.stock().nsdqSymbol()` | `stockmarket`, `stock`, `ticker` |
 
 ### Internet (5 types)

@@ -93,6 +93,7 @@ class DatafakerProviderWiringTest {
         wire("email", f -> f.internet().emailAddress()),
         wire("company", f -> f.company().name()),
         wire("credit_card", f -> f.finance().creditCard()),
+        wire("credit_card_type", f -> f.business().creditCardType()),
         wire("random_iban", f -> f.finance().iban()),
         wire("currency", f -> f.money().currencyCode()),
         wire("price", f -> f.commerce().price()),

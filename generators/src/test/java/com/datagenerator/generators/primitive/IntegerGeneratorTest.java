@@ -17,10 +17,14 @@
 package com.datagenerator.generators.primitive;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.generators.GeneratorException;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -130,10 +134,16 @@ class IntegerGeneratorTest {
             String.valueOf(Integer.MAX_VALUE));
     Random random = new Random(42L);
 
-    for (int i = 0; i < 1000; i++) {
-      int value = (int) generator.generate(random, type);
-      assertThat(value).isBetween(Integer.MIN_VALUE, Integer.MAX_VALUE);
-    }
+    // Must terminate (it used to spin forever) and use the whole range: both signs appear.
+    List<Integer> values = new ArrayList<>();
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(5),
+        () -> {
+          for (int i = 0; i < 1000; i++) {
+            values.add((int) generator.generate(random, type));
+          }
+        });
+    assertThat(values).hasSize(1000).anyMatch(v -> v < 0).anyMatch(v -> v > 0);
   }
 
   @Test
