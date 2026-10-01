@@ -235,11 +235,27 @@ class JobConfigParserHardeningTest {
   }
 
   @Test
-  void shouldHonourCamelCaseStructuresPathWhenUsedInsteadOfSnakeCase() throws Exception {
-    // Documents a quirk: Jackson also binds the private final field, so the Java field name is
-    // accepted as an undocumented alias of structures_path rather than rejected as unknown.
-    JobConfig c = parse(HEAD + "structuresPath: x\n" + MIN_TAIL);
-    assertThat(c.getStructuresPath()).isEqualTo("x");
+  void shouldRejectCamelCaseKeyThatIsNotTheDocumentedSnakeCaseName() throws Exception {
+    // Keys are snake_case only (#387): camelCase is an unknown key, not a hidden alias.
+    Path f = write(HEAD + "structuresPath: /x\n" + MIN_TAIL);
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasStackTraceContaining("structuresPath");
+  }
+
+  @Test
+  void shouldRejectBothSpellingsInsteadOfLettingTheUndocumentedOneWin() throws Exception {
+    // Used to load dirB (camelCase always overrode structures_path, whatever the order).
+    Path f = write(HEAD + "structures_path: dirA\nstructuresPath: dirB\n" + MIN_TAIL);
+    assertThatThrownBy(() -> parser.parse(f))
+        .isInstanceOf(SchemaParseException.class)
+        .hasStackTraceContaining("structuresPath");
+  }
+
+  @Test
+  void shouldUseDocumentedSnakeCaseStructuresPath() throws Exception {
+    assertThat(parse(HEAD + "structures_path: /x\n" + MIN_TAIL).getStructuresPath())
+        .isEqualTo("/x");
   }
 
   @Test
