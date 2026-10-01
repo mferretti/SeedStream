@@ -58,6 +58,7 @@ allprojects {
 // Capture catalog refs at root scope (libs is not accessible inside subprojects {})
 val slf4jApiDep = libs.slf4j.api
 val logbackClassicDep = libs.logback.classic
+val findsecbugsDep = libs.findsecbugs.plugin
 
 // Custom task to run dependency-check on all subprojects
 // Note: dependencyCheckAggregate doesn't scan Gradle dependencies properly
@@ -280,6 +281,11 @@ subprojects {
                 }
             }
         }
+    }
+
+    // FindSecBugs: the security patterns Codacy runs, so they surface (and can be suppressed) locally
+    dependencies {
+        "spotbugsPlugins"(findsecbugsDep)
     }
 
     configure<com.github.spotbugs.snom.SpotBugsExtension> {

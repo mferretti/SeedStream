@@ -79,6 +79,7 @@ Configuration: `build.gradle.kts`
 - **Effort**: MAX (most thorough analysis)
 - **Report Level**: LOW (report all issues — `ignoreFailures = false`, so any reported issue fails the build)
 - **Exclusions**: `config/spotbugs-exclude.xml`
+- **FindSecBugs plugin**: security patterns (the same ones Codacy runs), so they surface locally and `@SuppressFBWarnings` for them is not reported as useless. Project-wide exclusions (seeded `PREDICTABLE_RANDOM`, operator-config `CRLF_INJECTION_LOGS`, ASCII `IMPROPER_UNICODE`) and test-only ones are justified in the exclude file
 
 Common exclusions:
 - Lombok generated code
