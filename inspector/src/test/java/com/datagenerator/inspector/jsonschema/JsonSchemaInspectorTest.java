@@ -222,6 +222,25 @@ class JsonSchemaInspectorTest {
         .hasMessageContaining("not a recognizable JSON Schema");
   }
 
+  @Test
+  void shouldFailWhenDefinitionNamesCollideAfterSnakeCasing(@TempDir Path dir) {
+    String schema =
+        String.join(
+            "\n",
+            "{",
+            "  \"type\": \"object\",",
+            "  \"properties\": {\"x\": {\"type\": \"string\"}},",
+            "  \"$defs\": {",
+            "    \"PostalAddress\": {\"type\": \"object\", \"properties\": {\"a\": {}}},",
+            "    \"postal_address\": {\"type\": \"object\", \"properties\": {\"b\": {}}}",
+            "  }",
+            "}");
+
+    assertThatThrownBy(() -> inspect(dir, "s.json", schema))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("[PostalAddress, postal_address] -> postal_address");
+  }
+
   private Inspection inspect(Path dir, String fileName, String content) throws IOException {
     Path file = dir.resolve(fileName);
     Files.writeString(file, content);

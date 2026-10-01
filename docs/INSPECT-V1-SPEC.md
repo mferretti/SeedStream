@@ -70,6 +70,19 @@ Resolution order per property:
 | `boolean` | `boolean` |
 | `array` of T, `minItems`/`maxItems` | `array[<T>, min..max]` |
 | `$ref: #/.../Foo` | `object[foo]` + emit `foo.yaml` (recurse) |
+| `$ref: Foo.yaml` (bare file) | `object[foo]` (base name, extension dropped) |
+
+Notes:
+- `type: [T, "null"]` (OpenAPI 3.1 / JSON Schema nullability) maps as `T`.
+- `enum` applies to `integer`/`number` too (before bounds).
+- `exclusiveMinimum`/`exclusiveMaximum` (numeric, or the OpenAPI 3.0 boolean modifiers) move the
+  bound inward: by 1 for `int`, by one unit at the bound's scale (at least `0.01`) for `decimal`.
+- With only one side declared, the other takes its default unless that would invert the range; then
+  it keeps the default span from the declared side (`minimum: 2000000` → `int[2000000..2999998]`).
+  Arrays (`minItems`/`maxItems`) follow the same rule.
+- Decimal bounds are written in plain notation (`0.0000001`, never `1.0E-7`).
+- Schema names that snake-case to the same structure name (`LineItem`, `line_item`) stop the
+  inspection with an error listing the clash (§7: never silent clobber).
 
 ## 4. Default ranges (configurable later; constants for v1)
 

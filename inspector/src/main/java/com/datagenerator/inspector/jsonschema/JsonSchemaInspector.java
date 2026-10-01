@@ -102,6 +102,9 @@ public class JsonSchemaInspector {
     if (!defs.isObject()) {
       return;
     }
+    List<String> defNames = new ArrayList<>();
+    defs.fieldNames().forEachRemaining(defNames::add);
+    Names.requireDistinctSnakeNames(defNames, "schema definitions");
     for (Map.Entry<String, JsonNode> entry : defs.properties()) {
       DataStructure structure =
           toStructure(

@@ -54,6 +54,10 @@ public class OpenApiInspector {
     Map<String, Map<String, String>> comments = new LinkedHashMap<>();
     List<String> warnings = new ArrayList<>();
 
+    List<String> schemaNames = new ArrayList<>();
+    schemas.fieldNames().forEachRemaining(schemaNames::add);
+    Names.requireDistinctSnakeNames(schemaNames, "components.schemas");
+
     for (Map.Entry<String, JsonNode> entry : schemas.properties()) {
       DataStructure structure = toStructure(entry.getKey(), entry.getValue(), comments, warnings);
       if (structure != null) {

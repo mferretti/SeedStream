@@ -18,6 +18,7 @@ package com.datagenerator.inspector;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class NamesTest {
@@ -110,5 +111,26 @@ class NamesTest {
   @Test
   void toSnakeCaseBlankReturnsBlank() {
     assertThat(Names.toSnakeCase("   ")).isEqualTo("   ");
+  }
+
+  @Test
+  void shouldAcceptNamesThatStayDistinctAfterSnakeCasing() {
+    assertThatCode(
+            () -> Names.requireDistinctSnakeNames(List.of("LineItem", "LineItems", "Order"), "x"))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void shouldListEveryClashingGroupWhenNamesCollideAfterSnakeCasing() {
+    assertThatThrownBy(
+            () ->
+                Names.requireDistinctSnakeNames(
+                    List.of("LineItem", "line_item", "Order", "Foo-Bar", "foo_bar", "fooBar"),
+                    "components.schemas"))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("components.schemas")
+        .hasMessageContaining("[LineItem, line_item] -> line_item")
+        .hasMessageContaining("[Foo-Bar, foo_bar, fooBar] -> foo_bar")
+        .hasMessageNotContaining("Order");
   }
 }
