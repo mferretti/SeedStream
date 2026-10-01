@@ -27,13 +27,18 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaNormalization;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
@@ -133,15 +138,22 @@ public class FileDestination extends AbstractDestination {
         log.debug("Created parent directories: {}", parentDir);
       }
 
-      StandardOpenOption[] openOptions =
+      // NOFOLLOW_LINKS: the OS refuses to open a symlink, closing the window between the check
+      // below and the open. The final path (incl. a ".gz" suffix added here) is what gets opened,
+      // so it is the one that must not be a symlink (#357).
+      OpenOption[] openOptions =
           config.isAppend()
-              ? new StandardOpenOption[] {
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE
+              ? new OpenOption[] {
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND,
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS
               }
-              : new StandardOpenOption[] {
+              : new OpenOption[] {
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS
               };
 
       if (isAvro) {
@@ -149,6 +161,7 @@ public class FileDestination extends AbstractDestination {
         // The DataFileWriter is initialized lazily on first write when the schema is known.
         // Appending to an existing container must reuse its header and sync marker; writing a
         // second header mid-file makes the whole file unreadable.
+        refuseSymlink(filePath);
         boolean appendToExisting =
             config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
         avroAppendTarget = appendToExisting ? filePath : null;
@@ -159,6 +172,7 @@ public class FileDestination extends AbstractDestination {
         if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
           filePath = Path.of(filePath.toString() + ".gz");
         }
+        refuseSymlink(filePath);
         // Appending to a non-empty file: its header row (CSV) is already there (#344).
         headerWritten = config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
         OutputStream base = Files.newOutputStream(filePath, openOptions);
@@ -181,6 +195,26 @@ public class FileDestination extends AbstractDestination {
 
     } catch (IOException e) {
       throw new DestinationException("Failed to open file: " + config.getFilePath(), e);
+    }
+  }
+
+  /**
+   * Avro's default sync marker is 16 random bytes, which made two runs with the same seed differ
+   * byte-wise (#358). The marker only has to delimit blocks, not be secret: deriving it from the
+   * schema's canonical form keeps it stable across runs, machines and thread counts.
+   */
+  static byte[] syncMarker(Schema schema) {
+    try {
+      return Arrays.copyOf(SchemaNormalization.parsingFingerprint("SHA-256", schema), 16);
+    } catch (NoSuchAlgorithmException e) {
+      throw new DestinationException("SHA-256 unavailable for Avro sync marker", e);
+    }
+  }
+
+  private static void refuseSymlink(Path filePath) {
+    if (Files.isSymbolicLink(filePath)) {
+      throw new DestinationException(
+          "File destination refuses to write through a symlink: '" + filePath + "'");
     }
   }
 
@@ -336,7 +370,7 @@ public class FileDestination extends AbstractDestination {
           if (config.isCompress()) {
             avroFileWriter.setCodec(CodecFactory.deflateCodec(6));
           }
-          avroFileWriter.create(avroSer.getSchema(), avroRawOut);
+          avroFileWriter.create(avroSer.getSchema(), avroRawOut, syncMarker(avroSer.getSchema()));
         }
       }
       avroFileWriter.append(avroSer.buildGenericRecord(data));

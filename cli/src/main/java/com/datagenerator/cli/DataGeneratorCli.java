@@ -18,6 +18,8 @@ package com.datagenerator.cli;
 
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import picocli.CommandLine;
@@ -60,9 +62,28 @@ public class DataGeneratorCli implements Runnable {
 
   static CommandLine.IExecutionExceptionHandler friendlyExceptionHandler() {
     return (ex, commandLine, parseResult) -> {
-      commandLine.getErr().println(ex.getMessage());
+      commandLine.getErr().println(describe(ex));
       return 1;
     };
+  }
+
+  /**
+   * The exception message followed by each distinct cause message: wrappers like "Failed to load
+   * structure: x" otherwise hide the actual reason (bad datatype, unknown YAML key, ...).
+   */
+  static String describe(Throwable ex) {
+    StringBuilder out = new StringBuilder(String.valueOf(ex.getMessage()));
+    Set<String> seen = new HashSet<>();
+    seen.add(String.valueOf(ex.getMessage()));
+    int depth = 0;
+    // The depth cap also guards against self-referencing cause chains.
+    for (Throwable c = ex.getCause(); c != null && depth < 8; c = c.getCause(), depth++) {
+      String msg = c.getMessage();
+      if (msg != null && !msg.isBlank() && seen.add(msg) && !out.toString().contains(msg)) {
+        out.append(System.lineSeparator()).append("  caused by: ").append(msg);
+      }
+    }
+    return out.toString();
   }
 
   @Override

@@ -23,6 +23,9 @@ import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
+import com.datagenerator.core.type.SerialType;
+import com.datagenerator.core.type.TypeParser;
+import com.datagenerator.core.type.UniqueType;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -399,6 +402,102 @@ class JdbcTypeMapperTest {
       JdbcTypeMapper.bind(ps, 1, "99", refType);
 
       verify(ps).setLong(1, 99L);
+    }
+  }
+
+  @Nested
+  class UniqueAndSerialBinding {
+
+    private final UniqueType unique = new UniqueType(null, 1L, 100L);
+    private final SerialType serial = new SerialType(5L);
+
+    @Test
+    void shouldBindLongForUniqueTypeAsLong() throws SQLException {
+      JdbcTypeMapper.bind(ps, 3, 77L, unique);
+
+      verify(ps).setLong(3, 77L);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldWidenIntegerForUniqueTypeToLong() throws SQLException {
+      JdbcTypeMapper.bind(ps, 2, 41, unique);
+
+      verify(ps).setLong(2, 41L);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldParseStringForUniqueTypeAsLong() throws SQLException {
+      JdbcTypeMapper.bind(ps, 1, "123456789012", unique);
+
+      verify(ps).setLong(1, 123456789012L);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldBindNullUniqueTypeAsBigint() throws SQLException {
+      JdbcTypeMapper.bind(ps, 4, null, unique);
+
+      verify(ps).setNull(4, Types.BIGINT);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldBindLongForSerialTypeAsLong() throws SQLException {
+      JdbcTypeMapper.bind(ps, 3, 9_000_000_000L, serial);
+
+      verify(ps).setLong(3, 9_000_000_000L);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldWidenIntegerForSerialTypeToLong() throws SQLException {
+      JdbcTypeMapper.bind(ps, 1, 6, serial);
+
+      verify(ps).setLong(1, 6L);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldBindNullSerialTypeAsBigint() throws SQLException {
+      JdbcTypeMapper.bind(ps, 2, null, serial);
+
+      verify(ps).setNull(2, Types.BIGINT);
+      verifyNoMoreInteractions(ps);
+    }
+
+    @Test
+    void shouldRejectNonNumericStringForSerialType() {
+      assertThatThrownBy(() -> JdbcTypeMapper.bind(ps, 1, "abc", serial))
+          .isInstanceOf(NumberFormatException.class);
+      verifyNoInteractions(ps);
+    }
+  }
+
+  @Nested
+  class NullBindingPerKind {
+
+    private final TypeParser parser = new TypeParser();
+
+    @Test
+    void shouldBindNullWithSqlTypeMatchingEachDeclaredKind() throws SQLException {
+      JdbcTypeMapper.bind(ps, 1, null, parser.parse("int[1..9]"));
+      JdbcTypeMapper.bind(ps, 2, null, parser.parse("decimal[0.0..9.0]"));
+      JdbcTypeMapper.bind(ps, 3, null, parser.parse("boolean"));
+      JdbcTypeMapper.bind(ps, 4, null, parser.parse("char[1..9]"));
+      JdbcTypeMapper.bind(ps, 5, null, parser.parse("date[2020-01-01..2020-12-31]"));
+      JdbcTypeMapper.bind(ps, 6, null, parser.parse("timestamp[now-30d..now]"));
+      JdbcTypeMapper.bind(ps, 7, null, parser.parse("enum[A,B]"));
+
+      verify(ps).setNull(1, Types.INTEGER);
+      verify(ps).setNull(2, Types.DECIMAL);
+      verify(ps).setNull(3, Types.BOOLEAN);
+      verify(ps).setNull(4, Types.VARCHAR);
+      verify(ps).setNull(5, Types.DATE);
+      verify(ps).setNull(6, Types.TIMESTAMP);
+      verify(ps).setNull(7, Types.VARCHAR);
+      verifyNoMoreInteractions(ps);
     }
   }
 }

@@ -41,10 +41,14 @@ import com.datagenerator.generators.primitive.SerialGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
 import com.datagenerator.generators.primitive.UniqueGenerator;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 /**
  * Factory for creating appropriate data generators based on DataType.
@@ -98,9 +102,17 @@ public class DataGeneratorFactory {
   }
 
   private final Map<Class<? extends DataType>, DataGenerator> typeMap;
+  private final StructureRegistry structureRegistry;
+  private final Path structuresPath;
 
   /** Create factory with context for stateful generators (e.g., ObjectGenerator). */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification =
+          "StructureRegistry is a shared, job-scoped cache by design (same as ObjectGenerator)")
   public DataGeneratorFactory(StructureRegistry structureRegistry, Path structuresPath) {
+    this.structureRegistry = structureRegistry;
+    this.structuresPath = structuresPath;
     this.typeMap = new HashMap<>(STATELESS_TYPE_MAP);
     this.typeMap.put(ObjectType.class, new ObjectGenerator(structureRegistry, structuresPath));
   }
@@ -121,6 +133,40 @@ public class DataGeneratorFactory {
       if (gen != null) return gen;
     }
     throw new GeneratorException("No generator found for type: " + dataType.describe());
+  }
+
+  /**
+   * Checks every constraint reachable from {@code root} (primitive bounds, array lengths, nested
+   * structures) without generating records, so a configuration error fails before a destination is
+   * opened — opening may truncate an output file or table (#359). Primitive bounds are checked by
+   * the generators' own parsing (one throwaway draw), so the rules cannot drift from generation.
+   *
+   * @throws GeneratorException if any field's constraints are invalid
+   */
+  public void preflight(DataType root) {
+    preflight(root, new HashSet<>());
+  }
+
+  private void preflight(DataType type, Set<String> visitedStructures) {
+    switch (type) {
+      case null -> throw new GeneratorException("Cannot preflight a null type");
+      case PrimitiveType p -> create(p).generate(new Random(0), p);
+      case ArrayType a -> {
+        ArrayGenerator.validateLength(a.getMinLength(), a.getMaxLength());
+        preflight(a.getElementType(), visitedStructures);
+      }
+      case ObjectType o -> {
+        if (visitedStructures.add(o.getStructureName())) {
+          structureRegistry
+              .loadStructure(o.getStructureName(), structuresPath)
+              .values()
+              .forEach(field -> preflight(field, visitedStructures));
+        }
+      }
+      default -> {
+        // enum, ref, unique, serial, Datafaker types: validated at parse/registry time
+      }
+    }
   }
 
   /**

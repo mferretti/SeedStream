@@ -279,7 +279,8 @@ public class ProtobufSerializer implements FormatSerializer {
           return instant.toString();
         } else if (value instanceof List) {
           List<?> list = (List<?>) value;
-          return list.stream().map(item -> item == null ? "" : item.toString()).toList();
+          // Object/list elements are JSON-encoded like nested-map fields (#360), not toString().
+          return list.stream().map(this::listElementAsString).toList();
         } else if (value instanceof Map) {
           return formatMapAsString((Map<?, ?>) value);
         }
@@ -296,6 +297,20 @@ public class ProtobufSerializer implements FormatSerializer {
       default:
         return value.toString();
     }
+  }
+
+  private String listElementAsString(Object item) {
+    if (item == null) {
+      return "";
+    }
+    if (item instanceof Map<?, ?> || item instanceof List<?>) {
+      try {
+        return SerializerMapper.INSTANCE.writeValueAsString(item);
+      } catch (JsonProcessingException e) {
+        throw new SerializationException("Cannot JSON-encode list element: " + e.getMessage(), e);
+      }
+    }
+    return item.toString();
   }
 
   private String formatMapAsString(Map<?, ?> map) {

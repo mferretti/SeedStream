@@ -17,6 +17,7 @@
 package com.datagenerator.core.security;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,6 +40,227 @@ class PathValidatorTest {
     assertThatThrownBy(() -> PathValidator.validate("", null, CONTEXT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("must not be null or blank");
+  }
+
+  // ── validate: containment ────────────────────────────────────────────────
+
+  private Path newBase() throws IOException {
+    return Files.createDirectory(tempDir.resolve("base"));
+  }
+
+  private Path newFile(Path dir, String name) throws IOException {
+    return Files.writeString(dir.resolve(name), "1");
+  }
+
+  private static void assertEscapes(String raw, Path base) {
+    assertThatThrownBy(() -> PathValidator.validate(raw, base, CONTEXT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(CONTEXT + " must be located within");
+  }
+
+  @Test
+  void shouldRejectNullPath() {
+    assertThatThrownBy(() -> PathValidator.validate(null, null, CONTEXT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(CONTEXT + " must not be null or blank");
+  }
+
+  @Test
+  void shouldRejectWhitespaceOnlyPath() {
+    assertThatThrownBy(() -> PathValidator.validate(" \t ", null, CONTEXT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(CONTEXT + " must not be null or blank");
+  }
+
+  @Test
+  void shouldAcceptExistingFileInsideBase() throws IOException {
+    Path base = newBase();
+    Path file = newFile(base, "seed.txt");
+
+    assertThat(PathValidator.validate(file.toString(), base, CONTEXT)).isEqualTo(file.toRealPath());
+  }
+
+  @Test
+  void shouldRejectDotDotEscapeToExistingFileOutsideBase() throws IOException {
+    Path base = newBase();
+    Path outside = newFile(tempDir, "secret.txt");
+
+    assertEscapes(base + "/../" + outside.getFileName(), base);
+  }
+
+  @Test
+  void shouldRejectDotDotInTheMiddleThatEscapesBase() throws IOException {
+    Path base = newBase();
+    Files.createDirectory(base.resolve("a"));
+    newFile(tempDir, "x");
+
+    assertEscapes(base + "/a/../../x", base);
+  }
+
+  @Test
+  void shouldRejectDotDotEscapeWhenTargetDoesNotExist() throws IOException {
+    Path base = newBase();
+
+    assertEscapes(base + "/../nonexistent-outside.txt", base);
+  }
+
+  @Test
+  void shouldAcceptDotDotThatStaysInsideBase() throws IOException {
+    Path base = newBase();
+    Files.createDirectory(base.resolve("a"));
+    Path file = newFile(base, "x");
+
+    assertThat(PathValidator.validate(base + "/a/../x", base, CONTEXT))
+        .isEqualTo(file.toRealPath());
+  }
+
+  @Test
+  void shouldRejectAbsolutePathOutsideBase(@TempDir Path other) throws IOException {
+    Path base = newBase();
+    Path file = newFile(other, "seed.txt");
+
+    assertEscapes(file.toString(), base);
+  }
+
+  @Test
+  void shouldRejectSiblingDirectorySharingBasePrefix() throws IOException {
+    Path base = newBase();
+    Path evil = Files.createDirectory(tempDir.resolve("base-evil"));
+    Path file = newFile(evil, "x");
+
+    assertEscapes(file.toString(), base);
+  }
+
+  @Test
+  void shouldRejectNonexistentSiblingSharingBasePrefix() throws IOException {
+    Path base = newBase();
+
+    assertEscapes(tempDir.resolve("base-evil").resolve("x").toString(), base);
+  }
+
+  @Test
+  void shouldRejectBaseDirectoryItselfAsNotARegularFile() throws IOException {
+    Path base = newBase();
+
+    assertThatThrownBy(() -> PathValidator.validate(base.toString(), base, CONTEXT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(CONTEXT + " is not a regular file");
+  }
+
+  @Test
+  void shouldRejectSubdirectoryInsideBaseAsNotARegularFile() throws IOException {
+    Path base = newBase();
+    Path sub = Files.createDirectory(base.resolve("sub"));
+
+    assertThatThrownBy(() -> PathValidator.validate(sub.toString(), base, CONTEXT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("is not a regular file");
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldRejectFileSymlinkInsideBasePointingOutside() throws IOException {
+    Path base = newBase();
+    Path outside = newFile(tempDir, "secret.txt");
+    Path link = base.resolve("link.txt");
+    assumeTrue(trySymlink(link, outside), "filesystem refuses symlinks");
+
+    assertEscapes(link.toString(), base);
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldRejectFileReachedThroughDirectorySymlinkPointingOutside() throws IOException {
+    Path base = newBase();
+    Path outsideDir = Files.createDirectory(tempDir.resolve("outside"));
+    newFile(outsideDir, "secret.txt");
+    Path link = base.resolve("linkdir");
+    assumeTrue(trySymlink(link, outsideDir), "filesystem refuses symlinks");
+
+    assertEscapes(link + "/secret.txt", base);
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldAcceptSymlinkInsideBasePointingToAnotherFileInsideBase() throws IOException {
+    Path base = newBase();
+    Path target = newFile(base, "real.txt");
+    Path link = base.resolve("link.txt");
+    assumeTrue(trySymlink(link, target), "filesystem refuses symlinks");
+
+    assertThat(PathValidator.validate(link.toString(), base, CONTEXT))
+        .isEqualTo(target.toRealPath());
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldAcceptFileInsideBaseWhenBaseItselfIsASymlink() throws IOException {
+    Path realBase = newBase();
+    Path file = newFile(realBase, "seed.txt");
+    Path baseLink = tempDir.resolve("base-link");
+    assumeTrue(trySymlink(baseLink, realBase), "filesystem refuses symlinks");
+
+    assertThat(PathValidator.validate(baseLink.resolve("seed.txt").toString(), baseLink, CONTEXT))
+        .isEqualTo(file.toRealPath());
+  }
+
+  @Test
+  void shouldTreatUrlEncodedDotsAsLiteralFileNameNotTraversal() throws IOException {
+    Path base = newBase();
+    String raw = base + "/%2e%2e/secret.txt";
+
+    Path resolved = PathValidator.validate(raw, base, CONTEXT);
+
+    assertThat(resolved).isEqualTo(base.toRealPath().resolve("%2e%2e").resolve("secret.txt"));
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldTreatBackslashAsLiteralCharacterOnPosixSoMixedSeparatorsCannotEscape()
+      throws IOException {
+    Path base = newBase();
+    String raw = base + "/sub\\..\\..\\x";
+
+    Path resolved = PathValidator.validate(raw, base, CONTEXT);
+
+    assertThat(resolved.getParent()).isEqualTo(base.toRealPath());
+    assertThat(resolved.getFileName().toString()).isEqualTo("sub\\..\\..\\x");
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldRejectDifferentlyCasedBaseOnCaseSensitiveFileSystem() throws IOException {
+    Path base = Files.createDirectory(tempDir.resolve("Base"));
+    assumeTrue(!Files.exists(tempDir.resolve("base")), "case-insensitive filesystem");
+
+    assertEscapes(tempDir.resolve("base").resolve("f.txt").toString(), base);
+  }
+
+  @Test
+  void shouldCollapseDotDotWithoutContainmentCheckWhenBaseIsNull() throws IOException {
+    Path dir = Files.createDirectory(tempDir.resolve("d"));
+    Path file = newFile(tempDir, "f.txt");
+
+    assertThat(PathValidator.validate(dir + "/../f.txt", null, CONTEXT))
+        .isEqualTo(file.toRealPath());
+  }
+
+  @Test
+  void shouldReturnNormalizedPathWhenFileDoesNotExist() throws IOException {
+    Path base = newBase();
+
+    Path resolved = PathValidator.validate(base + "/a/../new.txt", base, CONTEXT);
+
+    assertThat(resolved).isEqualTo(base.toRealPath().resolve("new.txt"));
+  }
+
+  private static boolean trySymlink(Path link, Path target) {
+    try {
+      Files.createSymbolicLink(link, target);
+      return true;
+    } catch (IOException | UnsupportedOperationException | SecurityException e) {
+      return false;
+    }
   }
 
   // ── validateOutput ─────────────────────────────────────────────────────

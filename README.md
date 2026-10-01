@@ -218,10 +218,10 @@ echo -n "my-db-password" | ./gradlew :cli:run --args="encrypt"
 |--------|---------|-------------|
 | `--job` | required | Path to job YAML |
 | `--format` | `json` | `json`, `csv`, `protobuf`, `avro`, `avro-registry`, `cbeff` |
-| `--count` | `100` | Records to generate |
+| `--count` | `100` | Records to generate (≥ 1) |
 | `--seed` | from config | Override seed for this run |
 | `--faker-types` | unset | YAML of extra Datafaker types to register (must match the file passed to `inspect`) |
-| `--threads` | CPU cores | Worker threads |
+| `--threads` | CPU cores | Worker threads (≥ 1) |
 | `--verbose` | off | Detailed logging |
 | `--debug` | off | Enables sampled TRACE logging (see `--trace-sample`) |
 | `--trace-sample` | `10` | TRACE sampling rate 1–100 (percentage); only effective with `--debug` |

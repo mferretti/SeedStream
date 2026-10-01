@@ -94,7 +94,8 @@ class UniqueGeneratorTest {
     RecordIndex.holder()[0] = 3;
     Random random = new Random(99);
     generator.generate(random, t);
-    Random untouched = new Random(99); // nosemgrep: seeded RNG needed for determinism
+    // Seeded RNG needed for determinism
+    Random untouched = new Random(99); // nosemgrep
     assertThat(random.longs(5).toArray()).containsExactly(untouched.longs(5).toArray());
   }
 

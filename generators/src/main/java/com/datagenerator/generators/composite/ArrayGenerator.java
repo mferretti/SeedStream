@@ -74,13 +74,7 @@ public class ArrayGenerator implements DataGenerator {
     int minLength = arrayType.getMinLength();
     int maxLength = arrayType.getMaxLength();
 
-    if (minLength < 0 || maxLength < 0) {
-      throw new GeneratorException(
-          "Array length must be non-negative: [%d, %d]".formatted(minLength, maxLength));
-    }
-
-    GeneratorValidation.requireValidRange(minLength, maxLength, "array length");
-    GeneratorValidation.requireBoundedSize(maxLength, "array length");
+    validateLength(minLength, maxLength);
 
     int length = minLength + random.nextInt(maxLength - minLength + 1);
 
@@ -100,5 +94,19 @@ public class ArrayGenerator implements DataGenerator {
   @Override
   public boolean supports(DataType dataType) {
     return dataType instanceof ArrayType;
+  }
+
+  /**
+   * Checks array length bounds: non-negative, ordered, and within the size cap. Shared with {@link
+   * com.datagenerator.generators.DataGeneratorFactory#preflight} so bad bounds fail before output
+   * is opened.
+   */
+  public static void validateLength(int minLength, int maxLength) {
+    if (minLength < 0 || maxLength < 0) {
+      throw new GeneratorException(
+          "Array length must be non-negative: [%d, %d]".formatted(minLength, maxLength));
+    }
+    GeneratorValidation.requireValidRange(minLength, maxLength, "array length");
+    GeneratorValidation.requireBoundedSize(maxLength, "array length");
   }
 }

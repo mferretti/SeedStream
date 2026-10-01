@@ -19,6 +19,7 @@ package com.datagenerator.cli;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.datagenerator.core.engine.GenerationEngine;
+import com.datagenerator.core.exception.SeedResolutionException;
 import com.datagenerator.core.security.FilePermissionValidator;
 import com.datagenerator.core.security.PathValidator;
 import com.datagenerator.core.seed.SeedConfig;
@@ -66,7 +67,10 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParameterException;
+import picocli.CommandLine.Spec;
 
 /**
  * Execute command for running data generation jobs.
@@ -213,6 +217,8 @@ public class ExecuteCommand implements Callable<Integer> {
       description = "Number of records to generate (default: 100)",
       defaultValue = "100")
   private int count;
+
+  @Spec private CommandSpec spec;
 
   /**
    * Seed value for deterministic random generation.
@@ -401,6 +407,15 @@ public class ExecuteCommand implements Callable<Integer> {
    */
   @Override
   public Integer call() throws Exception {
+    // Reject nonsensical counts before anything (incl. output files) is touched; picocli reports a
+    // ParameterException from business logic as a usage error (exit 2).
+    if (count < 1) {
+      throw new ParameterException(spec.commandLine(), "--count must be >= 1, got " + count);
+    }
+    if (threads != null && threads < 1) {
+      throw new ParameterException(spec.commandLine(), "--threads must be >= 1, got " + threads);
+    }
+
     // Configure logging level based on flags
     configureLoggingLevel();
 
@@ -460,6 +475,12 @@ public class ExecuteCommand implements Callable<Integer> {
     StructureRegistry registry = createStructureRegistry(structuresPath, count);
     new UniqueFieldValidator(registry, structuresPath, count).validate(dataStructure.getName());
 
+    // 3b. Check every field's constraints (ranges, array lengths) before anything is opened:
+    // generators only parse bounds lazily, and open() may already have truncated the output.
+    DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
+    ObjectType objectType = new ObjectType(dataStructure.getName());
+    factory.preflight(objectType);
+
     // 4. Create format serializer
     FormatSerializer serializer = createSerializer(format, jobConfig, secretResolver);
     log.info("Created serializer: {}", serializer.getFormatName());
@@ -469,13 +490,9 @@ public class ExecuteCommand implements Callable<Integer> {
         createDestination(jobConfig, serializer, dataStructure, secretResolver);
     log.info("Created destination: {}", destination.getDestinationType());
 
-    // 6. Set up generation context
-    DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
-
-    // 7. Generate and write records using GenerationEngine
+    // 6. Generate and write records using GenerationEngine
     destination.open();
 
-    ObjectType objectType = new ObjectType(dataStructure.getName());
     DataGenerator generator = factory.create(objectType);
 
     // Determine number of worker threads
@@ -543,13 +560,13 @@ public class ExecuteCommand implements Callable<Integer> {
    *   <li>Default value: 0 (with warning)
    * </ol>
    *
-   * <p>If seed resolution from config fails (e.g., file not found, env var missing), falls back to
-   * default value 0 and logs an error.
+   * <p>If a configured seed source cannot be read (file missing or not a number, env var unset,
+   * remote error), the job fails: silently falling back to 0 would produce plausible but wrong
+   * data. Only a job with no seed configuration at all defaults to 0 (with a warning).
    *
    * @param jobConfig the job configuration containing seed config
    * @return resolved seed value (never null)
    */
-  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private long resolveSeed(JobConfig jobConfig, SecretResolver secretResolver) {
     if (seedOverride != null) {
       log.info("Using seed override from command line: {}", seedOverride);
@@ -569,13 +586,15 @@ public class ExecuteCommand implements Callable<Integer> {
     }
 
     try {
-      SeedResolver resolver = new SeedResolver();
-      long resolvedSeed = resolver.resolve(seedConfig);
+      long resolvedSeed = new SeedResolver().resolve(seedConfig);
       log.debug("Resolved seed from config: {}", resolvedSeed);
       return resolvedSeed;
-    } catch (Exception e) {
-      log.error("Failed to resolve seed, using default: 0", e);
-      return 0L;
+    } catch (SeedResolutionException e) {
+      throw new SeedResolutionException(
+          "Cannot resolve the configured seed ("
+              + e.getMessage()
+              + "); fix the job's seed config or pass --seed",
+          e);
     }
   }
 
