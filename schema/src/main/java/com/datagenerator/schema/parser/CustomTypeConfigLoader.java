@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,6 +72,9 @@ public class CustomTypeConfigLoader {
       throw new SchemaParseException("Empty or invalid Datafaker types config: " + configFile);
     }
 
+    rejectBuiltInNames(root.path("types"), "type", configFile);
+    rejectBuiltInNames(root.path("aliases"), "alias", configFile);
+
     int registered = 0;
     JsonNode types = root.path("types");
     if (types.isObject()) {
@@ -89,6 +93,33 @@ public class CustomTypeConfigLoader {
 
     log.info("Registered {} custom Datafaker type(s) from {}", registered, configFile);
     return registered;
+  }
+
+  /**
+   * Fails fast when a custom type or alias reuses a built-in name. Lookups resolve built-in aliases
+   * before types, so a colliding custom type would be silently shadowed (or would silently replace
+   * a built-in other structures rely on); a distinct name is required instead. Checked for the
+   * whole file before anything is registered, so a rejected file leaves the registry untouched.
+   */
+  private static void rejectBuiltInNames(JsonNode section, String kind, Path configFile) {
+    if (!section.isObject()) {
+      return;
+    }
+    List<String> clashes =
+        section.properties().stream()
+            .map(Map.Entry::getKey)
+            .filter(DatafakerRegistry::isBuiltIn)
+            .toList();
+    if (!clashes.isEmpty()) {
+      throw new SchemaParseException(
+          "Custom "
+              + kind
+              + " name(s) "
+              + clashes
+              + " in "
+              + configFile
+              + " collide with built-in Datafaker type(s)/alias(es); choose distinct names");
+    }
   }
 
   /**

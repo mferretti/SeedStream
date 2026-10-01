@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Currency;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -86,8 +87,14 @@ public class DatafakerRegistry {
   }
 
   // Static initialization - pre-register all built-in semantic types
+  // Names (types and aliases) registered by registerBuiltIns(), snapshotted once at class init.
+  private static final Set<String> BUILT_IN_NAMES;
+
   static {
     registerBuiltIns();
+    Set<String> names = new HashSet<>(registry.keySet());
+    names.addAll(aliasMap.keySet());
+    BUILT_IN_NAMES = Set.copyOf(names);
   }
 
   /**
@@ -451,6 +458,18 @@ public class DatafakerRegistry {
   public static String getCanonicalName(String typeName) {
     String normalized = normalizeTypeName(typeName);
     return aliasMap.getOrDefault(normalized, normalized);
+  }
+
+  /**
+   * Whether {@code typeName} is a built-in type or alias. User-defined types ({@code
+   * --faker-types}) must not reuse these names: lookups resolve built-in aliases first, so a
+   * colliding custom type would be silently shadowed.
+   *
+   * @param typeName type or alias name (case- and whitespace-insensitive)
+   * @return true if the name is reserved by a built-in registration
+   */
+  public static boolean isBuiltIn(String typeName) {
+    return typeName != null && BUILT_IN_NAMES.contains(normalizeTypeName(typeName));
   }
 
   /**

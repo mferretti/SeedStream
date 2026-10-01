@@ -25,6 +25,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CustomTypeConfigLoaderTest {
 
@@ -89,5 +92,60 @@ class CustomTypeConfigLoaderTest {
     assertThatThrownBy(() -> loader.load(config))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("broken");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "types, phone, address.city",
+    "types, phone_number, address.city",
+    "types, ' Phone ', address.city",
+    "aliases, zip, name",
+    "aliases, first_name, name"
+  })
+  void shouldRejectCustomNameWhenItCollidesWithBuiltIn(
+      String section, String name, String target, @TempDir Path dir) throws IOException {
+    Path config = dir.resolve("clash.yaml");
+    Files.writeString(
+        config,
+        section
+            + ":\n  loadertest_ok_before_clash: name.fullName\n  '"
+            + name
+            + "': "
+            + target
+            + "\n");
+    String builtInTarget = DatafakerRegistry.getCanonicalName(name);
+
+    assertThatThrownBy(() -> new CustomTypeConfigLoader().load(config))
+        .isInstanceOf(SchemaParseException.class)
+        .hasMessageContaining(name.trim())
+        .hasMessageContaining("built-in");
+    // Rejected before anything is registered; the built-in mapping is untouched.
+    assertThat(DatafakerRegistry.isRegistered("loadertest_ok_before_clash")).isFalse();
+    assertThat(DatafakerRegistry.getCanonicalName(name)).isEqualTo(builtInTarget);
+  }
+
+  @Test
+  void shouldAllowReloadingSameCustomFileWhenNamesAreDistinct(@TempDir Path dir)
+      throws IOException {
+    Path config = dir.resolve("reload.yaml");
+    Files.writeString(config, "types:\n  loadertest_reload: address.city\n");
+
+    new CustomTypeConfigLoader().load(config);
+
+    assertThat(new CustomTypeConfigLoader().load(config)).isEqualTo(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "../config/datafaker-types.example.yaml",
+        "../config/datafaker-types.regex-bench.yaml",
+        "../use-cases/dora-gdpr-sepa-payments/faker-types.yaml"
+      })
+  void shouldLoadShippedFakerTypesFilesWithoutBuiltInCollisions(String path) {
+    Path config = Path.of(path);
+    assertThat(config).exists();
+
+    assertThat(new CustomTypeConfigLoader().load(config)).isPositive();
   }
 }

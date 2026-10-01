@@ -24,6 +24,8 @@ import java.util.Random;
 import java.util.Set;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DatafakerRegistryTest {
 
@@ -170,6 +172,123 @@ class DatafakerRegistryTest {
     assertThat(types).isNotEmpty();
     assertThatThrownBy(() -> types.add("should_fail"))
         .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  // ── Registration collisions (global static state: unique names, no unregister API) ─────
+
+  private static String unique(String prefix) {
+    return prefix + "_" + System.nanoTime();
+  }
+
+  @Test
+  void shouldTreatTypeNamesCaseAndWhitespaceInsensitivelyWhenReRegistering() {
+    String name = unique("test_case_collision");
+    DatafakerRegistry.register(name.toUpperCase(Locale.ROOT), (f, r) -> "first");
+    DatafakerRegistry.register("  " + name + "  ", (f, r) -> "second");
+
+    assertThat(DatafakerRegistry.generate(name, FAKER, RANDOM)).isEqualTo("second");
+    assertThat(DatafakerRegistry.listTypes()).containsOnlyOnce(name);
+  }
+
+  @Test
+  void shouldNormalizeAliasAndCanonicalNamesWhenRegisteringAlias() {
+    String canonical = unique("test_norm_canon");
+    String alias = unique("test_norm_alias");
+    DatafakerRegistry.register(canonical, (f, r) -> "v");
+    DatafakerRegistry.registerAlias(
+        " " + alias.toUpperCase(Locale.ROOT) + " ", canonical.toUpperCase(Locale.ROOT));
+
+    assertThat(DatafakerRegistry.getCanonicalName(alias)).isEqualTo(canonical);
+    assertThat(DatafakerRegistry.generate(alias, FAKER, RANDOM)).isEqualTo("v");
+  }
+
+  @Test
+  void shouldRepointAliasWhenRegisteredTwice() {
+    String first = unique("test_repoint_a");
+    String second = unique("test_repoint_b");
+    String alias = unique("test_repoint_alias");
+    DatafakerRegistry.register(first, (f, r) -> "from-first");
+    DatafakerRegistry.register(second, (f, r) -> "from-second");
+    DatafakerRegistry.registerAlias(alias, first);
+    DatafakerRegistry.registerAlias(alias, second);
+
+    assertThat(DatafakerRegistry.generate(alias, FAKER, RANDOM)).isEqualTo("from-second");
+  }
+
+  @Test
+  void shouldNotBeRegisteredWhenAliasPointsToUnregisteredCanonical() {
+    String alias = unique("test_dangling_alias");
+    String canonical = unique("test_dangling_canon");
+    DatafakerRegistry.registerAlias(alias, canonical);
+
+    assertThat(DatafakerRegistry.isRegistered(alias)).isFalse();
+    assertThatThrownBy(() -> DatafakerRegistry.generate(alias, FAKER, RANDOM))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Type not registered: " + alias);
+  }
+
+  @Test
+  void shouldNotResolveAliasChainsTransitively() {
+    String target = unique("test_chain_target");
+    String middle = unique("test_chain_middle");
+    String head = unique("test_chain_head");
+    DatafakerRegistry.register(target, (f, r) -> "v");
+    DatafakerRegistry.registerAlias(middle, target);
+    DatafakerRegistry.registerAlias(head, middle);
+
+    assertThat(DatafakerRegistry.getCanonicalName(head)).isEqualTo(middle);
+    assertThat(DatafakerRegistry.isRegistered(head)).isFalse();
+  }
+
+  @Test
+  void shouldOverwriteFunctionRegisteredViaRegexWhenReRegisteredViaRegister() {
+    String name = unique("test_kind_overwrite");
+    DatafakerRegistry.registerRegex(name, "[A-Z]{5}");
+    DatafakerRegistry.register(name, (f, r) -> "plain");
+
+    assertThat(DatafakerRegistry.generate(name, FAKER, RANDOM)).isEqualTo("plain");
+  }
+
+  @Test
+  void shouldKeepPreviousRegistrationWhenReRegistrationWithInvalidRegexFails() {
+    String name = unique("test_failed_reregister");
+    DatafakerRegistry.register(name, (f, r) -> "original");
+
+    assertThatThrownBy(() -> DatafakerRegistry.registerRegex(name, "[unterminated"))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    assertThat(DatafakerRegistry.generate(name, FAKER, RANDOM)).isEqualTo("original");
+  }
+
+  @Test
+  void shouldResolveAliasFirstWhenATypeIsRegisteredUnderAnAliasName() {
+    // Documented precedence: aliases resolve before types, so a type registered under an existing
+    // alias name is shadowed. User config is protected by CustomTypeConfigLoader, which rejects
+    // names colliding with built-ins (isBuiltIn) instead of letting them be silently ignored.
+    String canonical = unique("test_shadow_canon");
+    String shadowed = unique("test_shadow_alias");
+    DatafakerRegistry.register(canonical, (f, r) -> "via-alias");
+    DatafakerRegistry.registerAlias(shadowed, canonical);
+
+    DatafakerRegistry.register(shadowed, (f, r) -> "direct");
+
+    assertThat(DatafakerRegistry.generate(shadowed, FAKER, RANDOM)).isEqualTo("via-alias");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"phone", "phone_number", "zip", " Phone ", "FIRST_NAME"})
+  void shouldReportBuiltInWhenNameIsABuiltInTypeOrAlias(String name) {
+    assertThat(DatafakerRegistry.isBuiltIn(name)).isTrue();
+  }
+
+  @Test
+  void shouldNotReportBuiltInWhenNameWasRegisteredAfterStartup() {
+    String custom = unique("test_custom_not_builtin");
+    DatafakerRegistry.register(custom, (f, r) -> "x");
+
+    assertThat(DatafakerRegistry.isRegistered(custom)).isTrue();
+    assertThat(DatafakerRegistry.isBuiltIn(custom)).isFalse();
+    assertThat(DatafakerRegistry.isBuiltIn(null)).isFalse();
   }
 
   // ── Validation ────────────────────────────────────────────────────────────
