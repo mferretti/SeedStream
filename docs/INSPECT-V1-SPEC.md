@@ -99,6 +99,12 @@ mappings receive inline review comments (§7a):
 | default string | `char[1..50]` |
 | default array bounds | `1..10` |
 
+DDL columns with a narrower declared capacity get the default capped to fit (#377), so generated
+values always insert: `SMALLINT`/`INT2`/`SMALLSERIAL` → `int[1..32767]`, `TINYINT` → `int[1..127]`
+(fits signed MySQL and unsigned SQL Server), and fixed-point `DECIMAL`/`NUMERIC`/`NUMBER(p,s)` →
+`decimal[0..10^(p-s) − 10^-s]` at scale `s` (e.g. `DECIMAL(4,2)` → `decimal[0.00..99.99]`) when
+that is below `decMax`. Floating types (`FLOAT`, `REAL`, `MONEY`, …) keep the default.
+
 ## 5. Name-hint heuristics
 
 - Applied **only** when no `format` and no `enum`.
@@ -196,12 +202,20 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   of the unknown-type default:
   - `CHARACTER VARYING`, `CHAR VARYING`, `VARCHAR2`, `NATIONAL CHARACTER VARYING`, `STRING` → `VARCHAR`
   - `DOUBLE PRECISION`, `FLOAT4/8`, `BINARY_FLOAT/DOUBLE`, `MONEY`, `NUMERIC`, `NUMBER`, `DEC` → `DECIMAL`
-  - `TIMESTAMP WITH[OUT] TIME ZONE`, `TIMESTAMPTZ`, `DATETIME`, `SMALLDATETIME` → `TIMESTAMP`
+  - `TIMESTAMP WITH[OUT] TIME ZONE`, `TIMESTAMPTZ`, `DATETIME`, `SMALLDATETIME`, `DATETIME2`,
+    `DATETIMEOFFSET` → `TIMESTAMP`
+  - `BIT` / `BIT(1)` (SQL Server's 0/1 flag) → `boolean`; `BIT(n>1)` is a bit string and stays an
+    unknown type
   - `SERIAL`/`BIGSERIAL`/`SMALLSERIAL`, `INT2/4/8` → `INT`
   - `CLOB`, `NCLOB`, `TINY/MEDIUM/LONGTEXT`, `NTEXT`, `LONG VARCHAR` → `TEXT`
   - native `UUID` / `UNIQUEIDENTIFIER` → the `uuid` datafaker key (or `char[36..36]` fallback)
   Genuinely opaque types (`JSON`, `JSONB`, `BYTEA`, `GEOMETRY`, …) still fall back to `char[1..50]`
-  flagged `UNKNOWN_TYPE`.
+  flagged `UNKNOWN_TYPE`. Oracle `RAW(n)`, which JSQLParser cannot parse, is rewritten to
+  `VARBINARY(n)` by the preprocessor and lands on the same flagged fallback.
+- Key constraints ignore column sort direction: `PRIMARY KEY CLUSTERED ([id] ASC)` (SSMS's default
+  scripting) is the same key as `PRIMARY KEY (id)`.
+- Constraints added later with `ALTER TABLE … ADD CONSTRAINT` (the `pg_dump` / SSMS / Oracle export
+  layout) are not applied yet — tracked as #376.
 - Foreign keys → `ref[table.column, 1..count]`: table-level `FOREIGN KEY` constraints (reliable)
   and inline
   column `REFERENCES table(col)` (best-effort token scan). The `1..count` ID-pool range is appended

@@ -21,10 +21,13 @@ import com.datagenerator.inspector.FakerTypes;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.NameHints;
 import com.datagenerator.inspector.Names;
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -56,6 +59,8 @@ public final class DdlTypeMapper {
           Map.entry("BOOL", "BOOLEAN"),
           Map.entry("DATETIME", TYPE_TIMESTAMP),
           Map.entry("SMALLDATETIME", TYPE_TIMESTAMP),
+          Map.entry("DATETIME2", TYPE_TIMESTAMP),
+          Map.entry("DATETIMEOFFSET", TYPE_TIMESTAMP),
           Map.entry("TIMESTAMPTZ", TYPE_TIMESTAMP),
           Map.entry("TIMESTAMP WITH TIME ZONE", TYPE_TIMESTAMP),
           Map.entry("TIMESTAMP WITHOUT TIME ZONE", TYPE_TIMESTAMP),
@@ -114,17 +119,18 @@ public final class DdlTypeMapper {
    * @param args type arguments (e.g. {@code [255]} for {@code VARCHAR(255)})
    */
   public MappedType map(String columnName, String sqlType, List<String> args) {
-    String type = canonicalType(sqlType);
+    String raw = normalize(sqlType);
+    String type = SYNONYMS.getOrDefault(raw, raw);
+    if ("BIT".equals(raw) && isAtMostOneBit(args)) {
+      return MappedType.declared("boolean"); // SQL Server BIT / BIT(1): a 0/1 flag
+    }
     return switch (type) {
       case "BOOLEAN" -> MappedType.declared("boolean");
       case "DATE" -> MappedType.declared(Defaults.DATE);
       case TYPE_TIMESTAMP -> MappedType.declared(Defaults.TIMESTAMP);
       case "UUID" -> uuidType();
-      case "INT" ->
-          MappedType.defaultRange("int[" + Defaults.INT_MIN + ".." + Defaults.INT_MAX + "]");
-      case TYPE_DECIMAL ->
-          MappedType.defaultRange(
-              "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]");
+      case "INT" -> MappedType.defaultRange("int[" + Defaults.INT_MIN + ".." + intMax(raw) + "]");
+      case TYPE_DECIMAL -> MappedType.defaultRange(decimalRange(raw, args));
       case TYPE_VARCHAR -> {
         boolean hasLength = args != null && !args.isEmpty();
         yield mapString(columnName, length(args, Defaults.VARCHAR_DEFAULT_LENGTH), !hasLength);
@@ -140,12 +146,64 @@ public final class DdlTypeMapper {
    * become {@code VARCHAR}; an unmapped name passes through so the switch can default it to
    * unknown.
    */
-  private String canonicalType(String sqlType) {
+  private static String normalize(String sqlType) {
     if (sqlType == null) {
       return "";
     }
-    String normalized = WHITESPACE.matcher(sqlType.trim()).replaceAll(" ").toUpperCase(Locale.ROOT);
-    return SYNONYMS.getOrDefault(normalized, normalized);
+    return WHITESPACE.matcher(sqlType.trim()).replaceAll(" ").toUpperCase(Locale.ROOT);
+  }
+
+  /** {@code BIT} without a length, or {@code BIT(1)}; {@code BIT(n>1)} is a bit string. */
+  private static boolean isAtMostOneBit(List<String> args) {
+    return args == null || args.isEmpty() || "1".equals(args.get(0).trim());
+  }
+
+  /**
+   * Upper bound of the default int range, capped to what narrow integer columns can hold so
+   * generated values insert (#377): SMALLINT 32767; TINYINT 127, which fits both MySQL's signed and
+   * SQL Server's unsigned TINYINT.
+   */
+  private static long intMax(String rawType) {
+    return switch (rawType) {
+      case "SMALLINT", "INT2", "SMALLSERIAL" -> Math.min(Defaults.INT_MAX, 32_767L);
+      case "TINYINT" -> Math.min(Defaults.INT_MAX, 127L);
+      case null, default -> Defaults.INT_MAX;
+    };
+  }
+
+  /**
+   * Default decimal range, capped to a fixed-point column's capacity (#377): {@code
+   * DECIMAL/NUMERIC/NUMBER(p,s)} holds at most {@code 10^(p-s) - 10^-s} (e.g. {@code DECIMAL(4,2)}
+   * -> {@code 99.99}). Floating types (FLOAT, REAL, MONEY, ...) take no precision/scale and keep
+   * the default.
+   */
+  private static String decimalRange(String rawType, List<String> args) {
+    String defaultRange = "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]";
+    boolean fixedPoint = Set.of("DECIMAL", "NUMERIC", "NUMBER", "DEC").contains(rawType);
+    if (!fixedPoint || args == null || args.isEmpty()) {
+      return defaultRange;
+    }
+    try {
+      int precision = Integer.parseInt(args.get(0).trim());
+      int scale = args.size() > 1 ? Integer.parseInt(args.get(1).trim()) : 0;
+      if (precision <= 0 || scale < 0) {
+        return defaultRange;
+      }
+      BigDecimal capacity =
+          BigDecimal.TEN
+              .pow(precision - scale, MathContext.UNLIMITED)
+              .subtract(BigDecimal.ONE.movePointLeft(scale));
+      if (precision < scale) {
+        capacity = BigDecimal.ONE.subtract(BigDecimal.ONE.movePointLeft(scale));
+      }
+      if (capacity.compareTo(new BigDecimal(Defaults.DECIMAL_MAX)) >= 0) {
+        return defaultRange;
+      }
+      String min = BigDecimal.ZERO.setScale(scale).toPlainString();
+      return "decimal[" + min + ".." + capacity.setScale(scale).toPlainString() + "]";
+    } catch (NumberFormatException | ArithmeticException e) {
+      return defaultRange;
+    }
   }
 
   /**

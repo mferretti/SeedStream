@@ -77,7 +77,7 @@ class CustomProviderSmokeTest {
     assertThat(types)
         .containsEntry("beer_style", "beer_style")
         .containsEntry("pokemon", "pokemon")
-        .containsEntry("abv", "decimal[0.0..9999.99]")
+        .containsEntry("abv", "decimal[0.00..99.99]") // DECIMAL(4,2) capacity (#377)
         .containsEntry("id", "int[1..999999]")
         .containsEntry("label", "char[1..120]");
 
