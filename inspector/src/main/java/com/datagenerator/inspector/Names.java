@@ -16,9 +16,12 @@
 
 package com.datagenerator.inspector;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /** Name utilities: tokenization and snake_case conversion shared by the inspector. */
@@ -43,6 +46,35 @@ public final class Names {
       return name;
     }
     return String.join("_", tokenize(name));
+  }
+
+  /**
+   * Fails when two source names snake-case to the same structure name ({@code LineItem} and {@code
+   * line_item}): both would be written to the same file, one silently lost, and {@code $ref}
+   * resolution (which snake-cases too) could not tell them apart.
+   *
+   * @param rawNames schema/definition names as they appear in the source
+   * @param source where the names come from, for the error message
+   * @throws InspectorException listing every clashing group
+   */
+  public static void requireDistinctSnakeNames(Iterable<String> rawNames, String source) {
+    Map<String, List<String>> byName = new LinkedHashMap<>();
+    for (String raw : rawNames) {
+      byName.computeIfAbsent(toSnakeCase(raw), k -> new ArrayList<>()).add(raw);
+    }
+    List<String> clashes =
+        byName.entrySet().stream()
+            .filter(e -> e.getValue().size() > 1)
+            .map(e -> e.getValue() + " -> " + e.getKey())
+            .toList();
+    if (!clashes.isEmpty()) {
+      throw new InspectorException(
+          "Schema names collide after snake_case conversion in "
+              + source
+              + ": "
+              + String.join("; ", clashes)
+              + " — rename one of them");
+    }
   }
 
   /**
