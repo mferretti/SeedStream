@@ -28,8 +28,6 @@ import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -110,8 +108,8 @@ public class ObjectGenerator implements DataGenerator {
     // Two-pass generation: scalars first so that all primitive fields are present in the partial
     // record before any nested (array/object) field is processed. This guarantees that
     // ref[parent.*] generators in child structures can access scalar fields (e.g. id) regardless
-    // of the iteration order returned by the StructureLoader. The flyweight record's field order
-    // matches this two-pass order, preserving the previous LinkedHashMap serialization order.
+    // of declaration order. Output layout is the declaration order (buildSchema), independent of
+    // this fill order.
     RecordSchema schema = schemaCache.computeIfAbsent(structureName, k -> buildSchema(fields));
     Map<String, Object> result = new FieldRecord(schema);
 
@@ -153,27 +151,15 @@ public class ObjectGenerator implements DataGenerator {
   }
 
   /**
-   * Build the interned field layout for a structure in the same order {@link #generate} populates
-   * it: all scalar fields (in declaration order) first, then all nested array/object fields. This
-   * keeps the record's serialization order identical to the previous {@code LinkedHashMap}.
+   * Build the interned field layout for a structure in <b>declaration order</b>. This is the output
+   * order of every format (CSV columns, JSON keys, Avro/protobuf fields) (#374), so a CSV generated
+   * for a table loads by position. Generation is still two-pass (scalars first, see {@link
+   * #generate}); {@link FieldRecord} stores values by slot, so fill order does not affect layout.
    *
-   * @param fields structure field definitions
+   * @param fields structure field definitions, in declaration order
    * @return interned record schema
    */
   private static RecordSchema buildSchema(Map<String, DataType> fields) {
-    List<String> ordered = new ArrayList<>(fields.size());
-    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
-      DataType fieldType = entry.getValue();
-      if (!(fieldType instanceof ArrayType || fieldType instanceof ObjectType)) {
-        ordered.add(entry.getKey());
-      }
-    }
-    for (Map.Entry<String, DataType> entry : fields.entrySet()) {
-      DataType fieldType = entry.getValue();
-      if (fieldType instanceof ArrayType || fieldType instanceof ObjectType) {
-        ordered.add(entry.getKey());
-      }
-    }
-    return new RecordSchema(ordered.toArray(new String[0]));
+    return new RecordSchema(fields.keySet().toArray(new String[0]));
   }
 }
