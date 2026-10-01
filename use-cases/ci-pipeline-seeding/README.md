@@ -93,9 +93,9 @@ psql -h localhost -U ci_user -d ci_testdb -q -X -f verify.sql | grep -v '^$'
 Expected output — and identical after any number of reruns:
 
 ```
-customers 100 b642a5c040d4881e4201958198ad6e9c
-orders 400 5c0d36ddda6e1c066f6c751935471c66
-order_items 1200 570394dba09cae0f47439df4f7a5e370
+customers 100 ed64797c784284008d632e5033c0ba17
+orders 400 0ac21aabd6815890e65a3e5fe6ceb7d8
+order_items 1200 5a90b3d1d5146d1eca95847e1c1d501e
 ```
 
 ## In your pipeline
