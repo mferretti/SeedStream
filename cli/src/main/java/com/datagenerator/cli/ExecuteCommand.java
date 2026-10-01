@@ -983,7 +983,7 @@ public class ExecuteCommand implements Callable<Integer> {
 
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private StructureRegistry createStructureRegistry(
-      Path structuresPath, long count, DataStructure root) {
+      Path structuresPath, long jobCount, DataStructure root) {
     StructureLoader loader =
         (structureName, basePath, registry) -> {
           try {
@@ -1010,7 +1010,7 @@ public class ExecuteCommand implements Callable<Integer> {
           }
         };
 
-    return new StructureRegistry(loader, count);
+    return new StructureRegistry(loader, jobCount);
   }
 
   /**
