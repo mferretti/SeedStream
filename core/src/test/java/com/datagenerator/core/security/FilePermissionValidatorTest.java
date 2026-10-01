@@ -124,8 +124,9 @@ class FilePermissionValidatorTest {
   void shouldFailSecretFileReadableByOthersOrGroupAndNameFileInMessage(String perms)
       throws IOException {
     Path file = createFileWithPermissions("aes.key", perms);
+    FilePermissionValidator validator = new FilePermissionValidator();
 
-    assertThatThrownBy(() -> new FilePermissionValidator().validateSecretFile(file, "Key file"))
+    assertThatThrownBy(() -> validator.validateSecretFile(file, "Key file"))
         .isInstanceOf(SecurityException.class)
         .hasMessageStartingWith("Key file has insecure permissions")
         .hasMessageContaining("chmod 600 " + file);

@@ -166,8 +166,9 @@ class DataGeneratorFactoryTest {
                 Map.of("kids", parser.parse("array[object[child], 1..3]")),
                 "child",
                 Map.of("n", parser.parse("int[9..1]"))));
+    ObjectType dataType = new ObjectType("parent");
 
-    assertThatThrownBy(() -> factory.preflight(new ObjectType("parent")))
+    assertThatThrownBy(() -> factory.preflight(dataType))
         .isInstanceOf(GeneratorException.class)
         .hasMessageContaining("min (9) > max (1)");
   }

@@ -195,7 +195,8 @@ class AesGcmCryptoTest {
 
   @Test
   void hexToKeyThrowsOnTooLongHex() {
-    assertThatThrownBy(() -> AesGcmCrypto.hexToKey("a".repeat(65)))
+    String tooLongHex = "a".repeat(65);
+    assertThatThrownBy(() -> AesGcmCrypto.hexToKey(tooLongHex))
         .isInstanceOf(SecretResolutionException.class)
         .hasMessageContaining("65 characters");
   }

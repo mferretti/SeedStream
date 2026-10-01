@@ -122,11 +122,8 @@ class NamesTest {
 
   @Test
   void shouldListEveryClashingGroupWhenNamesCollideAfterSnakeCasing() {
-    assertThatThrownBy(
-            () ->
-                Names.requireDistinctSnakeNames(
-                    List.of("LineItem", "line_item", "Order", "Foo-Bar", "foo_bar", "fooBar"),
-                    "components.schemas"))
+    List<String> names = List.of("LineItem", "line_item", "Order", "Foo-Bar", "foo_bar", "fooBar");
+    assertThatThrownBy(() -> Names.requireDistinctSnakeNames(names, "components.schemas"))
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("components.schemas")
         .hasMessageContaining("[LineItem, line_item] -> line_item")

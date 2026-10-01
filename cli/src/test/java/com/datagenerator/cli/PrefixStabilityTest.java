@@ -100,7 +100,7 @@ class PrefixStabilityTest {
     return Files.readAllLines(out.resolve("output.json"));
   }
 
-  private static List<Long> values(List<String> lines) throws IOException {
+  private static List<Long> values(List<String> lines) {
     return lines.stream().map(l -> read(l)).toList();
   }
 

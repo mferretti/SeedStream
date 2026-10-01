@@ -50,7 +50,7 @@ class RecordIndexTest {
 
     assertThat(written).hasSize(100);
     for (int i = 0; i < 100; i++) {
-      assertThat(written.get(i).get("i")).isEqualTo((long) i);
+      assertThat(written.get(i)).containsEntry("i", (long) i);
     }
     assertThat(RecordIndex.current()).isEqualTo(-1L);
   }

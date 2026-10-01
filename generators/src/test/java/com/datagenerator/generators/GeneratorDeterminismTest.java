@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -133,7 +134,8 @@ class GeneratorDeterminismTest {
         Arguments.of(prim(Kind.INT, "7", "7"), 7),
         Arguments.of(prim(Kind.INT, "-5", "-5"), -5),
         Arguments.of(prim(Kind.DECIMAL, "1.50", "1.50"), new BigDecimal("1.50")),
-        Arguments.of(prim(Kind.DATE, "2024-02-29", "2024-02-29"), LocalDate.of(2024, 2, 29)),
+        Arguments.of(
+            prim(Kind.DATE, "2024-02-29", "2024-02-29"), LocalDate.of(2024, Month.FEBRUARY, 29)),
         Arguments.of(
             prim(Kind.TIMESTAMP, "2024-02-29T12:30:00", "2024-02-29T12:30:00"),
             Instant.parse("2024-02-29T12:30:00Z")),
@@ -203,7 +205,8 @@ class GeneratorDeterminismTest {
   @Test
   void shouldHitBothEndsWhenDateRangeIsTwoDays() {
     assertThat(distinct(prim(Kind.DATE, "2020-01-01", "2020-01-02")))
-        .containsExactlyInAnyOrder(LocalDate.of(2020, 1, 1), LocalDate.of(2020, 1, 2));
+        .containsExactlyInAnyOrder(
+            LocalDate.of(2020, Month.JANUARY, 1), LocalDate.of(2020, Month.JANUARY, 2));
   }
 
   @Test

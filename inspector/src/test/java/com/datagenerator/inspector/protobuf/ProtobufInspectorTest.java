@@ -351,8 +351,9 @@ class ProtobufInspectorTest {
     // Field 1 (file) is length-delimited and claims 5 bytes but only 1 follows: always invalid.
     Path bad = tempDir.resolve("bad.desc");
     Files.write(bad, new byte[] {0x0A, 0x05, 0x01});
+    ProtobufInspector inspector = new ProtobufInspector();
 
-    assertThatThrownBy(() -> new ProtobufInspector().inspect(bad))
+    assertThatThrownBy(() -> inspector.inspect(bad))
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("protobuf descriptor set")
         .hasMessageContaining("bad.desc");
@@ -832,8 +833,9 @@ class ProtobufInspectorTest {
     FileDescriptorProto f2 =
         file("f2.proto", "x.a", message("B", optionalField("q", 1, Type.TYPE_INT32)));
     Path set = buildAndWrite(f1, f2);
+    ProtobufInspector pbInspector = new ProtobufInspector();
 
-    assertThatThrownBy(() -> new ProtobufInspector().inspect(set))
+    assertThatThrownBy(() -> pbInspector.inspect(set))
         .isInstanceOf(InspectorException.class)
         .hasMessageContaining("ambiguous")
         .hasMessageContaining("x_a_b");

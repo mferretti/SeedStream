@@ -195,8 +195,9 @@ class SeedResolverRemoteHttpTest {
   @Test
   void shouldNotFollowRedirectToAnotherEndpoint() {
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, url("/redirect"), null);
+    SeedResolver resolver = new SeedResolver();
 
-    assertThatThrownBy(() -> new SeedResolver().resolve(config))
+    assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
         .hasMessageContaining("status 302");
 
@@ -259,8 +260,9 @@ class SeedResolverRemoteHttpTest {
     }
     String deadUrl = "http://127.0.0.1:" + closedPort + SEED_PATH;
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, deadUrl, null);
+    SeedResolver resolver = new SeedResolver();
 
-    assertThatThrownBy(() -> new SeedResolver().resolve(config))
+    assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
         .hasMessageContaining("Failed to fetch seed from remote API: " + deadUrl)
         .hasCauseInstanceOf(IOException.class);
@@ -275,8 +277,9 @@ class SeedResolverRemoteHttpTest {
     when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenThrow(new HttpTimeoutException("request timed out"));
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, url(SEED_PATH), null);
+    SeedResolver resolver = new SeedResolver(client);
 
-    assertThatThrownBy(() -> new SeedResolver(client).resolve(config))
+    assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(SeedResolutionException.class)
         .hasMessageContaining("Failed to fetch seed")
         .hasCauseInstanceOf(HttpTimeoutException.class);
@@ -289,9 +292,10 @@ class SeedResolverRemoteHttpTest {
     when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenThrow(new InterruptedException("stop"));
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, url(SEED_PATH), null);
+    SeedResolver resolver = new SeedResolver(client);
 
     try {
-      assertThatThrownBy(() -> new SeedResolver(client).resolve(config))
+      assertThatThrownBy(() -> resolver.resolve(config))
           .isInstanceOf(SeedResolutionException.class)
           .hasMessageContaining("Failed to fetch seed");
       assertThat(Thread.currentThread().isInterrupted()).isTrue();
@@ -304,8 +308,9 @@ class SeedResolverRemoteHttpTest {
   @ValueSource(strings = {"ftp://example.com/seed", "file:///etc/passwd", "not a url", ""})
   void shouldRejectNonHttpUrlsBeforeAnyRequest(String badUrl) {
     SeedConfig.RemoteSeed config = new SeedConfig.RemoteSeed(TYPE_REMOTE, badUrl, null);
+    SeedResolver resolver = new SeedResolver();
 
-    assertThatThrownBy(() -> new SeedResolver().resolve(config))
+    assertThatThrownBy(() -> resolver.resolve(config))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("remote seed URL");
   }

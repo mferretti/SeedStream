@@ -274,7 +274,8 @@ class FileDestinationTest {
 
     try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
       destination.open();
-      assertThatThrownBy(() -> destination.write(new LinkedHashMap<>(Map.of("age", 30))))
+      Map<String, Object> badMap = new LinkedHashMap<>(Map.of("age", 30));
+      assertThatThrownBy(() -> destination.write(badMap))
           .isInstanceOf(DestinationException.class)
           .hasMessageContaining("schema differs");
     }
@@ -456,7 +457,8 @@ class FileDestinationTest {
     try (FileDestination destination = new FileDestination(config, new AvroSerializer())) {
       destination.open();
       destination.write(new LinkedHashMap<>(Map.of("age", 30)));
-      assertThatThrownBy(() -> destination.write(new LinkedHashMap<>(Map.of("age", "thirty"))))
+      Map<String, Object> badRecord = new LinkedHashMap<>(Map.of("age", "thirty"));
+      assertThatThrownBy(() -> destination.write(badRecord))
           .isInstanceOf(SerializationException.class)
           .hasMessageContaining("'age'");
       destination.write(new LinkedHashMap<>(Map.of("age", 31)));

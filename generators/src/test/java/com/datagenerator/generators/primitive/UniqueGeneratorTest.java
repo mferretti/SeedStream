@@ -118,8 +118,8 @@ class UniqueGeneratorTest {
   @Test
   void shouldThrowWhenTypeIsUnresolved() {
     GeneratorContext.enter(factory, null, 10, 1L);
-    assertThatThrownBy(() -> gen(new UniqueType(null, 1, 10), 0))
-        .isInstanceOf(GeneratorException.class);
+    UniqueType type = new UniqueType(null, 1, 10);
+    assertThatThrownBy(() -> gen(type, 0)).isInstanceOf(GeneratorException.class);
   }
 
   @Test
@@ -128,8 +128,7 @@ class UniqueGeneratorTest {
     long[] a = sequence(t, 5L);
     long[] b = sequence(t, 5L);
     long[] c = sequence(t, 6L);
-    assertThat(a).containsExactly(b);
-    assertThat(a).isNotEqualTo(c);
+    assertThat(a).containsExactly(b).isNotEqualTo(c);
   }
 
   private long[] sequence(UniqueType t, long seed) {

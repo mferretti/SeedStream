@@ -56,7 +56,7 @@ final class UniqueFieldValidator {
     for (Map.Entry<String, DataType> e : fields.entrySet()) {
       visit(structureName, e.getKey(), e.getValue(), underArray);
     }
-    checkGroups(structureName, fields);
+    checkGroups(fields);
   }
 
   private void visit(String structureName, String field, DataType type, boolean underArray) {
@@ -76,7 +76,7 @@ final class UniqueFieldValidator {
     }
   }
 
-  private void checkGroups(String structureName, Map<String, DataType> fields) {
+  private void checkGroups(Map<String, DataType> fields) {
     Map<String, Map<String, UniqueType>> byGroup = new LinkedHashMap<>();
     fields.forEach(
         (name, type) -> {

@@ -141,8 +141,9 @@ class PathValidatorTest {
   @Test
   void shouldRejectBaseDirectoryItselfAsNotARegularFile() throws IOException {
     Path base = newBase();
+    String basePath = base.toString();
 
-    assertThatThrownBy(() -> PathValidator.validate(base.toString(), base, CONTEXT))
+    assertThatThrownBy(() -> PathValidator.validate(basePath, base, CONTEXT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(CONTEXT + " is not a regular file");
   }
@@ -151,8 +152,9 @@ class PathValidatorTest {
   void shouldRejectSubdirectoryInsideBaseAsNotARegularFile() throws IOException {
     Path base = newBase();
     Path sub = Files.createDirectory(base.resolve("sub"));
+    String subPath = sub.toString();
 
-    assertThatThrownBy(() -> PathValidator.validate(sub.toString(), base, CONTEXT))
+    assertThatThrownBy(() -> PathValidator.validate(subPath, base, CONTEXT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("is not a regular file");
   }
@@ -223,8 +225,8 @@ class PathValidatorTest {
 
     Path resolved = PathValidator.validate(raw, base, CONTEXT);
 
-    assertThat(resolved.getParent()).isEqualTo(base.toRealPath());
-    assertThat(resolved.getFileName().toString()).isEqualTo("sub\\..\\..\\x");
+    assertThat(resolved).hasParentRaw(base.toRealPath());
+    assertThat(resolved.getFileName()).hasToString("sub\\..\\..\\x");
   }
 
   @Test

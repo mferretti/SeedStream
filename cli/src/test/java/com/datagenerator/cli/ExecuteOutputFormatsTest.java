@@ -92,9 +92,9 @@ class ExecuteOutputFormatsTest {
     Path job = tempDir.resolve("job-" + runCounter + ".yaml");
     Files.writeString(
         job,
-        "source: item.yaml\ntype: file\nstructures_path: %s\nseed:\n  type: embedded\n  value: %d\n"
+        "source: item.yaml%ntype: file%nstructures_path: %s%nseed:%n  type: embedded%n  value: %d%n"
                 .formatted(structDir.toAbsolutePath(), seed)
-            + "conf:\n  path: %s/%s\n".formatted(out.toAbsolutePath(), OUTPUT));
+            + "conf:%n  path: %s/%s%n".formatted(out.toAbsolutePath(), OUTPUT));
     Result r =
         CliTestSupport.run(
             "execute",
@@ -143,13 +143,13 @@ class ExecuteOutputFormatsTest {
         row.put(header.get(c), cells.get(c));
       }
       JsonNode want = expected.get(i);
-      assertThat(row.get("id")).as("row %d id", i).isEqualTo(want.get("id").asText());
-      assertThat(row.get("label")).as("row %d label", i).isEqualTo(want.get("label").asText());
+      assertThat(row).as("row %d id", i).containsEntry("id", want.get("id").asText());
+      assertThat(row).as("row %d label", i).containsEntry("label", want.get("label").asText());
       assertThat(Double.parseDouble(row.get("amount")))
           .as("row %d amount", i)
           .isEqualTo(want.get("amount").asDouble());
-      assertThat(row.get("active")).as("row %d active", i).isEqualTo(want.get("active").asText());
-      assertThat(row.get("born")).as("row %d born", i).isEqualTo(want.get("born").asText());
+      assertThat(row).as("row %d active", i).containsEntry("active", want.get("active").asText());
+      assertThat(row).as("row %d born", i).containsEntry("born", want.get("born").asText());
     }
   }
 
@@ -177,15 +177,15 @@ class ExecuteOutputFormatsTest {
     for (int i = 0; i < count; i++) {
       Map<String, Object> got = avro.records().get(i);
       JsonNode want = expected.get(i);
-      assertThat(got.get("id")).as("record %d id", i).isEqualTo(want.get("id").asLong());
-      assertThat(got.get("label")).as("record %d label", i).isEqualTo(want.get("label").asText());
+      assertThat(got).as("record %d id", i).containsEntry("id", want.get("id").asLong());
+      assertThat(got).as("record %d label", i).containsEntry("label", want.get("label").asText());
       assertThat((Double) got.get("amount"))
           .as("record %d amount", i)
           .isEqualTo(want.get("amount").asDouble());
-      assertThat(got.get("active"))
+      assertThat(got)
           .as("record %d active", i)
-          .isEqualTo(want.get("active").asBoolean());
-      assertThat(got.get("born")).as("record %d born", i).isEqualTo(want.get("born").asText());
+          .containsEntry("active", want.get("active").asBoolean());
+      assertThat(got).as("record %d born", i).containsEntry("born", want.get("born").asText());
     }
   }
 
@@ -215,8 +215,8 @@ class ExecuteOutputFormatsTest {
     // from the wire types: double = amount, ISO date string = born, other string = label,
     // varint holding values > 1 = id; the remaining field per record is the boolean.
     Map<String, Integer> number = new HashMap<>();
-    for (Map<Integer, Object> record : decoded) {
-      record.forEach(
+    for (Map<Integer, Object> entry : decoded) {
+      entry.forEach(
           (n, v) -> {
             if (v instanceof Double) {
               number.put("amount", n);
@@ -231,18 +231,18 @@ class ExecuteOutputFormatsTest {
     for (int i = 0; i < count; i++) {
       Map<Integer, Object> fields = decoded.get(i);
       JsonNode want = expected.get(i);
-      assertThat(fields.get(number.get("id")))
+      assertThat(fields)
           .as("record %d id", i)
-          .isEqualTo(want.get("id").asLong());
-      assertThat(fields.get(number.get("label")))
+          .containsEntry(number.get("id"), want.get("id").asLong());
+      assertThat(fields)
           .as("record %d label", i)
-          .isEqualTo(want.get("label").asText());
+          .containsEntry(number.get("label"), want.get("label").asText());
       assertThat((Double) fields.get(number.get("amount")))
           .as("record %d amount", i)
           .isEqualTo(want.get("amount").asDouble());
-      assertThat(fields.get(number.get("born")))
+      assertThat(fields)
           .as("record %d born", i)
-          .isEqualTo(want.get("born").asText());
+          .containsEntry(number.get("born"), want.get("born").asText());
       Set<Integer> boolFields = new HashSet<>(fields.keySet());
       boolFields.removeAll(number.values());
       assertThat(boolFields)
@@ -337,9 +337,9 @@ class ExecuteOutputFormatsTest {
 
   @Test
   void shouldWriteJsonKeysInStructureDeclarationOrder() throws IOException {
-    for (JsonNode record : jsonRecords(9, 3)) {
+    for (JsonNode node : jsonRecords(9, 3)) {
       List<String> keys = new ArrayList<>();
-      record.fieldNames().forEachRemaining(keys::add);
+      node.fieldNames().forEachRemaining(keys::add);
       assertThat(keys).containsExactlyElementsOf(DECLARED);
     }
   }
@@ -362,10 +362,10 @@ class ExecuteOutputFormatsTest {
       Map<Integer, Object> fields = decodeProtobuf(Base64.getDecoder().decode(lines.get(i)));
       JsonNode json = expected.get(i);
       // 1=id, 2=label, 3=amount, 5=born (4=active is omitted by proto3 when false).
-      assertThat(fields.get(1)).isEqualTo(json.get("id").asLong());
-      assertThat(fields.get(2)).isEqualTo(json.get("label").asText());
+      assertThat(fields).containsEntry(1, json.get("id").asLong());
+      assertThat(fields).containsEntry(2, json.get("label").asText());
       assertThat((Double) fields.get(3)).isEqualTo(json.get("amount").asDouble());
-      assertThat(fields.get(5)).isEqualTo(json.get("born").asText());
+      assertThat(fields).containsEntry(5, json.get("born").asText());
     }
   }
 
@@ -373,32 +373,54 @@ class ExecuteOutputFormatsTest {
   void shouldKeepDeclarationOrderWhenNestedFieldIsDeclaredBetweenScalars() throws IOException {
     Files.writeString(
         structDir.resolve("line.yaml"),
-        "name: line\ndata:\n  sku:\n    datatype: \"char[3..5]\"\n"
-            + "  qty:\n    datatype: \"int[1..9]\"\n");
+        """
+        name: line
+        data:
+          sku:
+            datatype: "char[3..5]"
+          qty:
+            datatype: "int[1..9]"
+        """);
     Files.writeString(
         structDir.resolve("order.yaml"),
-        "name: order\ndata:\n  id:\n    datatype: \"int[1..99]\"\n"
-            + "  lines:\n    datatype: \"array[object[line], 1..2]\"\n"
-            + "  note:\n    datatype: \"char[2..4]\"\n"
-            + "  total:\n    datatype: \"decimal[0.0..9.0]\"\n");
+        """
+        name: order
+        data:
+          id:
+            datatype: "int[1..99]"
+          lines:
+            datatype: "array[object[line], 1..2]"
+          note:
+            datatype: "char[2..4]"
+          total:
+            datatype: "decimal[0.0..9.0]"
+        """);
     Path out = Files.createDirectories(tempDir.resolve("nested-out"));
     Path job = tempDir.resolve("nested-job.yaml");
     Files.writeString(
         job,
-        "source: order.yaml\ntype: file\nstructures_path: %s\nseed:\n  type: embedded\n"
-                .formatted(structDir.toAbsolutePath())
-            + "  value: 3\nconf:\n  path: %s/%s\n".formatted(out.toAbsolutePath(), OUTPUT));
+        """
+        source: order.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 3
+        conf:
+          path: %s/%s
+        """
+            .formatted(structDir.toAbsolutePath(), out.toAbsolutePath(), OUTPUT));
 
     Result r = CliTestSupport.run("execute", "--job", job.toString(), "--count", "3");
 
     assertThat(r.exit()).as(r.err()).isZero();
     for (String line : lines(Files.readAllBytes(out.resolve(OUTPUT + ".json")))) {
-      JsonNode record = MAPPER.readTree(line);
+      JsonNode node = MAPPER.readTree(line);
       List<String> keys = new ArrayList<>();
-      record.fieldNames().forEachRemaining(keys::add);
+      node.fieldNames().forEachRemaining(keys::add);
       assertThat(keys).containsExactly("id", "lines", "note", "total");
       List<String> lineKeys = new ArrayList<>();
-      record.get("lines").get(0).fieldNames().forEachRemaining(lineKeys::add);
+      node.get("lines").get(0).fieldNames().forEachRemaining(lineKeys::add);
       assertThat(lineKeys).containsExactly("sku", "qty");
     }
   }
@@ -459,11 +481,11 @@ class ExecuteOutputFormatsTest {
     }
 
     private static Map<String, Object> readRecord(Reader in, JsonNode schema) {
-      Map<String, Object> record = new LinkedHashMap<>();
+      Map<String, Object> result = new LinkedHashMap<>();
       for (JsonNode field : schema.get("fields")) {
-        record.put(field.get("name").asText(), readValue(in, field.get("type")));
+        result.put(field.get("name").asText(), readValue(in, field.get("type")));
       }
-      return record;
+      return result;
     }
 
     private static Object readValue(Reader in, JsonNode type) {

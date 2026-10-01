@@ -42,6 +42,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -192,6 +193,7 @@ public class ProtobufInspector {
   }
 
   private static String qualifiedName(Descriptor d, boolean withPackage) {
+    Objects.requireNonNull(d);
     Deque<String> parts = new ArrayDeque<>();
     for (Descriptor c = d; c != null; c = c.getContainingType()) {
       parts.addFirst(Names.toSnakeCase(c.getName()));

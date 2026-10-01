@@ -291,17 +291,13 @@ public class DdlInspector {
         .forEach(c -> foreignColumns.add(lower(c)));
     Set<String> claimed = new LinkedHashSet<>();
     keys.primary()
-        .forEach(c -> applyKey(table, keys, "pk", true, c, claimed, foreignColumns, warnings));
+        .forEach(
+            c ->
+                applyKey(
+                    table, keys, new KeySpec("pk", true, c), claimed, foreignColumns, warnings));
     for (int i = 0; i < keys.uniques().size(); i++) {
-      applyKey(
-          table,
-          keys,
-          "uq" + (i + 1),
-          false,
-          keys.uniques().get(i),
-          claimed,
-          foreignColumns,
-          warnings);
+      KeySpec spec = new KeySpec("uq" + (i + 1), false, keys.uniques().get(i));
+      applyKey(table, keys, spec, claimed, foreignColumns, warnings);
     }
     for (String column : List.copyOf(table.data().keySet())) {
       String key = lower(column);
@@ -313,30 +309,19 @@ public class DdlInspector {
     }
   }
 
+  /** One PRIMARY KEY / UNIQUE constraint: its group name, kind and declared columns. */
+  private record KeySpec(String group, boolean primary, List<String> declared) {}
+
   private void applyKey(
       TableInfo table,
       TableKeys keys,
-      String group,
-      boolean primary,
-      List<String> declared,
+      KeySpec spec,
       Set<String> claimed,
       Set<String> foreignColumns,
       List<String> warnings) {
-    String label = (primary ? "PRIMARY KEY(" : "UNIQUE(") + String.join(", ", declared) + ")";
-    List<String> columns = new ArrayList<>();
-    for (String column : declared) {
-      if (claimed.add(lower(column))) {
-        columns.add(column);
-      } else {
-        warnings.add(
-            table.name()
-                + "."
-                + column
-                + ": also in "
-                + label
-                + " — only the first key is enforced");
-      }
-    }
+    String label =
+        (spec.primary() ? "PRIMARY KEY(" : "UNIQUE(") + String.join(", ", spec.declared()) + ")";
+    List<String> columns = claimColumns(table, spec, label, claimed, warnings);
     if (columns.isEmpty()) {
       return;
     }
@@ -361,24 +346,49 @@ public class DdlInspector {
     }
     boolean single = columns.size() == 1;
     for (String column : columns) {
-      String datatype;
-      if (foreignColumns.contains(lower(column))) {
-        String target = refTarget(table.data().get(actualKey(table, column)).getDatatype());
-        datatype =
-            "ref["
-                + target
-                + ", "
-                + Defaults.REF_POOL
-                + ", unique"
-                + (single ? "" : "=" + group)
-                + "]";
-      } else if (single) {
-        datatype = primary ? "serial" : "unique[" + Defaults.REF_POOL + "]";
-      } else {
-        datatype = "unique[" + group + ", " + Defaults.REF_POOL + "]";
-      }
-      setKeyType(table, column, datatype);
+      setKeyType(
+          table,
+          column,
+          keyDatatype(table, spec, column, single, foreignColumns.contains(lower(column))));
     }
+  }
+
+  /** Columns of the key not already claimed by an earlier key; warns about the ones that were. */
+  private List<String> claimColumns(
+      TableInfo table, KeySpec spec, String label, Set<String> claimed, List<String> warnings) {
+    List<String> columns = new ArrayList<>();
+    for (String column : spec.declared()) {
+      if (claimed.add(lower(column))) {
+        columns.add(column);
+      } else {
+        warnings.add(
+            table.name()
+                + "."
+                + column
+                + ": also in "
+                + label
+                + " — only the first key is enforced");
+      }
+    }
+    return columns;
+  }
+
+  private String keyDatatype(
+      TableInfo table, KeySpec spec, String column, boolean single, boolean foreign) {
+    if (foreign) {
+      String target = refTarget(table.data().get(actualKey(table, column)).getDatatype());
+      return "ref["
+          + target
+          + ", "
+          + Defaults.REF_POOL
+          + ", unique"
+          + (single ? "" : "=" + spec.group())
+          + "]";
+    }
+    if (single) {
+      return spec.primary() ? "serial" : "unique[" + Defaults.REF_POOL + "]";
+    }
+    return "unique[" + spec.group() + ", " + Defaults.REF_POOL + "]";
   }
 
   private void setKeyType(TableInfo table, String column, String datatype) {

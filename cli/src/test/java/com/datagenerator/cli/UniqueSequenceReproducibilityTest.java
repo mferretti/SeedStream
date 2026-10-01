@@ -41,8 +41,6 @@ import picocli.CommandLine;
 class UniqueSequenceReproducibilityTest {
   private static final String OPT_JOB = "--job";
   private static final String OPT_COUNT = "--count";
-  private static final String OPT_SEED = "--seed";
-  private static final String OUTPUT_JSON = "output.json";
   private static final List<Long> ONE_TO_THOUSAND =
       LongStream.rangeClosed(1, 1000).boxed().toList();
 

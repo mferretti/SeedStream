@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ class DatafakerLocaleSpecificityTest {
 
   private static final int N = 60;
   private static final long SEED = 4242L;
+  private static final Pattern ACCENTED = Pattern.compile("[À-ÿ]");
 
   private final DatafakerGenerator generator = new DatafakerGenerator();
   private DataGeneratorFactory factory;
@@ -137,8 +139,8 @@ class DatafakerLocaleSpecificityTest {
   @Test
   void shouldProduceAccentedNamesWhenGeolocationIsFrance() {
     // US names are plain ASCII; French first names include accented letters within N draws.
-    assertThat(draw("france", "first_name", SEED)).anyMatch(v -> v.matches(".*[À-ÿ].*"));
-    assertThat(draw("usa", "first_name", SEED)).noneMatch(v -> v.matches(".*[À-ÿ].*"));
+    assertThat(draw("france", "first_name", SEED)).anyMatch(v -> ACCENTED.matcher(v).find());
+    assertThat(draw("usa", "first_name", SEED)).noneMatch(v -> ACCENTED.matcher(v).find());
   }
 
   @Test
@@ -146,9 +148,10 @@ class DatafakerLocaleSpecificityTest {
     List<String> phones = draw("italy", "phone_number", SEED);
     List<String> us = draw("usa", "phone_number", SEED);
 
-    assertThat(phones).isNotEqualTo(us);
-    // Italian numbers use a leading 0/3 (landline/mobile) national prefix.
-    assertThat(phones).allMatch(v -> v.replaceAll("^\\+39\\s*", "").matches("[03].*"));
+    assertThat(phones)
+        .isNotEqualTo(us)
+        // Italian numbers use a leading 0/3 (landline/mobile) national prefix.
+        .allMatch(v -> v.replaceAll("^\\+39\\s*", "").matches("[03].*"));
   }
 
   @Test
