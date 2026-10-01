@@ -31,6 +31,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
@@ -116,6 +117,14 @@ class ExecuteCommandTest {
 
   private int execute(String... args) {
     return new CommandLine(new ExecuteCommand()).execute(args);
+  }
+
+  /** Runs {@code execute <args>} through the real root command (exit code + stderr + logs). */
+  private static CliTestSupport.Result runCli(String... args) {
+    String[] full = new String[args.length + 1];
+    full[0] = "execute";
+    System.arraycopy(args, 0, full, 1, args.length);
+    return CliTestSupport.run(full);
   }
 
   /**
@@ -381,9 +390,10 @@ class ExecuteCommandTest {
     Path jobFile = writeUniqueJob("unique[1..10]");
     Path output = outDir.resolve(OUTPUT_JSON);
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "11");
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "11");
 
-    assertThat(code).isNotZero();
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("unique[id] range 1..10 holds 10 values but --count is 11");
     assertThat(output).doesNotExist();
   }
 
@@ -391,9 +401,10 @@ class ExecuteCommandTest {
   void uniqueInsideArrayFailsBeforeDestinationIsOpened() throws Exception {
     Path jobFile = writeUniqueJob("array[unique[1..10], 1..3]");
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "2");
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "2");
 
-    assertThat(code).isNotZero();
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("unique[...] field 'uniq.id' is inside array[...]");
     assertThat(outDir.resolve(OUTPUT_JSON)).doesNotExist();
   }
 
@@ -710,14 +721,17 @@ class ExecuteCommandTest {
 
   @Test
   void missingJobOptionReturnsUsageError() {
-    int code = execute(OPT_COUNT, "5");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_COUNT, "5");
+    assertThat(r.exit()).isEqualTo(2);
+    assertThat(r.err()).contains("Missing required option: '--job=<jobFile>'");
   }
 
   @Test
   void nonexistentJobFileReturnsError() {
-    int code = execute(OPT_JOB, tempDir.resolve("nonexistent.yaml").toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    Path missing = tempDir.resolve("nonexistent.yaml");
+    CliTestSupport.Result r = runCli(OPT_JOB, missing.toString(), OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("job config file not found: " + missing);
   }
 
   @Test
@@ -735,7 +749,7 @@ class ExecuteCommandTest {
 
     String output = err.toString();
 
-    assertThat(code).isNotZero();
+    assertThat(code).isEqualTo(1);
     assertThat(output)
         .contains("nonexistent.yaml")
         .doesNotContain("SchemaParseException")
@@ -745,8 +759,9 @@ class ExecuteCommandTest {
   @Test
   void unsupportedFormatReturnsError() throws Exception {
     Path jobFile = writeJobFile();
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "parquet");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_FORMAT, "parquet");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("Unsupported format: parquet");
   }
 
   @Test
@@ -768,8 +783,9 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("Unsupported destination type: mongodb");
   }
 
   @Test
@@ -791,8 +807,10 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err())
+        .contains("data structure file not found: " + structDir.resolve("doesnotexist.yaml"));
   }
 
   // ── Structures path resolution ───────────────────────────────────────────────
@@ -849,9 +867,10 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
 
-    assertThat(code).isNotZero();
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("refuses to write through a symlink");
     assertThat(Files.readString(realFile)).isEqualTo("sensitive content");
   }
 
@@ -876,8 +895,9 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("is not a regular file");
   }
 
   @Test
@@ -933,7 +953,7 @@ class ExecuteCommandTest {
 
   @Test
   @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
-  void envSeedResolutionFailureFallsBackToDefaultSeed() throws Exception {
+  void envSeedResolutionFailureFailsTheJob() throws Exception {
     Path jobFile = tempDir.resolve("envseed_job.yaml");
     Files.writeString(
         jobFile,
@@ -950,11 +970,13 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
     int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
-    assertThat(code).isZero(); // falls back to seed 0
-    assertThat(outDir.resolve(OUTPUT_JSON)).exists();
+    // A configured seed source that cannot be read fails the job instead of using seed 0.
+    assertThat(code).isEqualTo(1);
+    assertThat(outDir.resolve(OUTPUT_JSON)).doesNotExist();
   }
 
   @Test
+  @DisabledOnOs(OS.WINDOWS)
   @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
   void fileSeedValidationIsApplied() throws Exception {
     Path seedFile = tempDir.resolve("seed.txt");
@@ -976,9 +998,16 @@ class ExecuteCommandTest {
             .formatted(
                 structDir.toAbsolutePath(), seedFile.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
-    // Seed file permission check runs; result depends on OS file permissions
-    assertThat(code).isIn(0, 1);
+    // Owner-only perms pass the seed-file permission check; group/other-readable would be rejected.
+    Files.setPosixFilePermissions(seedFile, PosixFilePermissions.fromString("rw-------"));
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
+    assertThat(r.exit()).as(r.err()).isZero();
+    assertThat(Files.readAllLines(outDir.resolve(OUTPUT_JSON))).hasSize(3);
+
+    Files.setPosixFilePermissions(seedFile, PosixFilePermissions.fromString("rw-r--r--"));
+    CliTestSupport.Result loose = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "3");
+    assertThat(loose.exit()).isEqualTo(1);
+    assertThat(loose.err()).contains("Seed file has insecure permissions");
   }
 
   // ── Structures path fallback ──────────────────────────────────────────────────
@@ -1002,8 +1031,11 @@ class ExecuteCommandTest {
         """
             .formatted(outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero(); // config/structures/simple.yaml not present in CWD
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    // config/structures/simple.yaml not present in CWD
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err())
+        .contains("data structure file not found: " + Path.of("config/structures/simple.yaml"));
   }
 
   // ── Serializer formats ────────────────────────────────────────────────────────
@@ -1028,8 +1060,12 @@ class ExecuteCommandTest {
         """
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "cbeff", OPT_COUNT, "1");
-    assertThat(code).isBetween(0, 2);
+    CliTestSupport.Result r =
+        runCli(OPT_JOB, jobFile.toString(), OPT_FORMAT, "cbeff", OPT_COUNT, "1");
+    assertThat(r.exit()).as(r.err()).isZero();
+    assertThat(Files.readString(outDir.resolve("output.cbeff")))
+        .contains("ISO")
+        .contains("19794-2-json");
   }
 
   @Test
@@ -1056,8 +1092,10 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
 
     // createSerializer() is covered; fails at serialization time (no registry)
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro-registry", OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r =
+        runCli(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro-registry", OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("Failed to connect to Schema Registry at http://127.0.0.1:1");
   }
 
   // ── Database destination ──────────────────────────────────────────────────────
@@ -1084,8 +1122,12 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath()));
 
     // createDatabaseDestination() runs to completion; fails at open time (no JDBC driver)
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err())
+        .contains(
+            "open database connection to jdbc:nonexistent://localhost/test failed after 3 attempt(s)")
+        .contains("Failed to get driver instance");
   }
 
   @Test
@@ -1115,8 +1157,12 @@ class ExecuteCommandTest {
             .formatted(structDir.toAbsolutePath()));
 
     // All optional DB config branches exercised; fails at open time (no JDBC driver)
-    int code = execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
-    assertThat(code).isNotZero();
+    CliTestSupport.Result r = runCli(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err())
+        .contains(
+            "open database connection to jdbc:nonexistent://localhost/test failed after 1 attempt(s)")
+        .contains("Failed to get driver instance");
   }
 
   @Test
@@ -1148,7 +1194,7 @@ class ExecuteCommandTest {
     // Fails fast at config assembly — before any connection attempt
     int code = cmd.execute(OPT_JOB, jobFile.toString(), OPT_COUNT, "1");
 
-    assertThat(code).isNotZero();
+    assertThat(code).isEqualTo(1);
     assertThat(err.toString()).contains("restart_identity requires truncate_before_insert");
   }
 
@@ -1191,38 +1237,48 @@ class ExecuteCommandTest {
   // ── Avro Registry secret substitution ──────────────────────────────────────
 
   @Test
-  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
   void schemaRegistryTokenSubstitutesEnvironmentVariable() throws Exception {
-    // Set an environment variable to substitute
-    System.setProperty("TEST_REGISTRY_TOKEN", "secret-bearer-token-value");
-    try {
-      Path jobFile = tempDir.resolve("avroreg_env_job.yaml");
-      Files.writeString(
-          jobFile,
-          """
-          source: simple.yaml
-          type: file
-          structures_path: %s
-          seed:
-            type: embedded
-            value: 42
-          conf:
-            path: %s/output
-            schema_registry_url: http://127.0.0.1:1
-            topic: test-topic
-            schema_registry_subject: test-topic-value
-            schema_registry_auth: bearer
-            schema_registry_token: "${TEST_REGISTRY_TOKEN}"
-          """
-              .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath()));
+    // PATH is set in every environment this test runs in. If substitution works the run proceeds to
+    // the (unreachable) registry; if it did not, the failure would name the unresolved variable.
+    CliTestSupport.Result r = runAvroRegistryWithToken("${PATH}");
 
-      // createSerializer() is covered; fails at serialization time (no registry)
-      // But the token should be substituted before reaching that point
-      int code = execute(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro-registry", OPT_COUNT, "1");
-      assertThat(code).isNotZero(); // fails at serialization (no registry), but token was resolved
-    } finally {
-      System.clearProperty("TEST_REGISTRY_TOKEN");
-    }
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err())
+        .contains("Failed to connect to Schema Registry at http://127.0.0.1:1")
+        .doesNotContain("is not set");
+  }
+
+  @Test
+  void schemaRegistryTokenFailsNamingTheVariableWhenEnvironmentVariableIsUnset() throws Exception {
+    CliTestSupport.Result r = runAvroRegistryWithToken("${SEEDSTREAM_TEST_UNSET_TOKEN_VAR_91c2}");
+
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err())
+        .contains("Environment variable 'SEEDSTREAM_TEST_UNSET_TOKEN_VAR_91c2' is not set");
+  }
+
+  @SuppressFBWarnings("VA_FORMAT_STRING_USES_NEWLINE")
+  private CliTestSupport.Result runAvroRegistryWithToken(String token) throws IOException {
+    Path jobFile = tempDir.resolve("avroreg_env_job.yaml");
+    Files.writeString(
+        jobFile,
+        """
+        source: simple.yaml
+        type: file
+        structures_path: %s
+        seed:
+          type: embedded
+          value: 42
+        conf:
+          path: %s/output
+          schema_registry_url: http://127.0.0.1:1
+          topic: test-topic
+          schema_registry_subject: test-topic-value
+          schema_registry_auth: bearer
+          schema_registry_token: "%s"
+        """
+            .formatted(structDir.toAbsolutePath(), outDir.toAbsolutePath(), token));
+    return runCli(OPT_JOB, jobFile.toString(), OPT_FORMAT, "avro-registry", OPT_COUNT, "1");
   }
 
   // ── T10: --debug/--verbose must not elevate third-party loggers ─────────────

@@ -121,6 +121,9 @@ Thread count (`--threads`) does **not** affect output — same seed produces byt
 **Q: Can I generate data without a seed?**
 Yes, but you'll get a warning. Default seed `0` is used. For reproducible output, always specify a seed.
 
+**Q: My job fails with "Cannot resolve the configured seed".**
+The job configures a seed source (`file`, `env` or `remote`) that couldn't be read: missing or non-numeric file, unset environment variable, remote error. SeedStream stops instead of silently using seed `0`, which would produce plausible but wrong data. Fix the seed config, or pass `--seed <n>`, which overrides it.
+
 **Q: How do I generate different data each run?**
 ```bash
 --seed $(date +%s)   # Unix timestamp
