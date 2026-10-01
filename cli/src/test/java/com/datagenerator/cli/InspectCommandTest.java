@@ -18,13 +18,21 @@ package com.datagenerator.cli;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.datagenerator.core.registry.DatafakerRegistry;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 
 class InspectCommandTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   @TempDir Path tempDir;
 

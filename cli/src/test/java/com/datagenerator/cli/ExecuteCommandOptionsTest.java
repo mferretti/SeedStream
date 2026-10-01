@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import com.datagenerator.cli.CliTestSupport.Result;
+import com.datagenerator.core.registry.DatafakerRegistry;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -47,6 +49,12 @@ import org.junit.jupiter.params.provider.ValueSource;
     value = "VA_FORMAT_STRING_USES_NEWLINE",
     justification = "YAML fixtures need a literal \\n, not the platform separator")
 class ExecuteCommandOptionsTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   private static final String EXECUTE = "execute";
   private static final String JOB = "--job";

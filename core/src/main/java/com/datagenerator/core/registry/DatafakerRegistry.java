@@ -27,6 +27,7 @@ import java.util.Currency;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,8 +91,14 @@ public class DatafakerRegistry {
   // Names (types and aliases) registered by registerBuiltIns(), snapshotted once at class init.
   private static final Set<String> BUILT_IN_NAMES;
 
+  // Built-in registrations, snapshotted once so resetToBuiltIns() can restore them exactly.
+  private static final Map<String, DatafakerFunction> BUILT_IN_TYPES;
+  private static final Map<String, String> BUILT_IN_ALIASES;
+
   static {
     registerBuiltIns();
+    BUILT_IN_TYPES = Map.copyOf(registry);
+    BUILT_IN_ALIASES = Map.copyOf(aliasMap);
     Set<String> names = new HashSet<>(registry.keySet());
     names.addAll(aliasMap.keySet());
     BUILT_IN_NAMES = Set.copyOf(names);
@@ -522,6 +529,20 @@ public class DatafakerRegistry {
    * <p><b>WARNING:</b> This removes all types including built-ins. Call {@code registerBuiltIns()}
    * after clearing to restore defaults.
    */
+  /**
+   * Restores the registry to exactly its built-in types and aliases, discarding every custom
+   * registration ({@code --faker-types}, tests). The registry is JVM-global static state: tests
+   * that register types call this in {@code @AfterEach} so results do not depend on test order or
+   * on which tests shared a forked JVM.
+   */
+  public static void resetToBuiltIns() {
+    registry.clear();
+    registry.putAll(BUILT_IN_TYPES);
+    aliasMap.clear();
+    aliasMap.putAll(BUILT_IN_ALIASES);
+    log.debug("DatafakerRegistry reset to {} built-in types", BUILT_IN_TYPES.size());
+  }
+
   public static void clear() {
     registry.clear();
     log.debug("DatafakerRegistry cleared");

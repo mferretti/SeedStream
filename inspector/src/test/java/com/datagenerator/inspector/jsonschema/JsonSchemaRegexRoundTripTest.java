@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Random;
 import net.datafaker.Faker;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,6 +40,12 @@ import org.junit.jupiter.api.io.TempDir;
  * counterpart to the manual {@code inspect → --faker-types → execute} flow.
  */
 class JsonSchemaRegexRoundTripTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   private static final String PATTERN = "^[A-Z]{3}-\\d{3}$";
 

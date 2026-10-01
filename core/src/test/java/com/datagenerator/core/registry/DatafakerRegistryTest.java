@@ -23,11 +23,18 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import net.datafaker.Faker;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class DatafakerRegistryTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   private static final Faker FAKER = new Faker(Locale.US, new Random(42));
   private static final Random RANDOM = new Random(42);
@@ -130,13 +137,45 @@ class DatafakerRegistryTest {
     String typeName = "test_custom_type_" + System.nanoTime();
     DatafakerRegistry.register(typeName, (faker, random) -> "custom-value-42");
 
-    try {
-      assertThat(DatafakerRegistry.isRegistered(typeName)).isTrue();
-      assertThat(DatafakerRegistry.generate(typeName, FAKER, RANDOM)).isEqualTo("custom-value-42");
-    } finally {
-      // Cannot unregister; re-register with a sentinel to mark stale
-      DatafakerRegistry.register(typeName, (faker, random) -> "__removed__");
-    }
+    assertThat(DatafakerRegistry.isRegistered(typeName)).isTrue();
+    assertThat(DatafakerRegistry.generate(typeName, FAKER, RANDOM)).isEqualTo("custom-value-42");
+  }
+
+  // ── resetToBuiltIns ────────────────────────────────────────────────────────
+
+  @Test
+  void shouldRemoveCustomTypesAndAliasesWhenResetToBuiltIns() {
+    DatafakerRegistry.register("reset_custom_type", (faker, random) -> "x");
+    DatafakerRegistry.registerAlias("reset_custom_alias", "reset_custom_type");
+
+    DatafakerRegistry.resetToBuiltIns();
+
+    assertThat(DatafakerRegistry.isRegistered("reset_custom_type")).isFalse();
+    assertThat(DatafakerRegistry.isRegistered("reset_custom_alias")).isFalse();
+  }
+
+  @Test
+  void shouldRestoreOverwrittenBuiltInsWhenResetToBuiltIns() {
+    String original = DatafakerRegistry.generate("name", new Faker(new Random(3)), new Random(3));
+    DatafakerRegistry.register("name", (faker, random) -> "overwritten");
+    DatafakerRegistry.registerAlias("phone", "name");
+
+    DatafakerRegistry.resetToBuiltIns();
+
+    assertThat(DatafakerRegistry.generate("name", new Faker(new Random(3)), new Random(3)))
+        .isEqualTo(original);
+    assertThat(DatafakerRegistry.getCanonicalName("phone")).isEqualTo("phone_number");
+  }
+
+  @Test
+  void shouldKeepEveryBuiltInRegisteredAfterReset() {
+    Set<String> before = DatafakerRegistry.listTypes();
+
+    DatafakerRegistry.resetToBuiltIns();
+
+    assertThat(DatafakerRegistry.listTypes())
+        .containsAll(before)
+        .allMatch(DatafakerRegistry::isBuiltIn);
   }
 
   @Test

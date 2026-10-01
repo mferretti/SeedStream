@@ -20,9 +20,16 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.util.Random;
 import net.datafaker.Faker;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class DatafakerRegistryExpressionTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   @Test
   void shouldRegisterAndGenerateFromMethodPathExpression() {

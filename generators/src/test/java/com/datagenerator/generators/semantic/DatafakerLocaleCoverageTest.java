@@ -42,6 +42,12 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class DatafakerLocaleCoverageTest {
 
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
+
   private DatafakerGenerator generator;
   private DataGeneratorFactory factory;
 
