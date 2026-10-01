@@ -324,6 +324,85 @@ class ExecuteOutputFormatsTest {
     }
   }
 
+  // ── Field order: declaration order in every format (#374) ───────────────────
+
+  private static final List<String> DECLARED = List.of("id", "label", "amount", "active", "born");
+
+  @Test
+  void shouldWriteCsvColumnsInStructureDeclarationOrder() throws IOException {
+    List<String> csv = lines(generate("csv", 9, 3, 1));
+
+    assertThat(csvCells(csv.get(0))).containsExactlyElementsOf(DECLARED);
+  }
+
+  @Test
+  void shouldWriteJsonKeysInStructureDeclarationOrder() throws IOException {
+    for (JsonNode record : jsonRecords(9, 3)) {
+      List<String> keys = new ArrayList<>();
+      record.fieldNames().forEachRemaining(keys::add);
+      assertThat(keys).containsExactlyElementsOf(DECLARED);
+    }
+  }
+
+  @Test
+  void shouldDeclareAvroSchemaFieldsInStructureDeclarationOrder() throws IOException {
+    AvroFile avro = AvroFile.parse(generate("avro", 9, 3, 1));
+
+    List<String> names = new ArrayList<>();
+    avro.schema().get("fields").forEach(f -> names.add(f.get("name").asText()));
+    assertThat(names).containsExactlyElementsOf(DECLARED);
+  }
+
+  @Test
+  void shouldNumberProtobufFieldsInStructureDeclarationOrder() throws IOException {
+    List<String> lines = lines(generate("protobuf", 9, 20, 1));
+    List<JsonNode> expected = jsonRecords(9, 20);
+
+    for (int i = 0; i < lines.size(); i++) {
+      Map<Integer, Object> fields = decodeProtobuf(Base64.getDecoder().decode(lines.get(i)));
+      JsonNode json = expected.get(i);
+      // 1=id, 2=label, 3=amount, 5=born (4=active is omitted by proto3 when false).
+      assertThat(fields.get(1)).isEqualTo(json.get("id").asLong());
+      assertThat(fields.get(2)).isEqualTo(json.get("label").asText());
+      assertThat((Double) fields.get(3)).isEqualTo(json.get("amount").asDouble());
+      assertThat(fields.get(5)).isEqualTo(json.get("born").asText());
+    }
+  }
+
+  @Test
+  void shouldKeepDeclarationOrderWhenNestedFieldIsDeclaredBetweenScalars() throws IOException {
+    Files.writeString(
+        structDir.resolve("line.yaml"),
+        "name: line\ndata:\n  sku:\n    datatype: \"char[3..5]\"\n"
+            + "  qty:\n    datatype: \"int[1..9]\"\n");
+    Files.writeString(
+        structDir.resolve("order.yaml"),
+        "name: order\ndata:\n  id:\n    datatype: \"int[1..99]\"\n"
+            + "  lines:\n    datatype: \"array[object[line], 1..2]\"\n"
+            + "  note:\n    datatype: \"char[2..4]\"\n"
+            + "  total:\n    datatype: \"decimal[0.0..9.0]\"\n");
+    Path out = Files.createDirectories(tempDir.resolve("nested-out"));
+    Path job = tempDir.resolve("nested-job.yaml");
+    Files.writeString(
+        job,
+        "source: order.yaml\ntype: file\nstructures_path: %s\nseed:\n  type: embedded\n"
+                .formatted(structDir.toAbsolutePath())
+            + "  value: 3\nconf:\n  path: %s/%s\n".formatted(out.toAbsolutePath(), OUTPUT));
+
+    Result r = CliTestSupport.run("execute", "--job", job.toString(), "--count", "3");
+
+    assertThat(r.exit()).as(r.err()).isZero();
+    for (String line : lines(Files.readAllBytes(out.resolve(OUTPUT + ".json")))) {
+      JsonNode record = MAPPER.readTree(line);
+      List<String> keys = new ArrayList<>();
+      record.fieldNames().forEachRemaining(keys::add);
+      assertThat(keys).containsExactly("id", "lines", "note", "total");
+      List<String> lineKeys = new ArrayList<>();
+      record.get("lines").get(0).fieldNames().forEachRemaining(lineKeys::add);
+      assertThat(lineKeys).containsExactly("sku", "qty");
+    }
+  }
+
   /** Decodes a flat protobuf message into field number to Long / Double / String. */
   private static Map<Integer, Object> decodeProtobuf(byte[] message) {
     Map<Integer, Object> fields = new LinkedHashMap<>();

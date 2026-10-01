@@ -262,7 +262,12 @@ public class DatabaseDestination extends AbstractDestination {
       TypeParser typeParser = new TypeParser();
       schema =
           rawFieldTypes.entrySet().stream()
-              .collect(Collectors.toMap(Map.Entry::getKey, e -> typeParser.parse(e.getValue())));
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      e -> typeParser.parse(e.getValue()),
+                      (a, b) -> a,
+                      LinkedHashMap::new));
       log.debug("Built field schema with {} typed fields", schema.size());
 
       // Decide flat-vs-nested from the declared schema up front, rather than from the first

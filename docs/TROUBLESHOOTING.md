@@ -76,7 +76,7 @@ The following must be **identical** across runs for output to match:
 
 Thread count (`--threads`) does **not** affect output — same seed produces byte-for-byte identical data at any thread count.
 
-**Upgrading from 0.8.x:** 0.9 changed how per-record seeds are derived (#343), because different seeds used to produce the same records reordered. Every seeded field (everything except `serial` and `unique`) therefore produces different values than 0.8.x for the same seed. Output is still deterministic and thread-count-invariant; regenerate fixtures, golden files and fingerprints captured with 0.8.x.
+**Upgrading from 0.8.x:** 0.9 changed how per-record seeds are derived (#343), because different seeds used to produce the same records reordered. Every seeded field (everything except `serial` and `unique`) therefore produces different values than 0.8.x for the same seed. Output is still deterministic and thread-count-invariant; regenerate fixtures, golden files and fingerprints captured with 0.8.x. Fields are now also emitted in the order they are declared in the structure (CSV columns, JSON keys, Avro/protobuf fields) (#374).
 
 ---
 

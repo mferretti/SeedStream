@@ -60,6 +60,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -970,7 +971,12 @@ public class ExecuteCommand implements Callable<Integer> {
     // DatabaseDestination.open()
     Map<String, String> rawFieldTypes =
         dataStructure.getData().entrySet().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getDatatype()));
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey,
+                    e -> e.getValue().getDatatype(),
+                    (a, b) -> a,
+                    LinkedHashMap::new));
 
     return new DatabaseDestination(dbConfig, rawFieldTypes);
   }
@@ -984,13 +990,17 @@ public class ExecuteCommand implements Callable<Integer> {
             Path structureFile = basePath.resolve(structureName + ".yaml");
             DataStructure structure = parser.parse(structureFile);
 
-            // Convert Map<String, FieldDefinition> to Map<String, DataType>
+            // Convert Map<String, FieldDefinition> to Map<String, DataType>, keeping the YAML
+            // declaration order: it drives generation and every output layout (CSV columns,
+            // JSON keys, Avro/protobuf field order) (#374). A plain toMap() gave hash order.
             TypeParser typeParser = new TypeParser();
             return structure.getData().entrySet().stream()
                 .collect(
                     Collectors.toMap(
                         Map.Entry::getKey,
-                        entry -> typeParser.parse(entry.getValue().getDatatype())));
+                        entry -> typeParser.parse(entry.getValue().getDatatype()),
+                        (a, b) -> a,
+                        LinkedHashMap::new));
           } catch (Exception e) {
             throw new GeneratorException("Failed to load structure: " + structureName, e);
           }

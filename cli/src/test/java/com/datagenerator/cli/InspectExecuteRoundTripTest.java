@@ -153,6 +153,50 @@ class InspectExecuteRoundTripTest {
     }
   }
 
+  @Test
+  void csvColumnsFollowTheDdlColumnOrderSoTheFileLoadsByPosition() throws Exception {
+    // Position-based loaders (COPY ... CSV HEADER before PG15, MySQL LOAD DATA, BULK INSERT)
+    // need the CSV columns in table order (#374).
+    String ddl =
+        String.join(
+            "\n",
+            "CREATE TABLE customers (",
+            "  id BIGINT PRIMARY KEY,",
+            "  first_name VARCHAR(50) NOT NULL,",
+            "  last_name VARCHAR(50) NOT NULL,",
+            "  email VARCHAR(120),",
+            "  birth_date DATE,",
+            "  balance DECIMAL(10,2),",
+            "  active BOOLEAN",
+            ");");
+    Path structures = inspect(ddl);
+    Path outPrefix = tempDir.resolve("csv-out");
+    String job =
+        String.join(
+            "\n",
+            "source: customers.yaml",
+            "type: file",
+            "structures_path: " + structures,
+            "seed:",
+            "  type: embedded",
+            "  value: 1",
+            "conf:",
+            "  path: " + outPrefix,
+            "");
+    Path jobFile = tempDir.resolve("csv-job.yaml");
+    Files.writeString(jobFile, job);
+
+    int code =
+        new CommandLine(new ExecuteCommand())
+            .execute("--job", jobFile.toString(), "--format", "csv", "--count", "3");
+
+    assertThat(code).isZero();
+    String header = Files.readAllLines(Path.of(outPrefix + ".csv")).get(0);
+    assertThat(header)
+        .isEqualTo(
+            "\"id\",\"first_name\",\"last_name\",\"email\",\"birth_date\",\"balance\",\"active\"");
+  }
+
   /** Runs {@code inspect} on the given DDL and returns the structures output directory. */
   private Path inspect(String ddl, String... extraArgs) throws Exception {
     Path sql = tempDir.resolve("schema.sql");

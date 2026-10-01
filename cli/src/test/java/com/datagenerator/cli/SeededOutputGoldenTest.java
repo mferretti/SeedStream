@@ -37,17 +37,18 @@ import picocli.CommandLine;
  *
  * <p>Any change to seed derivation, the engine's per-record reseeding, or a primitive generator's
  * use of randomness changes these values. That must be a deliberate, CHANGELOG-noted break (as in
- * #343), never a side effect. Records are compared parsed, so JSON key order is not pinned.
+ * #343, #374), never a side effect. Records are compared parsed; key order is pinned by
+ * ExecuteOutputFormatsTest.
  */
 class SeededOutputGoldenTest {
 
   private static final List<String> GOLDEN_SEED_42 =
       List.of(
-          "{\"dt\":\"2024-09-08\",\"b\":false,\"c\":\"OshJZ\",\"d\":62.6,\"e\":\"GREEN\",\"i\":718,\"ts\":\"2024-06-21T10:06:09Z\",\"arr\":[6]}",
-          "{\"dt\":\"2023-12-02\",\"b\":true,\"c\":\"DvPHy\",\"d\":98.5,\"e\":\"GREEN\",\"i\":963,\"ts\":\"2024-06-24T01:18:37Z\",\"arr\":[1]}",
-          "{\"dt\":\"2022-04-24\",\"b\":true,\"c\":\"nFV\",\"d\":33.2,\"e\":\"RED\",\"i\":401,\"ts\":\"2024-03-19T07:48:06Z\",\"arr\":[6,4,3]}",
-          "{\"dt\":\"2020-11-10\",\"b\":true,\"c\":\"EfHaYc\",\"d\":28.6,\"e\":\"BLUE\",\"i\":645,\"ts\":\"2024-10-08T00:36:54Z\",\"arr\":[4,1]}",
-          "{\"dt\":\"2025-01-19\",\"b\":true,\"c\":\"QBVj\",\"d\":42.6,\"e\":\"RED\",\"i\":167,\"ts\":\"2024-12-18T01:27:28Z\",\"arr\":[3,3]}");
+          "{\"i\":333,\"d\":74.0,\"c\":\"OshJZ\",\"b\":true,\"dt\":\"2024-09-24\",\"ts\":\"2024-03-17T18:46:41Z\",\"e\":\"BLUE\",\"arr\":[6]}",
+          "{\"i\":365,\"d\":77.6,\"c\":\"DvPHy\",\"b\":false,\"dt\":\"2022-10-18\",\"ts\":\"2024-09-14T05:14:57Z\",\"e\":\"RED\",\"arr\":[1]}",
+          "{\"i\":338,\"d\":70.7,\"c\":\"nFV\",\"b\":false,\"dt\":\"2023-07-08\",\"ts\":\"2024-12-15T01:35:04Z\",\"e\":\"RED\",\"arr\":[6,4,3]}",
+          "{\"i\":950,\"d\":56.4,\"c\":\"EfHaYc\",\"b\":false,\"dt\":\"2022-06-27\",\"ts\":\"2024-03-03T18:19:58Z\",\"e\":\"GREEN\",\"arr\":[4,1]}",
+          "{\"i\":776,\"d\":38.0,\"c\":\"QBVj\",\"b\":false,\"dt\":\"2022-01-17\",\"ts\":\"2024-04-05T09:34:54Z\",\"e\":\"GREEN\",\"arr\":[3,3]}");
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
