@@ -31,11 +31,13 @@ import org.mockito.Mockito;
  */
 class KafkaProducerPropertiesTest {
 
-  private static final String SECRET = "s3cr3t-value"; // nosemgrep: fake test credential
+  // Fake credential, test only.
+  private static final String SECRET = "s3cr3t-value"; // nosemgrep
   private static final String BOOTSTRAP = "b1:9092,b2:9092";
   private static final String IDEMPOTENCE = "enable.idempotence";
-  private static final String TS_PASSWORD = "ssl.truststore.password"; // nosemgrep: key name
-  private static final String KS_PASSWORD = "ssl.keystore.password"; // nosemgrep: key name
+  // Kafka property names, not secrets.
+  private static final String TS_PASSWORD = "ssl.truststore.password"; // nosemgrep
+  private static final String KS_PASSWORD = "ssl.keystore.password"; // nosemgrep
 
   private static KafkaDestinationConfig.KafkaDestinationConfigBuilder base() {
     return KafkaDestinationConfig.builder().bootstrap(BOOTSTRAP).topic("t");
