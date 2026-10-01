@@ -23,6 +23,7 @@ import com.datagenerator.schema.exception.SchemaParseException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +31,12 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class CustomTypeConfigLoaderTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   @Test
   void shouldRegisterTypesAndAliases(@TempDir Path dir) throws IOException {

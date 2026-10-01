@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -38,6 +39,12 @@ import org.junit.jupiter.api.io.TempDir;
  * in the written YAML.
  */
 class CustomProviderSmokeTest {
+
+  /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
+  @AfterEach
+  void resetDatafakerRegistry() {
+    DatafakerRegistry.resetToBuiltIns();
+  }
 
   @Test
   void emitsCustomTypesWithCommentsInTheRightPlaces(@TempDir Path dir) throws IOException {
