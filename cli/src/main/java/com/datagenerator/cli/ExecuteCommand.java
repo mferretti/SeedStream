@@ -460,6 +460,12 @@ public class ExecuteCommand implements Callable<Integer> {
     StructureRegistry registry = createStructureRegistry(structuresPath, count);
     new UniqueFieldValidator(registry, structuresPath, count).validate(dataStructure.getName());
 
+    // 3b. Check every field's constraints (ranges, array lengths) before anything is opened:
+    // generators only parse bounds lazily, and open() may already have truncated the output.
+    DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
+    ObjectType objectType = new ObjectType(dataStructure.getName());
+    factory.preflight(objectType);
+
     // 4. Create format serializer
     FormatSerializer serializer = createSerializer(format, jobConfig, secretResolver);
     log.info("Created serializer: {}", serializer.getFormatName());
@@ -469,13 +475,9 @@ public class ExecuteCommand implements Callable<Integer> {
         createDestination(jobConfig, serializer, dataStructure, secretResolver);
     log.info("Created destination: {}", destination.getDestinationType());
 
-    // 6. Set up generation context
-    DataGeneratorFactory factory = new DataGeneratorFactory(registry, structuresPath);
-
-    // 7. Generate and write records using GenerationEngine
+    // 6. Generate and write records using GenerationEngine
     destination.open();
 
-    ObjectType objectType = new ObjectType(dataStructure.getName());
     DataGenerator generator = factory.create(objectType);
 
     // Determine number of worker threads
