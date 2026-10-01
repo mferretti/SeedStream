@@ -13,15 +13,30 @@ on:
   push:
     branches: [ main ]
     paths:
+      # Anything that can change the seeded dataset (#371): the use case itself, every module on
+      # the `execute` runtime path, and dependency versions (Datafaker generates names/emails).
       - 'use-cases/ci-pipeline-seeding/**'
-      - 'destinations/src/main/java/com/datagenerator/destinations/database/**'
-      - 'cli/src/main/java/com/datagenerator/cli/ExecuteCommand.java'
+      - 'core/src/main/**'
+      - 'schema/src/main/**'
+      - 'generators/src/main/**'
+      - 'formats/src/main/**'
+      - 'destinations/src/main/**'
+      - 'cli/src/main/**'
+      - 'gradle/libs.versions.toml'
+      - '*/build.gradle.kts'
       - '.github/workflows/use-case-ci-seeding.yml'
   pull_request:
     paths:
+      # Keep in sync with the push paths above.
       - 'use-cases/ci-pipeline-seeding/**'
-      - 'destinations/src/main/java/com/datagenerator/destinations/database/**'
-      - 'cli/src/main/java/com/datagenerator/cli/ExecuteCommand.java'
+      - 'core/src/main/**'
+      - 'schema/src/main/**'
+      - 'generators/src/main/**'
+      - 'formats/src/main/**'
+      - 'destinations/src/main/**'
+      - 'cli/src/main/**'
+      - 'gradle/libs.versions.toml'
+      - '*/build.gradle.kts'
       - '.github/workflows/use-case-ci-seeding.yml'
   workflow_dispatch:
 
