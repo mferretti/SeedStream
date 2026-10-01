@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -89,7 +90,8 @@ public abstract sealed class SeedConfig {
   public static class RemoteSeed extends SeedConfig {
     @NotNull String url;
 
-    AuthConfig auth;
+    // @Valid cascades into AuthConfig so a missing auth type fails at parse time (#383).
+    @Valid AuthConfig auth;
 
     @JsonCreator
     @SuppressWarnings("checkstyle:HiddenField")
