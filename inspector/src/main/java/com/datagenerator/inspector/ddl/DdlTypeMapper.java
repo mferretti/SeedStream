@@ -167,7 +167,7 @@ public final class DdlTypeMapper {
     return switch (rawType) {
       case "SMALLINT", "INT2", "SMALLSERIAL" -> Math.min(Defaults.INT_MAX, 32_767L);
       case "TINYINT" -> Math.min(Defaults.INT_MAX, 127L);
-      default -> Defaults.INT_MAX;
+      case null, default -> Defaults.INT_MAX;
     };
   }
 
