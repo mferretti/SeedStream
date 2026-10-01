@@ -211,7 +211,7 @@ public final class SchemaTypeMapper {
   /** Plain decimal notation: the decimal[...] syntax has no exponent form (1.0E-7). */
   private static String plain(BigDecimal value) {
     String text = value.stripTrailingZeros().toPlainString();
-    return text.equals("-0") ? "0" : text;
+    return "-0".equals(text) ? "0" : text;
   }
 
   private MappedType mapArray(String fieldName, JsonNode schema) {
