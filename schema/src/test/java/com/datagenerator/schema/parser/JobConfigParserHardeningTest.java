@@ -542,7 +542,11 @@ class JobConfigParserHardeningTest {
     for (Path root : List.of(Path.of("../config/jobs"), Path.of("../use-cases"))) {
       try (Stream<Path> files = Files.walk(root)) {
         files
-            .filter(p -> p.getParent() != null && p.getParent().endsWith("jobs"))
+            .filter(
+                p -> {
+                  Path parent = p.getParent();
+                  return parent != null && parent.endsWith("jobs");
+                })
             .filter(p -> p.toString().endsWith(".yaml"))
             .forEach(jobs::add);
       }
