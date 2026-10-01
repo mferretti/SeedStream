@@ -23,6 +23,7 @@ import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
+import com.datagenerator.generators.GeneratorException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,8 +116,10 @@ class DatafakerLocaleCoverageTest {
 
     try (var ctx = GeneratorContext.enter(factory, "italy")) {
       assertThatThrownBy(() -> generator.generate(new Random(1), new CustomDatafakerType(type)))
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("it")
+          .isInstanceOf(GeneratorException.class)
+          .hasMessageContaining(type)
+          .hasMessageContaining("it_IT")
+          .hasCauseInstanceOf(IllegalStateException.class)
           .satisfies(e -> assertThat(e.getSuppressed()).hasSize(1));
     }
   }

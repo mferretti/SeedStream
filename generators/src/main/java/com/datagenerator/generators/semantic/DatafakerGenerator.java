@@ -86,27 +86,37 @@ public class DatafakerGenerator implements DataGenerator {
     Faker faker = FakerCache.getOrCreate(locale, random);
 
     // Generate value via registry
+    String typeName = customType.getTypeName();
     try {
-      return DatafakerRegistry.generate(customType.getTypeName(), faker, random);
+      return DatafakerRegistry.generate(typeName, faker, random);
     } catch (RuntimeException e) {
       if (Locale.US.equals(locale)) {
-        throw e;
+        throw generationFailure(typeName, locale, e);
       }
       // Datafaker lacks some data for some locales (e.g. Italian name suffixes, #379). Fall back to
       // US English with the same thread-local Random, so output stays deterministic; if English
       // fails too, the original error is the meaningful one.
       log.debug(
           "Type '{}' unavailable for locale {}, falling back to en-US: {}",
-          customType.getTypeName(),
+          typeName,
           locale,
           e.getMessage());
       try {
         return DatafakerRegistry.generate(
-            customType.getTypeName(), FakerCache.getOrCreate(Locale.US, random), random);
+            typeName, FakerCache.getOrCreate(Locale.US, random), random);
       } catch (RuntimeException fallbackFailure) {
-        e.addSuppressed(fallbackFailure);
-        throw e;
+        GeneratorException failure = generationFailure(typeName, locale, e);
+        failure.addSuppressed(fallbackFailure);
+        throw failure;
       }
     }
+  }
+
+  private static GeneratorException generationFailure(
+      String typeName, Locale locale, RuntimeException cause) {
+    return new GeneratorException(
+        "Cannot generate Datafaker type '%s' for locale %s: %s"
+            .formatted(typeName, locale, cause.getMessage()),
+        cause);
   }
 }
