@@ -46,9 +46,7 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Comprehensive tests for DatafakerGenerator covering multiple geolocations and all semantic types.
  */
 class DatafakerGeolocationTest {
-  private static final String TYPE_PREFIX = "Type: ";
   private static final String STYPE_EMAIL = "email";
-  private static final String STYPE_MAC_ADDRESS = "mac_address";
 
   private DatafakerGenerator generator;
   private DataGeneratorFactory factory;

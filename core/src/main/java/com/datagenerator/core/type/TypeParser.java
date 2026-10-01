@@ -38,11 +38,15 @@ public class TypeParser {
   // character (inspect keeps them, e.g. Item2 -> item2, package v1, #355).
   public static final String IDENT = "[a-z_][a-z0-9_]*";
 
+  private static final String REF_OPEN = "^ref\\[(";
+  private static final String DOT_SEP = ")\\.(";
+  private static final String CLOSE_END = ")\\]$";
+
   private static final Pattern PRIMITIVE_PATTERN =
       Pattern.compile(
           "^(char|int|decimal|date|timestamp)\\[((?:(?!\\.\\.)[^\\]])++)\\.\\.([^\\]]++)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");
-  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[(" + IDENT + ")\\]$");
+  private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[(" + IDENT + CLOSE_END);
   private static final Pattern ARRAY_PATTERN =
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
   private static final Pattern UNIQUE_PATTERN =
@@ -50,24 +54,24 @@ public class TypeParser {
   private static final Pattern SERIAL_PATTERN = Pattern.compile("^serial(?:\\[(-?\\d+)\\])?$");
   private static final Pattern REF_UNIQUE_PATTERN =
       Pattern.compile(
-          "^ref\\[("
+          REF_OPEN
               + IDENT
-              + ")\\.("
+              + DOT_SEP
               + IDENT
               + "),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=("
               + IDENT
               + "))?\\]$");
   private static final Pattern PARENT_REF_PATTERN =
-      Pattern.compile("^ref\\[parent\\.(" + IDENT + ")\\]$");
+      Pattern.compile("^ref\\[parent\\.(" + IDENT + CLOSE_END);
 
   private static final Pattern REF_PATTERN =
-      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + ")\\]$");
+      Pattern.compile(REF_OPEN + IDENT + DOT_SEP + IDENT + CLOSE_END);
 
   private static final Pattern REF_RANGE_PATTERN =
-      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + "),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
+      Pattern.compile(REF_OPEN + IDENT + DOT_SEP + IDENT + "),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
 
   private static final Pattern REF_COUNT_PATTERN =
-      Pattern.compile("^ref\\[(" + IDENT + ")\\.(" + IDENT + "),\\s*(-?\\d+)\\.\\.count\\]$");
+      Pattern.compile(REF_OPEN + IDENT + DOT_SEP + IDENT + "),\\s*(-?\\d+)\\.\\.count\\]$");
 
   /**
    * Parse a datatype string into a DataType object.

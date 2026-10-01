@@ -96,8 +96,7 @@ class SchemaTypeMapperTest {
   void shouldNotEmitInvertedRangeWhenIntegerMinimumIsAboveDefaultMax() {
     double[] range = range(map("n", "{'type':'integer','minimum':2000000}").datatype());
 
-    assertThat(range[0]).isLessThanOrEqualTo(range[1]);
-    assertThat(range[0]).isEqualTo(2000000d);
+    assertThat(range[0]).isLessThanOrEqualTo(range[1]).isEqualTo(2000000d);
   }
 
   @Test
@@ -150,8 +149,7 @@ class SchemaTypeMapperTest {
   void shouldNotEmitInvertedRangeWhenNumberMinimumIsAboveDefaultMax() {
     double[] range = range(map("a", "{'type':'number','minimum':10000}").datatype());
 
-    assertThat(range[0]).isLessThanOrEqualTo(range[1]);
-    assertThat(range[0]).isEqualTo(10000d);
+    assertThat(range[0]).isLessThanOrEqualTo(range[1]).isEqualTo(10000d);
   }
 
   @Test

@@ -125,7 +125,7 @@ class DdlInspectorKeysTest {
   @Test
   void shouldLeaveUuidPrimaryKeyUncommented(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id UUID PRIMARY KEY, n INT);");
-    assertThat(datatypesOf(in, "t").get("id")).isNotEqualTo("serial");
+    assertThat(datatypesOf(in, "t")).doesNotContainEntry("id", "serial");
     assertThat(in.comments().getOrDefault("t", Map.of())).doesNotContainKey("id");
     assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
   }

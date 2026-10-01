@@ -53,8 +53,16 @@ class DataStructureParserHardeningTest {
   void shouldMapAliasAndGeolocationToTheirOwnFields() throws Exception {
     DataStructure s =
         parse(
-            "name: s\ngeolocation: germany\ndata:\n  a:\n    datatype: int[1..2]\n    alias: x\n"
-                + "  b:\n    datatype: boolean\n");
+            """
+            name: s
+            geolocation: germany
+            data:
+              a:
+                datatype: int[1..2]
+                alias: x
+              b:
+                datatype: boolean
+            """);
     assertThat(s.getGeolocation()).isEqualTo("germany");
     assertThat(s.getData().get("a").getAlias()).isEqualTo("x");
     assertThat(s.getData().get("a").getDatatype()).isEqualTo("int[1..2]");
@@ -71,8 +79,15 @@ class DataStructureParserHardeningTest {
     // documents: alias collisions are not checked at parse time
     DataStructure s =
         parse(
-            "name: s\ndata:\n  a:\n    datatype: boolean\n    alias: b\n  b:\n"
-                + "    datatype: boolean\n");
+            """
+            name: s
+            data:
+              a:
+                datatype: boolean
+                alias: b
+              b:
+                datatype: boolean
+            """);
     assertThat(s.getData().get("a").getAlias()).isEqualTo("b");
   }
 
@@ -179,8 +194,16 @@ class DataStructureParserHardeningTest {
   void shouldRejectDuplicatedFieldKeyInsteadOfDroppingTheFirstDefinition() throws Exception {
     Path f =
         write(
-            "name: s\ndata:\n  a:\n    datatype: int[1..2]\n  b:\n    datatype: boolean\n"
-                + "  a:\n    datatype: char[3..4]\n");
+            """
+            name: s
+            data:
+              a:
+                datatype: int[1..2]
+              b:
+                datatype: boolean
+              a:
+                datatype: char[3..4]
+            """);
 
     assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)

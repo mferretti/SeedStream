@@ -524,12 +524,6 @@ public class DatafakerRegistry {
   }
 
   /**
-   * Clear all registered types (for testing only).
-   *
-   * <p><b>WARNING:</b> This removes all types including built-ins. Call {@code registerBuiltIns()}
-   * after clearing to restore defaults.
-   */
-  /**
    * Restores the registry to exactly its built-in types and aliases, discarding every custom
    * registration ({@code --faker-types}, tests). The registry is JVM-global static state: tests
    * that register types call this in {@code @AfterEach} so results do not depend on test order or
@@ -543,6 +537,12 @@ public class DatafakerRegistry {
     log.debug("DatafakerRegistry reset to {} built-in types", BUILT_IN_TYPES.size());
   }
 
+  /**
+   * Clear all registered types (for testing only).
+   *
+   * <p><b>WARNING:</b> This removes all types including built-ins. Call {@code registerBuiltIns()}
+   * after clearing to restore defaults.
+   */
   public static void clear() {
     registry.clear();
     log.debug("DatafakerRegistry cleared");

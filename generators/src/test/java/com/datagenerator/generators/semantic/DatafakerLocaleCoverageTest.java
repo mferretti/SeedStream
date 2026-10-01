@@ -46,6 +46,7 @@ class DatafakerLocaleCoverageTest {
   @AfterEach
   void resetDatafakerRegistry() {
     DatafakerRegistry.resetToBuiltIns();
+    FakerCache.clear();
   }
 
   private DatafakerGenerator generator;
@@ -58,11 +59,6 @@ class DatafakerLocaleCoverageTest {
     factory =
         new DataGeneratorFactory(
             new StructureRegistry((name, path, reg) -> Map.of()), Paths.get("test"));
-  }
-
-  @AfterEach
-  void tearDown() {
-    FakerCache.clear();
   }
 
   @ParameterizedTest
@@ -124,7 +120,9 @@ class DatafakerLocaleCoverageTest {
         });
 
     try (var ctx = GeneratorContext.enter(factory, "italy")) {
-      assertThatThrownBy(() -> generator.generate(new Random(1), new CustomDatafakerType(type)))
+      Random random = new Random(1);
+      CustomDatafakerType dataType = new CustomDatafakerType(type);
+      assertThatThrownBy(() -> generator.generate(random, dataType))
           .isInstanceOf(GeneratorException.class)
           .hasMessageContaining(type)
           .hasMessageContaining("it_IT")

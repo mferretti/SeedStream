@@ -134,37 +134,45 @@ public class StructureRegistry {
     }
     Map<String, DataType> resolved = new LinkedHashMap<>(fields);
     groups.forEach(
-        (group, names) -> {
-          String key = structureName + "." + group;
-          long domain = 1;
-          for (String n : names) {
-            UniqueType u = (UniqueType) fields.get(n);
-            try {
-              domain = Math.multiplyExact(domain, sizeOf(structureName, n, u, jobCount));
-            } catch (ArithmeticException e) {
-              throw new TypeParseException("unique group domain too large: " + key);
-            }
-          }
-          long hash = fnv1a64(key);
-          int h = halfBits(domain);
-          // Sort members by field name to ensure divisors are computed in a stable order,
-          // independent of map iteration order (which can vary across loads).
-          List<String> sortedNames = names.stream().sorted().toList();
-          Map<String, Long> divisorMap = new HashMap<>();
-          long divisor = domain;
-          for (String n : sortedNames) {
-            divisor /= sizeOf(structureName, n, (UniqueType) fields.get(n), jobCount);
-            divisorMap.put(n, divisor);
-          }
-          // Update resolved map in original field order, but use divisors from sorted names
-          for (String n : names) {
-            UniqueType u = (UniqueType) fields.get(n);
-            long size = sizeOf(structureName, n, u, jobCount);
-            long max = u.isMaxIsCount() ? jobCount : u.getMax();
-            resolved.put(n, u.withLayout(max, key, hash, domain, divisorMap.get(n), size, h));
-          }
-        });
+        (group, names) -> resolveGroup(structureName, group, names, fields, jobCount, resolved));
     return resolved;
+  }
+
+  private static void resolveGroup(
+      String structureName,
+      String group,
+      List<String> names,
+      Map<String, DataType> fields,
+      long jobCount,
+      Map<String, DataType> resolved) {
+    String key = structureName + "." + group;
+    long domain = 1;
+    for (String n : names) {
+      UniqueType u = (UniqueType) fields.get(n);
+      try {
+        domain = Math.multiplyExact(domain, sizeOf(structureName, n, u, jobCount));
+      } catch (ArithmeticException e) {
+        throw new TypeParseException("unique group domain too large: " + key);
+      }
+    }
+    long hash = fnv1a64(key);
+    int h = halfBits(domain);
+    // Sort members by field name to ensure divisors are computed in a stable order,
+    // independent of map iteration order (which can vary across loads).
+    List<String> sortedNames = names.stream().sorted().toList();
+    Map<String, Long> divisorMap = new HashMap<>();
+    long divisor = domain;
+    for (String n : sortedNames) {
+      divisor /= sizeOf(structureName, n, (UniqueType) fields.get(n), jobCount);
+      divisorMap.put(n, divisor);
+    }
+    // Update resolved map in original field order, but use divisors from sorted names
+    for (String n : names) {
+      UniqueType u = (UniqueType) fields.get(n);
+      long size = sizeOf(structureName, n, u, jobCount);
+      long max = u.isMaxIsCount() ? jobCount : u.getMax();
+      resolved.put(n, u.withLayout(max, key, hash, domain, divisorMap.get(n), size, h));
+    }
   }
 
   private static long sizeOf(String structureName, String field, UniqueType u, long jobCount) {

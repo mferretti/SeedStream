@@ -134,8 +134,8 @@ class DatafakerNewTypesTest {
     String cardType = (String) generateWithContext("usa", "credit_card_type");
     // Common card types: Visa, Mastercard, Discover, Amex, etc.
     // A card brand, not a card number (#380): exactly Datafaker's credit-card-type provider.
-    assertThat(cardType).doesNotContainPattern("\\d");
     assertThat(cardType)
+        .doesNotContainPattern("\\d")
         .isEqualTo(new Faker(Locale.US, new Random(42L)).business().creditCardType());
   }
 

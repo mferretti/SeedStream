@@ -65,7 +65,8 @@ class UniqueFieldValidatorTest {
 
   @Test
   void shouldFailWhenCountExceedsDomain() {
-    assertThatThrownBy(() -> validator(1_000_000).validate("acct"))
+    UniqueFieldValidator validator = validator(1_000_000);
+    assertThatThrownBy(() -> validator.validate("acct"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "unique[account_no] range 1..500000 holds 500,000 values but --count is 1,000,000."
@@ -79,7 +80,8 @@ class UniqueFieldValidatorTest {
 
   @Test
   void shouldFailWithGroupMessageWhenCompositeDomainTooSmall() {
-    assertThatThrownBy(() -> validator(5000).validate("pairs"))
+    UniqueFieldValidator validator = validator(5000);
+    assertThatThrownBy(() -> validator.validate("pairs"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             "unique group 'pair' (task_id 1..200 × label_id 1..12) holds 2,400 combinations"
@@ -88,14 +90,16 @@ class UniqueFieldValidatorTest {
 
   @Test
   void shouldFailWhenUniqueIsUnderArray() {
-    assertThatThrownBy(() -> validator(1).validate("in_array"))
+    UniqueFieldValidator validator = validator(1);
+    assertThatThrownBy(() -> validator.validate("in_array"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'in_array.items' is inside array[...]");
   }
 
   @Test
   void shouldFailWhenUniqueIsInObjectNestedInArray() {
-    assertThatThrownBy(() -> validator(1).validate("via_array"))
+    UniqueFieldValidator validator = validator(1);
+    assertThatThrownBy(() -> validator.validate("via_array"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'child.cid' is inside array[...]");
   }
@@ -107,7 +111,8 @@ class UniqueFieldValidatorTest {
 
   @Test
   void shouldRejectSerialUnderArray() {
-    assertThatThrownBy(() -> validator(10).validate("serial_in_array"))
+    UniqueFieldValidator validator = validator(10);
+    assertThatThrownBy(() -> validator.validate("serial_in_array"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("serial field 'serial_in_array.items'");
   }
@@ -119,7 +124,8 @@ class UniqueFieldValidatorTest {
 
   @Test
   void shouldRejectCountRangeWhenMinAboveOne() {
-    assertThatThrownBy(() -> validator(10).validate("count_from_5"))
+    UniqueFieldValidator validator = validator(10);
+    assertThatThrownBy(() -> validator.validate("count_from_5"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("holds 6 values but --count is 10")
         .hasMessageContaining("Use 1..count");

@@ -21,13 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Level;
 import com.datagenerator.cli.CliTestSupport.Result;
 import com.datagenerator.core.registry.DatafakerRegistry;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,9 +45,6 @@ import org.junit.jupiter.params.provider.ValueSource;
  * --faker-types}. Every run goes through the real root command with the production friendly
  * exception handler, so exit codes and stderr are what a user sees (0 ok, 1 runtime, 2 usage).
  */
-@SuppressFBWarnings(
-    value = "VA_FORMAT_STRING_USES_NEWLINE",
-    justification = "YAML fixtures need a literal \\n, not the platform separator")
 class ExecuteCommandOptionsTest {
 
   /** The Datafaker registry is JVM-global: undo this class's custom registrations. */
@@ -92,13 +89,13 @@ class ExecuteCommandOptionsTest {
     Path job = tempDir.resolve("job-" + (++runCounter) + ".yaml");
     Files.writeString(
         job,
-        "source: %s\ntype: file\nstructures_path: %s\n%sconf:\n  path: %s/output\n"
+        "source: %s%ntype: file%nstructures_path: %s%n%sconf:%n  path: %s/output%n"
             .formatted(source, structDir.toAbsolutePath(), seedBlock, outDir.toAbsolutePath()));
     return job;
   }
 
   private static String embedded(long value) {
-    return "seed:\n  type: embedded\n  value: %d\n".formatted(value);
+    return "seed:%n  type: embedded%n  value: %d%n".formatted(value);
   }
 
   private Path newOutDir() throws IOException {
@@ -197,7 +194,7 @@ class ExecuteCommandOptionsTest {
     Path seedFile = tempDir.resolve("seed.txt");
     Files.writeString(seedFile, "7\n");
     Files.setPosixFilePermissions(seedFile, PosixFilePermissions.fromString("rw-------"));
-    String fileSeed = "seed:\n  type: file\n  path: %s\n".formatted(seedFile.toAbsolutePath());
+    String fileSeed = "seed:%n  type: file%n  path: %s%n".formatted(seedFile.toAbsolutePath());
 
     byte[] fromFile = generate(fileSeed, COUNT, "50");
 
@@ -214,7 +211,7 @@ class ExecuteCommandOptionsTest {
     // Deliberately insecure, proves the check rejects it
     Files.setPosixFilePermissions( // nosemgrep
         seedFile, PosixFilePermissions.fromString("rw-r--r--"));
-    String fileSeed = "seed:\n  type: file\n  path: %s\n".formatted(seedFile.toAbsolutePath());
+    String fileSeed = "seed:%n  type: file%n  path: %s%n".formatted(seedFile.toAbsolutePath());
     Path out = newOutDir();
 
     Result r = run(writeJob("rec.yaml", fileSeed, out), COUNT, "5");
@@ -230,7 +227,7 @@ class ExecuteCommandOptionsTest {
     Path seedFile = tempDir.resolve("seed-bad.txt");
     Files.writeString(seedFile, "not-a-number");
     Files.setPosixFilePermissions(seedFile, PosixFilePermissions.fromString("rw-------"));
-    String fileSeed = "seed:\n  type: file\n  path: %s\n".formatted(seedFile.toAbsolutePath());
+    String fileSeed = "seed:%n  type: file%n  path: %s%n".formatted(seedFile.toAbsolutePath());
     Path out = newOutDir();
 
     Result r = run(writeJob("rec.yaml", fileSeed, out), COUNT, "50");
@@ -244,7 +241,7 @@ class ExecuteCommandOptionsTest {
   @Test
   void shouldFailWhenConfiguredSeedFileIsMissing() throws IOException {
     String fileSeed =
-        "seed:\n  type: file\n  path: %s\n".formatted(tempDir.resolve("no-such-seed.txt"));
+        "seed:%n  type: file%n  path: %s%n".formatted(tempDir.resolve("no-such-seed.txt"));
     Path out = newOutDir();
 
     Result r = run(writeJob("rec.yaml", fileSeed, out), COUNT, "5");
@@ -433,7 +430,7 @@ class ExecuteCommandOptionsTest {
   void shouldFailWhenJobYamlHasUnknownProperty() throws IOException {
     Path job = tempDir.resolve("typo.yaml");
     Files.writeString(
-        job, "source: rec.yaml\ntype: file\nsede: 1\nconf:\n  path: %s/o\n".formatted(tempDir));
+        job, "source: rec.yaml%ntype: file%nsede: 1%nconf:%n  path: %s/o%n".formatted(tempDir));
 
     Result r = CliTestSupport.run(EXECUTE, JOB, job.toString());
 
@@ -444,7 +441,7 @@ class ExecuteCommandOptionsTest {
   @Test
   void shouldFailWhenJobYamlMissesRequiredField() throws IOException {
     Path job = tempDir.resolve("nosource.yaml");
-    Files.writeString(job, "type: file\nconf:\n  path: %s/o\n".formatted(tempDir));
+    Files.writeString(job, "type: file%nconf:%n  path: %s/o%n".formatted(tempDir));
 
     Result r = CliTestSupport.run(EXECUTE, JOB, job.toString());
 
@@ -571,6 +568,7 @@ class ExecuteCommandOptionsTest {
   // ── 3. --faker-types ────────────────────────────────────────────────────────
 
   private static final Pattern SKU = Pattern.compile("SKU-[A-Z]{3}-[0-9]{4}");
+  private static final Pattern CODE = Pattern.compile("\"code\":\"([^\"]*)\"");
 
   private void writeSkuStructure() throws IOException {
     Files.writeString(
@@ -602,14 +600,15 @@ class ExecuteCommandOptionsTest {
     assertThat(r.exit()).as(r.err()).isZero();
     assertThat(r.logged(Level.INFO, "Registered 1 custom Datafaker type(s)")).isTrue();
     List<String> lines = Files.readAllLines(out.resolve(OUTPUT_JSON));
-    assertThat(lines).hasSize(40);
     assertThat(lines)
+        .hasSize(40)
         .allSatisfy(
             line -> {
-              String value = line.replaceAll(".*\"code\":\"([^\"]*)\".*", "$1");
-              assertThat(value).matches(SKU);
-            });
-    assertThat(lines).doesNotHaveDuplicates();
+              Matcher code = CODE.matcher(line);
+              assertThat(code.find()).as(line).isTrue();
+              assertThat(code.group(1)).matches(SKU);
+            })
+        .doesNotHaveDuplicates();
   }
 
   @Test

@@ -33,6 +33,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -153,7 +154,11 @@ class ProtobufSerializerRoundTripTest {
     Descriptor d = descriptor(F.of("day", Type.TYPE_STRING), F.of("ts", Type.TYPE_STRING));
     String out =
         serializer.serialize(
-            map("day", LocalDate.of(2024, 2, 29), "ts", Instant.parse("2024-02-29T10:15:30Z")));
+            map(
+                "day",
+                LocalDate.of(2024, Month.FEBRUARY, 29),
+                "ts",
+                Instant.parse("2024-02-29T10:15:30Z")));
 
     DynamicMessage m = decode(out, d);
 
@@ -229,8 +234,9 @@ class ProtobufSerializerRoundTripTest {
   @Test
   void shouldThrowSerializationExceptionWhenStringReplacesInt() {
     serializer.serialize(map("n", 1));
+    Map<String, Object> data = map("n", "oops");
 
-    assertThatThrownBy(() -> serializer.serialize(map("n", "oops")))
+    assertThatThrownBy(() -> serializer.serialize(data))
         .isExactlyInstanceOf(SerializationException.class)
         .hasMessageContaining("n");
   }
@@ -238,24 +244,27 @@ class ProtobufSerializerRoundTripTest {
   @Test
   void shouldThrowSerializationExceptionWhenDoubleReplacesInt() {
     serializer.serialize(map("n", 1));
+    Map<String, Object> data = map("n", 1.5);
 
-    assertThatThrownBy(() -> serializer.serialize(map("n", 1.5)))
+    assertThatThrownBy(() -> serializer.serialize(data))
         .isExactlyInstanceOf(SerializationException.class);
   }
 
   @Test
   void shouldThrowSerializationExceptionWhenBooleanReplacesInt() {
     serializer.serialize(map("n", 1));
+    Map<String, Object> data = map("n", true);
 
-    assertThatThrownBy(() -> serializer.serialize(map("n", true)))
+    assertThatThrownBy(() -> serializer.serialize(data))
         .isExactlyInstanceOf(SerializationException.class);
   }
 
   @Test
   void shouldThrowSerializationExceptionWhenScalarReplacesList() {
     serializer.serialize(map("tags", List.of("a")));
+    Map<String, Object> data = map("tags", "single");
 
-    assertThatThrownBy(() -> serializer.serialize(map("tags", "single")))
+    assertThatThrownBy(() -> serializer.serialize(data))
         .isExactlyInstanceOf(SerializationException.class);
   }
 

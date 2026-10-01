@@ -34,7 +34,8 @@ class AbstractYamlParserTest {
   @Test
   void shouldWrapIoExceptionWhenJobPathIsDirectory() throws Exception {
     Path dir = Files.createDirectory(tempDir.resolve("jobs.yaml"));
-    assertThatThrownBy(() -> new JobConfigParser().parse(dir))
+    JobConfigParser parser = new JobConfigParser();
+    assertThatThrownBy(() -> parser.parse(dir))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("Failed to read job config file")
         .hasMessageContaining(dir.toString())
@@ -44,7 +45,8 @@ class AbstractYamlParserTest {
   @Test
   void shouldWrapIoExceptionWhenStructurePathIsDirectory() throws Exception {
     Path dir = Files.createDirectory(tempDir.resolve("structs.yaml"));
-    assertThatThrownBy(() -> new DataStructureParser().parse(dir))
+    DataStructureParser parser = new DataStructureParser();
+    assertThatThrownBy(() -> parser.parse(dir))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("Failed to read data structure file")
         .hasMessageContaining(dir.toString())
@@ -54,7 +56,8 @@ class AbstractYamlParserTest {
   @Test
   void shouldNameDescriptionAndFullPathWhenJobFileMissing() {
     Path missing = tempDir.resolve("nested").resolve("nope.yaml");
-    assertThatThrownBy(() -> new JobConfigParser().parse(missing))
+    JobConfigParser parser = new JobConfigParser();
+    assertThatThrownBy(() -> parser.parse(missing))
         .isInstanceOf(SchemaParseException.class)
         .hasMessage("job config file not found: " + missing);
   }
@@ -62,7 +65,8 @@ class AbstractYamlParserTest {
   @Test
   void shouldNameDescriptionAndFullPathWhenStructureFileMissing() {
     Path missing = tempDir.resolve("nope.yaml");
-    assertThatThrownBy(() -> new DataStructureParser().parse(missing))
+    DataStructureParser parser = new DataStructureParser();
+    assertThatThrownBy(() -> parser.parse(missing))
         .isInstanceOf(SchemaParseException.class)
         .hasMessage("data structure file not found: " + missing);
   }
@@ -73,7 +77,8 @@ class AbstractYamlParserTest {
     Files.writeString(f, "name: n\n");
     Files.setPosixFilePermissions(f, PosixFilePermissions.fromString("---------"));
     assumeTrue(!Files.isReadable(f), "running as root: permissions not enforced");
-    assertThatThrownBy(() -> new DataStructureParser().parse(f))
+    DataStructureParser parser = new DataStructureParser();
+    assertThatThrownBy(() -> parser.parse(f))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("Failed to read data structure file")
         .hasMessageContaining(f.toString())
@@ -92,7 +97,8 @@ class AbstractYamlParserTest {
   @Test
   void shouldReportMissingWhenSymlinkIsDangling() throws Exception {
     Path link = Files.createSymbolicLink(tempDir.resolve("dangling.yaml"), tempDir.resolve("gone"));
-    assertThatThrownBy(() -> new DataStructureParser().parse(link))
+    DataStructureParser parser = new DataStructureParser();
+    assertThatThrownBy(() -> parser.parse(link))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining("not found")
         .hasMessageContaining(link.toString());

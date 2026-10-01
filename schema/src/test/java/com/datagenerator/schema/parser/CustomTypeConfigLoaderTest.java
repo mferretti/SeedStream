@@ -121,8 +121,9 @@ class CustomTypeConfigLoaderTest {
             + target
             + "\n");
     String builtInTarget = DatafakerRegistry.getCanonicalName(name);
+    CustomTypeConfigLoader loader = new CustomTypeConfigLoader();
 
-    assertThatThrownBy(() -> new CustomTypeConfigLoader().load(config))
+    assertThatThrownBy(() -> loader.load(config))
         .isInstanceOf(SchemaParseException.class)
         .hasMessageContaining(name.trim())
         .hasMessageContaining("built-in");

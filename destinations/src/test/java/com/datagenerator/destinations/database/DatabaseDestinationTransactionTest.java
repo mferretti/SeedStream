@@ -178,7 +178,8 @@ class DatabaseDestinationTransactionTest {
     dest.write(row(10, "fine"));
     dest.write(row(10, "dup-pk")); // duplicate primary key inside batch 2
 
-    assertThatThrownBy(() -> dest.write(row(11, "x")))
+    Map<String, Object> nextRow = row(11, "x");
+    assertThatThrownBy(() -> dest.write(nextRow))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("Failed to execute batch insert into table: " + TABLE)
         .hasCauseInstanceOf(SQLException.class);
@@ -197,7 +198,8 @@ class DatabaseDestinationTransactionTest {
     dest.write(row(2, "b")); // batch 1 executed, uncommitted
     dest.write(row(3, "c"));
 
-    assertThatThrownBy(() -> dest.write(row(3, "dup")))
+    Map<String, Object> dupRow = row(3, "dup");
+    assertThatThrownBy(() -> dest.write(dupRow))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining(TABLE);
     assertThatThrownBy(dest::close).isInstanceOf(DestinationException.class);
@@ -229,7 +231,8 @@ class DatabaseDestinationTransactionTest {
     DatabaseDestination dest = new DatabaseDestination(config(PER_BATCH, 2));
     dest.open();
     dest.write(row(1, "a"));
-    assertThatThrownBy(() -> dest.write(row(1, "dup"))).isInstanceOf(DestinationException.class);
+    Map<String, Object> dup = row(1, "dup");
+    assertThatThrownBy(() -> dest.write(dup)).isInstanceOf(DestinationException.class);
 
     // A retry of the same poisoned batch must fail again, not silently half-commit.
     assertThatThrownBy(dest::flush).isInstanceOf(DestinationException.class);
@@ -260,7 +263,8 @@ class DatabaseDestinationTransactionTest {
     dest.write(row(1, "a"));
     dest.close();
 
-    assertThatThrownBy(() -> dest.write(row(2, "b")))
+    Map<String, Object> nextRecord = row(2, "b");
+    assertThatThrownBy(() -> dest.write(nextRecord))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("not open");
     assertThat(visibleIds()).containsExactly(1);
@@ -305,7 +309,8 @@ class DatabaseDestinationTransactionTest {
 
     DatabaseDestination dest = new DatabaseDestination(cfg);
     dest.open();
-    assertThatThrownBy(() -> dest.write(row(1, "a")))
+    Map<String, Object> testRow = row(1, "a");
+    assertThatThrownBy(() -> dest.write(testRow))
         .isInstanceOf(DestinationException.class)
         .hasMessageContaining("illegal characters")
         .hasMessageContaining("DROP TABLE");

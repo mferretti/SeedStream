@@ -179,7 +179,7 @@ public final class DdlTypeMapper {
    */
   private static String decimalRange(String rawType, List<String> args) {
     String defaultRange = "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]";
-    boolean fixedPoint = Set.of("DECIMAL", "NUMERIC", "NUMBER", "DEC").contains(rawType);
+    boolean fixedPoint = Set.of(TYPE_DECIMAL, "NUMERIC", "NUMBER", "DEC").contains(rawType);
     if (!fixedPoint || args == null || args.isEmpty()) {
       return defaultRange;
     }

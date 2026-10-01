@@ -60,16 +60,16 @@ public class DdlPreprocessor {
   private static final Pattern CLUSTERED = Pattern.compile("(?i)\\b(NON)?CLUSTERED\\b");
 
   /**
-   * Matches {@code IDENTITY(seed, increment)} — the MSSQL auto-increment column property.
-   * JSQLParser does not recognise this construct and throws a parse exception.
-   */
-  /**
    * Oracle {@code RAW(n)} (binary, the usual GUID column): JSQLParser cannot parse it, which in
    * strict mode aborted the whole script (#377). Rewritten to {@code VARBINARY(n)}, which parses
    * and maps to the flagged unknown-type fallback.
    */
   private static final Pattern ORACLE_RAW = Pattern.compile("(?i)\\bRAW(\\s*\\()");
 
+  /**
+   * Matches {@code IDENTITY(seed, increment)} — the MSSQL auto-increment column property.
+   * JSQLParser does not recognise this construct and throws a parse exception.
+   */
   private static final Pattern IDENTITY =
       Pattern.compile("(?i)\\bIDENTITY\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)");
 

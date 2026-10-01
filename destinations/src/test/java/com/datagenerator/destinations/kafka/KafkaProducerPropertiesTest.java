@@ -58,16 +58,16 @@ class KafkaProducerPropertiesTest {
   void shouldApplyDefaultsWhenOptionalConfigAbsent() {
     Properties p = props(base().build());
 
-    assertThat(p.get("bootstrap.servers")).isEqualTo(BOOTSTRAP);
-    assertThat(p.get("acks")).isEqualTo("all");
-    assertThat(p.get(IDEMPOTENCE)).isEqualTo("true");
-    assertThat(p.get("compression.type")).isEqualTo("none");
-    assertThat(p.get("batch.size")).isEqualTo(16384);
-    assertThat(p.get("linger.ms")).isEqualTo(10);
-    assertThat(p.get("key.serializer"))
-        .isEqualTo("org.apache.kafka.common.serialization.StringSerializer");
-    assertThat(p.get("value.serializer"))
-        .isEqualTo("org.apache.kafka.common.serialization.ByteArraySerializer");
+    assertThat(p)
+        .containsEntry("bootstrap.servers", BOOTSTRAP)
+        .containsEntry("acks", "all")
+        .containsEntry(IDEMPOTENCE, "true")
+        .containsEntry("compression.type", "none")
+        .containsEntry("batch.size", 16384)
+        .containsEntry("linger.ms", 10)
+        .containsEntry("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+        .containsEntry(
+            "value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
     assertThat(p.stringPropertyNames())
         .doesNotContain(
             "security.protocol",
@@ -83,24 +83,24 @@ class KafkaProducerPropertiesTest {
   void shouldApplyExplicitTuningValues() {
     Properties p = props(base().batchSize(65536).lingerMs(250).compression("zstd").build());
 
-    assertThat(p.get("batch.size")).isEqualTo(65536);
-    assertThat(p.get("linger.ms")).isEqualTo(250);
-    assertThat(p.get("compression.type")).isEqualTo("zstd");
+    assertThat(p)
+        .containsEntry("batch.size", 65536)
+        .containsEntry("linger.ms", 250)
+        .containsEntry("compression.type", "zstd");
   }
 
   @Test
   void shouldEnableIdempotenceWhenAcksIsMinusOne() {
     Properties p = props(base().acks("-1").build());
 
-    assertThat(p.get("acks")).isEqualTo("-1");
-    assertThat(p.get(IDEMPOTENCE)).isEqualTo("true");
+    assertThat(p).containsEntry("acks", "-1").containsEntry(IDEMPOTENCE, "true");
   }
 
   @Test
   void shouldNotSetIdempotenceWhenAcksIsOne() {
     Properties p = props(base().acks("1").build());
 
-    assertThat(p.get("acks")).isEqualTo("1");
+    assertThat(p).containsEntry("acks", "1");
     assertThat(p.containsKey(IDEMPOTENCE)).isFalse();
   }
 
@@ -108,7 +108,7 @@ class KafkaProducerPropertiesTest {
   void shouldNotSetIdempotenceWhenAcksIsZero() {
     Properties p = props(base().acks("0").build());
 
-    assertThat(p.get("acks")).isEqualTo("0");
+    assertThat(p).containsEntry("acks", "0");
     assertThat(p.containsKey(IDEMPOTENCE)).isFalse();
   }
 
@@ -127,9 +127,10 @@ class KafkaProducerPropertiesTest {
                 .saslJaasConfig(jaas)
                 .build());
 
-    assertThat(p.get("security.protocol")).isEqualTo("SASL_SSL");
-    assertThat(p.get("sasl.mechanism")).isEqualTo("SCRAM-SHA-512");
-    assertThat(p.get("sasl.jaas.config")).isEqualTo(jaas);
+    assertThat(p)
+        .containsEntry("security.protocol", "SASL_SSL")
+        .containsEntry("sasl.mechanism", "SCRAM-SHA-512")
+        .containsEntry("sasl.jaas.config", jaas);
   }
 
   @Test
@@ -144,26 +145,28 @@ class KafkaProducerPropertiesTest {
                 .sslKeystorePassword("kspw")
                 .build());
 
-    assertThat(p.get("ssl.truststore.location")).isEqualTo("/etc/ts.jks");
-    assertThat(p.get(TS_PASSWORD)).isEqualTo("tspw");
-    assertThat(p.get("ssl.keystore.location")).isEqualTo("/etc/ks.jks");
-    assertThat(p.get(KS_PASSWORD)).isEqualTo("kspw");
+    assertThat(p)
+        .containsEntry("ssl.truststore.location", "/etc/ts.jks")
+        .containsEntry(TS_PASSWORD, "tspw")
+        .containsEntry("ssl.keystore.location", "/etc/ks.jks")
+        .containsEntry(KS_PASSWORD, "kspw");
   }
 
   @Test
   void shouldOmitStorePasswordsWhenLocationAbsent() {
     Properties p = props(base().sslTruststorePassword("tspw").sslKeystorePassword("kspw").build());
 
-    assertThat(p.stringPropertyNames()).doesNotContain(TS_PASSWORD, KS_PASSWORD);
+    assertThat(p.stringPropertyNames()).isNotEmpty().doesNotContain(TS_PASSWORD, KS_PASSWORD);
   }
 
   @Test
   void shouldOmitPasswordsWhenOnlyStoreLocationsGiven() {
     Properties p = props(base().sslTruststoreLocation("/ts").sslKeystoreLocation("/ks").build());
 
-    assertThat(p.get("ssl.truststore.location")).isEqualTo("/ts");
-    assertThat(p.get("ssl.keystore.location")).isEqualTo("/ks");
-    assertThat(p.stringPropertyNames()).doesNotContain(TS_PASSWORD, KS_PASSWORD);
+    assertThat(p)
+        .containsEntry("ssl.truststore.location", "/ts")
+        .containsEntry("ssl.keystore.location", "/ks");
+    assertThat(p.stringPropertyNames()).isNotEmpty().doesNotContain(TS_PASSWORD, KS_PASSWORD);
   }
 
   @Test

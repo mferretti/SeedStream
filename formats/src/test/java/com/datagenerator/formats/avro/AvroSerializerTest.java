@@ -368,7 +368,7 @@ class AvroSerializerTest {
         Arguments.of(1.5d, "one and a half"), // DOUBLE
         Arguments.of(new BigDecimal("1.50"), "x"), // DECIMAL -> DOUBLE
         Arguments.of(true, "yes"), // BOOLEAN
-        Arguments.of(LocalDate.of(2024, 1, 1), "2024-01-01"), // date
+        Arguments.of(LocalDate.of(2024, Month.JANUARY, 1), "2024-01-01"), // date
         Arguments.of(Instant.EPOCH, "1970-01-01T00:00:00Z")); // timestamp-millis
   }
 

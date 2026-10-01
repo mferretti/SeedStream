@@ -138,51 +138,12 @@ public class FileDestination extends AbstractDestination {
         log.debug("Created parent directories: {}", parentDir);
       }
 
-      // NOFOLLOW_LINKS: the OS refuses to open a symlink, closing the window between the check
-      // below and the open. The final path (incl. a ".gz" suffix added here) is what gets opened,
-      // so it is the one that must not be a symlink (#357).
-      OpenOption[] openOptions =
-          config.isAppend()
-              ? new OpenOption[] {
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND,
-                StandardOpenOption.WRITE,
-                LinkOption.NOFOLLOW_LINKS
-              }
-              : new OpenOption[] {
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE,
-                LinkOption.NOFOLLOW_LINKS
-              };
+      OpenOption[] openOptions = openOptions();
 
       if (isAvro) {
-        // Avro Object Container Format — DataFileWriter handles its own buffering and compression.
-        // The DataFileWriter is initialized lazily on first write when the schema is known.
-        // Appending to an existing container must reuse its header and sync marker; writing a
-        // second header mid-file makes the whole file unreadable.
-        refuseSymlink(filePath);
-        boolean appendToExisting =
-            config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
-        avroAppendTarget = appendToExisting ? filePath : null;
-        if (!appendToExisting) {
-          avroRawOut = Files.newOutputStream(filePath, openOptions);
-        }
+        openAvro(filePath, openOptions);
       } else {
-        if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
-          filePath = Path.of(filePath.toString() + ".gz");
-        }
-        refuseSymlink(filePath);
-        // Appending to a non-empty file: its header row (CSV) is already there (#344).
-        headerWritten = config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
-        OutputStream base = Files.newOutputStream(filePath, openOptions);
-        // When perChunkGzip is true, do NOT wrap GZIPOutputStream here; each chunk is gzipped
-        // on the worker thread and the writer concatenates the members.
-        if (config.isCompress() && !perChunkGzip) {
-          base = new GZIPOutputStream(base);
-        }
-        outputStream = new BufferedOutputStream(base, config.getBufferSize());
-        streamWriter = serializer.createStreamWriter(outputStream);
+        filePath = openStream(filePath, openOptions);
       }
 
       isOpen = true;
@@ -196,6 +157,59 @@ public class FileDestination extends AbstractDestination {
     } catch (IOException e) {
       throw new DestinationException("Failed to open file: " + config.getFilePath(), e);
     }
+  }
+
+  // NOFOLLOW_LINKS: the OS refuses to open a symlink, closing the window between the check
+  // and the open. The final path (incl. a ".gz" suffix added later) is what gets opened,
+  // so it is the one that must not be a symlink (#357).
+  private OpenOption[] openOptions() {
+    return config.isAppend()
+        ? new OpenOption[] {
+          StandardOpenOption.CREATE,
+          StandardOpenOption.APPEND,
+          StandardOpenOption.WRITE,
+          LinkOption.NOFOLLOW_LINKS
+        }
+        : new OpenOption[] {
+          StandardOpenOption.CREATE,
+          StandardOpenOption.TRUNCATE_EXISTING,
+          StandardOpenOption.WRITE,
+          LinkOption.NOFOLLOW_LINKS
+        };
+  }
+
+  private void openAvro(Path filePath, OpenOption[] openOptions) throws IOException {
+    // Avro Object Container Format — DataFileWriter handles its own buffering and compression.
+    // The DataFileWriter is initialized lazily on first write when the schema is known.
+    // Appending to an existing container must reuse its header and sync marker; writing a
+    // second header mid-file makes the whole file unreadable.
+    refuseSymlink(filePath);
+    boolean appendToExisting =
+        config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
+    avroAppendTarget = appendToExisting ? filePath : null;
+    if (!appendToExisting) {
+      avroRawOut = Files.newOutputStream(filePath, openOptions);
+    }
+  }
+
+  /** Opens the text/binary stream; returns the final path (with ".gz" suffix when compressing). */
+  private Path openStream(Path path, OpenOption[] openOptions) throws IOException {
+    Path filePath = path;
+    if (config.isCompress() && !filePath.toString().endsWith(".gz")) {
+      filePath = Path.of(filePath.toString() + ".gz");
+    }
+    refuseSymlink(filePath);
+    // Appending to a non-empty file: its header row (CSV) is already there (#344).
+    headerWritten = config.isAppend() && Files.exists(filePath) && Files.size(filePath) > 0;
+    OutputStream base = Files.newOutputStream(filePath, openOptions);
+    // When perChunkGzip is true, do NOT wrap GZIPOutputStream here; each chunk is gzipped
+    // on the worker thread and the writer concatenates the members.
+    if (config.isCompress() && !perChunkGzip) {
+      base = new GZIPOutputStream(base);
+    }
+    outputStream = new BufferedOutputStream(base, config.getBufferSize());
+    streamWriter = serializer.createStreamWriter(outputStream);
+    return filePath;
   }
 
   /**
