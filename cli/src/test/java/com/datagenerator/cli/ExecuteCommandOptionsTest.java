@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
 import com.datagenerator.cli.CliTestSupport.Result;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -42,6 +43,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * --faker-types}. Every run goes through the real root command with the production friendly
  * exception handler, so exit codes and stderr are what a user sees (0 ok, 1 runtime, 2 usage).
  */
+@SuppressFBWarnings(
+    value = "VA_FORMAT_STRING_USES_NEWLINE",
+    justification = "YAML fixtures need a literal \\n, not the platform separator")
 class ExecuteCommandOptionsTest {
 
   private static final String EXECUTE = "execute";

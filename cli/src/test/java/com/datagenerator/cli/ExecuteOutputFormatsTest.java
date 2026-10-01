@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datagenerator.cli.CliTestSupport.Result;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -50,6 +51,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  * test classpath deliberately has no Avro/protobuf compile dependency; this also means the tests
  * verify the on-disk bytes independently of the serializers' own libraries.
  */
+@SuppressFBWarnings(
+    value = "VA_FORMAT_STRING_USES_NEWLINE",
+    justification = "YAML fixtures need a literal \\n, not the platform separator")
 class ExecuteOutputFormatsTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();

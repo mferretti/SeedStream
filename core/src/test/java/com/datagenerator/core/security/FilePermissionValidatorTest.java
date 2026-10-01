@@ -18,12 +18,19 @@ package com.datagenerator.core.security;
 
 import static org.assertj.core.api.Assertions.*;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -31,12 +38,117 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 
 class FilePermissionValidatorTest {
 
   private static final String SEED_FILE = "seed.txt";
 
   @TempDir Path tempDir;
+
+  private Logger validatorLogger;
+  private ListAppender<ILoggingEvent> appender;
+
+  @BeforeEach
+  void attachAppender() {
+    validatorLogger = (Logger) LoggerFactory.getLogger(FilePermissionValidator.class);
+    appender = new ListAppender<>();
+    appender.start();
+    validatorLogger.addAppender(appender);
+  }
+
+  @AfterEach
+  void detachAppender() {
+    validatorLogger.detachAppender(appender);
+    appender.stop();
+  }
+
+  private List<ILoggingEvent> warnings() {
+    return appender.list.stream().filter(e -> e.getLevel() == Level.WARN).toList();
+  }
+
+  @ParameterizedTest
+  @DisabledOnOs(OS.WINDOWS)
+  @ValueSource(strings = {"rw-r-----", "rw-r--r--", "rw----r--", "r--r--r--"})
+  void shouldWarnWhenConfigFileIsGroupOrOtherReadable(String perms) throws IOException {
+    Path file = createFileWithPermissions("config.yaml", perms);
+
+    new FilePermissionValidator().validateConfigFile(file);
+
+    assertThat(warnings())
+        .singleElement()
+        .satisfies(
+            e ->
+                assertThat(e.getFormattedMessage())
+                    .contains("permissive permissions")
+                    .contains(file.toString()));
+  }
+
+  @ParameterizedTest
+  @DisabledOnOs(OS.WINDOWS)
+  @ValueSource(strings = {"rw-------", "r--------", "rw--w----", "rwx------", "-w------x"})
+  void shouldNotWarnWhenConfigFileIsNotGroupOrOtherReadable(String perms) throws IOException {
+    Path file = createFileWithPermissions("config.yaml", perms);
+
+    new FilePermissionValidator().validateConfigFile(file);
+
+    assertThat(warnings()).isEmpty();
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldWarnAfterPermissionsAreLoosenedOnExistingFile() throws IOException {
+    Path file = createFileWithPermissions("config.yaml", "rw-------");
+    FilePermissionValidator validator = new FilePermissionValidator();
+    validator.validateConfigFile(file);
+    assertThat(warnings()).isEmpty();
+
+    Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-rw-rw-"));
+    validator.validateConfigFile(file);
+
+    assertThat(warnings()).hasSize(1);
+  }
+
+  @Test
+  void shouldNotWarnWhenConfigFileDoesNotExist() {
+    new FilePermissionValidator().validateConfigFile(tempDir.resolve("missing.yaml"));
+
+    assertThat(warnings()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @DisabledOnOs(OS.WINDOWS)
+  @ValueSource(strings = {"rw----r--", "r--r--r--", "rwxr-x---"})
+  void shouldFailSecretFileReadableByOthersOrGroupAndNameFileInMessage(String perms)
+      throws IOException {
+    Path file = createFileWithPermissions("aes.key", perms);
+
+    assertThatThrownBy(() -> new FilePermissionValidator().validateSecretFile(file, "Key file"))
+        .isInstanceOf(SecurityException.class)
+        .hasMessageStartingWith("Key file has insecure permissions")
+        .hasMessageContaining("chmod 600 " + file);
+  }
+
+  @ParameterizedTest
+  @DisabledOnOs(OS.WINDOWS)
+  @ValueSource(strings = {"rw-------", "r--------", "rw--w----"})
+  void shouldAcceptSecretFileNotReadableByGroupOrOthers(String perms) throws IOException {
+    Path file = createFileWithPermissions("aes.key", perms);
+
+    assertThatNoException()
+        .isThrownBy(() -> new FilePermissionValidator().validateSecretFile(file, "Key file"));
+    assertThat(warnings()).isEmpty();
+  }
+
+  @Test
+  @EnabledOnOs(OS.WINDOWS)
+  void shouldNotWarnOnWindowsEvenForReadableFile() throws IOException {
+    Path file = Files.createTempFile(tempDir, "cfg", ".yaml");
+
+    new FilePermissionValidator().validateConfigFile(file);
+
+    assertThat(warnings()).isEmpty();
+  }
 
   // ── Config file tests (Unix only) ────────────────────────────────────────
 

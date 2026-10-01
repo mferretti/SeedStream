@@ -41,6 +41,7 @@ import com.datagenerator.generators.primitive.SerialGenerator;
 import com.datagenerator.generators.primitive.TimestampGenerator;
 import com.datagenerator.generators.primitive.UniqueGenerator;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -105,6 +106,10 @@ public class DataGeneratorFactory {
   private final Path structuresPath;
 
   /** Create factory with context for stateful generators (e.g., ObjectGenerator). */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification =
+          "StructureRegistry is a shared, job-scoped cache by design (same as ObjectGenerator)")
   public DataGeneratorFactory(StructureRegistry structureRegistry, Path structuresPath) {
     this.structureRegistry = structureRegistry;
     this.structuresPath = structuresPath;
