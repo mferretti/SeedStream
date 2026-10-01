@@ -72,6 +72,10 @@ public class DatafakerGenerator implements DataGenerator {
   }
 
   @Override
+  // Datafaker signals missing locale data with a plain java.lang.RuntimeException (e.g.
+  // "name.suffix
+  // resulted in null expression"); there is no narrower type to catch for the en-US fallback.
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   public Object generate(Random random, DataType type) {
     if (!(type instanceof CustomDatafakerType customType)) {
       throw new GeneratorException(

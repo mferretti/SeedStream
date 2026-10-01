@@ -68,6 +68,9 @@ class DatafakerLocaleCoverageTest {
         "ms", "nl", "nl-be", "no", "pl", "pt", "pt-br", "ro", "ru", "sk", "sv", "th", "tr", "uk-ua",
         "vi", "zh", "zh-tw"
       })
+  // Collects every failing type/locale pair instead of stopping at the first; Datafaker failures
+  // are plain RuntimeExceptions.
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
   void shouldGenerateEveryBuiltInTypeWhenGeolocationIsSupported(String geolocation) {
     List<String> failures = new ArrayList<>();
     for (String type : DatafakerRegistry.listTypes()) {
