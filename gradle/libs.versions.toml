@@ -61,10 +61,14 @@ jmh-plugin = "0.7.3"
 lombok-plugin = "9.7.0"
 spotless-plugin = "8.10.2"
 spotbugs-plugin = "6.5.11"
+findsecbugs = "1.14.0"
 dependency-check-plugin = "13.0.0"
 sonarqube-plugin = "7.5.0.8588"
 
 [libraries]
+# SpotBugs plugin: security bug patterns (also run by Codacy)
+findsecbugs-plugin = { module = "com.h3xstream.findsecbugs:findsecbugs-plugin", version.ref = "findsecbugs" }
+
 # Lombok
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 

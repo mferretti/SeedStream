@@ -401,7 +401,7 @@ public class DatabaseDestination extends AbstractDestination {
 
   @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings(
-      value = "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
+      value = {"SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING", "SQL_INJECTION_JDBC"},
       justification =
           "Table name and column names are validated by validateIdentifier(); "
               + "any identifier with non-alphanumeric/underscore chars is rejected before reaching this point")
@@ -529,6 +529,7 @@ public class DatabaseDestination extends AbstractDestination {
   @SuppressFBWarnings(
       value = {
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
+        "SQL_INJECTION_JDBC",
         "OBL_UNSATISFIED_OBLIGATION"
       },
       justification =
@@ -588,7 +589,7 @@ public class DatabaseDestination extends AbstractDestination {
    */
   @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings(
-      value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      value = {"SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE", "SQL_INJECTION_JDBC"},
       justification =
           "Table name is validated by validateIdentifier(); any identifier with "
               + "non-alphanumeric/underscore chars is rejected before reaching this point")

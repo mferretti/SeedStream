@@ -74,4 +74,63 @@
                       OBL_UNSATISFIED_OBLIGATION,
                       ODR_OPEN_DATABASE_RESOURCE"/>
     </Match>
+
+    <!--
+      FindSecBugs (security patterns, also run by Codacy)
+
+      PREDICTABLE_RANDOM — java.util.Random seeded per record IS the product: deterministic,
+      reproducible test data. Nothing generated here is a secret or a security token.
+    -->
+    <Match>
+        <Bug pattern="PREDICTABLE_RANDOM"/>
+    </Match>
+
+    <!--
+      Test code and test support classes (CliTestSupport, PostgresE2ESupport, ...):
+      HARD_CODE_PASSWORD                — fake credentials / config key names in fixtures
+      OVERLY_PERMISSIVE_FILE_PERMISSION — tests set 644/666 on purpose to prove the checks reject them
+      UNENCRYPTED_SERVER_SOCKET         — loopback-only sockets/servers used as test doubles
+      SQL_INJECTION_JDBC                — hard-coded DDL/DML against throwaway test databases
+    -->
+    <Match>
+        <Class name="~.*(Test|IT|Benchmark|Support).*"/>
+        <Bug pattern="HARD_CODE_PASSWORD,
+                      OVERLY_PERMISSIVE_FILE_PERMISSION,
+                      UNENCRYPTED_SERVER_SOCKET,
+                      SQL_INJECTION_JDBC"/>
+    </Match>
+
+    <!--
+      IMPROPER_UNICODE — every case mapping/equalsIgnoreCase in main code compares ASCII keywords or
+      identifiers (format names, URI schemes, SQL keywords/identifiers) and already uses
+      Locale.ROOT; none is a security decision on user-controlled Unicode text.
+      CRLF_INJECTION_LOGS — logged values come from the operator's own job/structure files and CLI
+      arguments; output is a console/file log for that same operator, not a parsed security log.
+    -->
+    <Match>
+        <Bug pattern="IMPROPER_UNICODE,CRLF_INJECTION_LOGS"/>
+    </Match>
+
+    <!--
+      REDOS — anchored, linear patterns (no nested/overlapping quantifiers) over short config
+      strings: TypeParser unique[...] / ref[..., unique] syntax and DdlInspector's inline
+      REFERENCES clause.
+    -->
+    <Match>
+        <Or>
+            <Class name="com.datagenerator.core.type.TypeParser"/>
+            <Class name="com.datagenerator.inspector.ddl.DdlInspector"/>
+        </Or>
+        <Bug pattern="REDOS"/>
+    </Match>
+
+    <!--
+      PATH_TRAVERSAL_IN — structures_path comes from the operator's own job file; reading
+      structures from an arbitrary operator-chosen directory is the feature.
+    -->
+    <Match>
+        <Class name="com.datagenerator.cli.ExecuteCommand"/>
+        <Method name="call"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
 </FindBugsFilter>
