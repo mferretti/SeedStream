@@ -36,7 +36,7 @@ public class TypeParser {
 
   // Structure, field and group names: lowercase snake_case, digits allowed after the first
   // character (inspect keeps them, e.g. Item2 -> item2, package v1, #355).
-  private static final String IDENT = "[a-z_][a-z0-9_]*";
+  public static final String IDENT = "[a-z_][a-z0-9_]*";
 
   private static final Pattern PRIMITIVE_PATTERN =
       Pattern.compile(

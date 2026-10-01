@@ -84,7 +84,8 @@ class AbstractYamlParserTest {
   void shouldFollowSymlinkToValidFile() throws Exception {
     Path real = tempDir.resolve("real.yaml");
     Files.writeString(real, "name: n\ndata:\n  a:\n    datatype: boolean\n");
-    Path link = Files.createSymbolicLink(tempDir.resolve("link.yaml"), real);
+    // The record name must match the file name it is referenced by: the link's name.
+    Path link = Files.createSymbolicLink(tempDir.resolve("n.yaml"), real);
     assertThat(new DataStructureParser().parse(link).getName()).isEqualTo("n");
   }
 
