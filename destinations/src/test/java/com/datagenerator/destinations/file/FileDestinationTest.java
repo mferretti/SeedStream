@@ -638,7 +638,10 @@ class FileDestinationTest {
     }
 
     assertThat(outputFile).exists();
-    long lineCount = Files.lines(outputFile).count();
+    long lineCount;
+    try (Stream<String> lines = Files.lines(outputFile)) {
+      lineCount = lines.count();
+    }
     assertThat(lineCount).isEqualTo(10000);
   }
 
