@@ -107,8 +107,8 @@ throttling surprises.)*
 
 ## Seeds in CI — determinism as a first-class input
 
-Seed resolution: CLI `--seed` > job YAML > default `0`. For pipelines the
-`env` seed type is the natural fit. The job declares it once — `config/jobs/file_invoice_env.yaml`
+Seed resolution: CLI `--seed` > job YAML > default `0` (only when the job has no
+`seed:` block). For pipelines the `env` seed type is the natural fit. The job declares it once — `config/jobs/file_invoice_env.yaml`
 uses `seed: {type: env, name: SEED}` — and you inject the value at run time:
 
 ```bash
@@ -117,6 +117,10 @@ docker run --rm -e SEED=42 ... execute --job config/jobs/file_invoice_env.yaml
 
 Same seed across a PR's runs ⇒ stable golden data; bump the seed to regenerate
 fixtures deliberately.
+
+A seed source the job declares must resolve: forgetting `-e SEED` fails the run
+(exit 1, `Cannot resolve the configured seed`) instead of silently generating with
+seed `0`.
 
 **Generating several datasets at once.** SeedStream resolves a *single* seed per
 run — there is no built-in seed list. To produce several

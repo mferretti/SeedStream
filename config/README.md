@@ -301,6 +301,14 @@ export EVENT_SEED=12345
 
 Seeds ensure reproducible data generation. Same seed = identical output.
 
+**Resolution order:** `--seed` on the command line → the job's `seed:` block → default `0` (with a
+warning) when the job has no `seed:` block at all.
+
+**A configured seed source must be readable.** If the job declares a `file`, `env` or `remote` seed
+and it can't be read (missing or non-numeric file, unset variable, remote error), `execute` stops
+with exit code 1 and `Cannot resolve the configured seed (...)`. It doesn't fall back to `0`, which
+would produce plausible but wrong data. `--seed <n>` overrides the configured source.
+
 ### 1. Embedded Seed (Simple)
 ```yaml
 seed:
