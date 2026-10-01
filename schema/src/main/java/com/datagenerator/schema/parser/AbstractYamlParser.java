@@ -20,6 +20,7 @@ import com.datagenerator.schema.exception.SchemaParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -32,11 +33,22 @@ import java.util.stream.Collectors;
 
 abstract class AbstractYamlParser<T> {
 
-  protected static final ObjectMapper yamlMapper =
-      // Reject unknown fields and duplicate keys at config parse time to surface typos early
-      // (a duplicated key used to be last-wins, silently dropping the first definition).
+  /**
+   * The one mapper for job and record YAML. Its policy is fixed here on purpose, with no setter or
+   * external option:
+   *
+   * <ul>
+   *   <li>snake_case keys only: every Java property maps to exactly one snake_case key, so an
+   *       undocumented camelCase spelling (e.g. {@code structuresPath}) is an unknown key instead
+   *       of a hidden alias that silently overrode the documented one (#387);
+   *   <li>unknown keys and duplicate keys are rejected, surfacing typos early.
+   * </ul>
+   */
+  private static final ObjectMapper yamlMapper =
       new ObjectMapper(new YAMLFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION))
+          .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
           .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
   protected static final Validator validator =
       Validation.buildDefaultValidatorFactory().getValidator();
 
