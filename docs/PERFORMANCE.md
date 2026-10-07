@@ -642,19 +642,18 @@ For nested structures, reduce `batch_size` to 100-200 to avoid large transaction
 
 ### Memory Considerations
 
-**Per-record memory usage**: ~100-120 bytes
+The pipeline streams (generate → serialize → send), so **peak heap is bounded, not linear in record count**. Measured peak heap before GC (file/JSON, JFR):
 
-| Records | Memory Usage | Notes |
-|---------|--------------|-------|
-| 1,000 | ~100 KB | Negligible |
-| 10,000 | ~1 MB | Negligible |
-| 100,000 | ~10 MB | Low |
-| 1,000,000 | ~100 MB | Moderate |
-| 10,000,000 | ~1 GB | Consider batching |
+| Records | Threads | Peak Heap | After GC | Notes |
+|---------|---------|-----------|----------|-------|
+| 100,000 | 1 | ~60 MB | ~9 MB | Low |
+| 1,000,000 | 1 | ~313 MB | ~9 MB | Single-threaded ceiling |
+| 4,000,000 | 4 | ~457 MB | ~9-15 MB | Committed heap ~742 MB under parallelism |
+| 10,000,000 | 6 | ~457 MB | ~9-14 MB | Same peak as 4M — bounded by streaming |
 
-**Garbage collection**: < 2% overhead for all tested workloads (validated with JFR profiling).
+**Garbage collection**: all Young Generation, zero Full GC; 13–77 ms total GC time per run (validated with JFR profiling).
 
-For detailed memory profiling methodology, see [MEMORY-PROFILING.md](MEMORY-PROFILING.md).
+For detailed memory profiling methodology and the full results, see [MEMORY-PROFILING.md](MEMORY-PROFILING.md).
 
 ---
 
