@@ -106,9 +106,9 @@ subprojects {
             "org.apache.logging.log4j:log4j-core:2.26.1",
             "org.apache.logging.log4j:log4j-api:2.26.1",
             // commons-lang3: compileClasspath resolves 3.14.0 (from AWS SDK transitive)
-            // while runtimeClasspath correctly overrides to 3.20.0. Force 3.20.0 everywhere
+            // while runtimeClasspath correctly overrides to 3.21.0. Force 3.21.0 everywhere
             // so OWASP DC never sees 3.14.0 on any configuration.
-            "org.apache.commons:commons-lang3:3.20.0",
+            "org.apache.commons:commons-lang3:3.21.0",
             // httpcore5-h2: azure-identity -> msal4j pulls httpcore5 5.4.3 (patched) but its
             // httpcore5-h2 sibling lags at 5.4, which is vulnerable to CVE-2026-54428
             // (HPackDecoder unbounded header list) and CVE-2026-54399 (unbounded header
@@ -127,7 +127,7 @@ subprojects {
             "org.apache.httpcomponents.client5:httpclient5:5.6.4",
             // lz4-java: kafka-clients 4.3.1 pulls at.yawk.lz4:lz4-java 1.10.2, vulnerable to
             // CVE-2026-59949; 1.11.1 is the fix. Force everywhere.
-            "at.yawk.lz4:lz4-java:1.11.3",
+            "at.yawk.lz4:lz4-java:1.12.0",
             // commons-compress already resolves to 1.28.0 via avro 1.12.2 (patched), but
             // testcontainers requests 1.24.0, which the dependency-submission SBOM reports and
             // Dependabot flags for CVE-2024-25710 / CVE-2024-26308 (both fixed in 1.26.0). Pin the
