@@ -69,9 +69,9 @@ public class UrlInputFetcher {
   }
 
   /** Test seam: inject an HttpClient and a small size cap. */
-  UrlInputFetcher(HttpClient client, long maxBytes) {
+  UrlInputFetcher(HttpClient client, long cap) {
     this.injectedClient = client;
-    this.maxBytes = maxBytes;
+    this.maxBytes = cap;
   }
 
   /**
@@ -87,7 +87,7 @@ public class UrlInputFetcher {
       throw new InspectorException("Invalid URL: " + url, e);
     }
     String scheme = uri.getScheme();
-    if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+    if (scheme == null || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
       throw new InspectorException("Unsupported URL scheme (only http/https): " + url);
     }
     if (!allowPrivate) {
@@ -113,13 +113,16 @@ public class UrlInputFetcher {
         }
         Path tmp = Files.createTempFile("inspect-", suffixOf(uri.getPath()));
         tmp.toFile().deleteOnExit();
+        boolean ok = false;
         try {
           copyCapped(in, tmp);
-        } catch (IOException | RuntimeException e) {
-          Files.deleteIfExists(tmp);
-          throw e;
+          ok = true;
+          return tmp;
+        } finally {
+          if (!ok) {
+            Files.deleteIfExists(tmp);
+          }
         }
-        return tmp;
       }
     } catch (IOException e) {
       throw new InspectorException("Failed to fetch " + url + ": " + e.getMessage(), e);
@@ -179,10 +182,11 @@ public class UrlInputFetcher {
   }
 
   private static void applyAuth(HttpRequest.Builder builder, AuthSpec auth) {
-    if (auth.type() == null) {
-      return;
-    }
-    switch (auth.type().toLowerCase(Locale.ROOT)) {
+    String type = auth.type() == null ? null : auth.type().toLowerCase(Locale.ROOT);
+    switch (type) {
+      case null -> {
+        // no auth header
+      }
       case "bearer" -> {
         require(auth.token(), "--token is required for bearer auth");
         builder.header("Authorization", "Bearer " + auth.token());
