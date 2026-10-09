@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -75,7 +76,8 @@ public class DdlInspector {
       List<List<String>> primary,
       List<List<String>> uniques,
       Set<String> serialColumns,
-      Set<String> uuidColumns) {}
+      Set<String> uuidColumns,
+      Set<String> dbAssignedColumns) {}
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
@@ -131,7 +133,18 @@ public class DdlInspector {
       throw new InspectorException("No CREATE TABLE statements found in " + sqlFile);
     }
 
-    Consumer<TableInfo> keyMapper = table -> applyKeys(table, keys.get(table.name()), warnings);
+    Map<String, Set<String>> referenced = new LinkedHashMap<>();
+    for (TableInfo t : tables) {
+      for (var fk : t.foreignKeys()) {
+        for (String c : fk.refColumns()) {
+          referenced
+              .computeIfAbsent(lower(fk.refTable()) + "." + lower(c), k -> new TreeSet<>())
+              .add(t.name());
+        }
+      }
+    }
+    Consumer<TableInfo> keyMapper =
+        table -> applyKeys(table, keys.get(table.name()), warnings, referenced);
     if (nesting.enabled()) {
       Inspection nested = new NestingPlanner().plan(tables, nesting, keyMapper);
       List<String> all = new ArrayList<>(warnings);
@@ -204,9 +217,16 @@ public class DdlInspector {
     LinkedHashMap<String, String> fieldComments = new LinkedHashMap<>();
     Set<String> serialColumns = new LinkedHashSet<>();
     Set<String> uuidColumns = new LinkedHashSet<>();
+    Set<String> dbAssigned = new LinkedHashSet<>();
 
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
+      if (column.getColumnSpecs() != null) {
+        String specs = String.join(" ", column.getColumnSpecs()).toUpperCase(Locale.ROOT);
+        if (specs.contains("ALWAYS") && specs.contains("IDENTITY")) {
+          dbAssigned.add(columnName.toLowerCase(Locale.ROOT));
+        }
+      }
       String datatype = resolveForeignKey(columnName, column, foreignKeys).orElse(null);
       if (datatype == null) {
         ColDataType colType = column.getColDataType();
@@ -227,7 +247,7 @@ public class DdlInspector {
 
     List<List<String>> primary = keyConstraints(createTable, columns, "PRIMARY");
     List<List<String>> uniques = keyConstraints(createTable, columns, "UNIQUE");
-    keys.put(name, new TableKeys(primary, uniques, serialColumns, uuidColumns));
+    keys.put(name, new TableKeys(primary, uniques, serialColumns, uuidColumns, dbAssigned));
     return new TableInfo(
         name,
         data,
@@ -279,7 +299,8 @@ public class DdlInspector {
    * anything else is left as-is with a "not enforced" comment. Each column gets at most one key
    * role (PK first, then UNIQUE in declaration order). See {@code docs/INSPECT-V1-SPEC.md}.
    */
-  private void applyKeys(TableInfo table, TableKeys keys, List<String> warnings) {
+  private void applyKeys(
+      TableInfo table, TableKeys keys, List<String> warnings, Map<String, Set<String>> referenced) {
     if (keys == null) {
       return;
     }
@@ -305,6 +326,35 @@ public class DdlInspector {
           && !claimed.contains(key)
           && !foreignColumns.contains(key)) {
         setKeyType(table, column, "serial");
+      }
+    }
+    handleDbAssigned(table, keys, warnings, referenced);
+  }
+
+  /** GENERATED ALWAYS identity single-column PKs: omit unless some FK references them. */
+  private void handleDbAssigned(
+      TableInfo table, TableKeys keys, List<String> warnings, Map<String, Set<String>> referenced) {
+    for (List<String> pk : keys.primary()) {
+      if (pk.size() != 1 || !keys.dbAssignedColumns().contains(lower(pk.get(0)))) {
+        continue;
+      }
+      String column = pk.get(0);
+      String label = table.name() + "." + column;
+      Set<String> refs = referenced.get(lower(table.name()) + "." + lower(column));
+      if (refs == null) {
+        String actual = actualKey(table, column);
+        table.data().remove(actual);
+        table.comments().remove(actual);
+        warnings.add(
+            label
+                + ": GENERATED ALWAYS AS IDENTITY — omitted (DB assigns it); any FK referencing it"
+                + " needs DB-assigned ordered generation (#400)");
+      } else {
+        warnings.add(
+            label
+                + ": GENERATED ALWAYS AS IDENTITY but referenced by "
+                + refs
+                + " — kept as serial; needs DB-assigned ordered generation (#400)");
       }
     }
   }
