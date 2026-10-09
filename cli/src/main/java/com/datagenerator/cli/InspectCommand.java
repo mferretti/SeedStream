@@ -79,10 +79,49 @@ public class InspectCommand implements Callable<Integer> {
   @Parameters(
       index = "0",
       description =
-          "Schema file to inspect: OpenAPI 3.x (.yaml/.yml/.json), standalone JSON Schema"
+          "Schema file or http(s) URL to inspect: OpenAPI 3.x (.yaml/.yml/.json), standalone JSON Schema"
               + " (.schema.json or a $schema/$defs root), SQL DDL (.sql), or compiled Protobuf"
               + " descriptor set (.desc/.binpb/.protoset)")
+  private String input;
+
   private Path inputFile;
+
+  @Option(
+      names = {"--allow-private-urls"},
+      description =
+          "Allow http(s) inputs resolving to loopback/private/link-local addresses (blocked by"
+              + " default as an SSRF guard)")
+  private boolean allowPrivateUrls;
+
+  @Option(
+      names = {"--auth"},
+      description = "Auth for URL input: bearer | basic | api_key")
+  private String authType;
+
+  @Option(
+      names = {"--token"},
+      description = "Bearer token (with --auth bearer)")
+  private String token;
+
+  @Option(
+      names = {"--username"},
+      description = "Username (with --auth basic)")
+  private String username;
+
+  @Option(
+      names = {"--password"},
+      description = "Password (with --auth basic)")
+  private String password;
+
+  @Option(
+      names = {"--header-name"},
+      description = "Header name (with --auth api_key)")
+  private String headerName;
+
+  @Option(
+      names = {"--header-value"},
+      description = "Header value (with --auth api_key)")
+  private String headerValue;
 
   @Option(
       names = {"-o", "--output"},
@@ -136,6 +175,20 @@ public class InspectCommand implements Callable<Integer> {
   @Override
   @SuppressWarnings("java:S106")
   public Integer call() {
+    try {
+      inputFile =
+          input.matches("(?i)^https?://.*")
+              ? new UrlInputFetcher()
+                  .fetch(
+                      input,
+                      new UrlInputFetcher.AuthSpec(
+                          authType, token, username, password, headerName, headerValue),
+                      allowPrivateUrls)
+              : Path.of(input);
+    } catch (InspectorException e) {
+      log.error("inspect failed: {}", e.getMessage());
+      return 2;
+    }
     String resolved = resolveFormat();
     if (resolved == null) {
       return 2;

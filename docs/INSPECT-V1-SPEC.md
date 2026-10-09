@@ -26,7 +26,10 @@ structure YAML. Supersedes the open questions from the design phase with locked 
 ./seedstream inspect payload.schema.json --output config/structures/   # standalone JSON Schema
 ./seedstream inspect schema.sql          --output config/structures/ --force
 ./seedstream inspect schema.desc         --output config/structures/   # protoc/buf descriptor set
+./seedstream inspect https://api.example.com/openapi.yaml --output config/structures/   # OpenAPI / JSON Schema over HTTP(S)
 ```
+
+The input may also be an `http(s)://` URL (OpenAPI / JSON Schema); it is downloaded to a temp file and fed to the normal pipeline, so format auto-detection works the same. The fetch is hardened: TLS verified, redirects not followed, a 10 MiB size cap and request timeout, and an **SSRF guard** that refuses loopback / link-local / private-range hosts unless `--allow-private-urls` is given (needed for a homelab/internal schema URL). Protected specs authenticate with `--auth bearer|basic|api_key` plus the matching credential flags (mirrors the seed `remote` auth surface). Credentials are never logged.
 
 Flags:
 | flag | default | meaning |
@@ -38,6 +41,11 @@ Flags:
 | `--best-effort` | off | DDL only: emit the parseable subset and warn on unparseable `CREATE TABLE`s instead of aborting |
 | `--nest[=auto\|all\|none]` | `none` | DDL only: invert `1:n`/`1:1` FKs into nested `array[object[child]]`/`object[child]` — see §9 |
 | `--nest-default-count <min..max>` | `1..10` | DDL only: multiplicity for synthesized nested arrays — see §9 |
+| `--allow-private-urls` | off | URL input only: permit loopback / link-local / private-range hosts (SSRF guard otherwise refuses them) |
+| `--auth bearer\|basic\|api_key` | unset | URL input only: auth scheme for a protected spec |
+| `--token <t>` | unset | bearer token (with `--auth bearer`) |
+| `--username <u>` / `--password <p>` | unset | basic credentials (with `--auth basic`) |
+| `--header-name <h>` / `--header-value <v>` | unset | custom header name/value (with `--auth api_key`) |
 
 ## 2. Module
 
