@@ -500,9 +500,9 @@ The determinism guarantee in particular is locked by a regression test that gene
 
 SeedStream runs continuous OWASP Dependency-Check scans on every push (CVSS threshold ≥ 7.0).
 
-**Known open issues (as of 2026-09-28):** none exploitable and nothing at or above the CVSS 7.0
+**Known open issues (as of 2026-10-11):** none exploitable and nothing at or above the CVSS 7.0
 gate. Transitive fixes applied by forcing patched versions; four CPE false positives
-suppressed, all expiring 2026-10-10.
+suppressed, all expiring 2027-01-08.
 
 The 2026-07-12 scan re-flagged the Azure Key Vault dependency chain (transitive via
 `azure-security-keyvault-secrets`), and the 2026-07-31 scan added a netty match. Triage against
@@ -512,6 +512,8 @@ upstream CVE records:
 |-----|-----------|------------|
 | CVE-2026-71290, CVE-2026-64607 | `httpclient5` 5.6.2 | **Fixed** — forced to `5.6.4` (patched) in `build.gradle.kts`. CVE-2026-71290 (CVSS 9.1, gate blocker on the 2026-08-23 scan): async transport silently disables TLS hostname verification (`HostnameVerificationPolicy#BUILTIN` ineffective), MITM impersonation; affects 5.4 → 5.6.3. CVE-2026-64607 (MEDIUM 5.3, previously accepted below-gate): connection-pool leak on invalid `Content-Encoding`; affects 5.0-alpha1 → 5.6.2. Reached transitively via AWS SDK `apache5-client` (`:benchmarks`) and Azure Key Vault secrets (`:schema`) |
 | CVE-2026-54428, CVE-2026-54399 | `httpcore5-h2` 5.4 | **Fixed** — forced to `5.4.3` (patched) in `build.gradle.kts` |
+| CVE-2026-89044 | netty 4.1.137 (all artifacts) | **Fixed** — netty force bumped `4.1.137` → `4.1.138.Final` in `build.gradle.kts`. HTTP request smuggling (CWE-444): final transfer coding in `Transfer-Encoding` not validated; affects 4.1.133 → 4.1.137, fixed in 4.1.138.Final. Below the 7.0 gate (CVSS 6.5) but a real flaw, so patched proactively; transitive via AWS SDK `netty-nio-client` |
+| CVE-2026-47874 | `reactor-netty-http` / `-core` 1.2.18 (`:benchmarks`) | Accepted below-gate — HTTP/1.1 pipelining memory-exhaustion DoS, MEDIUM (< 7.0). OSS fix is in the 1.3.x line (`1.3.7`); the 1.2 fix `1.2.19` is enterprise-support only. Benchmark-only transitive via Azure SDK; not forced to avoid a minor-line jump for a sub-gate finding. Re-assess if NVD raises the score or an OSS 1.2.x fix ships |
 | CVE-2026-54428, CVE-2026-54399 | `httpcore` 4.4.16 (classic) | False positive — HTTP/2 issue in 5.x only; 4.x has no HTTP/2. **No longer flagged**; suppression removed 2026-08-16 |
 | CVE-2026-33117 | azure-core / identity / json | False positive — flaw is in keyvault-*keys* local crypto; we use keyvault-*secrets*. Suppressed |
 | CVE-2023-36415, CVE-2024-35255 | azure-identity / msal4j | CPE false positives (confirmed 2026-07-07). Suppressed |
@@ -524,6 +526,16 @@ suppressed CVEs still appeared in the reports. NVD has narrowed both CPE ranges,
 suppressions were matching nothing and were removed. The affected artifacts are still resolved
 (`httpcore` 4.4.16, netty 4.1.136.Final), so a re-broadened CPE would fail the gate and force a
 fresh triage rather than passing silently.
+
+**2026-10-11 review.** The four suppressions reached their 2026-10-10 expiry and the scan
+re-flagged all of them (CVE-2026-33117, CVE-2022-3171, CVE-2023-36415, CVE-2024-7254) — expiry
+working as designed, not a regression. NVD data was fresh (API key honored 10/10,
+`dependencyCheckUpdate` succeeded on the refreshed cache). Re-triaged against upstream advisories:
+all four remain CPE false positives with the genuinely vulnerable artifacts absent from the tree
+(keyvault-*keys* fixed in 4.10.6 is not pulled; `protobuf-java` is forced to 4.36.2; azure-identity
+1.18.6 / msal4j 1.23.1 are past their ranges). Expiry extended +90 days to 2027-01-08. The same
+report surfaced two genuinely real but below-gate findings: CVE-2026-89044 (netty, fixed by the
+`4.1.138.Final` force bump) and CVE-2026-47874 (reactor-netty, accepted below-gate) — see the table.
 
 No permanent suppressions exist in this project — every entry in
 `config/dependency-check-suppressions.xml` carries an `until` expiry that forces CI to re-fail and

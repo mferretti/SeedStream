@@ -138,8 +138,10 @@ subprojects {
         // software.amazon.awssdk:netty-nio-client. 4.1.135.Final was vulnerable to
         // CVE-2026-44891, CVE-2026-55831, CVE-2026-55833 (fixed in 4.1.136.Final);
         // 4.1.136.Final is in turn vulnerable to CVE-2026-62380 (netty-codec-socks SOCKS4/5
-        // client encoder null-byte/CRLF/credential injection, CVSS >7.0), fixed in 4.1.137.Final.
-        // awssdk 2.54.1 already requests 4.1.137.Final; this force was actively downgrading it.
+        // client encoder null-byte/CRLF/credential injection, CVSS >7.0), fixed in 4.1.137.Final;
+        // 4.1.137.Final is in turn vulnerable to CVE-2026-89044 (HTTP request smuggling via
+        // improperly validated Transfer-Encoding final coding, CWE-444, affects 4.1.133..4.1.137),
+        // fixed in 4.1.138.Final.
         // eachDependency force covers every io.netty artifact without listing each coordinate.
         resolutionStrategy.eachDependency {
             // tcnative (netty-tcnative*) and netty-bom follow their own versioning, not the
@@ -149,8 +151,8 @@ subprojects {
                 !requested.name.startsWith("netty-tcnative") &&
                 requested.name != "netty-bom"
             ) {
-                useVersion("4.1.137.Final")
-                because("CVE-2026-44891/55831/55833/62380 — force patched netty across all configurations")
+                useVersion("4.1.138.Final")
+                because("CVE-2026-44891/55831/55833/62380/89044 — force patched netty across all configurations")
             }
         }
     }
