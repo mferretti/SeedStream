@@ -124,7 +124,7 @@ subprojects {
             // TLS hostname verification silently disabled, HostnameVerificationPolicy#BUILTIN
             // ineffective) and CVE-2026-64607 (connection-pool leak on invalid Content-Encoding).
             // Both fixed in 5.6.4. Force everywhere so OWASP DC never sees 5.6.2 on any config.
-            "org.apache.httpcomponents.client5:httpclient5:5.6.4",
+            "org.apache.httpcomponents.client5:httpclient5:5.6.5",
             // lz4-java: kafka-clients 4.3.1 pulls at.yawk.lz4:lz4-java 1.10.2, vulnerable to
             // CVE-2026-59949; 1.11.1 is the fix. Force everywhere.
             "at.yawk.lz4:lz4-java:1.12.0",
