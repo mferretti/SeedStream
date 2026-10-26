@@ -48,7 +48,7 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.56.0"
+aws-sdk = "2.57.3"
 azure-keyvault-secrets = "4.11.3"
 azure-identity = "1.18.7"
 gcp-secretmanager = "2.99.0"
