@@ -68,8 +68,16 @@ public class SerializerBenchmark {
   private Map<String, Object> complexRecord;
   private Map<String, Object> nestedRecord;
 
+  /** A full chunk (default engine chunkSize) used by the chunk-serialization alloc comparison. */
+  private static final int CHUNK_SIZE = 256;
+
+  private List<Map<String, Object>> simpleChunk;
+  // Reused across invocations, exactly as a worker reuses them across chunks.
+  private java.io.ByteArrayOutputStream reusedChunkBuffer;
+  private com.datagenerator.formats.FormatSerializer.StreamWriter reusedChunkWriter;
+
   @Setup
-  public void setup() {
+  public void setup() throws java.io.IOException {
     jsonSerializer = new JsonSerializer();
     csvSerializer = new CsvSerializer();
     protobufSerializer = new ProtobufSerializer();
@@ -117,6 +125,56 @@ public class SerializerBenchmark {
     }
     nestedRecord.put("items", items);
     nestedRecord.put("total", new BigDecimal("299.95"));
+
+    // One full chunk of simple records for the chunk-serialization alloc comparison below.
+    simpleChunk = new ArrayList<>(CHUNK_SIZE);
+    for (int i = 0; i < CHUNK_SIZE; i++) {
+      simpleChunk.add(simpleRecord);
+    }
+    reusedChunkBuffer = new java.io.ByteArrayOutputStream(64 * 1024);
+    reusedChunkWriter = jsonSerializer.createStreamWriter(reusedChunkBuffer);
+  }
+
+  // Chunk serialization: old per-record serializeToBytes + coalesce vs new one-pass serializeChunk.
+  // Measure with the gc profiler (-prof gc) — the win is gc.alloc.rate.norm (B/op), not throughput.
+
+  /**
+   * OLD coalescing path: serialize each record to its own {@code byte[]}, then concatenate all of
+   * them (with newline framing) into one combined {@code byte[]}. Allocates {@code chunkSize}
+   * per-record arrays + the growing concatenation buffer + its final copy.
+   */
+  @Benchmark
+  public byte[] benchmarkJsonChunkPerRecordCoalesce() {
+    List<byte[]> payloads = new ArrayList<>(simpleChunk.size());
+    int size = 0;
+    for (Map<String, Object> record : simpleChunk) {
+      byte[] bytes = jsonSerializer.serializeToBytes(record);
+      payloads.add(bytes);
+      size += bytes.length + 1;
+    }
+    byte[] combined = new byte[size];
+    int pos = 0;
+    for (byte[] payload : payloads) {
+      System.arraycopy(payload, 0, combined, pos, payload.length);
+      pos += payload.length;
+      combined[pos++] = '\n';
+    }
+    return combined;
+  }
+
+  /**
+   * NEW per-chunk path: one streaming pass over the chunk through a reused {@code StreamWriter} +
+   * reused buffer — no per-record {@code byte[]}, no separate concatenation pass. Only the final
+   * {@code toByteArray()} copy is allocated per chunk.
+   */
+  @Benchmark
+  public byte[] benchmarkJsonChunkSerialize() throws java.io.IOException {
+    for (Map<String, Object> record : simpleChunk) {
+      reusedChunkWriter.writeRecord(record);
+    }
+    byte[] chunk = reusedChunkBuffer.toByteArray();
+    reusedChunkBuffer.reset();
+    return chunk;
   }
 
   // JSON Serialization Benchmarks

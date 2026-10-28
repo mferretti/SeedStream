@@ -917,7 +917,7 @@ wrong twice over):
   trusting this document over the source. The bottleneck is neither disk nor String allocation; it is CPU
   (see Result).
 
-**Phase 4: Worker-side chunk coalescing** — ✅ **DONE**:
+**Phase 4: Worker-side chunk coalescing** — ✅ **DONE**, ⚠️ **superseded by Phase 5**:
 - ✅ Workers fold a chunk of serialized payloads into one `byte[]`; the writer issues one `write()` per chunk
   instead of two per record. Gated on `supportsWriteCoalescing()` so Kafka (one message per payload, no
   newline) is unaffected.
@@ -925,6 +925,23 @@ wrong twice over):
   effect** on 526-byte records, where the saved call overhead is offset by the cost of building the blob.
   It raises a ceiling that only binds on hardware faster than ours — see NFR-1 status in
   [PERFORMANCE.md](PERFORMANCE.md).
+- The fold mechanism (`DestinationAdapter.coalesce` + engine `ChunkFolder`) still serializes each record to
+  its own `byte[]` first, then concatenates. Phase 5 removes that per-record allocation. `coalesce` /
+  `ChunkFolder` are now `@Deprecated` and unwired in production, kept only for byte-identity tests.
+
+**Phase 5: One-pass per-chunk serialization** — ✅ **DONE**:
+- ✅ `DestinationAdapter.serializeChunk` encodes a whole chunk in a single streaming pass through a
+  **per-worker reused `StreamWriter` + `ByteArrayOutputStream`**, emitting record framing (newline) inline —
+  no per-record `byte[]`, no second concatenation copy. Same `supportsWriteCoalescing()` gate; produces
+  bytes **identical** to Phase 4's `coalesce(records.map(serializeToBytes))`.
+- ✅ Byte-identity required a fix: a reused `JsonGenerator` inserts Jackson's default root-value separator
+  (a single space) between consecutive root objects, which `writeValueAsBytes` does not. `JsonSerializer`
+  now sets an empty root-value separator (`setRootValueSeparator("")`), also correcting a latent leading
+  space in the streaming `write()` path. Pinned by `SeededOutputGoldenTest` (raw-byte SHA-256).
+- **Measured** (JMH `gc` profiler, 256-record chunk): **−76% bytes allocated per chunk** (152,377 → 36,625
+  B/op, ≈595 → 143 B/record), allocation rate −69%, GC events 16 → 5. The goal is **footprint** — letting
+  many jobs share a cloud process without each inflating the heap — not throughput (which rose ~28% as a
+  side effect). Detail + reproduce command in [MEMORY-PROFILING.md](MEMORY-PROFILING.md).
 
 **Implementation Details**:
 
