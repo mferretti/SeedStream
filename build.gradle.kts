@@ -118,7 +118,7 @@ subprojects {
             // constraint) while runtimeClasspath correctly overrides to 2.22.0. 2.20.0 carries
             // CVE-2026-54512/54513 (CVSS > 7) + 54514; force the catalog version everywhere so
             // OWASP DC never sees 2.20.0 on any configuration.
-            "com.fasterxml.jackson.core:jackson-databind:2.22.3",
+            "com.fasterxml.jackson.core:jackson-databind:2.22.4",
             // httpclient5: AWS SDK apache5-client (:benchmarks) and Azure Key Vault secrets
             // (:schema) pull httpclient5 5.6.2, vulnerable to CVE-2026-71290 (CVSS 9.1 — async
             // TLS hostname verification silently disabled, HostnameVerificationPolicy#BUILTIN
@@ -127,7 +127,7 @@ subprojects {
             "org.apache.httpcomponents.client5:httpclient5:5.6.5",
             // lz4-java: kafka-clients 4.3.1 pulls at.yawk.lz4:lz4-java 1.10.2, vulnerable to
             // CVE-2026-59949; 1.11.1 is the fix. Force everywhere.
-            "at.yawk.lz4:lz4-java:1.12.0",
+            "at.yawk.lz4:lz4-java:1.12.1",
             // commons-compress already resolves to 1.28.0 via avro 1.12.2 (patched), but
             // testcontainers requests 1.24.0, which the dependency-submission SBOM reports and
             // Dependabot flags for CVE-2024-25710 / CVE-2024-26308 (both fixed in 1.26.0). Pin the

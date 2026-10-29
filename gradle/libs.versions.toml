@@ -3,7 +3,7 @@
 
 [versions]
 # Core Libraries
-jackson = "2.22.3"
+jackson = "2.22.4"
 lombok = "1.18.48"
 slf4j = "2.0.20"
 logback = "1.6.5"
@@ -30,12 +30,12 @@ protobuf = "4.36.2"  # Updated from 3.25.5 (major version upgrade)
 avro = "1.12.2"
 
 # Messaging
-kafka = "4.3.1"
+kafka = "4.4.0"
 
 # Database
 hikaricp = "7.1.0"
 postgresql = "42.7.14"
-mysql-connector = "26.7.0"
+mysql-connector = "26.10.0"
 ojdbc = "23.26.3.0.0"
 mssql-jdbc = "13.6.1.jre11"
 
@@ -48,7 +48,7 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.56.0"
+aws-sdk = "2.57.3"
 azure-keyvault-secrets = "4.11.3"
 azure-identity = "1.18.7"
 gcp-secretmanager = "2.99.0"
@@ -58,7 +58,7 @@ log4j = "2.26.1"
 
 # Build Plugins
 jmh-plugin = "0.7.3"
-lombok-plugin = "9.8.0"
+lombok-plugin = "9.8.2"
 spotless-plugin = "8.10.4"
 spotbugs-plugin = "6.5.13"
 findsecbugs = "1.14.0"
