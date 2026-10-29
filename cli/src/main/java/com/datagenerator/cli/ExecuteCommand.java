@@ -1044,18 +1044,22 @@ public class ExecuteCommand implements Callable<Integer> {
         "Parallel serialization enabled for {}/{}",
         destination.getDestinationType(),
         serializer.getFormatName());
-    engineBuilder.recordSerializer(serializer::serializeToBytes);
 
     if (destination.supportsWriteCoalescing()) {
       log.info(
           "Write coalescing enabled for {}/{}",
           destination.getDestinationType(),
           serializer.getFormatName());
+      // Serialize a whole chunk in one pass directly into the destination's reused buffer: no
+      // per-record byte[], no separate coalesce copy. Byte-identical to the per-record +
+      // coalesce path it replaces.
       engineBuilder
-          .serializedWriter(destination::writeSerializedChunk)
-          .chunkFolder(destination::coalesce);
+          .chunkSerializer(destination::serializeChunk)
+          .serializedWriter(destination::writeSerializedChunk);
     } else {
-      engineBuilder.serializedWriter(destination::writeSerialized);
+      engineBuilder
+          .recordSerializer(serializer::serializeToBytes)
+          .serializedWriter(destination::writeSerialized);
     }
   }
 

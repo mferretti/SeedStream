@@ -22,6 +22,7 @@ import com.datagenerator.formats.SerializerMapper;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
@@ -114,6 +115,11 @@ public class JsonSerializer implements FormatSerializer {
     JsonGenerator gen = jsonFactory.createGenerator(new FlushSuppressingStream(out));
     gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
     gen.setCodec(mapper);
+    // The generator is reused across records, so Jackson would insert its default root-value
+    // separator (a single space) between consecutive objects. We delimit records ourselves with a
+    // newline, so suppress the separator — otherwise every record after the first gets a leading
+    // space, diverging byte-for-byte from the per-record writeValueAsBytes encoding.
+    gen.setRootValueSeparator(new SerializedString(""));
     return new JsonStreamWriter(gen, out);
   }
 

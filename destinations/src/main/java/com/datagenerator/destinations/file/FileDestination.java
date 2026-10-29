@@ -100,6 +100,15 @@ public class FileDestination extends AbstractDestination {
   private OutputStream outputStream;
   private StreamWriter streamWriter;
 
+  // Per-worker chunk-serialization state (parallel generation): each worker thread serializes a
+  // whole chunk straight into its own reused buffer via a reused StreamWriter, so a chunk produces
+  // one byte[] with no per-record array. Bound to an in-memory buffer, so nothing to close.
+  private final ThreadLocal<ChunkEncoder> chunkEncoder =
+      ThreadLocal.withInitial(this::newChunkEncoder);
+
+  /** A worker's reused chunk buffer and the stream writer that encodes records into it. */
+  private record ChunkEncoder(ByteArrayOutputStream buffer, StreamWriter writer) {}
+
   // Avro container-format state (used only when serializer is AvroSerializer)
   private final boolean isAvro;
   private OutputStream avroRawOut;
@@ -316,6 +325,11 @@ public class FileDestination extends AbstractDestination {
     return supportsSerializedWrite();
   }
 
+  /**
+   * @deprecated Superseded by {@link #serializeChunk}. No longer wired in production; kept only for
+   *     the general capability and existing tests. See {@link DestinationAdapter#coalesce}.
+   */
+  @Deprecated
   @Override
   public byte[] coalesce(List<byte[]> payloads) {
     int size = 0;
@@ -334,6 +348,35 @@ public class FileDestination extends AbstractDestination {
       return gzipMember(combined);
     }
     return combined;
+  }
+
+  private ChunkEncoder newChunkEncoder() {
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream(config.getBufferSize());
+    try {
+      return new ChunkEncoder(buffer, serializer.createStreamWriter(buffer));
+    } catch (IOException e) {
+      throw new DestinationException("Failed to initialize chunk encoder", e);
+    }
+  }
+
+  @Override
+  public byte[] serializeChunk(List<Map<String, Object>> records) {
+    // One streaming pass over the chunk into a reused per-worker buffer: each writeRecord encodes
+    // the record and appends its newline directly, so the whole chunk yields a single byte[] with
+    // the exact bytes coalesce(records.map(serializeToBytes)) would produce — no per-record array,
+    // no second concatenation copy. Runs on worker threads; state is thread-local.
+    ChunkEncoder enc = chunkEncoder.get();
+    try {
+      for (Map<String, Object> record : records) {
+        enc.writer().writeRecord(record);
+      }
+      byte[] raw = enc.buffer().toByteArray();
+      enc.buffer().reset(); // keep the grown buffer, drop its contents, for the next chunk
+      // In per_chunk gzip mode, wrap as an independent gzip member (as coalesce() does).
+      return perChunkGzip ? gzipMember(raw) : raw;
+    } catch (IOException e) {
+      throw new DestinationException("Failed to serialize chunk to file", e);
+    }
   }
 
   @Override

@@ -107,7 +107,13 @@ public interface DestinationAdapter extends AutoCloseable {
    *
    * @param payloads ordered, non-empty per-record serialized payloads
    * @return single payload combining all inputs, framed as this destination requires
+   * @deprecated Production no longer calls this. The coalescing write path now serializes a whole
+   *     chunk in one pass via {@link #serializeChunk}, which emits the same bytes without the
+   *     per-record {@code byte[]} + concatenation copy this method requires. Retained only as a
+   *     general capability and for existing byte-identity tests; slated for removal if no
+   *     destination adopts it over {@link #serializeChunk}.
    */
+  @Deprecated
   default byte[] coalesce(List<byte[]> payloads) {
     throw new UnsupportedOperationException(
         getDestinationType() + " does not support write coalescing");
@@ -126,6 +132,22 @@ public interface DestinationAdapter extends AutoCloseable {
   default void writeSerializedChunk(byte[] coalescedPayload) {
     throw new UnsupportedOperationException(
         getDestinationType() + " does not support write coalescing");
+  }
+
+  /**
+   * Serialize a whole chunk of records into one combined, framed payload in a single streaming pass
+   * — the allocation-light alternative to serializing each record to its own {@code byte[]} and
+   * then {@link #coalesce}-ing them. Runs on a worker thread (must be thread-safe); the writer
+   * thread later writes the result via {@link #writeSerializedChunk}. Only invoked when {@link
+   * #supportsWriteCoalescing()} returns {@code true}; the resulting bytes must be identical to
+   * {@code coalesce(records.map(serializeToBytes))}.
+   *
+   * @param records ordered, non-empty records in the chunk
+   * @return single payload encoding every record, framed as this destination requires
+   */
+  default byte[] serializeChunk(List<Map<String, Object>> records) {
+    throw new UnsupportedOperationException(
+        getDestinationType() + " does not support chunk serialization");
   }
 
   /**

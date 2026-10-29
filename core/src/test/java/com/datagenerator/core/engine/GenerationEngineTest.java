@@ -742,4 +742,121 @@ class GenerationEngineTest {
     // Written chunks should match
     assertThat(writtenChunks).hasSize(3);
   }
+
+  // ── Per-chunk serialization (ChunkSerializer) ─────────────────────────────────
+
+  @Test
+  void shouldProduceByteIdenticalOutputViaChunkSerializerAsPerRecordCoalesce()
+      throws InterruptedException {
+    // Refactor D: the per-chunk ChunkSerializer path (serialize a whole chunk of Maps in one pass)
+    // must emit the exact same bytes as the per-record RecordSerializer + ChunkFolder(coalesce)
+    // path it replaces for the NDJSON file destination — for every thread count. Byte-identity is
+    // what lets D swap in without a CHANGELOG-noted reproducibility break.
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("v", random.nextInt(1_000_000));
+
+    // OLD building block: per-record payload WITHOUT the newline; newlineJoin (the coalesce
+    // stand-in) adds the trailing '\n' per record, exactly as FileDestination.coalesce does.
+    GenerationEngine.RecordSerializer perRecord =
+        data -> String.valueOf(data.get("v")).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    // NEW: serialize the whole chunk in one pass, emitting value + '\n' per record itself.
+    GenerationEngine.ChunkSerializer perChunk =
+        chunk -> {
+          java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+          for (Map<String, Object> r : chunk) {
+            out.writeBytes(
+                String.valueOf(r.get("v")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            out.write('\n');
+          }
+          return out.toByteArray();
+        };
+
+    int recordCount = 3000; // not a multiple of chunkSize (256) -> exercises a partial final chunk
+
+    // Reference: OLD per-record + coalesce path, single-threaded.
+    java.io.ByteArrayOutputStream referenceOut = new java.io.ByteArrayOutputStream();
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .recordSerializer(perRecord)
+        .serializedWriter(
+            bytes -> {
+              synchronized (referenceOut) {
+                referenceOut.writeBytes(bytes);
+              }
+            })
+        .chunkFolder(GenerationEngineTest::newlineJoin)
+        .masterSeed(777L)
+        .singleThreadedThreshold(Integer.MAX_VALUE) // force single-threaded reference
+        .build()
+        .generate(recordCount);
+    byte[] reference = referenceOut.toByteArray();
+    assertThat(reference).isNotEmpty();
+
+    // NEW chunkSerializer path: every thread count must reproduce the reference byte-for-byte.
+    for (int threads : new int[] {1, 2, 4, 8}) {
+      java.io.ByteArrayOutputStream runOut = new java.io.ByteArrayOutputStream();
+      GenerationEngine.builder()
+          .recordGenerator(recordGenerator)
+          .chunkSerializer(perChunk)
+          .serializedWriter(
+              bytes -> {
+                synchronized (runOut) {
+                  runOut.writeBytes(bytes);
+                }
+              })
+          .masterSeed(777L)
+          .workerThreads(threads)
+          .singleThreadedThreshold(1) // force multi-threaded path even at 1 worker
+          .build()
+          .generate(recordCount);
+
+      assertThat(runOut.toByteArray())
+          .as(
+              "chunkSerializer output with %d worker thread(s) must equal the per-record+coalesce"
+                  + " reference",
+              threads)
+          .isEqualTo(reference);
+    }
+  }
+
+  @Test
+  void shouldChunkSerializeOncePerChunkNotPerRecord() throws InterruptedException {
+    // One serialize call per chunk (not per record): the whole point of the per-chunk seam.
+    // 1000 records, chunkSize default 256 -> 4 chunks (3 full + 1 partial of 232).
+    AtomicInteger idCounter = new AtomicInteger(0);
+    AtomicInteger chunkSerializeCalls = new AtomicInteger(0);
+    GenerationEngine.RecordGenerator recordGenerator =
+        random -> Map.of("id", idCounter.incrementAndGet());
+    GenerationEngine.ChunkSerializer chunkSerializer =
+        chunk -> {
+          chunkSerializeCalls.incrementAndGet();
+          java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+          for (Map<String, Object> r : chunk) {
+            out.writeBytes(
+                ("id=" + r.get("id") + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+          }
+          return out.toByteArray();
+        };
+
+    List<byte[]> writtenChunks = new ArrayList<>();
+    GenerationEngine.SerializedWriter writer =
+        bytes -> {
+          synchronized (writtenChunks) {
+            writtenChunks.add(bytes);
+          }
+        };
+
+    GenerationEngine.builder()
+        .recordGenerator(recordGenerator)
+        .chunkSerializer(chunkSerializer)
+        .serializedWriter(writer)
+        .masterSeed(12345L)
+        .workerThreads(4)
+        .singleThreadedThreshold(1000)
+        .build()
+        .generate(1000);
+
+    assertThat(chunkSerializeCalls.get()).isEqualTo(4);
+    assertThat(writtenChunks).hasSize(4);
+  }
 }

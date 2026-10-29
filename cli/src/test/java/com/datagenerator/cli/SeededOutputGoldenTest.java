@@ -52,6 +52,14 @@ class SeededOutputGoldenTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
+  // Raw-byte fingerprint of the file/NDJSON write path (serialize + coalesce) for seed 42, 1000
+  // records across 4 worker threads. 1000 >= the 1000 single-threaded threshold, so this exercises
+  // the multi-threaded, multi-chunk path with worker-side folding. Pins the EXACT output bytes —
+  // JSON encoding, newline framing and global record order — the invariant the per-chunk serializer
+  // per-chunk serializer must preserve. Change only on a deliberate, CHANGELOG-noted break.
+  private static final String GOLDEN_SHA_SEED_42_1000 =
+      "07c11380dbd12219b0b8f8a853f7ef48d9725039c8c7268b10e121abaa3a9f7e";
+
   @TempDir Path tempDir;
 
   private Path structDir;
@@ -99,6 +107,33 @@ class SeededOutputGoldenTest {
     // Adjacent seeds must yield unrelated data, not a permutation of the same records (#343).
     // Compared against a live seed-42 run, not the golden, so it holds whatever the algorithm.
     assertThat(run("43", "1")).doesNotContainAnyElementsOf(run("42", "1"));
+  }
+
+  @Test
+  void shouldMatchRawByteShaForSeed42MultiChunkMultiThread() throws IOException {
+    // Byte-exact characterization of the coalescing file path across multiple chunks and threads.
+    // Parsed-record equality (above) does not pin newline framing or key order; this does.
+    Path out = tempDir.resolve("out-sha");
+    Path job = writeJob("42", out);
+    int exit =
+        new CommandLine(new ExecuteCommand())
+            .execute("--job", job.toString(), "--count", "1000", "--threads", "4");
+    assertThat(exit).isZero();
+    byte[] bytes = Files.readAllBytes(out.resolve("output.json"));
+    assertThat(sha256(bytes)).isEqualTo(GOLDEN_SHA_SEED_42_1000);
+  }
+
+  private static String sha256(byte[] bytes) {
+    try {
+      byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+      StringBuilder sb = new StringBuilder(digest.length * 2);
+      for (byte b : digest) {
+        sb.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+      }
+      return sb.toString();
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 unavailable", e);
+    }
   }
 
   private List<JsonNode> run(String seed, String threads) throws IOException {

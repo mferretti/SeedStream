@@ -194,6 +194,39 @@ Memory profiling conducted using JVM Flight Recorder (JFR) with 4 test scenarios
 
 ---
 
+## Per-Chunk Serialization Allocation
+
+The file/NDJSON write path serializes a whole chunk (default 256 records) at once. The original
+design serialized each record to its own `byte[]` and concatenated them (`DestinationAdapter.coalesce`);
+it now encodes the chunk in a single streaming pass through a **per-worker reused `StreamWriter` +
+`ByteArrayOutputStream`** (`DestinationAdapter.serializeChunk`), emitting record framing inline. Output
+bytes are identical; only the allocation differs.
+
+Measured with the JMH `gc` profiler (`gc.alloc.rate.norm` = bytes allocated per chunk operation), one
+256-record chunk of a 5-field flat record, reference laptop (Ryzen 5 PRO 4650U, 6c/12t, G1):
+
+| Path | Alloc per chunk (B/op) | Alloc rate | GC events (3 iters) |
+|------|------------------------|------------|---------------------|
+| per-record serialize + `coalesce` (old) | **152,377** | 1514 MB/s | 16 |
+| `serializeChunk`, reused buffer (new) | **36,625** | 466 MB/s | 5 |
+
+**−76% bytes allocated per chunk** (≈595 → 143 B/record), −69% allocation rate, GC events 16 → 5 over the
+run. Throughput rose ~28% as a side effect (less allocation → less GC), but the target of this change is
+footprint, not speed: fewer bytes churned per chunk is what lets many generation jobs run concurrently in
+a shared cloud process without each one inflating the heap. The old `coalesce` path is retained
+(deprecated) only for the general capability and byte-identity tests.
+
+**Reproduce:**
+```bash
+./gradlew :benchmarks:jmhJar
+java -jar benchmarks/build/libs/benchmarks-0.8.0-jmh.jar JsonChunk -prof gc
+# compare gc.alloc.rate.norm for
+#   benchmarkJsonChunkPerRecordCoalesce  (old)
+#   benchmarkJsonChunkSerialize          (new)
+```
+
+---
+
 ## Testing Methodology
 
 ### Profiling Script
