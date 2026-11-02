@@ -132,7 +132,15 @@ subprojects {
             // testcontainers requests 1.24.0, which the dependency-submission SBOM reports and
             // Dependabot flags for CVE-2024-25710 / CVE-2024-26308 (both fixed in 1.26.0). Pin the
             // already-resolved 1.28.0 so no configuration requests a pre-1.26.0 version.
-            "org.apache.commons:commons-compress:1.28.0"
+            "org.apache.commons:commons-compress:1.28.0",
+            // guava: google-cloud-secretmanager 2.100.0 (:schema/:inspector/:cli) pulls guava
+            // 33.6.0-jre, flagged by GHSA-xxph-c9ww-hj94 (vulnerable range <= 33.7.1). Fixed in
+            // 33.7.2. Force everywhere so no configuration ships a pre-33.7.2 guava.
+            "com.google.guava:guava:33.7.2-jre",
+            // snappy-java: kafka-clients 4.4.0 (:cli/:benchmarks) pulls snappy-java 1.1.10.7,
+            // vulnerable to GHSA-q233-g92q-qxp6 + GHSA-gwq9-9ffj-mvrv (high) and GHSA-xqrx-qh46-34m7
+            // (medium), all <= 1.1.10.8 and fixed in 1.1.10.9. Force everywhere.
+            "org.xerial.snappy:snappy-java:1.1.10.9"
         )
         // netty ships ~20 coordinated artifacts, all pulled transitively via
         // software.amazon.awssdk:netty-nio-client. 4.1.135.Final was vulnerable to
