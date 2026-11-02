@@ -57,7 +57,7 @@ gcp-secretmanager = "2.99.0"
 log4j = "2.26.1"
 
 # Build Plugins
-jmh-plugin = "0.7.3"
+jmh-plugin = "0.7.4"
 lombok-plugin = "9.8.2"
 spotless-plugin = "8.10.4"
 spotbugs-plugin = "6.5.13"
