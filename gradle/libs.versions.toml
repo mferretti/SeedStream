@@ -6,7 +6,7 @@
 jackson = "2.22.4"
 lombok = "1.18.48"
 slf4j = "2.0.20"
-logback = "1.6.5"
+logback = "1.6.6"
 picocli = "4.7.7"
 
 # Data Generation
@@ -36,7 +36,7 @@ kafka = "4.4.0"
 hikaricp = "7.1.0"
 postgresql = "42.7.14"
 mysql-connector = "26.10.0"
-ojdbc = "23.26.3.0.0"
+ojdbc = "23.26.4.0.0"
 mssql-jdbc = "13.6.1.jre11"
 
 # Testing
@@ -48,16 +48,16 @@ testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
-aws-sdk = "2.57.3"
-azure-keyvault-secrets = "4.11.3"
+aws-sdk = "2.57.7"
+azure-keyvault-secrets = "4.12.0"
 azure-identity = "1.18.7"
-gcp-secretmanager = "2.99.0"
+gcp-secretmanager = "2.100.0"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.1"
 
 # Build Plugins
-jmh-plugin = "0.7.3"
+jmh-plugin = "0.7.4"
 lombok-plugin = "9.8.2"
 spotless-plugin = "8.10.4"
 spotbugs-plugin = "6.5.13"
