@@ -82,25 +82,50 @@ People comparison-shop, so here's an honest cut. The wedge is **determinism that
 
 | | **SeedStream** | **Mockaroo** | **Synth** | **raw Datafaker** |
 |---|:---:|:---:|:---:|:---:|
-| Deterministic across **runs** (seed) | ✅ | ⚠️ | ✅ | ⚠️ DIY |
-| Deterministic across **threads/machines** | ✅ | ❌ | ⚠️ | ❌ |
+| Deterministic across **runs** (seed) | ✅ | ⚠️ [¹][s1] | ✅ | ⚠️ DIY [¹⁰][s10] |
+| Deterministic across **threads/machines** | ✅ | ❌ | ⚠️ single-threaded [⁴][s4] | ❌ |
 | Stream into **Kafka** | ✅ | ❌ | ❌ | ❌ |
-| Stream into **databases** | ✅ | ⚠️ SQL export | ✅ | ❌ |
-| **Foreign-key integrity** (`ref[]`) | ✅ | ⚠️ | ✅ | ❌ |
-| **Scale / multi-threaded** | ✅ | ⚠️ hosted limits | ✅ | ⚠️ DIY |
+| Stream into **databases** | ✅ | ⚠️ SQL export [¹][s1] | ✅ | ❌ |
+| **Foreign-key integrity** (`ref[]`) | ✅ | ⚠️ [²][s2] | ✅ | ❌ |
+| **Unique / auto-increment / composite keys** | ✅ `serial`, `unique[]` | ⚠️ Row Number [¹][s1] | ⚠️ `id`, retry-based `unique` [⁶][s6] [⁷][s7] | ❌ DIY |
+| **Scale / multi-threaded** | ✅ | ⚠️ hosted limits [³][s3] | ⚠️ single-threaded [⁴][s4] | ⚠️ DIY [¹⁰][s10] |
 | **No-code config** | ✅ YAML | ✅ GUI | ✅ schema | ❌ you write Java |
-| **Bootstrap schema from existing source** | ✅ DDL / OpenAPI / JSON Schema / Protobuf | ❌ | ⚠️ live DB only | ❌ |
+| **Bootstrap schema from existing source** | ✅ DDL / OpenAPI / JSON Schema / Protobuf (file or URL) | ❌ | ⚠️ from data: live DB / JSON / CSV [⁵][s5] | ❌ |
+| **Actively maintained** | ✅ | ✅ | ⚠️ last release 2022 [⁸][s8] | ✅ |
 | **Self-hosted / offline** | ✅ | ❌ SaaS | ✅ | ✅ |
-| **Locales** | ✅ via Datafaker | ✅ many | ⚠️ limited | ✅ most (built on it) |
+| **Locales** | ✅ via Datafaker | ✅ many | ⚠️ 4: en, fr-FR, zh-CN, zh-TW [⁹][s9] | ✅ most (built on it) |
 | **License** | Apache-2.0 | Proprietary (SaaS) | Apache-2.0 | Apache-2.0 |
+
+<sub>Sources for ⚠️ cells (checked November 2026):
+¹ [Mockaroo API docs](https://www.mockaroo.com/docs) — no seed parameter; `generate.sql` endpoint; `Row Number` type ·
+² [Mockaroo FAQ](https://www.mockaroo.com/help) — FKs via uploaded datasets / `Dataset Column` ·
+³ [Mockaroo pricing](https://www.mockaroo.com/pricing) — free: 1,000 rows/file, 200 API requests/day; Gold: 10M rows/file ·
+⁴ [Synth `main.rs`](https://github.com/shuttle-hq/synth/blob/master/synth/src/main.rs) — only spawned thread is the version check; generation runs on one thread ·
+⁵ [Synth CLI docs](https://github.com/shuttle-hq/synth/blob/master/docs/docs/getting_started/cli.md) — `synth import --from` a DB URI or `json:` / `jsonl:` / `csv:` data ·
+⁶ [Synth `unique`](https://github.com/shuttle-hq/synth/blob/master/docs/docs/content/unique.md) — retries the inner generator, fails after 64 repeats by default ·
+⁷ [Synth `series` docs](https://github.com/shuttle-hq/synth/blob/master/docs/docs/content/series.md) — `"type": "number", "id": {}` auto-increment ·
+⁸ [Synth releases](https://github.com/shuttle-hq/synth/releases) — latest v0.6.9, Nov 2022 ·
+⁹ [Synth `faker.rs`](https://github.com/shuttle-hq/synth/blob/master/core/src/graph/string/faker.rs) — `enum Locale { EN, FR_FR, ZH_TW, ZH_CN }` ·
+¹⁰ [Datafaker usage](https://www.datafaker.net/documentation/usage/) — seed via `new Faker(new Random(seed))`; thread safety / parallel generation undocumented</sub>
+
+[s1]: https://www.mockaroo.com/docs
+[s2]: https://www.mockaroo.com/help
+[s3]: https://www.mockaroo.com/pricing
+[s4]: https://github.com/shuttle-hq/synth/blob/master/synth/src/main.rs
+[s5]: https://github.com/shuttle-hq/synth/blob/master/docs/docs/getting_started/cli.md
+[s6]: https://github.com/shuttle-hq/synth/blob/master/docs/docs/content/unique.md
+[s7]: https://github.com/shuttle-hq/synth/blob/master/docs/docs/content/series.md
+[s8]: https://github.com/shuttle-hq/synth/releases
+[s9]: https://github.com/shuttle-hq/synth/blob/master/core/src/graph/string/faker.rs
+[s10]: https://www.datafaker.net/documentation/usage/
 
 **Where the others win — honestly:**
 
 - **Mockaroo** — nothing to install; a polished GUI and a huge built-in type catalog make one-off sample files the fastest path. If you don't need reproducibility-under-parallelism or streaming into infra, it's hard to beat for quick mock data.
-- **Synth** — a single Rust binary that connects to a **live database and samples its actual data distributions**. SeedStream also bootstraps schemas — its `inspect` subcommand generates structure YAML from a SQL DDL, an OpenAPI 3.x spec, a JSON Schema, or a compiled Protobuf descriptor — but it reads the *declared schema*, not a running system's data. Synth's edge is cloning the statistical shape of data you already have in a live DB.
-- **raw Datafaker** — SeedStream is *built on* Datafaker. If you're inside a JVM app and want to call a faker in code (no YAML, no process), use Datafaker directly — it has the widest provider/locale breadth. SeedStream adds the determinism model, the YAML layer, FK integrity, scale, and the Kafka/DB/file destinations around it.
+- **Synth** — a single Rust binary that connects to a **live database (or reads JSON / CSV data files) and samples its actual data distributions**. SeedStream also bootstraps schemas — its `inspect` subcommand generates structure YAML from a SQL DDL, an OpenAPI 3.x spec, a JSON Schema, or a compiled Protobuf descriptor — but it reads the *declared schema*, not a running system's data. Synth's edge is cloning the statistical shape of data you already have in a live DB. Caveat: no release since v0.6.9 (Nov 2022) and no commits since Sep 2024, though the repo isn't archived.
+- **raw Datafaker** — SeedStream is *built on* Datafaker. If you're inside a JVM app and want to call a faker in code (no YAML, no process), use Datafaker directly — it has the widest provider/locale breadth. SeedStream adds the determinism model, the YAML layer, FK integrity, unique/composite keys, scale, and the Kafka/DB/file destinations around it.
 
-> Capability-level comparison as of mid-2026; tools evolve. Spot something out of date? [Open an issue](https://github.com/mferretti/SeedStream/issues) — corrections welcome.
+> Capability-level comparison as of November 2026; tools evolve. Spot something out of date? [Open an issue](https://github.com/mferretti/SeedStream/issues) — corrections welcome.
 
 ---
 
