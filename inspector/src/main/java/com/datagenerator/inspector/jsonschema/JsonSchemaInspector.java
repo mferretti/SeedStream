@@ -152,6 +152,9 @@ public class JsonSchemaInspector {
       if (mapped.flagged()) {
         fieldComments.put(fieldName, mapped.comment());
       }
+      if (mapped.reason() == MappedType.Reason.SCHEMA_ERROR) {
+        warnings.add(SCHEMA_PREFIX + name + "' field '" + fieldName + "': " + mapped.comment());
+      }
       data.put(fieldName, new FieldDefinition(mapped.datatype(), null));
 
       suggestRegex(fieldName, fieldNode, fakerSuggestions, fieldComments);
