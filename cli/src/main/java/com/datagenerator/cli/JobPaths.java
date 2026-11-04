@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 final class JobPaths {
 
   private static final String CONFIG_STRUCTURES = "config/structures";
+  private static final Path JOBS_DIR = Path.of("jobs");
 
   private JobPaths() {}
 
@@ -57,16 +58,22 @@ final class JobPaths {
     }
     Path configDir = cwd.resolve(CONFIG_STRUCTURES);
     Path jobDir = cwd.resolve(jobFile).normalize().getParent();
-    if (jobDir == null
-        || jobDir.getFileName() == null
-        || !jobDir.getFileName().toString().equals("jobs")) {
+    if (jobDir == null || !JOBS_DIR.equals(jobDir.getFileName())) {
       return new StructuresResolution(configDir, false, List.of());
     }
     Path sibling = jobDir.getParent().resolve("structures");
-    if (Files.exists(sibling.resolve(source))) {
+    Path siblingFile = sibling.resolve(source);
+    Path fallbackFile = configDir.resolve(source);
+    if (Files.exists(siblingFile)) {
+      if (Files.exists(fallbackFile)) {
+        log.warn(
+            "Structure file {} exists in both the inferred dir and {}; using {}.",
+            siblingFile,
+            fallbackFile,
+            siblingFile);
+      }
       return new StructuresResolution(sibling, false, List.of(sibling));
     }
-    Path fallbackFile = configDir.resolve(source);
     if (Files.exists(fallbackFile)) {
       log.warn(
           "Structure file {} not found in inferred dir {}; using {} instead."
