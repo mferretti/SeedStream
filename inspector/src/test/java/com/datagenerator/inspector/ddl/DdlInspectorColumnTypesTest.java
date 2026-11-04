@@ -264,7 +264,7 @@ class DdlInspectorColumnTypesTest {
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
-                Map.entry("id", "serial"),
+                // "id" (unreferenced INT IDENTITY(1,1) PK) is omitted: SQL Server assigns it (#444)
                 Map.entry("c_tiny", INT_TINYINT),
                 Map.entry("c_small", INT_SMALLINT),
                 Map.entry("c_big", INT),
@@ -297,13 +297,13 @@ class DdlInspectorColumnTypesTest {
   void shouldMapSqlServerClusteredPrimaryKeyWithSortDirectionToSerial(@TempDir Path dir)
       throws IOException {
     // The SSMS-scripted form: PRIMARY KEY CLUSTERED ([id] ASC). Spec §8: single-column integer PK
-    // -> serial.
+    // -> serial. (No IDENTITY here: an unreferenced identity PK is omitted instead, #444.)
     Inspection inspection =
         inspect(
             dir,
             """
             CREATE TABLE [dbo].[t] (
-              [id] INT IDENTITY(1,1) NOT NULL,
+              [id] INT NOT NULL,
               [n] INT NULL,
               CONSTRAINT [pk_t] PRIMARY KEY CLUSTERED ([id] ASC)
             );
