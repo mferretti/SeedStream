@@ -1,0 +1,10 @@
+name: "us_states"
+data:
+  state_id:
+    datatype: "serial"
+  state_name:
+    datatype: "char[1..100]"
+  state_abbr:
+    datatype: "char[1..2]"
+  state_region:
+    datatype: "char[1..50]"

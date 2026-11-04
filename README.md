@@ -455,6 +455,7 @@ a "scenario README + config" unit you can copy, run in one command, and forward 
 | [CI pipeline database seeding](use-cases/ci-pipeline-seeding/) | Platform / DevOps | **Ready** |
 | [Performance & load testing](use-cases/performance-load-testing/) | Platform / SRE | **Ready** |
 | [SaaS demo environments](use-cases/saas-demo-environments/) | Sales / Solutions | **Ready** |
+| [Northwind at scale (inspect → 3.7M rows)](use-cases/northwind-inspect/) | Evaluator | **Ready** |
 
 See [use-cases/](use-cases/) for the full index.
 

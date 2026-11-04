@@ -1,0 +1,8 @@
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs"; pass an absolute --job path, #438).
+source: products.yaml
+type: file
+seed:
+  type: embedded
+  value: 1996
+conf:
+  path: output/products

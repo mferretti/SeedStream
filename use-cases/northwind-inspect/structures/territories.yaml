@@ -1,0 +1,8 @@
+name: "territories"
+data:
+  territory_id:
+    datatype: "serial"  # hand edit (#441): text PK as numeric strings
+  territory_description:
+    datatype: "char[1..60]"
+  region_id:
+    datatype: "ref[region.region_id, 1..4]"  # hand edit (#442): static parent row count

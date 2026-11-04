@@ -1,0 +1,6 @@
+name: "customer_customer_demo"
+data:
+  customer_id:
+    datatype: "ref[customers.customer_id, 1..90000, unique=pk]"  # hand edit (#442): static parent row count
+  customer_type_id:
+    datatype: "ref[customer_demographics.customer_type_id, 1..10, unique=pk]"  # hand edit (#442): static parent row count
