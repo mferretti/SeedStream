@@ -151,8 +151,9 @@ public final class SchemaTypeMapper {
     int min = schema.path(MIN_LENGTH).asInt(1);
     int max = schema.path(MAX_LENGTH).asInt(Math.max(min, Defaults.STRING_MAX_LENGTH));
     if (min > max) {
+      int cap = Math.max(0, max); // never invert: maxLength 0 gives char[0..0]
       return MappedType.schemaError(
-          "char[1.." + max + "]",
+          "char[" + Math.min(1, cap) + ".." + cap + "]",
           "schema error: minLength " + min + " exceeds maxLength " + max + " — verify");
     }
     String datatype = "char[" + min + ".." + max + "]";
@@ -294,8 +295,13 @@ public final class SchemaTypeMapper {
       max = min <= Defaults.ARRAY_MAX ? Defaults.ARRAY_MAX : min + span;
     }
     String datatype = "array[" + inner.datatype() + ", " + min + ".." + max + "]";
+    boolean itemNeedsReview =
+        inner.reason() == MappedType.Reason.REVIEW
+            || inner.reason() == MappedType.Reason.SCHEMA_ERROR;
     return new MappedType(
-        datatype, !bounded ? MappedType.Reason.DEFAULT_RANGE : inner.reason(), inner.note());
+        datatype,
+        bounded || itemNeedsReview ? inner.reason() : MappedType.Reason.DEFAULT_RANGE,
+        inner.note());
   }
 
   private String enumType(JsonNode enumNode) {
