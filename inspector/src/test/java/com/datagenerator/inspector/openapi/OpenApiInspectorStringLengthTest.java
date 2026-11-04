@@ -101,8 +101,8 @@ class OpenApiInspectorStringLengthTest {
     assertThat(comments.get("contact")).contains("email values can exceed maxLength 20");
     assertThat(comments).doesNotContainKeys("code", "note", "optionalTag", "id");
     assertThat(yamlOf("account", out))
-        .contains("char[1..20]  # uuid format cannot fit maxLength 20")
-        .contains("char[1..20]  # email values can exceed maxLength 20");
+        .contains("char[1..20]\"  # uuid format cannot fit maxLength 20")
+        .contains("char[1..20]\"  # email values can exceed maxLength 20");
   }
 
   @Test
