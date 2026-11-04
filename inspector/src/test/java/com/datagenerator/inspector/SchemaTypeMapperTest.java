@@ -516,6 +516,56 @@ class SchemaTypeMapperTest {
         .isEqualTo("enum[AB,CD]");
   }
 
+  @Test
+  void shouldNotEmitInvertedRangeWhenMaxLengthIsZeroAndMinLengthIsPositive() {
+    // char[1..0] fails at generation time; the schema error falls back to the only valid range
+    MappedType mapped = map("broken", "{'type':'string','minLength':3,'maxLength':0}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[0..0]");
+    assertThat(mapped.reason()).isEqualTo(Reason.SCHEMA_ERROR);
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("minLength");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{'type':'array','items':{'type':'string','minLength':10,'maxLength':5}}",
+        "{'type':'array','minItems':1,'maxItems':3,"
+            + "'items':{'type':'string','minLength':10,'maxLength':5}}"
+      })
+  void shouldKeepSchemaErrorFlagOfArrayItemsWhetherOrNotTheArrayIsBounded(String schema) {
+    MappedType mapped = map("tags", schema);
+
+    assertThat(mapped.datatype()).startsWith("array[char[1..5], ");
+    assertThat(mapped.reason()).isEqualTo(Reason.SCHEMA_ERROR);
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("minLength");
+  }
+
+  @Test
+  void shouldKeepUuidReviewCommentOfUnboundedArrayItems() {
+    MappedType mapped =
+        map("ids", "{'type':'array','items':{'type':'string','format':'uuid','maxLength':10}}");
+
+    assertThat(mapped.datatype()).isEqualTo("array[char[1..10], 1..10]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid format cannot fit maxLength 10");
+  }
+
+  @Test
+  void shouldKeepUuidReviewCommentOfBoundedArrayItems() {
+    MappedType mapped =
+        map(
+            "ids",
+            "{'type':'array','minItems':1,'maxItems':3,"
+                + "'items':{'type':'string','format':'uuid','maxLength':10}}");
+
+    assertThat(mapped.datatype()).isEqualTo("array[char[1..10], 1..3]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid format cannot fit maxLength 10");
+  }
+
   // --- nullable ---
 
   @Test

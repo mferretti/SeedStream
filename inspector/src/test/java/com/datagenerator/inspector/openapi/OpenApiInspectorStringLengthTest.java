@@ -139,6 +139,52 @@ class OpenApiInspectorStringLengthTest {
     writeAndLoad(inspection, "account", dir.resolve("out"));
   }
 
+  @Test
+  void shouldWarnExactlyOnceForPlainFieldWithMinLengthAboveMaxLength(@TempDir Path dir)
+      throws IOException {
+    Inspection inspection = inspect(dir, schemaWith("{type: string, minLength: 10, maxLength: 5}"));
+
+    assertThat(inspection.warnings()).filteredOn(w -> w.contains("brokenField")).hasSize(1);
+  }
+
+  @Test
+  void shouldWarnAndCommentForArrayOfStringsWithMinLengthAboveMaxLength(@TempDir Path dir)
+      throws IOException {
+    Inspection inspection =
+        inspect(
+            dir, schemaWith("{type: array, items: {type: string, minLength: 10, maxLength: 5}}"));
+
+    assertThat(datatypesOf(inspection, "account"))
+        .containsEntry("brokenField", "array[char[1..5], 1..10]");
+    assertThat(inspection.warnings()).filteredOn(w -> w.contains("brokenField")).hasSize(1);
+    assertThat(inspection.comments().get("account").get("brokenField")).contains("minLength");
+  }
+
+  @Test
+  void shouldWarnAndNotInvertRangeWhenMaxLengthIsZero(@TempDir Path dir) throws IOException {
+    Inspection inspection = inspect(dir, schemaWith("{type: string, minLength: 3, maxLength: 0}"));
+
+    assertThat(datatypesOf(inspection, "account")).containsEntry("brokenField", "char[0..0]");
+    assertThat(inspection.warnings()).filteredOn(w -> w.contains("brokenField")).hasSize(1);
+    assertThat(inspection.comments().get("account")).containsKey("brokenField");
+  }
+
+  private static String schemaWith(String brokenFieldSchema) {
+    return """
+        openapi: 3.0.3
+        info:
+          title: Test
+          version: "1.0"
+        components:
+          schemas:
+            Account:
+              type: object
+              properties:
+                brokenField: %s
+        """
+        .formatted(brokenFieldSchema);
+  }
+
   private Inspection inspect(Path dir, String spec) throws IOException {
     Path file = dir.resolve("api.yaml");
     Files.writeString(file, spec);
