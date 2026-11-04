@@ -63,8 +63,19 @@ public class DdlInspector {
       Pattern.compile("(?i)REFERENCES\\s+([\\w.\"`]+)(?:\\s*\\(\\s*([\\w\"`]+)\\s*\\))?");
   private static final Pattern SORT_DIRECTION = Pattern.compile("(?i)\\s+(ASC|DESC)$");
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
-  private static final Pattern CREATE_TABLE_QUICK =
-      Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
+  // A modellable-looking CREATE TABLE head, checked on comment/literal-stripped text anchored at
+  // the
+  // statement start (after optional leading SET/USE/... directive lines). Group "name" = table
+  // name.
+  private static final String IDENT =
+      "(?:\"[^\"]*\"|`[^`]*`|\\[[^\\]]*\\]|[\\w$#@]+)(?:\\.(?:\"[^\"]*\"|`[^`]*`|\\[[^\\]]*\\]|[\\w$#@]+))*";
+  private static final Pattern CREATE_TABLE_HEAD =
+      Pattern.compile(
+          "(?is)\\A\\s*(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*CREATE\\s+(?:OR\\s+REPLACE\\s+)?"
+              + "(?:(?:GLOBAL|LOCAL)\\s+)?(?:(?:TEMP|TEMPORARY|UNLOGGED)\\s+)?TABLE\\s+"
+              + "(?:IF\\s+NOT\\s+EXISTS\\s+)?(?<name>"
+              + IDENT
+              + ")(?<noColumns>\\s+(?:AS|PARTITION\\s+OF|LIKE)\\b)?");
 
   private static final Set<String> SERIAL_TYPES =
       Set.of("SERIAL", "BIGSERIAL", "SMALLSERIAL", "SERIAL4", "SERIAL8");
@@ -167,7 +178,16 @@ public class DdlInspector {
       List<String> warnings,
       List<String> failures,
       boolean bestEffort) {
-    if (!CREATE_TABLE_QUICK.matcher(raw).find()) {
+    Matcher head = CREATE_TABLE_HEAD.matcher(SqlScan.stripCommentsAndLiterals(raw));
+    if (!head.find()) {
+      return; // not a CREATE TABLE (index, view, function, directive, ...) — skip silently
+    }
+    if (head.group("noColumns") != null) {
+      String name = head.group("name");
+      warnings.add(
+          "table '"
+              + Names.toSnakeCase(unquote(name.substring(name.lastIndexOf('.') + 1)))
+              + "' is defined without a column list (AS SELECT / PARTITION OF / LIKE) — skipped");
       return;
     }
     String cleaned = preprocessor.sanitize(raw);

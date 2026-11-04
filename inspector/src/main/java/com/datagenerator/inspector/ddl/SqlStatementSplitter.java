@@ -34,6 +34,11 @@ import java.util.List;
  *       operator inside an expression is never at the top level of a line in isolation
  * </ul>
  *
+ * <p>Outside quotes, comments and dollar bodies it also normalises what JSQLParser cannot digest: a
+ * run of two or more empty lines collapses to a single newline (#436) and psql meta-command lines
+ * (first non-blank char {@code \}, e.g. {@code \connect db}) are dropped (#443). Emitted statements
+ * are stripped at both ends.
+ *
  * <p>Never splits inside:
  *
  * <ul>
@@ -116,6 +121,9 @@ public class SqlStatementSplitter {
         case '[' -> consumeBracket();
         case '\r' -> swallowCarriageReturn();
         case '\n' -> consumeNewline();
+        case '\\' -> {
+          return consumePsqlMetaCommand();
+        }
         case ';' -> consumeSemicolon();
         default -> {
           return false;
@@ -161,10 +169,7 @@ public class SqlStatementSplitter {
         if (c == '\r') {
           i++;
         } else if (c == '\n') {
-          stmt.append(c);
-          i++;
-          currentLineStart = stmt.length();
-          return true;
+          return true; // left for consumeNewline so it joins any following empty-line run
         } else {
           stmt.append(c);
           i++;
@@ -284,20 +289,55 @@ public class SqlStatementSplitter {
      * End of a source line: emit the statement if the line was a {@code GO}/{@code /} terminator.
      */
     private void consumeNewline() {
-      if (isBatchTerminator(currentLine())) {
-        emit(stmt.substring(0, currentLineStart).stripTrailing());
+      boolean terminator = isBatchTerminator(currentLine());
+      i = endOfEmptyLineRun();
+      if (terminator) {
+        emit(stmt.substring(0, currentLineStart));
         stmt.setLength(0);
         currentLineStart = 0;
       } else {
         stmt.append('\n');
         currentLineStart = stmt.length();
       }
-      i++;
+    }
+
+    /**
+     * Index past the newline at the cursor, or past the whole run when it is followed by two or
+     * more empty lines (three or more newlines in a row): JSQLParser rejects such runs (#436), so
+     * they collapse into the single newline the caller appends.
+     */
+    private int endOfEmptyLineRun() {
+      int j = i;
+      int newlines = 0;
+      while (j < len && (sql.charAt(j) == '\n' || sql.charAt(j) == '\r')) {
+        if (sql.charAt(j) == '\n') {
+          newlines++;
+        }
+        j++;
+      }
+      return newlines >= 3 ? j : i + 1;
+    }
+
+    /**
+     * A psql meta-command ({@code \connect db}, {@code \restrict tok}, …): a backslash as the first
+     * non-blank char of a line is dropped together with its whole line. Anywhere else the backslash
+     * is an ordinary character.
+     */
+    private boolean consumePsqlMetaCommand() {
+      if (!stmt.substring(currentLineStart).isBlank()) {
+        return false;
+      }
+      stmt.setLength(currentLineStart);
+      while (i < len && sql.charAt(i) != '\n') {
+        i++;
+      }
+      i++; // the line's own newline
+      return true;
     }
 
     /** Top-level {@code ;} statement boundary; the semicolon itself is not kept. */
     private void consumeSemicolon() {
-      emit(stmt.toString().stripTrailing());
+      emit(stmt.toString());
       stmt.setLength(0);
       currentLineStart = 0;
       i++;
@@ -308,9 +348,9 @@ public class SqlStatementSplitter {
      */
     private void flushRemainder() {
       if (isBatchTerminator(currentLine())) {
-        emit(stmt.substring(0, currentLineStart).stripTrailing());
+        emit(stmt.substring(0, currentLineStart));
       } else {
-        emit(stmt.toString().strip());
+        emit(stmt.toString());
       }
     }
 
@@ -318,7 +358,8 @@ public class SqlStatementSplitter {
       return stmt.substring(currentLineStart).trim();
     }
 
-    private void emit(String s) {
+    private void emit(String raw) {
+      String s = raw.strip();
       if (!s.isBlank() && !isCommentOnly(s)) {
         result.add(s);
       }
