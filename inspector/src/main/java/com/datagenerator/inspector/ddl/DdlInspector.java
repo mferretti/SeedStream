@@ -77,7 +77,8 @@ public class DdlInspector {
       List<List<String>> uniques,
       Set<String> serialColumns,
       Set<String> uuidColumns,
-      Set<String> dbAssignedColumns) {}
+      Set<String> dbAssignedColumns,
+      Set<String> identityColumns) {}
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
@@ -143,6 +144,7 @@ public class DdlInspector {
         }
       }
     }
+    warnSnakeCaseCollisions(tables, warnings);
     Consumer<TableInfo> keyMapper =
         table -> applyKeys(table, keys.get(table.name()), warnings, referenced);
     if (nesting.enabled()) {
@@ -153,6 +155,38 @@ public class DdlInspector {
     }
     tables.forEach(keyMapper);
     return toInspection(tables, warnings);
+  }
+
+  /**
+   * The emitted {@code ref[table.column]} target is the snake_cased column, so two columns of the
+   * referenced table that snake-case alike (documentation-only target) are worth a warning (#445).
+   */
+  private void warnSnakeCaseCollisions(List<TableInfo> tables, List<String> warnings) {
+    Map<String, TableInfo> byName = new LinkedHashMap<>();
+    tables.forEach(t -> byName.put(lower(t.name()), t));
+    Set<String> seen = new LinkedHashSet<>();
+    for (TableInfo t : tables) {
+      for (ForeignKeyRef fk : t.foreignKeys()) {
+        TableInfo target = byName.get(lower(fk.refTable()));
+        for (String column : fk.refColumns()) {
+          List<String> clashing =
+              target == null
+                  ? List.of()
+                  : target.data().keySet().stream()
+                      .filter(k -> Names.toSnakeCase(k).equals(Names.toSnakeCase(column)))
+                      .toList();
+          if (clashing.size() > 1 && seen.add(target.name() + "." + Names.toSnakeCase(column))) {
+            warnings.add(
+                target.name()
+                    + ": columns "
+                    + clashing
+                    + " all snake-case to '"
+                    + Names.toSnakeCase(column)
+                    + "' — ref[...] targets to it are ambiguous (documentation only)");
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -218,6 +252,7 @@ public class DdlInspector {
     Set<String> serialColumns = new LinkedHashSet<>();
     Set<String> uuidColumns = new LinkedHashSet<>();
     Set<String> dbAssigned = new LinkedHashSet<>();
+    Set<String> identity = new LinkedHashSet<>();
 
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
@@ -225,6 +260,9 @@ public class DdlInspector {
         String specs = String.join(" ", column.getColumnSpecs()).toUpperCase(Locale.ROOT);
         if (specs.contains("ALWAYS") && specs.contains("IDENTITY")) {
           dbAssigned.add(columnName.toLowerCase(Locale.ROOT));
+        }
+        if (specs.contains(DdlPreprocessor.IDENTITY_MARKER)) {
+          identity.add(columnName.toLowerCase(Locale.ROOT));
         }
       }
       String datatype = resolveForeignKey(columnName, column, foreignKeys).orElse(null);
@@ -247,7 +285,8 @@ public class DdlInspector {
 
     List<List<String>> primary = keyConstraints(createTable, columns, "PRIMARY");
     List<List<String>> uniques = keyConstraints(createTable, columns, "UNIQUE");
-    keys.put(name, new TableKeys(primary, uniques, serialColumns, uuidColumns, dbAssigned));
+    keys.put(
+        name, new TableKeys(primary, uniques, serialColumns, uuidColumns, dbAssigned, identity));
     return new TableInfo(
         name,
         data,
@@ -331,32 +370,56 @@ public class DdlInspector {
     handleDbAssigned(table, keys, warnings, referenced);
   }
 
-  /** GENERATED ALWAYS identity single-column PKs: omit unless some FK references them. */
+  /**
+   * DB-assigned columns: omit unless some FK references them. GENERATED ALWAYS identity is handled
+   * for single-column PKs only; SQL Server IDENTITY (#444) also for non-PK columns, as SQL Server
+   * rejects explicit values there too.
+   */
   private void handleDbAssigned(
       TableInfo table, TableKeys keys, List<String> warnings, Map<String, Set<String>> referenced) {
+    Set<String> singlePks = new LinkedHashSet<>();
     for (List<String> pk : keys.primary()) {
-      if (pk.size() != 1 || !keys.dbAssignedColumns().contains(lower(pk.get(0)))) {
-        continue;
-      }
-      String column = pk.get(0);
-      String label = table.name() + "." + column;
-      Set<String> refs = referenced.get(lower(table.name()) + "." + lower(column));
-      if (refs == null) {
-        String actual = actualKey(table, column);
-        table.data().remove(actual);
-        table.comments().remove(actual);
-        warnings.add(
-            label
-                + ": GENERATED ALWAYS AS IDENTITY — omitted (DB assigns it); any FK referencing it"
-                + " needs DB-assigned ordered generation (#400)");
-      } else {
-        warnings.add(
-            label
-                + ": GENERATED ALWAYS AS IDENTITY but referenced by "
-                + refs
-                + " — kept as serial; needs DB-assigned ordered generation (#400)");
+      if (pk.size() == 1) {
+        singlePks.add(lower(pk.get(0)));
       }
     }
+    Set<String> compositePk = new LinkedHashSet<>();
+    keys.primary().stream()
+        .filter(pk -> pk.size() > 1)
+        .forEach(pk -> pk.forEach(c -> compositePk.add(lower(c))));
+    for (String column : List.copyOf(table.data().keySet())) {
+      String key = lower(column);
+      boolean generatedAlways = keys.dbAssignedColumns().contains(key);
+      boolean identity = keys.identityColumns().contains(key);
+      boolean singlePk = singlePks.contains(key);
+      if ((generatedAlways && singlePk) || identity) {
+        String kind = generatedAlways ? "GENERATED ALWAYS AS IDENTITY" : "IDENTITY";
+        Set<String> refs = referenced.get(lower(table.name()) + "." + key);
+        boolean omit = refs == null && !compositePk.contains(key);
+        warnings.add(dbAssignedWarning(table.name() + "." + column, kind, refs, omit));
+        if (omit) {
+          table.data().remove(column);
+          table.comments().remove(column);
+        }
+      }
+    }
+  }
+
+  private String dbAssignedWarning(String label, String kind, Set<String> refs, boolean omit) {
+    if (omit) {
+      return label
+          + ": "
+          + kind
+          + " — omitted (DB assigns it); any FK referencing it"
+          + " needs DB-assigned ordered generation (#400)";
+    }
+    return label
+        + ": "
+        + kind
+        + (refs == null ? " in a composite key" : " but referenced by " + refs)
+        + " — kept"
+        + (refs == null ? "" : " as serial")
+        + "; needs DB-assigned ordered generation (#400)";
   }
 
   /** One PRIMARY KEY / UNIQUE constraint: its group name, kind and declared columns. */
@@ -533,7 +596,13 @@ public class DdlInspector {
           String referenced = columnAt(referencedColumns, i);
           result.put(
               unquote(localColumns.get(i)).toLowerCase(Locale.ROOT),
-              "ref[" + refTable + "." + unquote(referenced) + ", " + Defaults.REF_POOL + "]");
+              "ref["
+                  + refTable
+                  + "."
+                  + Names.toSnakeCase(unquote(referenced))
+                  + ", "
+                  + Defaults.REF_POOL
+                  + "]");
         }
       }
     }
@@ -545,7 +614,13 @@ public class DdlInspector {
     return parseInlineReference(specs)
         .map(
             ref ->
-                "ref[" + Names.toSnakeCase(ref[0]) + "." + ref[1] + ", " + Defaults.REF_POOL + "]");
+                "ref["
+                    + Names.toSnakeCase(ref[0])
+                    + "."
+                    + Names.toSnakeCase(ref[1])
+                    + ", "
+                    + Defaults.REF_POOL
+                    + "]");
   }
 
   /**
@@ -553,7 +628,8 @@ public class DdlInspector {
    * column spec. Tolerant of JSQLParser tokenization: 5.3 split {@code REFERENCES}, {@code table}
    * and {@code (col)} into separate spec tokens, while 5.4 emits the whole clause as one token.
    * Joining the specs and matching against the clause handles both. Referenced column defaults to
-   * {@code id} when the DDL omits it. Returned names are unquoted, table not yet snake-cased.
+   * {@code id} when the DDL omits it. Returned names are unquoted and the table is schema-less, not
+   * yet snake-cased.
    */
   private Optional<String[]> parseInlineReference(List<String> specs) {
     if (specs == null || specs.isEmpty()) {
@@ -564,7 +640,9 @@ public class DdlInspector {
       return Optional.empty();
     }
     String referenced = matcher.group(2) != null ? matcher.group(2) : "id";
-    return Optional.of(new String[] {unquote(matcher.group(1)), unquote(referenced)});
+    String table = unquote(matcher.group(1));
+    return Optional.of(
+        new String[] {table.substring(table.lastIndexOf('.') + 1), unquote(referenced)});
   }
 
   /**

@@ -33,8 +33,9 @@ import java.util.regex.Pattern;
  *       and strip schema qualification from the table name ({@code [schema].[table]} → {@code
  *       table} after {@code CREATE TABLE}). JSQLParser 5.3 does not parse bracket-quoted
  *       identifiers in CREATE TABLE context.
- *   <li>Strip {@code IDENTITY(seed,increment)} from column definitions — JSQLParser does not parse
- *       this MSSQL column property.
+ *   <li>Replace the MSSQL column property {@code IDENTITY[(seed,increment)] [NOT FOR REPLICATION]}
+ *       with the {@link #IDENTITY_MARKER} spec token — JSQLParser does not parse the original, and
+ *       the marker lets the inspector still tell that SQL Server assigns the value (#444).
  *   <li>Truncate trailing table options after the balanced closing {@code )} of the column list:
  *       {@code ENGINE=...}, {@code WITH (...)}, {@code ON [PRIMARY]}, {@code TABLESPACE ...},
  *       {@code STORAGE (...)}, {@code ORGANIZATION ...} etc. A balanced-paren scan handles nested
@@ -67,11 +68,19 @@ public class DdlPreprocessor {
   private static final Pattern ORACLE_RAW = Pattern.compile("(?i)\\bRAW(\\s*\\()");
 
   /**
-   * Matches {@code IDENTITY(seed, increment)} — the MSSQL auto-increment column property.
-   * JSQLParser does not recognise this construct and throws a parse exception.
+   * Spec token that replaces an MSSQL {@code IDENTITY} column property, so the inspector can still
+   * see which columns SQL Server assigns (#444).
+   */
+  static final String IDENTITY_MARKER = "SEEDSTREAM_IDENTITY";
+
+  /**
+   * Matches the MSSQL identity column property: {@code IDENTITY}, optionally with {@code (seed,
+   * increment)} and {@code NOT FOR REPLICATION}. JSQLParser does not recognise any of these.
    */
   private static final Pattern IDENTITY =
-      Pattern.compile("(?i)\\bIDENTITY\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)");
+      Pattern.compile(
+          "(?i)IDENTITY(?:\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\))?(?:\\s+NOT\\s+FOR\\s+REPLICATION)?"
+              + "(?![\\w$#@])");
 
   /** Quick check: does this statement contain CREATE TABLE? */
   private static final Pattern CREATE_TABLE =
@@ -107,8 +116,8 @@ public class DdlPreprocessor {
     // Dequote bracket identifiers and strip schema prefix from table name
     s = dequoteBrackets(s);
 
-    // Strip IDENTITY(seed,increment) column property
-    s = IDENTITY.matcher(s).replaceAll("");
+    // IDENTITY(seed,increment) column property -> marker token
+    s = markIdentity(s);
 
     // Oracle RAW(n) -> VARBINARY(n) (parseable, still an unknown type)
     s = ORACLE_RAW.matcher(s).replaceAll("VARBINARY$1");
@@ -120,6 +129,71 @@ public class DdlPreprocessor {
     s = CLUSTERED.matcher(s).replaceAll("");
 
     return s;
+  }
+
+  /**
+   * Replaces each identity column property with {@link #IDENTITY_MARKER}, skipping string literals,
+   * quoted identifiers and comments. The word is not a property when part of a longer identifier
+   * ({@code IdentityNumber}), when it is itself a column name (right after {@code (} or {@code ,}),
+   * or when it is the ANSI {@code GENERATED ... AS IDENTITY}.
+   */
+  private static String markIdentity(String s) {
+    StringBuilder sb = new StringBuilder(s.length());
+    Matcher m = IDENTITY.matcher(s);
+    int len = s.length();
+    int i = 0;
+    while (i < len) {
+      int end = Math.min(quotedOrCommentEnd(s, i), len);
+      if (end > i) {
+        sb.append(s, i, end);
+        i = end;
+      } else if (isIdentityProperty(s, i, m)) {
+        sb.append(' ').append(IDENTITY_MARKER).append(' ');
+        i = m.end();
+      } else {
+        sb.append(s.charAt(i++));
+      }
+    }
+    return sb.toString();
+  }
+
+  private static boolean isIdentityProperty(String s, int i, Matcher m) {
+    char c = s.charAt(i);
+    if ((c != 'I' && c != 'i') || (i > 0 && isWordChar(s.charAt(i - 1)))) {
+      return false;
+    }
+    int p = i - 1;
+    while (p >= 0 && Character.isWhitespace(s.charAt(p))) {
+      p--;
+    }
+    boolean afterAs =
+        p >= 1
+            && s.regionMatches(true, p - 1, "AS", 0, 2)
+            && (p < 2 || !isWordChar(s.charAt(p - 2)));
+    return (p < 0 || (s.charAt(p) != '(' && s.charAt(p) != ','))
+        && !afterAs
+        && m.region(i, s.length()).lookingAt();
+  }
+
+  private static boolean isWordChar(char c) {
+    return Character.isLetterOrDigit(c) || c == '_' || c == '$' || c == '#' || c == '@';
+  }
+
+  /**
+   * End index of the string literal / quoted identifier / comment starting at {@code i}, else i.
+   */
+  private static int quotedOrCommentEnd(String s, int i) {
+    char c = s.charAt(i);
+    if (SqlScan.isBlockCommentStart(s, i)) {
+      return SqlScan.skipBlockComment(s, i);
+    } else if (SqlScan.isLineCommentStart(s, i)) {
+      return SqlScan.skipLineComment(s, i);
+    } else if (c == '\'') {
+      return SqlScan.skipSingleQuoted(s, i);
+    } else if (c == '"' || c == '`') {
+      return SqlScan.skipDelimited(s, i, c);
+    }
+    return i;
   }
 
   /**
