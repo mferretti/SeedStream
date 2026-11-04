@@ -16,11 +16,17 @@
 
 package com.datagenerator.cli;
 
+import com.datagenerator.schema.exception.SchemaParseException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
-/** Resolves where a job's structure files live (signature-only stub; see JobPathsTest). */
+/** Resolves where a job's structure files live. */
+@Slf4j
 final class JobPaths {
+
+  private static final String CONFIG_STRUCTURES = "config/structures";
 
   private JobPaths() {}
 
@@ -45,6 +51,38 @@ final class JobPaths {
    */
   static StructuresResolution resolveStructuresPath(
       Path jobFile, String explicitStructuresPath, String source, Path currentDir) {
-    throw new UnsupportedOperationException("not implemented");
+    Path cwd = currentDir.toAbsolutePath();
+    if (explicitStructuresPath != null) {
+      return new StructuresResolution(cwd.resolve(explicitStructuresPath), false, List.of());
+    }
+    Path configDir = cwd.resolve(CONFIG_STRUCTURES);
+    Path jobDir = cwd.resolve(jobFile).normalize().getParent();
+    if (jobDir == null
+        || jobDir.getFileName() == null
+        || !jobDir.getFileName().toString().equals("jobs")) {
+      return new StructuresResolution(configDir, false, List.of());
+    }
+    Path sibling = jobDir.getParent().resolve("structures");
+    if (Files.exists(sibling.resolve(source))) {
+      return new StructuresResolution(sibling, false, List.of(sibling));
+    }
+    Path fallbackFile = configDir.resolve(source);
+    if (Files.exists(fallbackFile)) {
+      log.warn(
+          "Structure file {} not found in inferred dir {}; using {} instead."
+              + " Set structures_path to choose explicitly.",
+          fallbackFile,
+          sibling,
+          configDir);
+      return new StructuresResolution(configDir, true, List.of(sibling, configDir));
+    }
+    throw new SchemaParseException(
+        "data structure file not found: "
+            + source
+            + " (tried "
+            + sibling.resolve(source)
+            + " and "
+            + fallbackFile
+            + ")");
   }
 }
