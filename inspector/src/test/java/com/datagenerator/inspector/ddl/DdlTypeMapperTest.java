@@ -454,7 +454,11 @@ class DdlTypeMapperTest {
         Arguments.of("ENUM", List.of("'a]b'", "'cc'"), "char[1..3]"),
         Arguments.of("ENUM", List.of("''", "'zz'"), "char[1..2]"),
         Arguments.of("ENUM", List.of("'x'", "'long,member'"), "char[1..11]"),
-        Arguments.of("SET", List.of("'a,b'", "'c'"), "char[1..3]"));
+        Arguments.of("SET", List.of("'a,b'", "'c'"), "char[1..3]"),
+        // leading/trailing whitespace is lost by TypeParser.parseEnum's trim
+        Arguments.of("ENUM", List.of("' a'", "'b '"), "char[1..2]"),
+        Arguments.of("ENUM", List.of("'ab '", "'c'"), "char[1..3]"),
+        Arguments.of("SET", List.of("' a'", "'bcd'"), "char[1..3]"));
   }
 
   @ParameterizedTest
@@ -485,5 +489,24 @@ class DdlTypeMapperTest {
     List<String> argList = args == null ? List.of() : List.of(args);
 
     assertThat(mapper.map("n", type, argList).datatype()).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> doubleQuotedEnums() {
+    return Stream.of(
+        Arguments.of(List.of("\"a\"", "\"b\""), List.of("a", "b")),
+        Arguments.of(List.of("\"it\"\"s\"", "\"x\""), List.of("it\"s", "x")),
+        Arguments.of(List.of("\"it's\"", "'y'"), List.of("it's", "y")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("doubleQuotedEnums")
+  void shouldUnquoteDoubleQuotedMysqlEnumMembers(List<String> literals, List<String> members) {
+    MappedType mt = mapper.map("kind_col", "ENUM", literals);
+
+    assertThat(mt.datatype()).isEqualTo("enum[" + String.join(",", members) + "]");
+    assertThat(mt.flagged()).isFalse();
+    assertThat(assertEngineLoadable(mt.datatype()))
+        .isInstanceOfSatisfying(
+            EnumType.class, e -> assertThat(e.getValues()).containsExactlyElementsOf(members));
   }
 }
