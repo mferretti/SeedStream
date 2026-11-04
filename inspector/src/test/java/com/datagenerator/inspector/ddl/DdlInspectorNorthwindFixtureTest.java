@@ -17,6 +17,7 @@
 package com.datagenerator.inspector.ddl;
 
 import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
+import static com.datagenerator.inspector.ddl.DdlTestSupport.assertNoIdentityMarker;
 import static com.datagenerator.inspector.ddl.DdlTestSupport.loadAll;
 import static com.datagenerator.inspector.ddl.DdlTestSupport.refTarget;
 import static org.assertj.core.api.Assertions.*;
@@ -55,7 +56,7 @@ class DdlInspectorNorthwindFixtureTest {
   @ParameterizedTest(name = "{0}.{1}")
   @MethodSource("identityPks")
   void shouldNotEmitIdentityPkAsPlainUnwarnedSerial(String table, String pk) {
-    Inspection in = new DdlInspector().inspect(SQLSERVER, NestingOptions.none(), true);
+    Inspection in = inspectFixture();
 
     String label = table + "." + pk;
     Map<String, String> fields = datatypesOf(in, table);
@@ -74,8 +75,16 @@ class DdlInspectorNorthwindFixtureTest {
   }
 
   @Test
+  void shouldNotLeakIdentityMarkerForSqlServerFixture() {
+    // guard, passes today
+    assertNoIdentityMarker(new DdlInspector().inspect(SQLSERVER, NestingOptions.none(), true));
+    assertNoIdentityMarker(
+        new DdlInspector().inspect(SQLSERVER, NestingOptions.parse("auto", null), true));
+  }
+
+  @Test
   void shouldKeepIdentityPkThatOtherTablesReferenceAsSerialWithWarning() {
-    Inspection in = new DdlInspector().inspect(SQLSERVER, NestingOptions.none(), true);
+    Inspection in = inspectFixture();
 
     // Orders.EmployeeID -> Employees.EmployeeID, so Employees.EmployeeID must stay for the ref.
     assertThat(datatypesOf(in, "employees")).containsKey("EmployeeID");
@@ -92,7 +101,7 @@ class DdlInspectorNorthwindFixtureTest {
 
   @Test
   void shouldEmitOnlyLoadableRefsAndKeepDeclaredFieldKeys(@TempDir Path dir) {
-    Inspection in = new DdlInspector().inspect(SQLSERVER, NestingOptions.none(), true);
+    Inspection in = inspectFixture();
 
     Map<String, DataStructure> loaded = loadAll(in, dir);
 
@@ -109,5 +118,11 @@ class DdlInspectorNorthwindFixtureTest {
     assertThat(loaded.get("orders").getData()).containsKeys("OrderID", "CustomerID", "EmployeeID");
     assertThat(loaded.get("employees").getData().get("ReportsTo").getDatatype())
         .isEqualTo("ref[employees.employee_id, 1..count]");
+  }
+
+  private static Inspection inspectFixture() {
+    Inspection in = new DdlInspector().inspect(SQLSERVER, NestingOptions.none(), true);
+    assertNoIdentityMarker(in);
+    return in;
   }
 }

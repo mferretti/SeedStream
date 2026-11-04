@@ -17,6 +17,7 @@
 package com.datagenerator.inspector.ddl;
 
 import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
+import static com.datagenerator.inspector.ddl.DdlTestSupport.assertNoIdentityMarker;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.inspector.Inspection;
@@ -180,6 +181,7 @@ class DdlInspectorSqlServerIdentityTest {
                     "CREATE TABLE parent (id INT IDENTITY(1,1) PRIMARY KEY, name VARCHAR(5));"),
                 NestingOptions.parse("auto", null));
 
+    assertNoIdentityMarker(in);
     assertThat(datatypesOf(in, "parent")).doesNotContainKey("id").containsKey("name");
   }
 
@@ -296,6 +298,8 @@ class DdlInspectorSqlServerIdentityTest {
   }
 
   private Inspection inspect(Path dir, String ddl) throws IOException {
-    return new DdlInspector().inspect(write(dir, ddl));
+    Inspection in = new DdlInspector().inspect(write(dir, ddl));
+    assertNoIdentityMarker(in);
+    return in;
   }
 }

@@ -16,13 +16,18 @@
 
 package com.datagenerator.inspector.ddl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.StructureYamlWriter;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.parser.DataStructureParser;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,6 +55,38 @@ final class DdlTestSupport {
       loaded.put(parsed.getName(), parsed);
     }
     return loaded;
+  }
+
+  /**
+   * The preprocessor's internal IDENTITY marker token must never surface in anything the inspector
+   * returns: structure names, field keys, datatypes, review comments or warnings.
+   */
+  static void assertNoIdentityMarker(Inspection inspection) {
+    List<String> everything = new ArrayList<>();
+    for (DataStructure s : inspection.structures()) {
+      everything.add(s.getName());
+      s.getData()
+          .forEach(
+              (field, def) -> {
+                everything.add(field);
+                everything.add(def.getDatatype());
+              });
+    }
+    inspection
+        .comments()
+        .forEach(
+            (structure, byField) -> {
+              everything.add(structure);
+              byField.forEach(
+                  (field, comment) -> {
+                    everything.add(field);
+                    everything.add(comment);
+                  });
+            });
+    everything.addAll(inspection.warnings());
+    assertThat(everything)
+        .as("internal identity marker leaked into the inspection result")
+        .noneMatch(v -> v != null && v.toUpperCase(Locale.ROOT).contains("SEEDSTREAM_IDENTITY"));
   }
 
   /** {@code ref[orders.order_id, 1..count, unique]} to {@code orders.order_id}, else null. */
