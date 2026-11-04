@@ -89,7 +89,35 @@ class JobPathsTest {
 
     assertThat(r.structuresPath()).isEqualTo(base.resolve(STRUCTURES));
     assertThat(r.fellBack()).isFalse();
-    assertThat(warnCount()).isZero();
+    assertSingleWarnNamesBoth(
+        base.resolve(STRUCTURES).resolve(X_YAML),
+        base.resolve("config/structures").resolve(X_YAML));
+  }
+
+  @Test
+  void shouldWarnAndUseSiblingWhenCurrentDirIsNamedJobsAndBothLayoutsHoldTheFile()
+      throws IOException {
+    Path cwd = base.resolve("jobs");
+    touch(base.resolve(STRUCTURES).resolve(X_YAML));
+    touch(cwd.resolve("config/structures").resolve(X_YAML));
+
+    StructuresResolution r = resolve(X_YAML, null, cwd);
+
+    assertThat(r.structuresPath()).isEqualTo(base.resolve(STRUCTURES));
+    assertThat(r.fellBack()).isFalse();
+    assertSingleWarnNamesBoth(
+        base.resolve(STRUCTURES).resolve(X_YAML), cwd.resolve("config/structures").resolve(X_YAML));
+  }
+
+  private void assertSingleWarnNamesBoth(Path siblingFile, Path configFile) {
+    assertThat(appender.list)
+        .filteredOn(e -> e.getLevel() == Level.WARN)
+        .singleElement()
+        .satisfies(
+            e ->
+                assertThat(e.getFormattedMessage())
+                    .contains(siblingFile.toString())
+                    .contains(configFile.toString()));
   }
 
   @Test
