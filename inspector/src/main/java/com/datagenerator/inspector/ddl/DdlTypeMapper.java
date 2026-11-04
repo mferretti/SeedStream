@@ -248,17 +248,9 @@ public final class DdlTypeMapper {
     if (args == null || args.isEmpty()) {
       return MappedType.unknownType(Defaults.STRING);
     }
-    List<String> members =
-        args.stream()
-            .map(String::trim)
-            .map(
-                a ->
-                    a.length() >= 2 && a.startsWith("'") && a.endsWith("'")
-                        ? a.substring(1, a.length() - 1)
-                        : a)
-            .map(a -> a.replace("''", "'"))
-            .toList();
-    if (members.stream().anyMatch(m -> m.isEmpty() || m.contains(",") || m.contains("]"))) {
+    List<String> members = args.stream().map(DdlTypeMapper::unquoteLiteral).toList();
+    if (members.stream()
+        .anyMatch(m -> m.isEmpty() || !m.equals(m.strip()) || m.contains(",") || m.contains("]"))) {
       int longest = members.stream().mapToInt(String::length).max().orElse(1);
       return MappedType.review(
           "char[1.." + Math.max(longest, 1) + "]",
@@ -269,6 +261,21 @@ public final class DdlTypeMapper {
         ? MappedType.review(
             datatype, "SET holds several members per row; one member generated — verify")
         : MappedType.declared(datatype);
+  }
+
+  /**
+   * A SQL string literal's value: {@code 'it''s'} and {@code "it""s"} lose their quotes and
+   * doubling.
+   */
+  private static String unquoteLiteral(String literal) {
+    String a = literal.trim();
+    if (a.length() >= 2
+        && (a.charAt(0) == '\'' || a.charAt(0) == '"')
+        && a.endsWith(a.substring(0, 1))) {
+      String quote = a.substring(0, 1);
+      return a.substring(1, a.length() - 1).replace(quote + quote, quote);
+    }
+    return a;
   }
 
   /**
