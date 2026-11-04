@@ -65,11 +65,12 @@ class ExecuteStructuresPathInferenceTest {
   @Test
   void shouldFindSiblingStructuresWhenJobPathIsRelativeToCwd() throws IOException {
     Path cwd = Path.of("").toAbsolutePath();
-    String id = "wp5-" + UUID.randomUUID();
-    String structure = id + "-struct.yaml";
+    String id = "wp5_" + UUID.randomUUID().toString().replace('-', '_');
+    String structureName = id + "_struct";
+    String structure = structureName + ".yaml";
     write(
         cwd.resolve("structures").resolve(structure),
-        "name: wp5\ndata:\n  id:\n    datatype: \"int[1..9]\"\n");
+        "name: " + structureName + "\ndata:\n  id:\n    datatype: \"int[1..9]\"\n");
     write(
         cwd.resolve("jobs").resolve(id + ".yaml"),
         """
@@ -86,7 +87,7 @@ class ExecuteStructuresPathInferenceTest {
     Result r = CliTestSupport.run("execute", "--job", "jobs/" + id + ".yaml", "--count", "3");
 
     assertThat(r.err()).doesNotContain("data structure file not found");
-    assertThat(r.exit()).isZero();
+    assertThat(r.exit()).as(r.err()).isZero();
     assertThat(Files.readAllLines(outDir.resolve("output.json"))).hasSize(3);
     // the resolved structures dir is logged at INFO exactly once
     String resolved = cwd.resolve("structures").toString();
