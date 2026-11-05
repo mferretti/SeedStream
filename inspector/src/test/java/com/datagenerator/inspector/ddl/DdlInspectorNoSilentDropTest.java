@@ -139,6 +139,44 @@ class DdlInspectorNoSilentDropTest {
         "copy_b");
   }
 
+  // ---- body-less CREATE kinds / GRANT (#443 re-review) ----
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"CREATE INDEX i ON base(id)", "CREATE VIEW v AS SELECT 1", "CREATE SEQUENCE s"})
+  void shouldNotSilentlyDropTableFollowingUnterminatedBodylessCreate(
+      String precedingStatement, @TempDir Path dir) throws IOException {
+    assertNotSilent(
+        dir, BASE + precedingStatement + "\nCREATE TABLE after_tbl (id INT)\nGO\n", "after_tbl");
+  }
+
+  @Test
+  void shouldNotSilentlyDropTableInsideCreateSchema(@TempDir Path dir) throws IOException {
+    assertNotSilent(
+        dir,
+        BASE + "CREATE SCHEMA s AUTHORIZATION dbo CREATE TABLE sch_tbl (id INT);\n",
+        "sch_tbl");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "CREATE FUNCTION f() RETURNS void AS $$\nBEGIN\n  CREATE TABLE body_tbl (y INT);\nEND\n$$"
+            + " LANGUAGE plpgsql;",
+        "CREATE PROCEDURE p AS BEGIN CREATE TABLE #body_tbl (x INT) END;"
+      })
+  void shouldSkipSilentlyRoutineBodyContainingCreateTable(String routine, @TempDir Path dir)
+      throws IOException {
+    assertSkippedSilently(dir, BASE + routine + "\n");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"GRANT CREATE TABLE TO bob;", "REVOKE CREATE TABLE FROM bob;"})
+  void shouldSkipSilentlyGrantAndRevokeOfCreateTable(String statement, @TempDir Path dir)
+      throws IOException {
+    assertSkippedSilently(dir, BASE + statement + "\n");
+  }
+
   // ---- helpers ----
 
   /**
@@ -148,6 +186,14 @@ class DdlInspectorNoSilentDropTest {
     Inspection inspection = strict(dir, BASE + ddl);
 
     assertThat(names(inspection)).as("tables of: %s", ddl).hasSize(2).contains("base");
+  }
+
+  /** Strict inspection yields only {@code base} and no warning: the extra statement is ignored. */
+  private static void assertSkippedSilently(Path dir, String ddl) throws IOException {
+    Inspection inspection = strict(dir, ddl);
+
+    assertThat(names(inspection)).as("tables of: %s", ddl).containsExactly("base");
+    assertThat(inspection.warnings()).as("warnings of: %s", ddl).isEmpty();
   }
 
   /** Table {@code key} is a structure, named in a warning, or named in a strict-mode failure. */
