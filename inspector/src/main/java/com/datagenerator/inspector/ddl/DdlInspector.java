@@ -69,15 +69,17 @@ public class DdlInspector {
   private static final Pattern CREATE_TABLE_QUICK =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
   private static final String DIRECTIVES = "(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*";
-  // Statements that start with CREATE <something other than a table> (e.g. a function whose body
-  // happens to mention CREATE TABLE outside any quotes).
+  // Statements whose body may legitimately mention CREATE TABLE (routines, packages, events) or
+  // that
+  // merely name the privilege (GRANT CREATE TABLE ...). Body-less kinds (INDEX, VIEW, ...) are not
+  // listed: they never contain CREATE ... TABLE, and an unterminated one must not swallow a table.
   private static final Pattern NON_TABLE_CREATE =
       Pattern.compile(
           "(?is)\\A\\s*"
               + DIRECTIVES
-              + "CREATE\\s+(?:OR\\s+REPLACE\\s+)?(?:(?:UNIQUE|MATERIALIZED|DEFINER\\s*=\\s*\\S+)\\s+)*"
-              + "(?:FUNCTION|PROCEDURE|VIEW|INDEX|TRIGGER|SEQUENCE|TYPE|SCHEMA|EXTENSION|DOMAIN|"
-              + "PACKAGE|DATABASE|ROLE|USER|RULE|OPERATOR|AGGREGATE|COLLATION|EVENT|SYNONYM)\\b");
+              + "(?:(?:GRANT|REVOKE|DENY)\\b|CREATE\\s+(?:OR\\s+REPLACE\\s+)?"
+              + "(?:(?:DEFINER\\s*=\\s*\\S+|EDITIONABLE|NONEDITIONABLE)\\s+)*"
+              + "(?:FUNCTION|PROCEDURE|TRIGGER|PACKAGE|EVENT)\\b)");
   // CREATE TABLE <name> followed by AS / PARTITION OF / LIKE / (LIKE ...): no column list to model.
   private static final String IDENT_PART =
       "(?:\"[^\"]*\"|`[^`]*`|\\[[^\\]]*\\]|[\\p{L}\\p{N}_$#@]+)";
@@ -223,8 +225,11 @@ public class DdlInspector {
         // Parsed as a table but carries no modellable columns (e.g. CREATE TABLE ... AS SELECT).
         recordFailure(failures, warnings, raw, bestEffort);
       }
+    } else {
+      // Mentions CREATE TABLE yet parsed as something else (e.g. CREATE SCHEMA ... CREATE TABLE):
+      // the table would be lost, so fail loudly rather than skip.
+      recordFailure(failures, warnings, raw, bestEffort);
     }
-    // Parsed to a non-CreateTable statement (index/view/etc.) — skip silently.
   }
 
   /** Flat (non-nested) projection: one structure per table, FK columns as {@code ref[]}. */
