@@ -19,4 +19,4 @@ data:
   reorder_level:
     datatype: "int[1..32767]"
   discontinued:
-    datatype: "int[0..1]"  # realism (optional): Northwind-like range
+    datatype: "boolean"

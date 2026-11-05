@@ -7,7 +7,6 @@ SELECT 'categories' AS table_name, count(*) FROM categories
 UNION ALL SELECT 'region', count(*) FROM region
 UNION ALL SELECT 'shippers', count(*) FROM shippers
 UNION ALL SELECT 'suppliers', count(*) FROM suppliers
-UNION ALL SELECT 'us_states', count(*) FROM us_states
 UNION ALL SELECT 'customer_demographics', count(*) FROM customer_demographics
 UNION ALL SELECT 'employees', count(*) FROM employees
 UNION ALL SELECT 'territories', count(*) FROM territories

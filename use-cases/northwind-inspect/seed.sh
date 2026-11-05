@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Northwind at scale: seed all 14 tables, parents first, from the inspected structures.
+# Northwind at scale: seed all 13 tables, parents first, from the inspected structures.
 #
 #   ./seed.sh db     # PostgreSQL (schema.sql + scale.sql loaded first, DB_PASSWORD exported)
 #   ./seed.sh file   # JSON files under ./output/  (add --format csv via SEEDSTREAM_ARGS)
@@ -35,7 +35,6 @@ seed categories 8
 seed region 4
 seed shippers 6
 seed suppliers 29
-seed us_states 51
 seed customer_demographics 10
 seed employees 9
 seed territories 53

@@ -9,4 +9,4 @@ data:
   quantity:
     datatype: "int[1..120]"  # realism (optional): Northwind-like range
   discount:
-    datatype: "decimal[0.00..0.25]"  # realism (optional): Northwind-like range
+    datatype: "decimal[0.00..0.25]"  # hand edit (#449): CHECK (discount >= 0 AND discount <= 1)

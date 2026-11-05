@@ -12,7 +12,7 @@ data:
   title_of_courtesy:
     datatype: "char[1..25]"
   birth_date:
-    datatype: "date[1950-01-01..1990-12-31]"  # realism (optional): Northwind-like range
+    datatype: "date[1950-01-01..1990-12-31]"  # hand edit (#449): CHECK (birth_date < CURRENT_DATE)
   hire_date:
     datatype: "date[1992-01-01..2024-12-31]"  # realism (optional): Northwind-like range
   address:
