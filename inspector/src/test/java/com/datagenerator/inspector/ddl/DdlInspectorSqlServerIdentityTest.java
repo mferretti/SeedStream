@@ -122,6 +122,33 @@ class DdlInspectorSqlServerIdentityTest {
             );
             """,
             "id",
+            true),
+        Arguments.of(
+            "IDENTITY after PRIMARY KEY",
+            "CREATE TABLE parent (id INT PRIMARY KEY IDENTITY(1,1), name VARCHAR(50));",
+            "id",
+            true),
+        Arguments.of(
+            "bare IDENTITY after NOT NULL PRIMARY KEY",
+            "CREATE TABLE parent (id INT NOT NULL PRIMARY KEY IDENTITY, name VARCHAR(50));",
+            "id",
+            true),
+        Arguments.of(
+            "IDENTITY after UNIQUE, non-pk",
+            "CREATE TABLE parent (code VARCHAR(10) PRIMARY KEY, id INT UNIQUE IDENTITY(1,1),"
+                + " name VARCHAR(50));",
+            "id",
+            false),
+        Arguments.of(
+            "IDENTITY after DEFAULT ((0))",
+            "CREATE TABLE parent (id INT NOT NULL DEFAULT ((0)) IDENTITY(1,1), name VARCHAR(50),"
+                + " PRIMARY KEY (id));",
+            "id",
+            true),
+        Arguments.of(
+            "IDENTITY after PRIMARY KEY CLUSTERED",
+            "CREATE TABLE parent (id INT PRIMARY KEY CLUSTERED IDENTITY(1,1), name VARCHAR(50));",
+            "id",
             true));
   }
 
@@ -275,6 +302,20 @@ class DdlInspectorSqlServerIdentityTest {
 
     assertThat(datatypesOf(in, "t")).containsKeys("code", "n");
     assertThat(in.warnings()).noneMatch(w -> w.contains("omitted"));
+  }
+
+  @Test
+  void shouldNotTreatMysqlKeyNamedIdentityAsIdentity(@TempDir Path dir) throws IOException {
+    // guard, passes today: "KEY identity (col)" is an index definition, not a column property
+    Inspection indexed =
+        inspect(dir, "CREATE TABLE t (id INT PRIMARY KEY, col INT, KEY identity (col));");
+    Inspection control =
+        inspect(dir, "CREATE TABLE t (id INT PRIMARY KEY, col INT, KEY idx_col (col));");
+
+    assertThat(datatypesOf(indexed, "t")).isEqualTo(datatypesOf(control, "t"));
+    assertThat(datatypesOf(indexed, "t")).containsEntry("id", "serial").containsKey("col");
+    assertThat(indexed.warnings()).isEqualTo(control.warnings());
+    assertThat(indexed.warnings()).noneMatch(w -> w.contains("IDENTITY"));
   }
 
   // --- regression: GENERATED ALWAYS behaviour (#215) unchanged, incl. non-PK ---
