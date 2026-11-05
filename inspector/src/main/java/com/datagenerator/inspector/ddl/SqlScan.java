@@ -85,8 +85,9 @@ final class SqlScan {
 
   /**
    * Returns {@code s} with comments removed and single-quoted strings and dollar-quoted bodies
-   * replaced by {@code ''}, so keyword checks cannot be fooled by text inside them. Identifier
-   * quotes are left alone.
+   * replaced by {@code ''}, so keyword checks cannot be fooled by text inside them. Quoted
+   * identifiers are copied verbatim (a {@code --} or {@code '} inside one is not a
+   * comment/literal).
    */
   static String stripCommentsAndLiterals(String s) {
     StringBuilder out = new StringBuilder(s.length());
@@ -101,6 +102,10 @@ final class SqlScan {
       } else if (c == '\'') {
         i = skipSingleQuoted(s, i);
         out.append("''");
+      } else if (c == '"' || c == '`' || c == '[') {
+        int end = skipDelimited(s, i, c == '[' ? ']' : c); // identifiers: copied verbatim
+        out.append(s, i, Math.min(end, s.length()));
+        i = end;
       } else if (c == '$' && skipDollarQuoted(s, i) > i) {
         i = skipDollarQuoted(s, i);
         out.append("''");

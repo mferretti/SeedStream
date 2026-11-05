@@ -63,19 +63,35 @@ public class DdlInspector {
       Pattern.compile("(?i)REFERENCES\\s+([\\w.\"`]+)(?:\\s*\\(\\s*([\\w\"`]+)\\s*\\))?");
   private static final Pattern SORT_DIRECTION = Pattern.compile("(?i)\\s+(ASC|DESC)$");
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
-  // A modellable-looking CREATE TABLE head, checked on comment/literal-stripped text anchored at
-  // the
-  // statement start (after optional leading SET/USE/... directive lines). Group "name" = table
-  // name.
-  private static final String IDENT =
-      "(?:\"[^\"]*\"|`[^`]*`|\\[[^\\]]*\\]|[\\w$#@]+)(?:\\.(?:\"[^\"]*\"|`[^`]*`|\\[[^\\]]*\\]|[\\w$#@]+))*";
-  private static final Pattern CREATE_TABLE_HEAD =
+  // Loose "mentions CREATE ... TABLE" check, run on comment/literal-stripped text. Anything that
+  // matches and is not a known non-table CREATE goes to the parser, so a real table is modelled or
+  // fails loudly — never silently dropped.
+  private static final Pattern CREATE_TABLE_QUICK =
+      Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
+  private static final String DIRECTIVES = "(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*";
+  // Statements that start with CREATE <something other than a table> (e.g. a function whose body
+  // happens to mention CREATE TABLE outside any quotes).
+  private static final Pattern NON_TABLE_CREATE =
       Pattern.compile(
-          "(?is)\\A\\s*(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*CREATE\\s+(?:OR\\s+REPLACE\\s+)?"
-              + "(?:(?:GLOBAL|LOCAL)\\s+)?(?:(?:TEMP|TEMPORARY|UNLOGGED)\\s+)?TABLE\\s+"
-              + "(?:IF\\s+NOT\\s+EXISTS\\s+)?(?<name>"
-              + IDENT
-              + ")(?<noColumns>\\s+(?:AS|PARTITION\\s+OF|LIKE)\\b)?");
+          "(?is)\\A\\s*"
+              + DIRECTIVES
+              + "CREATE\\s+(?:OR\\s+REPLACE\\s+)?(?:(?:UNIQUE|MATERIALIZED|DEFINER\\s*=\\s*\\S+)\\s+)*"
+              + "(?:FUNCTION|PROCEDURE|VIEW|INDEX|TRIGGER|SEQUENCE|TYPE|SCHEMA|EXTENSION|DOMAIN|"
+              + "PACKAGE|DATABASE|ROLE|USER|RULE|OPERATOR|AGGREGATE|COLLATION|EVENT|SYNONYM)\\b");
+  // CREATE TABLE <name> followed by AS / PARTITION OF / LIKE / (LIKE ...): no column list to model.
+  private static final String IDENT_PART =
+      "(?:\"[^\"]*\"|`[^`]*`|\\[[^\\]]*\\]|[\\p{L}\\p{N}_$#@]+)";
+  private static final Pattern NO_COLUMN_LIST =
+      Pattern.compile(
+          "(?is)\\A\\s*"
+              + DIRECTIVES
+              + "CREATE\\s+(?:OR\\s+REPLACE\\s+)?(?:(?:GLOBAL|LOCAL)\\s+)?"
+              + "(?:(?:TEMP|TEMPORARY|UNLOGGED)\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?"
+              + "(?<name>"
+              + IDENT_PART
+              + "(?:\\."
+              + IDENT_PART
+              + ")*)(?:\\s+(?:AS|PARTITION\\s+OF|LIKE)\\b|\\s*\\(\\s*LIKE\\b)");
 
   private static final Set<String> SERIAL_TYPES =
       Set.of("SERIAL", "BIGSERIAL", "SMALLSERIAL", "SERIAL4", "SERIAL8");
@@ -178,12 +194,13 @@ public class DdlInspector {
       List<String> warnings,
       List<String> failures,
       boolean bestEffort) {
-    Matcher head = CREATE_TABLE_HEAD.matcher(SqlScan.stripCommentsAndLiterals(raw));
-    if (!head.find()) {
+    String code = SqlScan.stripCommentsAndLiterals(raw);
+    if (!CREATE_TABLE_QUICK.matcher(code).find() || NON_TABLE_CREATE.matcher(code).find()) {
       return; // not a CREATE TABLE (index, view, function, directive, ...) — skip silently
     }
-    if (head.group("noColumns") != null) {
-      String name = head.group("name");
+    Matcher noColumns = NO_COLUMN_LIST.matcher(code);
+    if (noColumns.find()) {
+      String name = noColumns.group("name");
       warnings.add(
           "table '"
               + Names.toSnakeCase(unquote(name.substring(name.lastIndexOf('.') + 1)))

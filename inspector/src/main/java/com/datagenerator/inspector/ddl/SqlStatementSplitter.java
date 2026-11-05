@@ -60,7 +60,7 @@ public class SqlStatementSplitter {
     if (sql == null || sql.isBlank()) {
       return List.of();
     }
-    return new Scanner(sql).scan();
+    return new Scanner(sql.startsWith("\uFEFF") ? sql.substring(1) : sql).scan();
   }
 
   /**
