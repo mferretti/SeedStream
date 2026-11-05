@@ -1037,7 +1037,9 @@ class ExecuteCommandTest {
     // config/structures/simple.yaml not present in CWD
     assertThat(r.exit()).isEqualTo(1);
     assertThat(r.err())
-        .contains("data structure file not found: " + Path.of("config/structures/simple.yaml"));
+        .contains(
+            "data structure file not found: "
+                + Path.of("").toAbsolutePath().resolve("config/structures/simple.yaml"));
   }
 
   // ── Serializer formats ────────────────────────────────────────────────────────
