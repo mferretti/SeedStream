@@ -80,7 +80,7 @@ public class DdlPreprocessor {
    */
   private static final Pattern IDENTITY =
       Pattern.compile(
-          "(?i)IDENTITY(?:\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\))?(?:\\s+NOT\\s+FOR\\s+REPLICATION)?"
+          "(?i)IDENTITY(?:\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)|(?!\\s*\\())(?:\\s+NOT\\s+FOR\\s+REPLICATION)?"
               + "(?![\\w$#@])");
 
   /** Quick check: does this statement contain CREATE TABLE? */
@@ -163,6 +163,7 @@ public class DdlPreprocessor {
     int len = s.length();
     int depth = 0;
     String prev = ""; // previous significant token, lower-case; comments do not count
+    String prev2 = ""; // the one before it
     int i = 0;
     while (i < len) {
       char c = s.charAt(i);
@@ -170,6 +171,7 @@ public class DdlPreprocessor {
       if (end > i) {
         sb.append(s, i, end);
         if (!SqlScan.isLineCommentStart(s, i) && !SqlScan.isBlockCommentStart(s, i)) {
+          prev2 = prev;
           prev = "\"";
         }
         i = end;
@@ -181,19 +183,22 @@ public class DdlPreprocessor {
         String word = s.substring(i, j);
         if (depth == 1
             && word.equalsIgnoreCase("IDENTITY")
-            && !NOT_AFTER_PROPERTY.contains(prev)
+            && (!NOT_AFTER_PROPERTY.contains(prev) || isKeyOfPrimaryOrUnique(prev, prev2))
             && m.region(i, len).lookingAt()) {
           sb.append(' ').append(IDENTITY_MARKER).append(' ');
+          prev2 = prev;
           prev = IDENTITY_MARKER;
           i = m.end();
         } else {
           sb.append(word);
+          prev2 = prev;
           prev = word.toLowerCase(Locale.ROOT);
           i = j;
         }
       } else {
         depth += c == '(' ? 1 : c == ')' ? -1 : 0;
         if (!Character.isWhitespace(c)) {
+          prev2 = prev;
           prev = String.valueOf(c);
         }
         sb.append(c);
@@ -201,6 +206,13 @@ public class DdlPreprocessor {
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * {@code PRIMARY KEY} / {@code UNIQUE KEY} before the property; a bare {@code KEY} is an index.
+   */
+  private static boolean isKeyOfPrimaryOrUnique(String prev, String prev2) {
+    return prev.equals("key") && (prev2.equals("primary") || prev2.equals("unique"));
   }
 
   private static boolean isWordChar(char c) {
