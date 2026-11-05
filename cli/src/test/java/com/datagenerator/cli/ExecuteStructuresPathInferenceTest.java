@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class ExecuteStructuresPathInferenceTest {
   }
 
   private Path write(Path file, String content) throws IOException {
-    Path parent = file.getParent();
+    Path parent = Objects.requireNonNull(file.getParent());
     List<Path> toCreate = new ArrayList<>();
     for (Path d = parent; d != null && !Files.exists(d); d = d.getParent()) {
       toCreate.addFirst(d);
@@ -73,15 +74,7 @@ class ExecuteStructuresPathInferenceTest {
         "name: " + structureName + "\ndata:\n  id:\n    datatype: \"int[1..9]\"\n");
     write(
         cwd.resolve("jobs").resolve(id + ".yaml"),
-        """
-        source: %s
-        type: file
-        seed:
-          type: embedded
-          value: 42
-        conf:
-          path: %s/output
-        """
+        "source: %s%ntype: file%nseed:%n  type: embedded%n  value: 42%nconf:%n  path: %s/output%n"
             .formatted(structure, outDir.toAbsolutePath()));
 
     Result r = CliTestSupport.run("execute", "--job", "jobs/" + id + ".yaml", "--count", "3");

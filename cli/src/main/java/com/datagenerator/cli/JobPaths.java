@@ -58,10 +58,11 @@ final class JobPaths {
     }
     Path configDir = cwd.resolve(CONFIG_STRUCTURES);
     Path jobDir = cwd.resolve(jobFile).normalize().getParent();
-    if (jobDir == null || !JOBS_DIR.equals(jobDir.getFileName())) {
+    Path jobsParent = jobDir == null ? null : jobDir.getParent();
+    if (jobsParent == null || !JOBS_DIR.equals(jobDir.getFileName())) {
       return new StructuresResolution(configDir, false, List.of());
     }
-    Path sibling = jobDir.getParent().resolve("structures");
+    Path sibling = jobsParent.resolve("structures");
     Path siblingFile = sibling.resolve(source);
     Path fallbackFile = configDir.resolve(source);
     if (Files.exists(siblingFile)) {

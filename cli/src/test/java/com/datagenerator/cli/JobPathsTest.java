@@ -27,6 +27,7 @@ import com.datagenerator.cli.JobPaths.StructuresResolution;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,7 +57,7 @@ class JobPathsTest {
   }
 
   private Path touch(Path file) throws IOException {
-    Files.createDirectories(file.getParent());
+    Files.createDirectories(Objects.requireNonNull(file.getParent()));
     return Files.writeString(file, "name: x\ndata: {}\n");
   }
 

@@ -180,9 +180,9 @@ class OpenApiInspectorStringLengthTest {
             Account:
               type: object
               properties:
-                brokenField: %s
+                brokenField: BROKEN_FIELD_SCHEMA
         """
-        .formatted(brokenFieldSchema);
+        .replace("BROKEN_FIELD_SCHEMA", brokenFieldSchema);
   }
 
   private Inspection inspect(Path dir, String spec) throws IOException {
