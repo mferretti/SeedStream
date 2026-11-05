@@ -88,6 +88,9 @@ public class OpenApiInspector {
       if (mapped.flagged()) {
         fieldComments.put(fieldName, mapped.comment());
       }
+      if (mapped.reason() == MappedType.Reason.SCHEMA_ERROR) {
+        warnings.add("schema '" + name + "' field '" + fieldName + "': " + mapped.comment());
+      }
       data.put(fieldName, new FieldDefinition(mapped.datatype(), null));
     }
     if (!fieldComments.isEmpty()) {
