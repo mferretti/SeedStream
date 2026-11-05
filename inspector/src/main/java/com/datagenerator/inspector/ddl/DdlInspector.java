@@ -396,7 +396,8 @@ public class DdlInspector {
         String kind = generatedAlways ? "GENERATED ALWAYS AS IDENTITY" : "IDENTITY";
         Set<String> refs = referenced.get(lower(table.name()) + "." + key);
         boolean omit = refs == null && !compositePk.contains(key);
-        warnings.add(dbAssignedWarning(table.name() + "." + column, kind, refs, omit));
+        boolean serial = "serial".equals(table.data().get(column).getDatatype());
+        warnings.add(dbAssignedWarning(table.name() + "." + column, kind, refs, omit, serial));
         if (omit) {
           table.data().remove(column);
           table.comments().remove(column);
@@ -405,7 +406,8 @@ public class DdlInspector {
     }
   }
 
-  private String dbAssignedWarning(String label, String kind, Set<String> refs, boolean omit) {
+  private String dbAssignedWarning(
+      String label, String kind, Set<String> refs, boolean omit, boolean serial) {
     if (omit) {
       return label
           + ": "
@@ -418,7 +420,7 @@ public class DdlInspector {
         + kind
         + (refs == null ? " in a composite key" : " but referenced by " + refs)
         + " — kept"
-        + (refs == null ? "" : " as serial")
+        + (serial ? " as serial" : "")
         + "; needs DB-assigned ordered generation (#400)";
   }
 

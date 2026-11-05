@@ -17,6 +17,7 @@
 package com.datagenerator.inspector.ddl;
 
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -131,48 +132,75 @@ public class DdlPreprocessor {
     return s;
   }
 
+  /** Previous-token values after which the word {@code IDENTITY} is a name, not the property. */
+  private static final Set<String> NOT_AFTER_PROPERTY =
+      Set.of(
+          "",
+          "(",
+          ",",
+          ".",
+          "table",
+          "constraint",
+          "references",
+          "on",
+          "key",
+          "index",
+          "to",
+          "exists",
+          "as",
+          "default");
+
   /**
    * Replaces each identity column property with {@link #IDENTITY_MARKER}, skipping string literals,
-   * quoted identifiers and comments. The word is not a property when part of a longer identifier
-   * ({@code IdentityNumber}), when it is itself a column name (right after {@code (} or {@code ,}),
-   * or when it is the ANSI {@code GENERATED ... AS IDENTITY}.
+   * quoted identifiers and comments. {@code IDENTITY} is the property only inside the column list
+   * and only after a column's type or other column spec; never after {@code TABLE}, {@code
+   * CONSTRAINT}, {@code REFERENCES}, {@code .}, {@code (}, {@code ,} (a table, constraint or column
+   * of that name) nor in ANSI {@code GENERATED ... AS IDENTITY}.
    */
   private static String markIdentity(String s) {
     StringBuilder sb = new StringBuilder(s.length());
     Matcher m = IDENTITY.matcher(s);
     int len = s.length();
+    int depth = 0;
+    String prev = ""; // previous significant token, lower-case; comments do not count
     int i = 0;
     while (i < len) {
+      char c = s.charAt(i);
       int end = Math.min(quotedOrCommentEnd(s, i), len);
       if (end > i) {
         sb.append(s, i, end);
+        if (!SqlScan.isLineCommentStart(s, i) && !SqlScan.isBlockCommentStart(s, i)) {
+          prev = "\"";
+        }
         i = end;
-      } else if (isIdentityProperty(s, i, m)) {
-        sb.append(' ').append(IDENTITY_MARKER).append(' ');
-        i = m.end();
+      } else if (isWordChar(c)) {
+        int j = i;
+        while (j < len && isWordChar(s.charAt(j))) {
+          j++;
+        }
+        String word = s.substring(i, j);
+        if (depth == 1
+            && word.equalsIgnoreCase("IDENTITY")
+            && !NOT_AFTER_PROPERTY.contains(prev)
+            && m.region(i, len).lookingAt()) {
+          sb.append(' ').append(IDENTITY_MARKER).append(' ');
+          prev = IDENTITY_MARKER;
+          i = m.end();
+        } else {
+          sb.append(word);
+          prev = word.toLowerCase(Locale.ROOT);
+          i = j;
+        }
       } else {
-        sb.append(s.charAt(i++));
+        depth += c == '(' ? 1 : c == ')' ? -1 : 0;
+        if (!Character.isWhitespace(c)) {
+          prev = String.valueOf(c);
+        }
+        sb.append(c);
+        i++;
       }
     }
     return sb.toString();
-  }
-
-  private static boolean isIdentityProperty(String s, int i, Matcher m) {
-    char c = s.charAt(i);
-    if ((c != 'I' && c != 'i') || (i > 0 && isWordChar(s.charAt(i - 1)))) {
-      return false;
-    }
-    int p = i - 1;
-    while (p >= 0 && Character.isWhitespace(s.charAt(p))) {
-      p--;
-    }
-    boolean afterAs =
-        p >= 1
-            && s.regionMatches(true, p - 1, "AS", 0, 2)
-            && (p < 2 || !isWordChar(s.charAt(p - 2)));
-    return (p < 0 || (s.charAt(p) != '(' && s.charAt(p) != ','))
-        && !afterAs
-        && m.region(i, s.length()).lookingAt();
   }
 
   private static boolean isWordChar(char c) {
