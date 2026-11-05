@@ -45,8 +45,9 @@ public record MappedType(String datatype, Reason reason, String note) {
     /** Source type not recognized; fell back to a primitive — flagged for review. */
     UNKNOWN_TYPE,
     /**
-     * Recognized, but lossy or approximate (DDL), or a declared constraint the preferred type cannot
-     * honour and a plain type was used instead (OpenAPI/JSON Schema) — flagged with a specific note.
+     * Recognized, but lossy or approximate (DDL), or a declared constraint the preferred type
+     * cannot honour and a plain type was used instead (OpenAPI/JSON Schema) — flagged with a
+     * specific note.
      */
     REVIEW,
     /** The source schema contradicts itself (e.g. minLength > maxLength) — flagged and warned. */
