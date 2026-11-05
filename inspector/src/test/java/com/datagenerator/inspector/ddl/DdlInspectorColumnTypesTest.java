@@ -17,12 +17,14 @@
 package com.datagenerator.inspector.ddl;
 
 import static com.datagenerator.inspector.InspectionTestSupport.datatypesOf;
+import static com.datagenerator.inspector.InspectionTestSupport.decimalScaleOf;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.inspector.Inspection;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -75,20 +77,21 @@ class DdlInspectorColumnTypesTest {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """;
 
-    Map<String, String> types = datatypesOf(inspect(dir, ddl), "all_types");
+    Map<String, String> types = new LinkedHashMap<>(datatypesOf(inspect(dir, ddl), "all_types"));
 
+    // NUMERIC(8,3): capacity above the default cap, so default bounds at the declared scale (#447)
+    assertThat(decimalScaleOf(types.remove("c_num"))).isEqualTo(3);
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
                 Map.entry("id", "serial"),
                 Map.entry("c_tiny", INT_TINYINT),
-                Map.entry("c_flag", INT_TINYINT),
+                Map.entry("c_flag", "boolean"), // MySQL's boolean convention (#448)
                 Map.entry("c_small", INT_SMALLINT),
                 Map.entry("c_medium", INT),
                 Map.entry("c_int", INT),
                 Map.entry("c_big", INT),
                 Map.entry("c_dec", DEC),
-                Map.entry("c_num", DEC),
                 Map.entry("c_float", DEC),
                 Map.entry("c_double", DEC),
                 Map.entry("c_char", "char[1..3]"),
@@ -112,17 +115,11 @@ class DdlInspectorColumnTypesTest {
   }
 
   @Test
-  void shouldMapMysqlEnumColumnToEnumOrFlaggedFallback(@TempDir Path dir) throws IOException {
+  void shouldMapMysqlEnumColumnToEnum(@TempDir Path dir) throws IOException {
     Inspection inspection = inspect(dir, "CREATE TABLE t (`status` ENUM('NEW','DONE'), n INT);");
 
-    // spec §6 Q2: an unrecognized type must fall back to char[1..50] with a review flag; a
-    // recognized ENUM would be enum[NEW,DONE]. Either is acceptable, silently mis-typing is not.
-    String datatype = datatypesOf(inspection, "t").get("status");
-    if (STR.equals(datatype)) {
-      assertThat(inspection.comments().get("t")).containsKey("status");
-    } else {
-      assertThat(datatype).isEqualTo("enum[NEW,DONE]");
-    }
+    assertThat(datatypesOf(inspection, "t")).containsEntry("status", "enum[NEW,DONE]");
+    assertThat(inspection.comments().getOrDefault("t", Map.of())).doesNotContainKey("status");
   }
 
   @Test
@@ -157,8 +154,10 @@ class DdlInspectorColumnTypesTest {
         );
         """;
 
-    Map<String, String> types = datatypesOf(inspect(dir, ddl), "all_types");
+    Map<String, String> types = new LinkedHashMap<>(datatypesOf(inspect(dir, ddl), "all_types"));
 
+    // DECIMAL(12,4): capacity above the default cap, so default bounds at the declared scale (#447)
+    assertThat(decimalScaleOf(types.remove("c_dec"))).isEqualTo(4);
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
@@ -168,7 +167,6 @@ class DdlInspectorColumnTypesTest {
                 Map.entry("c_int", INT),
                 Map.entry("c_big", INT),
                 Map.entry("c_int8", INT),
-                Map.entry("c_dec", DEC),
                 Map.entry("c_num", DEC),
                 Map.entry("c_real", DEC),
                 Map.entry("c_double", DEC),
@@ -215,9 +213,8 @@ class DdlInspectorColumnTypesTest {
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
-                // NUMBER(10) is a decimal in the spec's synonym table; so the PK is not integer
-                // and stays unenforced rather than serial
-                Map.entry("id", DEC),
+                // NUMBER(10) is scale 0, hence an integer, so the PK is enforced (#447)
+                Map.entry("id", "serial"),
                 Map.entry("c_num", DEC),
                 Map.entry("c_dec", DEC),
                 Map.entry("c_int", INT),
@@ -259,8 +256,10 @@ class DdlInspectorColumnTypesTest {
         );
         """;
 
-    Map<String, String> types = datatypesOf(inspect(dir, ddl), "all_types");
+    Map<String, String> types = new LinkedHashMap<>(datatypesOf(inspect(dir, ddl), "all_types"));
 
+    // NUMERIC(9,4): capacity above the default cap, so default bounds at the declared scale (#447)
+    assertThat(decimalScaleOf(types.remove("c_num"))).isEqualTo(4);
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
@@ -269,7 +268,6 @@ class DdlInspectorColumnTypesTest {
                 Map.entry("c_small", INT_SMALLINT),
                 Map.entry("c_big", INT),
                 Map.entry("c_dec", DEC),
-                Map.entry("c_num", DEC),
                 Map.entry("c_float", DEC),
                 Map.entry("c_real", DEC),
                 Map.entry("c_money", DEC),
@@ -338,7 +336,7 @@ class DdlInspectorColumnTypesTest {
         inspect(dir, "CREATE TABLE t (id NUMBER(10) GENERATED ALWAYS AS IDENTITY, n INT);");
 
     assertThat(datatypesOf(inspection, "t"))
-        .containsExactlyInAnyOrderEntriesOf(Map.of("id", DEC, "n", INT));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("id", INT, "n", INT));
   }
 
   @Test

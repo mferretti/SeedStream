@@ -57,7 +57,8 @@ import net.sf.jsqlparser.statement.create.table.Index;
  */
 public class DdlInspector {
 
-  private static final Pattern COMMA = Pattern.compile(",");
+  // A comma outside single quotes (an even number of quotes follows), so ENUM('a,b','c') is 2 args.
+  private static final Pattern TOP_LEVEL_COMMA = Pattern.compile(",(?=(?:[^']*'[^']*')*[^']*$)");
   // Inline "REFERENCES table(col)": group 1 = table, group 2 = referenced column (optional).
   private static final Pattern INLINE_REFERENCE =
       Pattern.compile("(?i)REFERENCES\\s+([\\w.\"`]+)(?:\\s*\\(\\s*([\\w\"`]+)\\s*\\))?");
@@ -577,7 +578,7 @@ public class DdlInspector {
       return "";
     }
     int paren = raw.indexOf('(');
-    return (paren >= 0 ? raw.substring(0, paren) : raw).trim();
+    return IDENT_QUOTES.matcher(paren >= 0 ? raw.substring(0, paren) : raw).replaceAll("").trim();
   }
 
   /** Type arguments, from the dedicated list when present, else parsed from the inline form. */
@@ -595,7 +596,7 @@ public class DdlInspector {
     if (open < 0 || close <= open) {
       return List.of();
     }
-    return Arrays.stream(COMMA.split(raw.substring(open + 1, close)))
+    return Arrays.stream(TOP_LEVEL_COMMA.split(raw.substring(open + 1, close)))
         .map(String::trim)
         .filter(s -> !s.isBlank())
         .toList();

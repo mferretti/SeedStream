@@ -73,6 +73,11 @@ public class DdlPreprocessor {
   private static final Pattern IDENTITY =
       Pattern.compile("(?i)\\bIDENTITY\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)");
 
+  /**
+   * MySQL column type {@code ENUM(} / {@code SET(}: the member list that follows may use {@code "}.
+   */
+  private static final Pattern ENUM_OR_SET_OPEN = Pattern.compile("(?i)\\b(?:ENUM|SET)\\s*\\(");
+
   /** Quick check: does this statement contain CREATE TABLE? */
   private static final Pattern CREATE_TABLE =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
@@ -113,6 +118,9 @@ public class DdlPreprocessor {
     // Oracle RAW(n) -> VARBINARY(n) (parseable, still an unknown type)
     s = ORACLE_RAW.matcher(s).replaceAll("VARBINARY$1");
 
+    // MySQL ENUM("a","b") -> ENUM('a','b'): JSQLParser rejects double-quoted members
+    s = singleQuoteEnumMembers(s);
+
     // Truncate trailing table options after the balanced closing paren of the column list
     s = truncateTrailingOptions(s);
 
@@ -120,6 +128,61 @@ public class DdlPreprocessor {
     s = CLUSTERED.matcher(s).replaceAll("");
 
     return s;
+  }
+
+  /**
+   * Rewrites double-quoted members inside {@code ENUM(...)} / {@code SET(...)} to single-quoted SQL
+   * literals ({@code "it""s"} → {@code 'it"s'}, a {@code '} inside becomes {@code ''}). Nothing
+   * outside those argument lists is touched, so double-quoted identifiers survive.
+   */
+  private static String singleQuoteEnumMembers(String s) {
+    Matcher open = ENUM_OR_SET_OPEN.matcher(s);
+    StringBuilder sb = new StringBuilder(s.length());
+    int pos = 0;
+    while (open.find(pos)) {
+      int i = open.end();
+      sb.append(s, pos, i);
+      while (i < s.length() && s.charAt(i) != ')') {
+        char c = s.charAt(i);
+        if (c == '\'') {
+          int end = SqlScan.skipSingleQuoted(s, i);
+          sb.append(s, i, end);
+          i = end;
+        } else if (c == '"') {
+          i = appendSingleQuoted(s, i, sb);
+        } else {
+          sb.append(c);
+          i++;
+        }
+      }
+      pos = i;
+    }
+    return sb.append(s, pos, s.length()).toString();
+  }
+
+  /**
+   * Appends the {@code "..."} literal opened at {@code i} as a {@code '...'} one; returns the index
+   * past it.
+   */
+  private static int appendSingleQuoted(String s, int i, StringBuilder sb) {
+    sb.append('\'');
+    int j = i + 1;
+    while (j < s.length()) {
+      char c = s.charAt(j);
+      if (c == '"') {
+        if (j + 1 < s.length() && s.charAt(j + 1) == '"') {
+          sb.append('"'); // "" → literal "
+          j += 2;
+          continue;
+        }
+        j++;
+        break;
+      }
+      sb.append(c == '\'' ? "''" : String.valueOf(c));
+      j++;
+    }
+    sb.append('\'');
+    return j;
   }
 
   /**
