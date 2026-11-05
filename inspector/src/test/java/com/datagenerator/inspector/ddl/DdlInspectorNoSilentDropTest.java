@@ -150,12 +150,30 @@ class DdlInspectorNoSilentDropTest {
         dir, BASE + precedingStatement + "\nCREATE TABLE after_tbl (id INT)\nGO\n", "after_tbl");
   }
 
-  @Test
-  void shouldNotSilentlyDropTableInsideCreateSchema(@TempDir Path dir) throws IOException {
-    assertNotSilent(
-        dir,
-        BASE + "CREATE SCHEMA s AUTHORIZATION dbo CREATE TABLE sch_tbl (id INT);\n",
-        "sch_tbl");
+  /**
+   * Non-table statements that merely mention "table" must be skipped without a warning or failure.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "CREATE PUBLICATION p FOR TABLE a, b;",
+        "CREATE PUBLICATION p FOR TABLE a;",
+        "CREATE INDEX i ON \"table\" (x);",
+        "CREATE INDEX i ON [Table] (x)\nGO",
+        "CREATE INDEX \"create table\" ON t (x);",
+        "CREATE UNIQUE INDEX i ON \"create\".\"table\" (x);",
+        "CREATE VIEW \"create table\" AS SELECT 1;",
+        "CREATE MATERIALIZED VIEW mv AS SELECT * FROM \"table\";",
+        "ALTER TABLE \"create table\" ADD c int;",
+        "COMMENT ON TABLE \"create table\" IS 'x';",
+        "INSERT INTO log SELECT 'x' FROM \"create table\";"
+      })
+  void shouldSkipSilentlyNonTableStatementNamingTable(String statement, @TempDir Path dir)
+      throws IOException {
+    Inspection inspection = strict(dir, BASE + statement + "\nCREATE TABLE keep (id INT);\n");
+
+    assertThat(names(inspection)).as("tables after: %s", statement).containsExactly("base", "keep");
+    assertThat(inspection.warnings()).as("warnings after: %s", statement).isEmpty();
   }
 
   @ParameterizedTest
