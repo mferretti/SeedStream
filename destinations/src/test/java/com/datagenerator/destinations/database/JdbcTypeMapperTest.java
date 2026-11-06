@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.datagenerator.core.type.CustomDatafakerType;
+import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
@@ -343,6 +344,21 @@ class JdbcTypeMapperTest {
       JdbcTypeMapper.bind(ps, 1, "M", enumType);
 
       verify(ps).setString(1, "M");
+    }
+
+    @Test
+    void shouldBindCycleValueAsString() throws SQLException {
+      CycleType cycleType = new CycleType(List.of("Beverages", "Condiments"));
+      JdbcTypeMapper.bind(ps, 1, "Condiments", cycleType);
+
+      verify(ps).setString(1, "Condiments");
+    }
+
+    @Test
+    void shouldBindNullCycleAsVarchar() throws SQLException {
+      JdbcTypeMapper.bind(ps, 1, null, new CycleType(List.of("A", "B")));
+
+      verify(ps).setNull(1, Types.VARCHAR);
     }
 
     @Test

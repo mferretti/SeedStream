@@ -19,10 +19,14 @@ package com.datagenerator.core.type;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.core.exception.TypeParseException;
+import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class TypeParserTest {
 
@@ -411,6 +415,97 @@ class TypeParserTest {
     // other exception type escapes as a stack trace.
     assertThatThrownBy(() -> parser.parse(typeString))
         .isExactlyInstanceOf(TypeParseException.class);
+  }
+
+  // ── cycle[...] (#456) ────────────────────────────────────────────────────────
+
+  @Test
+  void shouldParseCycleTypeKeepingValueOrder() {
+    DataType type = parser.parse("cycle[C,A,B]");
+
+    assertThat(type).isInstanceOf(CycleType.class);
+    assertThat(((CycleType) type).getValues()).containsExactly("C", "A", "B");
+  }
+
+  static Stream<Arguments> valueLists() {
+    return Stream.of(
+        Arguments.of("A,B,C", List.of("A", "B", "C")),
+        Arguments.of(" A , B ,C ", List.of("A", "B", "C")),
+        Arguments.of("A,,B", List.of("A", "B")),
+        Arguments.of("A,B,", List.of("A", "B")),
+        Arguments.of(",A", List.of("A")),
+        Arguments.of("A, ,B", List.of("A", "B")),
+        Arguments.of("only", List.of("only")),
+        Arguments.of("A,A,B", List.of("A", "A", "B")),
+        Arguments.of("two words,B", List.of("two words", "B")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("valueLists")
+  void shouldSplitAndTrimEnumValuesAsDocumented(String list, List<String> expected) {
+    // guard: pins the enum behaviour that cycle[...] must mirror
+    assertThat(((EnumType) parser.parse("enum[" + list + "]")).getValues())
+        .containsExactlyElementsOf(expected);
+  }
+
+  @ParameterizedTest
+  @MethodSource("valueLists")
+  void shouldParseCycleValueListExactlyLikeEnum(String list, List<String> expected) {
+    DataType type = parser.parse("cycle[" + list + "]");
+
+    assertThat(type).isInstanceOf(CycleType.class);
+    assertThat(((CycleType) type).getValues()).containsExactlyElementsOf(expected);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {"cycle[]", "cycle[ ]", "cycle[,]", "cycle[ , ]"})
+  void shouldFailOnEmptyCycle(String typeString) {
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isExactlyInstanceOf(TypeParseException.class)
+        .hasMessageContaining("at least one value");
+  }
+
+  @Test
+  void shouldKeepEnumContainingWordCycleAsEnum() {
+    // guard
+    DataType type = parser.parse("enum[cycle,x]");
+
+    assertThat(type).isInstanceOf(EnumType.class);
+    assertThat(((EnumType) type).getValues()).containsExactly("cycle", "x");
+  }
+
+  @Test
+  void shouldParseCycleWhoseValuesAreTypeKeywords() {
+    DataType type = parser.parse("cycle[cycle,enum,serial]");
+
+    assertThat(type).isInstanceOf(CycleType.class);
+    assertThat(((CycleType) type).getValues()).containsExactly("cycle", "enum", "serial");
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {"cycle", "cycle[a,b", "cycle a,b]", "Cycle[a,b]x"})
+  void shouldRejectCycleWithoutWellFormedBrackets(String typeString) {
+    // guard: bare "cycle" is not a registered type; only the bracketed form is the new type
+    assertThatThrownBy(() -> parser.parse(typeString))
+        .isExactlyInstanceOf(TypeParseException.class)
+        .hasMessageContaining("Unsupported type syntax");
+  }
+
+  @Test
+  void shouldRoundTripCycleDescribe() {
+    DataType type = parser.parse("cycle[a,b,c]");
+
+    assertThat(type.describe()).isEqualTo("cycle[a,b,c]");
+    assertThat(parser.parse(type.describe())).isEqualTo(type);
+  }
+
+  @Test
+  void shouldNormaliseWhitespaceInCycleDescribe() {
+    assertThat(parser.parse("cycle[ a , b ]").describe()).isEqualTo("cycle[a,b]");
   }
 
   @Test
