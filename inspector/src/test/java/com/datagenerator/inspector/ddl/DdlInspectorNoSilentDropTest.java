@@ -164,7 +164,6 @@ class DdlInspectorNoSilentDropTest {
         "CREATE UNIQUE INDEX i ON \"create\".\"table\" (x);",
         "CREATE VIEW \"create table\" AS SELECT 1;",
         "CREATE MATERIALIZED VIEW mv AS SELECT * FROM \"table\";",
-        "ALTER TABLE \"create table\" ADD c int;",
         "COMMENT ON TABLE \"create table\" IS 'x';",
         "INSERT INTO log SELECT 'x' FROM \"create table\";"
       })

@@ -262,8 +262,18 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   The word `identity` as a table, column, constraint or FK-target name is not affected.
 - Key constraints ignore column sort direction: `PRIMARY KEY CLUSTERED ([id] ASC)` (SSMS's default
   scripting) is the same key as `PRIMARY KEY (id)`.
-- Constraints added later with `ALTER TABLE … ADD CONSTRAINT` (the `pg_dump` / SSMS / Oracle export
-  layout) are not applied yet — tracked as #376.
+- **Constraints declared after the table.** All statements are read first, then applied: `ALTER TABLE
+  [ONLY] … ADD [CONSTRAINT n] PRIMARY KEY | UNIQUE | FOREIGN KEY` (the `pg_dump`, SSMS, Oracle and MySQL
+  export layouts, in any order relative to the table) yields exactly what the same constraint declared
+  inline yields; `ALTER COLUMN … ADD GENERATED ALWAYS AS IDENTITY` counts as DB-assigned. A constraint
+  declared both ways counts once. Other statements are ignored silently (`OWNER TO`, `CHECK CONSTRAINT`,
+  triggers, `SET STATISTICS`, `CHECK` / `NOT NULL` for now). Structure changes (`ADD`/`DROP COLUMN`,
+  `RENAME`, `ALTER COLUMN … TYPE`) are warned about and not applied. An `ALTER` that cannot be parsed, or
+  that targets a table not in the script, is a warning and never aborts strict mode; so is a foreign key
+  from an `ALTER` to a table not in the script (the column keeps its plain type).
+- **`REFERENCES t` without a column list** resolves to `t`'s primary key, positionally for composite
+  keys, wherever that key is declared. If `t` is unknown, has no primary key, or the column counts
+  differ, a warning is logged and the column keeps its plain type (never a guessed `id`).
 - Foreign keys → `ref[table.column, 1..count]`: table-level `FOREIGN KEY` constraints (reliable)
   and inline
   column `REFERENCES table(col)` (best-effort token scan). The `1..count` ID-pool range is appended

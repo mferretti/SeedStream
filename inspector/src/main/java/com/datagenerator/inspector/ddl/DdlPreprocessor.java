@@ -22,8 +22,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Sanitizes a single SQL statement so that JSQLParser 5.x can parse it. Only modifies CREATE TABLE
- * statements; other statements are returned unchanged.
+ * Sanitizes a single SQL statement so that JSQLParser 5.x can parse it. {@link #sanitize} only
+ * modifies CREATE TABLE statements (other statements are returned unchanged); {@link
+ * #sanitizeAlter} rewrites ALTER TABLE statements.
  *
  * <p>Transformations applied (in order):
  *
@@ -88,6 +89,39 @@ public class DdlPreprocessor {
    */
   private static final Pattern ENUM_OR_SET_OPEN = Pattern.compile("(?i)\\b(?:ENUM|SET)\\s*\\(");
 
+  // ---- ALTER TABLE rewrites (see sanitizeAlter) ----
+
+  private static final Pattern LEADING_DIRECTIVE =
+      Pattern.compile("(?i)\\A(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*(?:\\n|\\z)");
+
+  private static final Pattern TRAILING_SEMICOLON = Pattern.compile("[\\s;]+$");
+
+  /**
+   * SQL Server {@code ALTER TABLE t WITH [NO]CHECK ADD ...}: the clause only confuses the parser.
+   */
+  private static final Pattern WITH_CHECK_ADD =
+      Pattern.compile("(?i)\\bWITH\\s+(?:NO)?CHECK\\s+(?=ADD\\b)");
+
+  /** Oracle {@code USING INDEX <storage clauses>}: everything after it is physical detail. */
+  private static final Pattern USING_INDEX = Pattern.compile("(?is)\\s+USING\\s+INDEX\\b.*$");
+
+  /** Trailing Oracle constraint states ({@code ENABLE}, {@code NOVALIDATE}, ...). */
+  private static final Pattern TRAILING_CONSTRAINT_STATE =
+      Pattern.compile("(?i)(?:\\s+(?:ENABLE|DISABLE|VALIDATE|NOVALIDATE|RELY|NORELY))+$");
+
+  /** SQL Server {@code ON [filegroup]} after a constraint's column list (not {@code ON DELETE}). */
+  private static final Pattern TRAILING_FILEGROUP =
+      Pattern.compile("(?i)\\)\\s+ON\\s+(?!(?:DELETE|UPDATE)\\b)(?:\"[^\"]*\"|[\\w$#@]+)$");
+
+  /** PostgreSQL FK attributes that do not change which columns are referenced. */
+  private static final Pattern FK_ATTRIBUTES =
+      Pattern.compile(
+          "(?i)\\s+(?:NOT\\s+DEFERRABLE|DEFERRABLE|INITIALLY\\s+(?:DEFERRED|IMMEDIATE)|NOT\\s+VALID)\\b");
+
+  /** PostgreSQL {@code AS IDENTITY ( SEQUENCE NAME ... )} sequence options at the end. */
+  private static final Pattern IDENTITY_OPTIONS =
+      Pattern.compile("(?is)(\\bAS\\s+IDENTITY)\\s*\\(.*\\)$");
+
   /** Quick check: does this statement contain CREATE TABLE? */
   private static final Pattern CREATE_TABLE =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
@@ -138,6 +172,57 @@ public class DdlPreprocessor {
     s = CLUSTERED.matcher(s).replaceAll("");
 
     return s;
+  }
+
+  /**
+   * Rewrites one {@code ALTER TABLE} statement into a form JSQLParser parses, dropping what does
+   * not affect keys: comments and literals, bracket quoting (turned into double quotes), SQL Server
+   * {@code WITH [NO]CHECK}, {@code CLUSTERED} and {@code ON [filegroup]}, Oracle {@code USING INDEX
+   * ...} and {@code ENABLE}/{@code VALIDATE} states, PostgreSQL {@code DEFERRABLE} / {@code
+   * INITIALLY ...} / {@code NOT VALID} and identity sequence options.
+   */
+  public String sanitizeAlter(String statement) {
+    String s = SqlScan.stripCommentsAndLiterals(statement).strip();
+    s = stripLeadingDirectives(s);
+    s = bracketsToQuotes(s);
+    s = TRAILING_SEMICOLON.matcher(s).replaceAll("");
+    s = WITH_CHECK_ADD.matcher(s).replaceAll("");
+    s = CLUSTERED.matcher(s).replaceAll("");
+    s = USING_INDEX.matcher(s).replaceAll("");
+    s = TRAILING_CONSTRAINT_STATE.matcher(s).replaceAll("");
+    s = TRAILING_FILEGROUP.matcher(s).replaceAll(")");
+    s = FK_ATTRIBUTES.matcher(s).replaceAll("");
+    return IDENTITY_OPTIONS.matcher(s).replaceAll("$1");
+  }
+
+  /** Drops the SET / PROMPT / USE / EXEC lines a statement starts with. */
+  static String stripLeadingDirectives(String statement) {
+    String s = statement.strip();
+    Matcher directive = LEADING_DIRECTIVE.matcher(s);
+    while (directive.find()) {
+      s = s.substring(directive.end()).strip();
+      directive = LEADING_DIRECTIVE.matcher(s);
+    }
+    return s;
+  }
+
+  /**
+   * {@code [Order Details]} → {@code "Order Details"}: JSQLParser reads quotes in ALTER, not
+   * brackets.
+   */
+  private static String bracketsToQuotes(String s) {
+    StringBuilder sb = new StringBuilder(s.length());
+    int i = 0;
+    while (i < s.length()) {
+      if (s.charAt(i) == '[') {
+        StringBuilder identifier = new StringBuilder();
+        i = appendBracketContent(s, i, identifier);
+        sb.append('"').append(identifier.toString().replace("\"", "\"\"")).append('"');
+      } else {
+        sb.append(s.charAt(i++));
+      }
+    }
+    return sb.toString();
   }
 
   /** Previous-token values after which the word {@code IDENTITY} is a name, not the property. */
