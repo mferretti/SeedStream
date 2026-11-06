@@ -431,7 +431,7 @@ class DdlInspectorInheritsTest {
   }
 
   @Test
-  void shouldApplyAlterSetDefaultNextvalOnInheritedColumn(@TempDir Path dir) {
+  void shouldTreatAlterSetDefaultNextvalOnInheritedColumnLikeOwnColumn(@TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir,
@@ -652,6 +652,36 @@ class DdlInspectorInheritsTest {
     assertThat(datatypesOf(in, "b"))
         .containsExactly(
             entry("id", "serial"), entry("a_id", "ref[a.x, 1..count]"), entry("s", "char[1..5]"));
+  }
+
+  @Test
+  void shouldWarnOnceAboutMissingParentWhenDescendantsRecurseThroughIt(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            """
+            CREATE TABLE e1 (a int) INHERITS (nonexist);
+            CREATE TABLE e2 (b int) INHERITS (e1);
+            CREATE TABLE e3 (c int) INHERITS (e1, e2);
+            """);
+
+    assertThat(in.warnings().stream().filter(w -> w.contains("nonexist"))).hasSize(1);
+    assertThat(datatypesOf(in, "e3").keySet()).containsExactly("a", "b", "c");
+  }
+
+  @Test
+  void shouldWarnOncePerCycleMemberWhenADescendantRecursesThroughIt(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            """
+            CREATE TABLE g (k int) INHERITS (h);
+            CREATE TABLE h (l int) INHERITS (g);
+            CREATE TABLE gg (m int) INHERITS (g);
+            """);
+
+    assertThat(in.warnings().stream().filter(w -> w.contains("table 'g' is part of"))).hasSize(1);
+    assertThat(in.warnings().stream().filter(w -> w.contains("table 'h' is part of"))).hasSize(1);
   }
 
   @Test
