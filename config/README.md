@@ -636,6 +636,7 @@ is_active:   { datatype: boolean }             # true or false (50/50)
 birth_date:  { datatype: date[1960-01-01..2005-12-31] }   # ISO-8601
 created_at:  { datatype: timestamp[now-365d..now] }        # relative or absolute
 status:      { datatype: enum[PENDING,ACTIVE,CANCELLED] }  # uniform pick
+stage:       { datatype: "cycle[NEW,OPEN,DONE]" }       # record i -> values[i mod 3], no random draw
 ```
 
 ### Semantic Types (Datafaker)
@@ -818,6 +819,17 @@ id: { datatype: serial[100000] }
 
 Database destinations bind it as `BIGINT`. For performance details, see docs/PERFORMANCE.md.
 
+### Cycling values
+
+Index-driven enum: record `i` gets `values[i mod n]`, so a lookup table seeded with `--count n` lists every value exactly once.
+
+```yaml
+# 8-row lookup table: each category once, in this order
+category_name: { datatype: "cycle[Beverages,Condiments,Confections,Dairy Products,Grains/Cereals,Meat/Poultry,Produce,Seafood]" }
+```
+
+**Semantics**: Same value-list rules as `enum[...]` (comma-separated, trimmed, empty entries ignored), but the pick is the record index modulo the number of values instead of a random draw. Independent of seed and thread count, consumes no random draws (adding or removing a `cycle` field never changes other fields' values). `--count` larger than the number of values wraps around. **Restriction**: not allowed inside `array[...]` — array elements share their record's index, so every element would get the same value. Inside a 1:1 `object[...]` it follows the parent record's index, like `serial`. Database destinations bind it as a string.
+
 ### Foreign Keys with Unique Constraint
 
 A foreign key column that is itself a unique/primary key in a child table (1:1 relationship):
@@ -841,6 +853,7 @@ other_id:  { datatype: ref[other.id, 1..count, unique=composite_key] }
 | Type | Prefix-stable when --count changes |
 |---|---|
 | `serial` | yes |
+| `cycle[...]` | yes |
 | `unique[1..N]` (fixed) | yes |
 | `unique[1..count]` | no — reshuffles |
 | `ref[t.c, 1..count]` | no (values depend on the bound) |
