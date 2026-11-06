@@ -66,9 +66,9 @@ final class TableModel {
   /** Lower-cased names of SQL Server {@code IDENTITY} columns. */
   final Set<String> identity = new LinkedHashSet<>();
 
-  TableModel(String name, int order) {
-    this.name = name;
-    this.order = order;
+  TableModel(String tableName, int declarationOrder) {
+    this.name = tableName;
+    this.order = declarationOrder;
   }
 
   void addPrimaryKey(List<String> columnNames) {
