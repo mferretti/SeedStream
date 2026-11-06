@@ -1,4 +1,4 @@
-# structures_path auto-resolves to ../structures/ (dir ends in "jobs"; pass an absolute --job path, #438).
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
 source: employees.yaml
 type: file
 seed:

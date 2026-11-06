@@ -78,21 +78,20 @@ and `smallint` keys.
 
 ### 2. Inspect it
 
-The file has the usual `pg_dump` layout, and two inspector gaps get in the way. The first failure
-you'd hit:
+The file has the usual `pg_dump` layout. `inspect` reads it as is (13 structures), but the dump
+declares every primary and foreign key with `ALTER TABLE ONLY … ADD CONSTRAINT` after the tables,
+which the inspector doesn't apply yet: run on `schema.sql` directly, you get no `serial` keys and no
+`ref[]` foreign keys.
 
-```text
-$ seedstream inspect schema.sql -o structures/
-inspect failed: Failed to parse 12 CREATE TABLE statement(s); no output written ...
-```
-
-[`schema-inspect.sql`](schema-inspect.sql) is the same schema after two mechanical rewrites. Each
-one disappears when its issue lands:
+[`schema-inspect.sql`](schema-inspect.sql) is the same schema after one mechanical rewrite, which
+disappears when its issue lands:
 
 | Rewrite | Why | Issue |
 |---|---|---|
-| Collapse runs of empty lines (`cat -s`) | two empty lines end a statement early, which breaks every `pg_dump` file | [#436](https://github.com/mferretti/SeedStream/issues/436) |
 | Move `ALTER TABLE ONLY … ADD CONSTRAINT` PK/FK clauses into the table bodies | constraints declared after the table are ignored: without this, no `serial`, no `ref[]`, and no warning | [#376](https://github.com/mferretti/SeedStream/issues/376) |
+
+(Earlier versions also needed `cat -s`: runs of empty lines broke every `pg_dump` file until
+[#436](https://github.com/mferretti/SeedStream/issues/436) was fixed.)
 
 ```bash
 seedstream inspect schema-inspect.sql -o structures/
@@ -200,9 +199,9 @@ truncate their table first. [`seed.sh`](seed.sh) runs them parents first with th
 Those counts must match the static `ref[]` ranges in `structures/`
 ([#442](https://github.com/mferretti/SeedStream/issues/442)).
 
-The jobs rely on the sibling `../structures/` auto-resolution, so call them with an **absolute**
-`--job` path, as `seed.sh` does. A relative `jobs/x.yaml` falls back to `config/structures`
-([#438](https://github.com/mferretti/SeedStream/issues/438)).
+The jobs rely on the sibling `../structures/` auto-resolution, so no `structures_path:` is needed.
+`seed.sh` passes absolute paths; from inside this folder a relative `--job jobs/x.yaml` works too
+(fixed in [#438](https://github.com/mferretti/SeedStream/issues/438)).
 
 ## How the edits produced the issues
 
@@ -213,9 +212,9 @@ will remove it.
 
 | Where it broke | Symptom | Root cause | Workaround here | Issue |
 |---|---|---|---|---|
-| `inspect` | `Failed to parse 12 CREATE TABLE statement(s)` | 2+ consecutive empty lines end a statement in JSQLParser | `cat -s` in `schema-inspect.sql` | [#436](https://github.com/mferretti/SeedStream/issues/436) |
+| `inspect` | `Failed to parse 12 CREATE TABLE statement(s)` | 2+ consecutive empty lines end a statement in JSQLParser | none needed any more | [#436](https://github.com/mferretti/SeedStream/issues/436) (fixed) |
 | `inspect` | no `serial`, no `ref[]`, no warning | `ALTER TABLE … ADD CONSTRAINT` not applied | constraints moved into the table bodies | [#376](https://github.com/mferretti/SeedStream/issues/376) |
-| `execute` | `data structure file not found: config/structures/…` | sibling `../structures` not inferred for a relative job path | absolute `--job` in `seed.sh` | [#438](https://github.com/mferretti/SeedStream/issues/438) |
+| `execute` | `data structure file not found: config/structures/…` | sibling `../structures` not inferred for a relative job path | none needed any more | [#438](https://github.com/mferretti/SeedStream/issues/438) (fixed) |
 | load | `column "picture" is of type bytea …` | no binary type; `bytea` falls back to `char` | 2 fields removed | [#439](https://github.com/mferretti/SeedStream/issues/439) |
 | load | `value too long for type character varying(15)` | name-hinted types ignore `varchar(n)` | 14 fields edited | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | load at scale | `smallint out of range` after 32 000 committed rows | `serial` drops the column's integer capacity | `scale.sql` widens `order_id` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
@@ -252,7 +251,7 @@ blocked.
 |---|---|
 | `schema.sql` | Unmodified `pg_dump --schema-only` of the Northwind schema; load this into PostgreSQL |
 | `scale.sql` | Widens `orders.order_id` / `order_details.order_id` to `integer` for the 1M-row run |
-| `schema-inspect.sql` | `schema.sql` after the two rewrites above; feed this to `inspect` |
+| `schema-inspect.sql` | `schema.sql` after the rewrite above; feed this to `inspect` |
 | `structures/*.yaml` | Inspector output plus the commented hand edits |
 | `jobs/db_*.yaml`, `jobs/file_*.yaml` | One PostgreSQL job and one file job per table |
 | `seed.sh` | `./seed.sh db` or `./seed.sh file`: all 13 tables, parents first, with timings |

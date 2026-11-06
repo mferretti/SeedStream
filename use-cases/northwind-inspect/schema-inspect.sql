@@ -1,7 +1,6 @@
--- Northwind for PostgreSQL, prepared for `seedstream inspect`: schema.sql with two mechanical
--- workarounds for current inspector gaps (MIT License, see LICENSE-MIT-microsoft.txt):
---   1. runs of empty lines squeezed to one (`cat -s`)                                  -> #436
---   2. `ALTER TABLE ONLY ... ADD CONSTRAINT` PK/FK/UNIQUE moved into each table body  -> #376
+-- Northwind for PostgreSQL, prepared for `seedstream inspect`: schema.sql with one mechanical
+-- workaround for a current inspector gap (MIT License, see LICENSE-MIT-microsoft.txt):
+--   `ALTER TABLE ONLY ... ADD CONSTRAINT` PK/FK/UNIQUE moved into each table body  -> #376
 -- Load schema.sql (not this file) into PostgreSQL.
 
 --
@@ -41,6 +40,7 @@ CREATE TABLE public.categories (
     CONSTRAINT categories_pkey PRIMARY KEY (category_id)
 );
 
+
 --
 -- Name: customer_customer_demo; Type: TABLE; Schema: public; Owner: -
 --
@@ -53,6 +53,7 @@ CREATE TABLE public.customer_customer_demo (
     CONSTRAINT customer_customer_demo_customer_type_id_fkey FOREIGN KEY (customer_type_id) REFERENCES public.customer_demographics(customer_type_id)
 );
 
+
 --
 -- Name: customer_demographics; Type: TABLE; Schema: public; Owner: -
 --
@@ -62,6 +63,7 @@ CREATE TABLE public.customer_demographics (
     customer_desc text,
     CONSTRAINT customer_demographics_pkey PRIMARY KEY (customer_type_id)
 );
+
 
 --
 -- Name: customers; Type: TABLE; Schema: public; Owner: -
@@ -82,6 +84,7 @@ CREATE TABLE public.customers (
     CONSTRAINT customers_pkey PRIMARY KEY (customer_id)
 );
 
+
 --
 -- Name: employee_territories; Type: TABLE; Schema: public; Owner: -
 --
@@ -93,6 +96,7 @@ CREATE TABLE public.employee_territories (
     CONSTRAINT employee_territories_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id),
     CONSTRAINT employee_territories_territory_id_fkey FOREIGN KEY (territory_id) REFERENCES public.territories(territory_id)
 );
+
 
 --
 -- Name: employees; Type: TABLE; Schema: public; Owner: -
@@ -122,6 +126,7 @@ CREATE TABLE public.employees (
     CONSTRAINT employees_reports_to_fkey FOREIGN KEY (reports_to) REFERENCES public.employees(employee_id)
 );
 
+
 --
 -- Name: order_details; Type: TABLE; Schema: public; Owner: -
 --
@@ -139,6 +144,7 @@ CREATE TABLE public.order_details (
     CONSTRAINT order_details_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(order_id),
     CONSTRAINT order_details_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(product_id)
 );
+
 
 --
 -- Name: orders; Type: TABLE; Schema: public; Owner: -
@@ -165,6 +171,7 @@ CREATE TABLE public.orders (
     CONSTRAINT orders_ship_via_fkey FOREIGN KEY (ship_via) REFERENCES public.shippers(shipper_id)
 );
 
+
 --
 -- Name: products; Type: TABLE; Schema: public; Owner: -
 --
@@ -189,6 +196,7 @@ CREATE TABLE public.products (
     CONSTRAINT products_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(supplier_id)
 );
 
+
 --
 -- Name: region; Type: TABLE; Schema: public; Owner: -
 --
@@ -198,6 +206,7 @@ CREATE TABLE public.region (
     region_description character varying(50) NOT NULL,
     CONSTRAINT region_pkey PRIMARY KEY (region_id)
 );
+
 
 --
 -- Name: shippers; Type: TABLE; Schema: public; Owner: -
@@ -209,6 +218,7 @@ CREATE TABLE public.shippers (
     phone character varying(24),
     CONSTRAINT shippers_pkey PRIMARY KEY (shipper_id)
 );
+
 
 --
 -- Name: suppliers; Type: TABLE; Schema: public; Owner: -
@@ -230,6 +240,7 @@ CREATE TABLE public.suppliers (
     CONSTRAINT suppliers_pkey PRIMARY KEY (supplier_id)
 );
 
+
 --
 -- Name: territories; Type: TABLE; Schema: public; Owner: -
 --
@@ -242,9 +253,11 @@ CREATE TABLE public.territories (
     CONSTRAINT territories_region_id_fkey FOREIGN KEY (region_id) REFERENCES public.region(region_id)
 );
 
+
 --
 -- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -252,9 +265,11 @@ CREATE TABLE public.territories (
 --
 
 
+
 --
 -- Name: customer_demographics customer_demographics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -262,9 +277,11 @@ CREATE TABLE public.territories (
 --
 
 
+
 --
 -- Name: employee_territories employee_territories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -272,9 +289,11 @@ CREATE TABLE public.territories (
 --
 
 
+
 --
 -- Name: order_details order_details_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -282,9 +301,11 @@ CREATE TABLE public.territories (
 --
 
 
+
 --
 -- Name: products products_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -292,9 +313,11 @@ CREATE TABLE public.territories (
 --
 
 
+
 --
 -- Name: shippers shippers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -302,9 +325,11 @@ CREATE TABLE public.territories (
 --
 
 
+
 --
 -- Name: territories territories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -313,11 +338,13 @@ CREATE TABLE public.territories (
 
 CREATE INDEX category_name ON public.categories USING btree (category_name);
 
+
 --
 -- Name: customers_city; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX customers_city ON public.customers USING btree (city);
+
 
 --
 -- Name: customers_company_name; Type: INDEX; Schema: public; Owner: -
@@ -325,11 +352,13 @@ CREATE INDEX customers_city ON public.customers USING btree (city);
 
 CREATE INDEX customers_company_name ON public.customers USING btree (company_name);
 
+
 --
 -- Name: employees_last_name; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX employees_last_name ON public.employees USING btree (last_name);
+
 
 --
 -- Name: orders_order_date; Type: INDEX; Schema: public; Owner: -
@@ -337,15 +366,18 @@ CREATE INDEX employees_last_name ON public.employees USING btree (last_name);
 
 CREATE INDEX orders_order_date ON public.orders USING btree (order_date);
 
+
 --
 -- Name: products_product_name; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX products_product_name ON public.products USING btree (product_name);
 
+
 --
 -- Name: customer_customer_demo customer_customer_demo_customer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -353,9 +385,11 @@ CREATE INDEX products_product_name ON public.products USING btree (product_name)
 --
 
 
+
 --
 -- Name: employee_territories employee_territories_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -363,9 +397,11 @@ CREATE INDEX products_product_name ON public.products USING btree (product_name)
 --
 
 
+
 --
 -- Name: employees employees_reports_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -373,9 +409,11 @@ CREATE INDEX products_product_name ON public.products USING btree (product_name)
 --
 
 
+
 --
 -- Name: order_details order_details_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -383,9 +421,11 @@ CREATE INDEX products_product_name ON public.products USING btree (product_name)
 --
 
 
+
 --
 -- Name: orders orders_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -393,9 +433,11 @@ CREATE INDEX products_product_name ON public.products USING btree (product_name)
 --
 
 
+
 --
 -- Name: products products_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
@@ -403,9 +445,11 @@ CREATE INDEX products_product_name ON public.products USING btree (product_name)
 --
 
 
+
 --
 -- Name: territories territories_region_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
+
 
 
 --
