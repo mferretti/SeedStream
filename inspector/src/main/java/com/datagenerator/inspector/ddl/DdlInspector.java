@@ -16,6 +16,8 @@
 
 package com.datagenerator.inspector.ddl;
 
+import static com.datagenerator.inspector.ddl.TableModel.unquote;
+
 import com.datagenerator.inspector.Defaults;
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
@@ -23,6 +25,7 @@ import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.Names;
 import com.datagenerator.inspector.ddl.NestingPlanner.ForeignKeyRef;
 import com.datagenerator.inspector.ddl.NestingPlanner.TableInfo;
+import com.datagenerator.inspector.ddl.TableModel.Column;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.FieldDefinition;
 import java.io.IOException;
@@ -47,8 +50,6 @@ import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
-import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex;
-import net.sf.jsqlparser.statement.create.table.Index;
 
 /**
  * Reads a SQL DDL script and maps every {@code CREATE TABLE} to a SeedStream {@link DataStructure}.
@@ -62,14 +63,13 @@ public class DdlInspector {
   // Inline "REFERENCES table(col)": group 1 = table, group 2 = referenced column (optional).
   private static final Pattern INLINE_REFERENCE =
       Pattern.compile("(?i)REFERENCES\\s+([\\w.\"`]+)(?:\\s*\\(\\s*([\\w\"`]+)\\s*\\))?");
-  private static final Pattern SORT_DIRECTION = Pattern.compile("(?i)\\s+(ASC|DESC)$");
   private static final Pattern IDENT_QUOTES = Pattern.compile("[\"`\\[\\]]");
   // Loose "mentions CREATE ... TABLE" check, run on comment/literal-stripped text. Anything that
   // matches and is not a known non-table CREATE goes to the parser, so a real table is modelled or
   // fails loudly — never silently dropped.
   private static final Pattern CREATE_TABLE_QUICK =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
-  private static final String DIRECTIVES = "(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*";
+  static final String DIRECTIVES = "(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*";
 
   /**
    * Statements skipped silently although they mention {@code CREATE ... TABLE}: routine, package
@@ -147,12 +147,13 @@ public class DdlInspector {
   public Inspection inspect(Path sqlFile, NestingOptions nesting, boolean bestEffort) {
     List<String> rawStatements = splitter.split(readFile(sqlFile));
 
-    List<TableInfo> tables = new ArrayList<>();
+    // Phase 1: every CREATE TABLE becomes a model (no datatypes yet); ALTER TABLEs wait their turn.
+    List<TableModel> models = new ArrayList<>();
+    List<String> alters = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
     List<String> failures = new ArrayList<>();
-    Map<String, TableKeys> keys = new LinkedHashMap<>();
     for (String raw : rawStatements) {
-      processStatement(raw, tables, keys, warnings, failures, bestEffort);
+      processStatement(raw, models, alters, warnings, failures, bestEffort);
     }
 
     if (!bestEffort && !failures.isEmpty()) {
@@ -165,9 +166,18 @@ public class DdlInspector {
               + String.join("; ", failures));
     }
 
-    if (tables.isEmpty()) {
+    if (models.isEmpty()) {
       throw new InspectorException("No CREATE TABLE statements found in " + sqlFile);
     }
+
+    // Phase 2: ALTER TABLEs complete the models, references without columns resolve to the target
+    // PK, and only then are datatypes rendered, keys applied and tables nested.
+    Map<String, TableModel> byName = new LinkedHashMap<>();
+    models.forEach(m -> byName.put(m.name, m));
+    new AlterTableApplier().apply(alters, byName, warnings);
+    resolveForeignKeys(models, byName, warnings);
+    Map<String, TableKeys> keys = new LinkedHashMap<>();
+    List<TableInfo> tables = models.stream().map(m -> toTableInfo(m, keys)).toList();
 
     Map<String, Set<String>> referenced = new LinkedHashMap<>();
     for (TableInfo t : tables) {
@@ -226,17 +236,22 @@ public class DdlInspector {
 
   /**
    * Parses a single raw statement and, when it is a modellable {@code CREATE TABLE}, appends its
-   * {@link TableInfo} to {@code tables}. Non-{@code CREATE TABLE} statements are skipped silently;
-   * unparseable or unmodellable tables are recorded as failures.
+   * {@link TableModel} to {@code models}; an {@code ALTER TABLE} is set aside in {@code alters}.
+   * Other statements are skipped silently; unparseable or unmodellable tables are recorded as
+   * failures.
    */
   private void processStatement(
       String raw,
-      List<TableInfo> tables,
-      Map<String, TableKeys> keys,
+      List<TableModel> models,
+      List<String> alters,
       List<String> warnings,
       List<String> failures,
       boolean bestEffort) {
     String code = SqlScan.stripCommentsAndLiterals(raw);
+    if (AlterTableApplier.isAlterTable(code)) {
+      alters.add(raw); // before the CREATE TABLE check: ALTER TABLE "create table" is no CREATE
+      return;
+    }
     if (!CREATE_TABLE_QUICK.matcher(code).find() || NON_TABLE_CREATE.matcher(code).find()) {
       return; // not a CREATE TABLE (index, view, function, directive, ...) — skip silently
     }
@@ -258,9 +273,9 @@ public class DdlInspector {
       return;
     }
     if (statement instanceof CreateTable createTable) {
-      TableInfo table = toTableInfo(createTable, tables.size(), warnings, keys);
+      TableModel table = toTableModel(createTable, models.size(), warnings);
       if (table != null) {
-        tables.add(table);
+        models.add(table);
       } else {
         // Parsed as a table but carries no modellable columns (e.g. CREATE TABLE ... AS SELECT).
         recordFailure(failures, warnings, raw, bestEffort);
@@ -282,8 +297,8 @@ public class DdlInspector {
     return Inspection.of(structures, comments, warnings);
   }
 
-  private TableInfo toTableInfo(
-      CreateTable createTable, int order, List<String> warnings, Map<String, TableKeys> keys) {
+  /** Reads columns, keys, foreign keys and identity flags of a {@code CREATE TABLE}. */
+  private TableModel toTableModel(CreateTable createTable, int order, List<String> warnings) {
     String name = Names.toSnakeCase(unquote(createTable.getTable().getName()));
     List<ColumnDefinition> columns = createTable.getColumnDefinitions();
     if (columns == null || columns.isEmpty()) {
@@ -291,89 +306,138 @@ public class DdlInspector {
       return null;
     }
 
-    Map<String, String> foreignKeys = tableForeignKeys(createTable);
+    TableModel table = new TableModel(name, order);
+    for (ColumnDefinition column : columns) {
+      String columnName = unquote(column.getColumnName());
+      table.columns.add(new Column(columnName, column.getColDataType()));
+      List<String> specs = column.getColumnSpecs() == null ? List.of() : column.getColumnSpecs();
+      String joined = String.join(" ", specs).toUpperCase(Locale.ROOT);
+      if (joined.contains("ALWAYS") && joined.contains("IDENTITY")) {
+        table.dbAssigned.add(lower(columnName));
+      }
+      if (joined.contains(DdlPreprocessor.IDENTITY_MARKER)) {
+        table.identity.add(lower(columnName));
+      }
+      if (specs.stream().anyMatch("PRIMARY"::equalsIgnoreCase)) {
+        table.addPrimaryKey(List.of(columnName));
+      }
+      if (specs.stream().anyMatch("UNIQUE"::equalsIgnoreCase)) {
+        table.addUnique(List.of(columnName));
+      }
+    }
+    if (createTable.getIndexes() != null) {
+      createTable.getIndexes().forEach(table::addIndex);
+    }
+    for (ColumnDefinition column : columns) {
+      inlineForeignKey(unquote(column.getColumnName()), column.getColumnSpecs())
+          .ifPresent(table.foreignKeys::add);
+    }
+    return table;
+  }
+
+  /**
+   * Resolves each foreign key that omits its referenced columns ({@code REFERENCES customers}) to
+   * the primary key of the referenced table, positionally, and drops duplicates (a key declared
+   * both inline and by {@code ALTER}). A key that cannot be resolved is dropped with a warning: its
+   * column keeps the plain type rather than pointing at a guessed column.
+   */
+  private void resolveForeignKeys(
+      List<TableModel> models, Map<String, TableModel> byName, List<String> warnings) {
+    for (TableModel table : models) {
+      Set<String> seen = new LinkedHashSet<>();
+      List<ForeignKeyRef> resolved = new ArrayList<>();
+      for (ForeignKeyRef fk : table.foreignKeys) {
+        Optional<ForeignKeyRef> usable =
+            fk.refColumns().isEmpty()
+                ? resolveToPrimaryKey(table, fk, byName, warnings)
+                : Optional.of(fk);
+        usable
+            .filter(ref -> seen.add(lower(ref.toString())))
+            .ifPresent(resolved::add); // value-based key
+      }
+      table.foreignKeys.clear();
+      table.foreignKeys.addAll(resolved);
+    }
+  }
+
+  private Optional<ForeignKeyRef> resolveToPrimaryKey(
+      TableModel table, ForeignKeyRef fk, Map<String, TableModel> byName, List<String> warnings) {
+    TableModel target = byName.get(fk.refTable());
+    String label =
+        table.name
+            + ": FOREIGN KEY ("
+            + String.join(", ", fk.localColumns())
+            + ") REFERENCES "
+            + fk.refTable();
+    if (target == null || target.primary.isEmpty()) {
+      warnings.add(
+          label
+              + (target == null ? " — table is not in the script" : " — it has no PRIMARY KEY")
+              + ", referenced column unknown; kept as plain column(s)");
+      return Optional.empty();
+    }
+    List<String> primaryKey = target.primary.get(0);
+    if (primaryKey.size() != fk.localColumns().size()) {
+      warnings.add(
+          label
+              + " — PRIMARY KEY("
+              + String.join(", ", primaryKey)
+              + ") has a different number of columns; kept as plain column(s)");
+      return Optional.empty();
+    }
+    return Optional.of(new ForeignKeyRef(fk.localColumns(), fk.refTable(), primaryKey));
+  }
+
+  /** Renders the datatypes of a finished model; its key facts go to {@code keys}. */
+  private TableInfo toTableInfo(TableModel table, Map<String, TableKeys> keys) {
+    Map<String, String> foreignKeyTypes = foreignKeyDatatypes(table.foreignKeys);
     LinkedHashMap<String, FieldDefinition> data = new LinkedHashMap<>();
     LinkedHashMap<String, String> fieldComments = new LinkedHashMap<>();
     Set<String> serialColumns = new LinkedHashSet<>();
     Set<String> uuidColumns = new LinkedHashSet<>();
-    Set<String> dbAssigned = new LinkedHashSet<>();
-    Set<String> identity = new LinkedHashSet<>();
 
-    for (ColumnDefinition column : columns) {
-      String columnName = unquote(column.getColumnName());
-      if (column.getColumnSpecs() != null) {
-        String specs = String.join(" ", column.getColumnSpecs()).toUpperCase(Locale.ROOT);
-        if (specs.contains("ALWAYS") && specs.contains("IDENTITY")) {
-          dbAssigned.add(columnName.toLowerCase(Locale.ROOT));
-        }
-        if (specs.contains(DdlPreprocessor.IDENTITY_MARKER)) {
-          identity.add(columnName.toLowerCase(Locale.ROOT));
-        }
-      }
-      String datatype = resolveForeignKey(columnName, column, foreignKeys).orElse(null);
+    for (Column column : table.columns) {
+      String datatype = foreignKeyTypes.get(lower(column.name()));
       if (datatype == null) {
-        ColDataType colType = column.getColDataType();
+        ColDataType colType = column.type();
         String sqlType = baseTypeName(colType).toUpperCase(Locale.ROOT);
         if (SERIAL_TYPES.contains(sqlType)) {
-          serialColumns.add(columnName.toLowerCase(Locale.ROOT));
+          serialColumns.add(lower(column.name()));
         } else if (UUID_TYPES.contains(sqlType)) {
-          uuidColumns.add(columnName.toLowerCase(Locale.ROOT));
+          uuidColumns.add(lower(column.name()));
         }
-        MappedType mapped = mapper.map(columnName, baseTypeName(colType), typeArguments(colType));
+        MappedType mapped =
+            mapper.map(column.name(), baseTypeName(colType), typeArguments(colType));
         if (mapped.flagged()) {
-          fieldComments.put(columnName, mapped.comment());
+          fieldComments.put(column.name(), mapped.comment());
         }
         datatype = mapped.datatype();
       }
-      data.put(columnName, new FieldDefinition(datatype, null));
+      data.put(column.name(), new FieldDefinition(datatype, null));
     }
 
-    List<List<String>> primary = keyConstraints(createTable, columns, "PRIMARY");
-    List<List<String>> uniques = keyConstraints(createTable, columns, "UNIQUE");
     keys.put(
-        name, new TableKeys(primary, uniques, serialColumns, uuidColumns, dbAssigned, identity));
+        table.name,
+        new TableKeys(
+            table.primary,
+            table.uniques,
+            serialColumns,
+            uuidColumns,
+            table.dbAssigned,
+            table.identity));
     return new TableInfo(
-        name,
+        table.name,
         data,
         fieldComments,
-        flatten(primary),
-        flatten(uniques),
-        foreignKeyRefs(createTable, columns),
-        order);
+        flatten(table.primary),
+        flatten(table.uniques),
+        table.foreignKeys,
+        table.order);
   }
 
   private Set<String> flatten(List<List<String>> constraints) {
     Set<String> result = new LinkedHashSet<>();
     constraints.forEach(result::addAll);
-    return result;
-  }
-
-  /**
-   * Collects one column list per key constraint of the given kind ({@code PRIMARY} or {@code
-   * UNIQUE}): each inline column spec is a single-column constraint, each table-level index one
-   * (possibly composite) constraint.
-   */
-  private List<List<String>> keyConstraints(
-      CreateTable createTable, List<ColumnDefinition> columns, String kind) {
-    List<List<String>> result = new ArrayList<>();
-    for (ColumnDefinition column : columns) {
-      List<String> specs = column.getColumnSpecs();
-      if (specs != null && specs.stream().anyMatch(kind::equalsIgnoreCase)) {
-        result.add(List.of(unquote(column.getColumnName())));
-      }
-    }
-    List<Index> indexes = createTable.getIndexes();
-    if (indexes != null) {
-      for (Index index : indexes) {
-        if (index instanceof ForeignKeyIndex) {
-          continue;
-        }
-        String type = index.getType();
-        if (type != null && type.toUpperCase(Locale.ROOT).startsWith(kind)) {
-          result.add(index.getColumnsNames().stream().map(this::keyColumn).toList());
-        }
-      }
-    }
     return result;
   }
 
@@ -586,99 +650,34 @@ public class DdlInspector {
     return value.toLowerCase(Locale.ROOT);
   }
 
-  /** Collects FK constraints (table-level and inline {@code REFERENCES}) as structured edges. */
-  private List<ForeignKeyRef> foreignKeyRefs(
-      CreateTable createTable, List<ColumnDefinition> columns) {
-    List<ForeignKeyRef> result = new ArrayList<>();
-    List<Index> indexes = createTable.getIndexes();
-    if (indexes != null) {
-      for (Index index : indexes) {
-        if (index instanceof ForeignKeyIndex fk) {
-          result.add(
-              new ForeignKeyRef(
-                  fk.getColumnsNames().stream().map(this::unquote).toList(),
-                  Names.toSnakeCase(unquote(fk.getTable().getName())),
-                  fk.getReferencedColumnNames().stream().map(this::unquote).toList()));
-        }
-      }
-    }
-    for (ColumnDefinition column : columns) {
-      inlineForeignKeyRef(unquote(column.getColumnName()), column.getColumnSpecs())
-          .ifPresent(result::add);
-    }
-    return result;
-  }
-
-  /** Best-effort structured parse of an inline {@code ... REFERENCES table(column)} column spec. */
-  private Optional<ForeignKeyRef> inlineForeignKeyRef(String columnName, List<String> specs) {
-    return parseInlineReference(specs)
-        .map(
-            ref ->
-                new ForeignKeyRef(List.of(columnName), Names.toSnakeCase(ref[0]), List.of(ref[1])));
-  }
-
-  /** Resolves a foreign-key reference for a column from table-level then inline constraints. */
-  private Optional<String> resolveForeignKey(
-      String columnName, ColumnDefinition column, Map<String, String> tableForeignKeys) {
-    String key = columnName.toLowerCase(Locale.ROOT);
-    if (tableForeignKeys.containsKey(key)) {
-      return Optional.of(tableForeignKeys.get(key));
-    }
-    return inlineForeignKey(column.getColumnSpecs());
-  }
-
-  /** Maps local column name (lowercased) to {@code ref[table.column]} for table-level FKs. */
-  private Map<String, String> tableForeignKeys(CreateTable createTable) {
+  /** Maps each local column (lower-cased) to its {@code ref[table.column, pool]} datatype. */
+  private Map<String, String> foreignKeyDatatypes(List<ForeignKeyRef> foreignKeys) {
     Map<String, String> result = new LinkedHashMap<>();
-    List<Index> indexes = createTable.getIndexes();
-    if (indexes == null) {
-      return result;
-    }
-    for (Index index : indexes) {
-      if (index instanceof ForeignKeyIndex fk) {
-        String refTable = Names.toSnakeCase(unquote(fk.getTable().getName()));
-        List<String> localColumns = fk.getColumnsNames();
-        List<String> referencedColumns = fk.getReferencedColumnNames();
-        for (int i = 0; i < localColumns.size(); i++) {
-          String referenced = columnAt(referencedColumns, i);
-          result.put(
-              unquote(localColumns.get(i)).toLowerCase(Locale.ROOT),
-              "ref["
-                  + refTable
-                  + "."
-                  + Names.toSnakeCase(unquote(referenced))
-                  + ", "
-                  + Defaults.REF_POOL
-                  + "]");
-        }
+    for (ForeignKeyRef fk : foreignKeys) {
+      for (int i = 0; i < fk.localColumns().size(); i++) {
+        String referenced = fk.refColumns().get(i < fk.refColumns().size() ? i : 0);
+        result.putIfAbsent(
+            lower(fk.localColumns().get(i)),
+            "ref["
+                + fk.refTable()
+                + "."
+                + Names.toSnakeCase(referenced)
+                + ", "
+                + Defaults.REF_POOL
+                + "]");
       }
     }
     return result;
-  }
-
-  /** Best-effort parse of an inline {@code ... REFERENCES table(column)} column spec. */
-  private Optional<String> inlineForeignKey(List<String> specs) {
-    return parseInlineReference(specs)
-        .map(
-            ref ->
-                "ref["
-                    + Names.toSnakeCase(ref[0])
-                    + "."
-                    + Names.toSnakeCase(ref[1])
-                    + ", "
-                    + Defaults.REF_POOL
-                    + "]");
   }
 
   /**
-   * Extracts {@code [table, referencedColumn]} from an inline {@code ... REFERENCES table(col)}
-   * column spec. Tolerant of JSQLParser tokenization: 5.3 split {@code REFERENCES}, {@code table}
-   * and {@code (col)} into separate spec tokens, while 5.4 emits the whole clause as one token.
-   * Joining the specs and matching against the clause handles both. Referenced column defaults to
-   * {@code id} when the DDL omits it. Returned names are unquoted and the table is schema-less, not
-   * yet snake-cased.
+   * Extracts the foreign key of an inline {@code ... REFERENCES table(col)} column spec; the
+   * referenced column is empty when the DDL omits it. Tolerant of JSQLParser tokenization: 5.3
+   * split {@code REFERENCES}, {@code table} and {@code (col)} into separate spec tokens, while 5.4
+   * emits the whole clause as one token. Joining the specs and matching against the clause handles
+   * both. The table is schema-less.
    */
-  private Optional<String[]> parseInlineReference(List<String> specs) {
+  private Optional<ForeignKeyRef> inlineForeignKey(String columnName, List<String> specs) {
     if (specs == null || specs.isEmpty()) {
       return Optional.empty();
     }
@@ -686,10 +685,12 @@ public class DdlInspector {
     if (!matcher.find()) {
       return Optional.empty();
     }
-    String referenced = matcher.group(2) != null ? matcher.group(2) : "id";
     String table = unquote(matcher.group(1));
     return Optional.of(
-        new String[] {table.substring(table.lastIndexOf('.') + 1), unquote(referenced)});
+        new ForeignKeyRef(
+            List.of(columnName),
+            Names.toSnakeCase(table.substring(table.lastIndexOf('.') + 1)),
+            matcher.group(2) == null ? List.of() : List.of(unquote(matcher.group(2)))));
   }
 
   /**
@@ -726,28 +727,6 @@ public class DdlInspector {
         .toList();
   }
 
-  private String columnAt(List<String> columns, int index) {
-    if (columns == null || columns.isEmpty()) {
-      return "id";
-    }
-    return index < columns.size() ? columns.get(index) : columns.get(0);
-  }
-
-  /**
-   * A key constraint's column, without its sort direction: {@code PRIMARY KEY ([id] ASC)} (the SSMS
-   * default) reports the column as {@code "id ASC"}, which matched no field (#377).
-   */
-  private String keyColumn(String indexColumn) {
-    return unquote(SORT_DIRECTION.matcher(indexColumn.trim()).replaceAll(""));
-  }
-
-  private String unquote(String identifier) {
-    if (identifier == null) {
-      return "";
-    }
-    return IDENT_QUOTES.matcher(identifier).replaceAll("").trim();
-  }
-
   /**
    * Records an unparseable / unmodellable {@code CREATE TABLE}. Always tracked so strict mode can
    * abort; in best-effort mode it also surfaces as a warning so the skipped table stays visible.
@@ -761,7 +740,7 @@ public class DdlInspector {
     }
   }
 
-  private String shortSnippet(String statement) {
+  static String shortSnippet(String statement) {
     String oneLine = statement.replace('\n', ' ').replace('\r', ' ');
     return oneLine.length() <= 60 ? oneLine : oneLine.substring(0, 60) + "...";
   }
