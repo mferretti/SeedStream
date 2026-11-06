@@ -36,6 +36,11 @@ class UniqueFieldValidatorTest {
     STRUCTURES.put("in_array", fields("items", "array[unique[1..10], 1..3]"));
     STRUCTURES.put("serial_in_array", fields("items", "array[serial, 1..3]"));
     STRUCTURES.put("ser", fields("id", "serial"));
+    STRUCTURES.put("cycle_top", fields("status", "cycle[NEW,OPEN,CLOSED]"));
+    STRUCTURES.put("cycle_in_array", fields("tags", "array[cycle[A,B], 1..3]"));
+    STRUCTURES.put("cycle_child", fields("kind", "cycle[A,B]"));
+    STRUCTURES.put("cycle_via_array", fields("kids", "array[object[cycle_child], 1..3]"));
+    STRUCTURES.put("cycle_via_object", fields("kid", "object[cycle_child]", "n", "int[1..5]"));
     STRUCTURES.put("count_from_5", fields("id", "unique[5..count]"));
     STRUCTURES.put("child", fields("cid", "unique[1..100]"));
     STRUCTURES.put("via_array", fields("kids", "array[object[child], 1..3]"));
@@ -129,5 +134,33 @@ class UniqueFieldValidatorTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("holds 6 values but --count is 10")
         .hasMessageContaining("Use 1..count");
+  }
+
+  @Test
+  void shouldRejectCycleUnderArray() {
+    UniqueFieldValidator validator = validator(10);
+    assertThatThrownBy(() -> validator.validate("cycle_in_array"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("cycle[...] field 'cycle_in_array.tags'")
+        .hasMessageContaining("is inside array[...]");
+  }
+
+  @Test
+  void shouldRejectCycleInObjectNestedInArray() {
+    UniqueFieldValidator validator = validator(10);
+    assertThatThrownBy(() -> validator.validate("cycle_via_array"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("cycle[...] field 'cycle_child.kind'")
+        .hasMessageContaining("is inside array[...]");
+  }
+
+  @Test
+  void shouldPassCycleInOneToOneObject() {
+    assertThatCode(() -> validator(100).validate("cycle_via_object")).doesNotThrowAnyException();
+  }
+
+  @Test
+  void shouldPassCycleAtTopLevelWithAnyCount() {
+    assertThatCode(() -> validator(10_000_000).validate("cycle_top")).doesNotThrowAnyException();
   }
 }

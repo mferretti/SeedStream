@@ -1174,6 +1174,7 @@ other_id:     ref[other.id, 1..count, unique=composite]    # same group = one tu
 | Type | Prefix-stable when --count changes |
 |---|---|
 | `serial` | yes |
+| `cycle[...]` | yes |
 | `unique[1..N]` (fixed) | yes |
 | `unique[1..count]` | no — reshuffles |
 | `ref[t.c, 1..count]` | no (values depend on the bound) |

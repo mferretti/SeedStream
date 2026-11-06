@@ -18,6 +18,7 @@ package com.datagenerator.cli;
 
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.ArrayType;
+import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.SerialType;
@@ -60,9 +61,10 @@ final class UniqueFieldValidator {
   }
 
   private void visit(String structureName, String field, DataType type, boolean underArray) {
-    if ((type instanceof UniqueType || type instanceof SerialType) && underArray) {
+    if ((type instanceof UniqueType || type instanceof SerialType || type instanceof CycleType)
+        && underArray) {
       throw new IllegalArgumentException(
-          (type instanceof SerialType ? "serial" : "unique[...]")
+          indexedLabel(type)
               + " field '"
               + structureName
               + "."
@@ -74,6 +76,15 @@ final class UniqueFieldValidator {
     } else if (type instanceof ArrayType a) {
       visit(structureName, field, a.getElementType(), true);
     }
+  }
+
+  private static String indexedLabel(DataType type) {
+    return switch (type) {
+      case SerialType s -> "serial";
+      case CycleType c -> "cycle[...]";
+      case UniqueType u -> "unique[...]";
+      case null, default -> throw new IllegalStateException("not an index-driven type: " + type);
+    };
   }
 
   private void checkGroups(Map<String, DataType> fields) {

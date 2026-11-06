@@ -46,6 +46,7 @@ public class TypeParser {
       Pattern.compile(
           "^(char|int|decimal|date|timestamp)\\[((?:(?!\\.\\.)[^\\]])++)\\.\\.([^\\]]++)\\]$");
   private static final Pattern ENUM_PATTERN = Pattern.compile("^enum\\[(.*)\\]$");
+  private static final Pattern CYCLE_PATTERN = Pattern.compile("^cycle\\[(.*)\\]$");
   private static final Pattern OBJECT_PATTERN = Pattern.compile("^object\\[(" + IDENT + CLOSE_END);
   private static final Pattern ARRAY_PATTERN =
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
@@ -90,7 +91,9 @@ public class TypeParser {
     Matcher m = PRIMITIVE_PATTERN.matcher(trimmed);
     if (m.matches()) return parsePrimitive(m);
     m = ENUM_PATTERN.matcher(trimmed);
-    if (m.matches()) return parseEnum(m, typeString);
+    if (m.matches()) return new EnumType(parseValueList(m.group(1), "Enum", typeString));
+    m = CYCLE_PATTERN.matcher(trimmed);
+    if (m.matches()) return new CycleType(parseValueList(m.group(1), "cycle", typeString));
     m = OBJECT_PATTERN.matcher(trimmed);
     if (m.matches()) return new ObjectType(m.group(1));
     m = PARENT_REF_PATTERN.matcher(trimmed);
@@ -126,16 +129,15 @@ public class TypeParser {
         m.group(3).trim());
   }
 
-  private static DataType parseEnum(Matcher m, String typeString) {
+  // Shared by enum[...] and cycle[...]: comma-split, trim, drop empty entries.
+  private static List<String> parseValueList(String list, String kind, String typeString) {
     List<String> values =
-        Arrays.stream(m.group(1).trim().split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .toList();
+        Arrays.stream(list.trim().split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
     if (values.isEmpty()) {
-      throw new TypeParseException("Enum must have at least one value: %s".formatted(typeString));
+      throw new TypeParseException(
+          "%s must have at least one value: %s".formatted(kind, typeString));
     }
-    return new EnumType(values);
+    return values;
   }
 
   private static DataType parseRefCount(Matcher m, String typeString) {

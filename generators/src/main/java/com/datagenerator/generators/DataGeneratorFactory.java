@@ -19,6 +19,7 @@ package com.datagenerator.generators;
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.CustomDatafakerType;
+import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.ObjectType;
@@ -33,6 +34,7 @@ import com.datagenerator.generators.composite.ParentReferenceGenerator;
 import com.datagenerator.generators.composite.ReferenceGenerator;
 import com.datagenerator.generators.primitive.BooleanGenerator;
 import com.datagenerator.generators.primitive.CharGenerator;
+import com.datagenerator.generators.primitive.CycleGenerator;
 import com.datagenerator.generators.primitive.DateGenerator;
 import com.datagenerator.generators.primitive.DecimalGenerator;
 import com.datagenerator.generators.primitive.EnumGenerator;
@@ -98,6 +100,7 @@ public class DataGeneratorFactory {
     STATELESS_TYPE_MAP.put(ParentReferenceType.class, new ParentReferenceGenerator());
     STATELESS_TYPE_MAP.put(UniqueType.class, new UniqueGenerator());
     STATELESS_TYPE_MAP.put(SerialType.class, new SerialGenerator());
+    STATELESS_TYPE_MAP.put(CycleType.class, new CycleGenerator());
     // NOTE: ObjectGenerator is stateful and added per-instance in the constructor
   }
 

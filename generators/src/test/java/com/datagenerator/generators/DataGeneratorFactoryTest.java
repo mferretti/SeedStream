@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.CustomDatafakerType;
+import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.ObjectType;
@@ -37,6 +38,7 @@ import com.datagenerator.generators.composite.ParentReferenceGenerator;
 import com.datagenerator.generators.composite.ReferenceGenerator;
 import com.datagenerator.generators.primitive.BooleanGenerator;
 import com.datagenerator.generators.primitive.CharGenerator;
+import com.datagenerator.generators.primitive.CycleGenerator;
 import com.datagenerator.generators.primitive.DateGenerator;
 import com.datagenerator.generators.primitive.DecimalGenerator;
 import com.datagenerator.generators.primitive.EnumGenerator;
@@ -85,6 +87,7 @@ class DataGeneratorFactoryTest {
         Arguments.of(new ParentReferenceType("id"), ParentReferenceGenerator.class),
         Arguments.of(new UniqueType(null, 1, 10), UniqueGenerator.class),
         Arguments.of(new SerialType(1), SerialGenerator.class),
+        Arguments.of(new CycleType(List.of("A", "B")), CycleGenerator.class),
         Arguments.of(new CustomDatafakerType("city"), DatafakerGenerator.class));
   }
 
