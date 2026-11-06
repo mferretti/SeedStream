@@ -44,9 +44,9 @@ class CycleGeneratorTest {
     return gen(values, index, random);
   }
 
-  private Object gen(List<String> values, long index, Random random) {
+  private Object gen(List<String> values, long index, Random rng) {
     RecordIndex.holder()[0] = index;
-    return generator.generate(random, new CycleType(values));
+    return generator.generate(rng, new CycleType(values));
   }
 
   @Test

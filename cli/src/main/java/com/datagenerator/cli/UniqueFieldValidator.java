@@ -82,7 +82,8 @@ final class UniqueFieldValidator {
     return switch (type) {
       case SerialType s -> "serial";
       case CycleType c -> "cycle[...]";
-      default -> "unique[...]";
+      case UniqueType u -> "unique[...]";
+      case null, default -> throw new IllegalStateException("not an index-driven type: " + type);
     };
   }
 
