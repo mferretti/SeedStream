@@ -190,7 +190,7 @@ public class DdlPreprocessor {
         }
         String word = s.substring(i, j);
         if (depth == 1
-            && word.equalsIgnoreCase("IDENTITY")
+            && "IDENTITY".equalsIgnoreCase(word)
             && (!NOT_AFTER_PROPERTY.contains(prev) || isKeyOfPrimaryOrUnique(prev, prev2))
             && m.region(i, len).lookingAt()) {
           sb.append(' ').append(IDENTITY_MARKER).append(' ');
@@ -220,7 +220,7 @@ public class DdlPreprocessor {
    * {@code PRIMARY KEY} / {@code UNIQUE KEY} before the property; a bare {@code KEY} is an index.
    */
   private static boolean isKeyOfPrimaryOrUnique(String prev, String prev2) {
-    return prev.equals("key") && (prev2.equals("primary") || prev2.equals("unique"));
+    return "key".equals(prev) && ("primary".equals(prev2) || "unique".equals(prev2));
   }
 
   private static boolean isWordChar(char c) {

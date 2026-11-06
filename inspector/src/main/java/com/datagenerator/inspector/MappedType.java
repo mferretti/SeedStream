@@ -30,8 +30,8 @@ package com.datagenerator.inspector;
  */
 public record MappedType(String datatype, Reason reason, String note) {
 
-  public MappedType(String datatype, Reason reason) {
-    this(datatype, reason, null);
+  public MappedType(String mappedDatatype, Reason mappedReason) {
+    this(mappedDatatype, mappedReason, null);
   }
 
   /** Why a datatype was chosen, in increasing need for human review. */
