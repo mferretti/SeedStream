@@ -19,8 +19,12 @@ package com.datagenerator.core.registry;
 import com.github.curiousoddman.rgxgen.RgxGen;
 import com.github.curiousoddman.rgxgen.parsing.dflt.RgxGenParseException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Currency;
@@ -73,6 +77,14 @@ public class DatafakerRegistry {
 
   /** SEPA-zone countries (ISO 3166-1 alpha-2) that Datafaker can emit an IBAN for. */
   private static final List<String> SEPA_SUPPORTED = sepaSupported();
+
+  /**
+   * ISO 4217 codes, sorted, loaded once from {@code currency-codes.txt}. Datafaker's {@code
+   * money().currencyCode()} draws from {@code Currency.getAvailableCurrencies()}, an
+   * identity-hashed JDK set whose order varies per JVM, so the same seed gave different codes
+   * (#458).
+   */
+  private static final List<String> CURRENCY_CODES = loadCurrencyCodes();
 
   /** Functional interface for Datafaker type generators. */
   @FunctionalInterface
@@ -164,8 +176,9 @@ public class DatafakerRegistry {
     register("random_iban", (faker, random) -> faker.finance().iban());
     registerAlias("random_locale_iban", "random_iban");
     register("sepa_iban", DatafakerRegistry::sepaIban);
-    register("currency", (faker, random) -> faker.money().currencyCode());
-    register("locale_currency", (faker, random) -> localeCurrency(faker));
+    // Not faker.money().currencyCode(): identity-hashed JDK set, not reproducible (#458).
+    register("currency", (faker, random) -> randomCurrency(random));
+    register("locale_currency", (faker, random) -> localeCurrency(faker, random));
     register("price", (faker, random) -> faker.commerce().price());
     register("bic", (faker, random) -> localeAwareBic(faker));
     registerAlias("swift", "bic");
@@ -258,11 +271,13 @@ public class DatafakerRegistry {
    * italy} yields {@code EUR} and {@code usa} yields {@code USD}. Unlike {@code currency} (a random
    * ISO 4217 code — a system may transact many currencies), this ties the currency to the locale.
    *
-   * <p>Uses the JDK's {@link Currency#getInstance(Locale)}. Falls back to a random {@code currency}
-   * when the locale has no country or the JDK has no currency for it (e.g. a language-only locale
-   * or a territory with no legal tender).
+   * <p>Uses the JDK's {@link Currency#getInstance(Locale)}, which is deterministic and draws
+   * nothing. Falls back to a random {@code currency} (one draw from the embedded list, see {@link
+   * #randomCurrency}) when the locale has no country or the JDK has no currency for it (e.g. a
+   * language-only locale or a territory with no legal tender). The fallback does not use
+   * Datafaker's {@code money().currencyCode()}, which is not reproducible across JVMs (#458).
    */
-  private static String localeCurrency(Faker faker) {
+  private static String localeCurrency(Faker faker, Random random) {
     Locale locale = faker.getContext().getLocale();
     if (!locale.getCountry().isBlank()) {
       try {
@@ -271,7 +286,45 @@ public class DatafakerRegistry {
         log.debug("No currency for locale {}, falling back to random currency", locale, e);
       }
     }
-    return faker.money().currencyCode();
+    return randomCurrency(random);
+  }
+
+  /**
+   * Picks one ISO 4217 code from the embedded sorted list with exactly one {@code nextInt} draw on
+   * the seeded {@code random}, so the draws of the surrounding fields are unaffected (#458).
+   */
+  private static String randomCurrency(Random random) {
+    return CURRENCY_CODES.get(random.nextInt(CURRENCY_CODES.size()));
+  }
+
+  /**
+   * Loads the embedded ISO 4217 code list. Blank lines and {@code #} comment lines are skipped.
+   * Fails fast if the resource is missing or empty, since a silent empty list would break every
+   * {@code currency} value.
+   */
+  private static List<String> loadCurrencyCodes() {
+    // Relative name: resolves to com/datagenerator/core/registry/currency-codes.txt, so another
+    // jar's root-level resource cannot shadow it.
+    String resource = "currency-codes.txt";
+    String location = DatafakerRegistry.class.getPackageName().replace('.', '/') + "/" + resource;
+    try (InputStream in = DatafakerRegistry.class.getResourceAsStream(resource)) {
+      if (in == null) {
+        throw new IllegalStateException("Missing classpath resource " + location);
+      }
+      List<String> codes =
+          new String(in.readAllBytes(), StandardCharsets.UTF_8)
+              .lines()
+              .map(String::strip)
+              .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+              .toList();
+      if (codes.isEmpty()) {
+        throw new IllegalStateException(
+            "Classpath resource " + location + " has no currency codes");
+      }
+      return codes;
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to read classpath resource " + location, e);
+    }
   }
 
   /**
