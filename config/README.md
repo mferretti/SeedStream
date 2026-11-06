@@ -737,8 +737,10 @@ line_items: { datatype: "array[object[line_item], 1..20]" }  # 1–20 nested obj
 
 Referenced structure files are loaded from `structures_path`. Resolution order:
 1. If the job sets `structures_path`, that value is used as-is (absolute, or relative to the current working directory).
-2. Otherwise, if the job file lives in a directory named `jobs/`, structures are loaded from its sibling `structures/` directory — i.e. `<parent-of-jobs>/structures/`. This is why the shipped `config/jobs/*.yaml` resolve against `config/structures/` with no explicit key.
+2. Otherwise, if the job file lives in a directory named `jobs/`, structures are loaded from its sibling `structures/` directory — i.e. `<parent-of-jobs>/structures/`. This is why the shipped `config/jobs/*.yaml` resolve against `config/structures/` with no explicit key. The job path is made absolute first, so a relative `--job jobs/x.yaml` (run from inside a use-case folder) works too. If the sibling directory lacks the file but `config/structures/<file>` exists, that one is used with a warning; if both hold the file, the sibling wins, also with a warning; if neither does, the error lists every location tried.
 3. Otherwise, it falls back to the literal path `config/structures/` (relative to the working directory).
+
+The resolved directory is logged once at INFO (`Structures path: /abs/path`).
 
 ### Foreign Key References
 

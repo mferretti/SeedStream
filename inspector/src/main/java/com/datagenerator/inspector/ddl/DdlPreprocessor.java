@@ -17,6 +17,7 @@
 package com.datagenerator.inspector.ddl;
 
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,8 +34,9 @@ import java.util.regex.Pattern;
  *       and strip schema qualification from the table name ({@code [schema].[table]} → {@code
  *       table} after {@code CREATE TABLE}). JSQLParser 5.3 does not parse bracket-quoted
  *       identifiers in CREATE TABLE context.
- *   <li>Strip {@code IDENTITY(seed,increment)} from column definitions — JSQLParser does not parse
- *       this MSSQL column property.
+ *   <li>Replace the MSSQL column property {@code IDENTITY[(seed,increment)] [NOT FOR REPLICATION]}
+ *       with the {@link #IDENTITY_MARKER} spec token — JSQLParser does not parse the original, and
+ *       the marker lets the inspector still tell that SQL Server assigns the value (#444).
  *   <li>Truncate trailing table options after the balanced closing {@code )} of the column list:
  *       {@code ENGINE=...}, {@code WITH (...)}, {@code ON [PRIMARY]}, {@code TABLESPACE ...},
  *       {@code STORAGE (...)}, {@code ORGANIZATION ...} etc. A balanced-paren scan handles nested
@@ -67,11 +69,24 @@ public class DdlPreprocessor {
   private static final Pattern ORACLE_RAW = Pattern.compile("(?i)\\bRAW(\\s*\\()");
 
   /**
-   * Matches {@code IDENTITY(seed, increment)} — the MSSQL auto-increment column property.
-   * JSQLParser does not recognise this construct and throws a parse exception.
+   * Spec token that replaces an MSSQL {@code IDENTITY} column property, so the inspector can still
+   * see which columns SQL Server assigns (#444).
+   */
+  static final String IDENTITY_MARKER = "SEEDSTREAM_IDENTITY";
+
+  /**
+   * Matches the MSSQL identity column property: {@code IDENTITY}, optionally with {@code (seed,
+   * increment)} and {@code NOT FOR REPLICATION}. JSQLParser does not recognise any of these.
    */
   private static final Pattern IDENTITY =
-      Pattern.compile("(?i)\\bIDENTITY\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)");
+      Pattern.compile(
+          "(?i)IDENTITY(?:\\s*\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)|(?!\\s*\\())(?:\\s+NOT\\s+FOR\\s+REPLICATION)?"
+              + "(?![\\w$#@])");
+
+  /**
+   * MySQL column type {@code ENUM(} / {@code SET(}: the member list that follows may use {@code "}.
+   */
+  private static final Pattern ENUM_OR_SET_OPEN = Pattern.compile("(?i)\\b(?:ENUM|SET)\\s*\\(");
 
   /** Quick check: does this statement contain CREATE TABLE? */
   private static final Pattern CREATE_TABLE =
@@ -107,11 +122,14 @@ public class DdlPreprocessor {
     // Dequote bracket identifiers and strip schema prefix from table name
     s = dequoteBrackets(s);
 
-    // Strip IDENTITY(seed,increment) column property
-    s = IDENTITY.matcher(s).replaceAll("");
+    // IDENTITY(seed,increment) column property -> marker token
+    s = markIdentity(s);
 
     // Oracle RAW(n) -> VARBINARY(n) (parseable, still an unknown type)
     s = ORACLE_RAW.matcher(s).replaceAll("VARBINARY$1");
+
+    // MySQL ENUM("a","b") -> ENUM('a','b'): JSQLParser rejects double-quoted members
+    s = singleQuoteEnumMembers(s);
 
     // Truncate trailing table options after the balanced closing paren of the column list
     s = truncateTrailingOptions(s);
@@ -120,6 +138,165 @@ public class DdlPreprocessor {
     s = CLUSTERED.matcher(s).replaceAll("");
 
     return s;
+  }
+
+  /** Previous-token values after which the word {@code IDENTITY} is a name, not the property. */
+  private static final Set<String> NOT_AFTER_PROPERTY =
+      Set.of(
+          "",
+          "(",
+          ",",
+          ".",
+          "table",
+          "constraint",
+          "references",
+          "on",
+          "key",
+          "index",
+          "to",
+          "exists",
+          "as",
+          "default");
+
+  /**
+   * Replaces each identity column property with {@link #IDENTITY_MARKER}, skipping string literals,
+   * quoted identifiers and comments. {@code IDENTITY} is the property only inside the column list
+   * and only after a column's type or other column spec; never after {@code TABLE}, {@code
+   * CONSTRAINT}, {@code REFERENCES}, {@code .}, {@code (}, {@code ,} (a table, constraint or column
+   * of that name) nor in ANSI {@code GENERATED ... AS IDENTITY}.
+   */
+  private static String markIdentity(String s) {
+    StringBuilder sb = new StringBuilder(s.length());
+    Matcher m = IDENTITY.matcher(s);
+    int len = s.length();
+    int depth = 0;
+    String prev = ""; // previous significant token, lower-case; comments do not count
+    String prev2 = ""; // the one before it
+    int i = 0;
+    while (i < len) {
+      char c = s.charAt(i);
+      int end = Math.min(quotedOrCommentEnd(s, i), len);
+      if (end > i) {
+        sb.append(s, i, end);
+        if (!SqlScan.isLineCommentStart(s, i) && !SqlScan.isBlockCommentStart(s, i)) {
+          prev2 = prev;
+          prev = "\"";
+        }
+        i = end;
+      } else if (isWordChar(c)) {
+        int j = i;
+        while (j < len && isWordChar(s.charAt(j))) {
+          j++;
+        }
+        String word = s.substring(i, j);
+        if (depth == 1
+            && "IDENTITY".equalsIgnoreCase(word)
+            && (!NOT_AFTER_PROPERTY.contains(prev) || isKeyOfPrimaryOrUnique(prev, prev2))
+            && m.region(i, len).lookingAt()) {
+          sb.append(' ').append(IDENTITY_MARKER).append(' ');
+          prev2 = prev;
+          prev = IDENTITY_MARKER;
+          i = m.end();
+        } else {
+          sb.append(word);
+          prev2 = prev;
+          prev = word.toLowerCase(Locale.ROOT);
+          i = j;
+        }
+      } else {
+        depth += c == '(' ? 1 : c == ')' ? -1 : 0;
+        if (!Character.isWhitespace(c)) {
+          prev2 = prev;
+          prev = String.valueOf(c);
+        }
+        sb.append(c);
+        i++;
+      }
+    }
+    return sb.toString();
+  }
+
+  /**
+   * {@code PRIMARY KEY} / {@code UNIQUE KEY} before the property; a bare {@code KEY} is an index.
+   */
+  private static boolean isKeyOfPrimaryOrUnique(String prev, String prev2) {
+    return "key".equals(prev) && ("primary".equals(prev2) || "unique".equals(prev2));
+  }
+
+  private static boolean isWordChar(char c) {
+    return Character.isLetterOrDigit(c) || c == '_' || c == '$' || c == '#' || c == '@';
+  }
+
+  /**
+   * End index of the string literal / quoted identifier / comment starting at {@code i}, else i.
+   */
+  private static int quotedOrCommentEnd(String s, int i) {
+    char c = s.charAt(i);
+    if (SqlScan.isBlockCommentStart(s, i)) {
+      return SqlScan.skipBlockComment(s, i);
+    } else if (SqlScan.isLineCommentStart(s, i)) {
+      return SqlScan.skipLineComment(s, i);
+    } else if (c == '\'') {
+      return SqlScan.skipSingleQuoted(s, i);
+    } else if (c == '"' || c == '`') {
+      return SqlScan.skipDelimited(s, i, c);
+    }
+    return i;
+  }
+
+  /**
+   * Rewrites double-quoted members inside {@code ENUM(...)} / {@code SET(...)} to single-quoted SQL
+   * literals ({@code "it""s"} → {@code 'it"s'}, a {@code '} inside becomes {@code ''}). Nothing
+   * outside those argument lists is touched, so double-quoted identifiers survive.
+   */
+  private static String singleQuoteEnumMembers(String s) {
+    Matcher open = ENUM_OR_SET_OPEN.matcher(s);
+    StringBuilder sb = new StringBuilder(s.length());
+    int pos = 0;
+    while (open.find(pos)) {
+      int i = open.end();
+      sb.append(s, pos, i);
+      while (i < s.length() && s.charAt(i) != ')') {
+        char c = s.charAt(i);
+        if (c == '\'') {
+          int end = SqlScan.skipSingleQuoted(s, i);
+          sb.append(s, i, end);
+          i = end;
+        } else if (c == '"') {
+          i = appendSingleQuoted(s, i, sb);
+        } else {
+          sb.append(c);
+          i++;
+        }
+      }
+      pos = i;
+    }
+    return sb.append(s, pos, s.length()).toString();
+  }
+
+  /**
+   * Appends the {@code "..."} literal opened at {@code i} as a {@code '...'} one; returns the index
+   * past it.
+   */
+  private static int appendSingleQuoted(String s, int i, StringBuilder sb) {
+    sb.append('\'');
+    int j = i + 1;
+    while (j < s.length()) {
+      char c = s.charAt(j);
+      if (c == '"') {
+        if (j + 1 < s.length() && s.charAt(j + 1) == '"') {
+          sb.append('"'); // "" → literal "
+          j += 2;
+          continue;
+        }
+        j++;
+        break;
+      }
+      sb.append(c == '\'' ? "''" : String.valueOf(c));
+      j++;
+    }
+    sb.append('\'');
+    return j;
   }
 
   /**

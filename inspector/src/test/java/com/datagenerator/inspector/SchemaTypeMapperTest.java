@@ -212,8 +212,10 @@ class SchemaTypeMapperTest {
   }
 
   @Test
-  void shouldMapEmailFormatToEmailFakerKeyEvenWithMaxLength() {
-    MappedType mapped = map("contact", "{'type':'string','format':'email','maxLength':20}");
+  void shouldMapEmailFormatToEmailFakerKeyWhenMaxLengthIsGenerous() {
+    // #452: the old test used maxLength 20, which Datafaker emails can exceed; now it is a
+    // char range with a review comment (see the #452 section below). 64 and up keep `email`.
+    MappedType mapped = map("contact", "{'type':'string','format':'email','maxLength':64}");
 
     assertThat(mapped.datatype()).isEqualTo("email");
     assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
@@ -280,10 +282,10 @@ class SchemaTypeMapperTest {
   }
 
   @Test
-  void shouldMapMaxLengthToCharRangeFromOneEvenWhenMinLengthGiven() {
-    // spec §3: maxLength n -> char[1..n]; minLength is not modelled (known limitation)
+  void shouldMapMinAndMaxLengthToCharRangeWhenBothGiven() {
+    // #452: minLength is now honoured (was: char[1..8], minLength ignored)
     assertThat(map("code", "{'type':'string','minLength':8,'maxLength':8}").datatype())
-        .isEqualTo("char[1..8]");
+        .isEqualTo("char[8..8]");
   }
 
   @Test
@@ -336,6 +338,232 @@ class SchemaTypeMapperTest {
   @Test
   void shouldNotApplyNameHintToSubstringInsideSingleToken() {
     assertThat(map("emailish", "{'type':'string'}").datatype()).isEqualTo(STR_DEFAULT);
+  }
+
+  // --- string lengths, #452 phase 1 ---
+
+  @Test
+  void shouldHonorMinLengthAndMaxLength() {
+    MappedType mapped = map("code", "{'type':'string','minLength':4,'maxLength':6}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[4..6]");
+    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mapped.flagged()).isFalse();
+  }
+
+  @Test
+  void shouldHonorMinLengthAndMaxLengthOnNullableTypeArray() {
+    assertThat(map("code", "{'type':['string','null'],'minLength':2,'maxLength':5}").datatype())
+        .isEqualTo("char[2..5]");
+  }
+
+  @Test
+  void shouldKeepDefaultMaxWhenOnlyMinLengthGiven() {
+    MappedType mapped = map("remark", "{'type':'string','minLength':3}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[3..50]");
+    assertThat(mapped.flagged()).isFalse();
+  }
+
+  @Test
+  void shouldNotEmitInvertedRangeWhenMinLengthExceedsDefaultMax() {
+    // max(minLength, default max): char[80..50] cannot be generated
+    assertThat(map("remark", "{'type':'string','minLength':80}").datatype())
+        .isEqualTo("char[80..80]");
+  }
+
+  @Test
+  void shouldAcceptZeroLowerBoundInCharRangeBecauseTypeParserAndCharGeneratorDo() {
+    // Verified: TypeParser's primitive pattern takes any bounds and CharGenerator.parseLength only
+    // rejects negatives ("must be >= 0"); config/structures/store_movement.yaml ships char[0..100].
+    // So minLength 0 is honoured instead of being rounded up to 1.
+    MappedType mapped = map("note", "{'type':'string','minLength':0,'maxLength':5}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[0..5]");
+    assertThat(mapped.flagged()).isFalse();
+  }
+
+  @Test
+  void shouldKeepCharRangeFromOneAndFlagWhenMinLengthExceedsMaxLength() {
+    MappedType mapped = map("broken", "{'type':'string','minLength':10,'maxLength':5}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[1..5]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("minLength");
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {35, 10, 1})
+  void shouldFallBackToCharRangeWithCommentWhenUuidCannotFitMaxLength(int maxLength) {
+    MappedType mapped =
+        map("ident", "{'type':'string','format':'uuid','maxLength':" + maxLength + "}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[1.." + maxLength + "]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid format cannot fit maxLength " + maxLength);
+  }
+
+  @Test
+  void shouldFallBackToCharRangeWithCommentWhenUuidMinLengthExceedsItsLength() {
+    MappedType mapped =
+        map("ident", "{'type':'string','format':'uuid','minLength':37,'maxLength':40}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[37..40]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid");
+  }
+
+  @Test
+  void shouldFallBackToCharRangeFromDefaultMaxWhenUuidMinLengthExceedsItsLengthWithoutMaxLength() {
+    MappedType mapped = map("ident", "{'type':'string','format':'uuid','minLength':37}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[37..50]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{'type':'string','format':'uuid'}",
+        "{'type':'string','format':'uuid','maxLength':36}",
+        "{'type':'string','format':'uuid','maxLength':100}",
+        "{'type':'string','format':'uuid','minLength':36,'maxLength':36}",
+        "{'type':'string','format':'uuid','minLength':36}"
+      })
+  void shouldKeepUuidWhenItFitsTheDeclaredLengths(String schema) {
+    // guard, passes today
+    MappedType mapped = map("ident", schema);
+
+    assertThat(mapped.datatype()).isEqualTo("uuid");
+    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mapped.flagged()).isFalse();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {63, 20, 5})
+  void shouldFallBackToCharRangeWithCommentWhenEmailMaxLengthIsBelowObservedMax(int maxLength) {
+    MappedType mapped =
+        map("contact", "{'type':'string','format':'email','maxLength':" + maxLength + "}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[1.." + maxLength + "]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment())
+        .contains("email values can exceed maxLength " + maxLength)
+        .contains("#440");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{'type':'string','format':'email'}",
+        "{'type':'string','format':'email','maxLength':64}",
+        "{'type':'string','format':'email','maxLength':320}",
+        "{'type':'string','format':'email','minLength':6}",
+        "{'type':'string','format':'email','minLength':6,'maxLength':254}"
+      })
+  void shouldKeepEmailWhenLengthsLeaveRoomForIt(String schema) {
+    // guard, passes today (measured: 1M Datafaker emails, longest 36 chars, shortest > 6)
+    MappedType mapped = map("contact", schema);
+
+    assertThat(mapped.datatype()).isEqualTo("email");
+    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mapped.flagged()).isFalse();
+  }
+
+  @Test
+  void shouldFallBackToCharRangeWithCommentWhenEmailMinLengthIsAboveSix() {
+    MappedType mapped = map("contact", "{'type':'string','format':'email','minLength':7}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[7..50]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("email");
+  }
+
+  @Test
+  void shouldFallBackToCharRangeWithCommentWhenEmailMinLengthIsAboveSixWithMaxLength() {
+    MappedType mapped =
+        map("contact", "{'type':'string','format':'email','minLength':12,'maxLength':254}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[12..254]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("email");
+  }
+
+  @Test
+  void shouldLetMaxLengthWinOverNameHintAndStillHonorMinLength() {
+    MappedType mapped = map("city", "{'type':'string','minLength':3,'maxLength':12}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[3..12]");
+    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+  }
+
+  @Test
+  void shouldKeepCharRangeFromOneForNameHintedFieldWithOnlyMaxLength() {
+    // guard, passes today: maxLength beats the name hint (current behaviour)
+    MappedType mapped = map("city", "{'type':'string','maxLength':12}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[1..12]");
+    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+  }
+
+  @Test
+  void shouldIgnoreLengthsWhenEnumPresent() {
+    // guard, passes today
+    assertThat(
+            map("status", "{'type':'string','enum':['AB','CD'],'minLength':4,'maxLength':9}")
+                .datatype())
+        .isEqualTo("enum[AB,CD]");
+  }
+
+  @Test
+  void shouldNotEmitInvertedRangeWhenMaxLengthIsZeroAndMinLengthIsPositive() {
+    // char[1..0] fails at generation time; the schema error falls back to the only valid range
+    MappedType mapped = map("broken", "{'type':'string','minLength':3,'maxLength':0}");
+
+    assertThat(mapped.datatype()).isEqualTo("char[0..0]");
+    assertThat(mapped.reason()).isEqualTo(Reason.SCHEMA_ERROR);
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("minLength");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{'type':'array','items':{'type':'string','minLength':10,'maxLength':5}}",
+        "{'type':'array','minItems':1,'maxItems':3,"
+            + "'items':{'type':'string','minLength':10,'maxLength':5}}"
+      })
+  void shouldKeepSchemaErrorFlagOfArrayItemsWhetherOrNotTheArrayIsBounded(String schema) {
+    MappedType mapped = map("tags", schema);
+
+    assertThat(mapped.datatype()).startsWith("array[char[1..5], ");
+    assertThat(mapped.reason()).isEqualTo(Reason.SCHEMA_ERROR);
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("minLength");
+  }
+
+  @Test
+  void shouldKeepUuidReviewCommentOfUnboundedArrayItems() {
+    MappedType mapped =
+        map("ids", "{'type':'array','items':{'type':'string','format':'uuid','maxLength':10}}");
+
+    assertThat(mapped.datatype()).isEqualTo("array[char[1..10], 1..10]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid format cannot fit maxLength 10");
+  }
+
+  @Test
+  void shouldKeepUuidReviewCommentOfBoundedArrayItems() {
+    MappedType mapped =
+        map(
+            "ids",
+            "{'type':'array','minItems':1,'maxItems':3,"
+                + "'items':{'type':'string','format':'uuid','maxLength':10}}");
+
+    assertThat(mapped.datatype()).isEqualTo("array[char[1..10], 1..3]");
+    assertThat(mapped.flagged()).isTrue();
+    assertThat(mapped.comment()).contains("uuid format cannot fit maxLength 10");
   }
 
   // --- nullable ---

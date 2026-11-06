@@ -82,4 +82,56 @@ final class SqlScan {
     }
     return j + 1;
   }
+
+  /**
+   * Returns {@code s} with comments removed and single-quoted strings and dollar-quoted bodies
+   * replaced by {@code ''}, so keyword checks cannot be fooled by text inside them. Quoted
+   * identifiers are copied verbatim (a {@code --} or {@code '} inside one is not a
+   * comment/literal).
+   */
+  static String stripCommentsAndLiterals(String s) {
+    StringBuilder out = new StringBuilder(s.length());
+    int i = 0;
+    while (i < s.length()) {
+      char c = s.charAt(i);
+      if (isLineCommentStart(s, i)) {
+        i = skipLineComment(s, i);
+      } else if (isBlockCommentStart(s, i)) {
+        i = skipBlockComment(s, i);
+        out.append(' ');
+      } else if (c == '\'') {
+        i = skipSingleQuoted(s, i);
+        out.append("''");
+      } else if (c == '"' || c == '`' || c == '[') {
+        int end = skipDelimited(s, i, c == '[' ? ']' : c); // identifiers: copied verbatim
+        out.append(s, i, Math.min(end, s.length()));
+        i = end;
+      } else if (c == '$' && skipDollarQuoted(s, i) > i) {
+        i = skipDollarQuoted(s, i);
+        out.append("''");
+      } else {
+        out.append(c);
+        i++;
+      }
+    }
+    return out.toString();
+  }
+
+  /**
+   * Index just past a dollar-quoted string ({@code $$...$$} or {@code $tag$...$tag$}) opened at
+   * {@code i}, or {@code i} itself when no valid opening tag starts there.
+   */
+  static int skipDollarQuoted(String s, int i) {
+    int tagEnd = i + 1;
+    while (tagEnd < s.length()
+        && (Character.isLetterOrDigit(s.charAt(tagEnd)) || s.charAt(tagEnd) == '_')) {
+      tagEnd++;
+    }
+    if (tagEnd >= s.length() || s.charAt(tagEnd) != '$') {
+      return i;
+    }
+    String tag = s.substring(i, tagEnd + 1);
+    int close = s.indexOf(tag, tagEnd + 1);
+    return close < 0 ? s.length() : close + tag.length();
+  }
 }

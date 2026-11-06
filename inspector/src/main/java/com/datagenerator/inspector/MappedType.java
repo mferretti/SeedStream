@@ -26,8 +26,13 @@ package com.datagenerator.inspector;
  *
  * @param datatype the SeedStream type string (e.g. {@code int[1..100]})
  * @param reason why this datatype was chosen
+ * @param note the review comment for {@link Reason#REVIEW} / {@link Reason#SCHEMA_ERROR}, else null
  */
-public record MappedType(String datatype, Reason reason) {
+public record MappedType(String datatype, Reason reason, String note) {
+
+  public MappedType(String mappedDatatype, Reason mappedReason) {
+    this(mappedDatatype, mappedReason, null);
+  }
 
   /** Why a datatype was chosen, in increasing need for human review. */
   public enum Reason {
@@ -38,7 +43,15 @@ public record MappedType(String datatype, Reason reason) {
     /** Datafaker type guessed from the column/field name — may be wrong, flagged for review. */
     NAME_HINT,
     /** Source type not recognized; fell back to a primitive — flagged for review. */
-    UNKNOWN_TYPE
+    UNKNOWN_TYPE,
+    /**
+     * Recognized, but lossy or approximate (DDL), or a declared constraint the preferred type
+     * cannot honour and a plain type was used instead (OpenAPI/JSON Schema) — flagged with a
+     * specific note.
+     */
+    REVIEW,
+    /** The source schema contradicts itself (e.g. minLength > maxLength) — flagged and warned. */
+    SCHEMA_ERROR
   }
 
   public static MappedType declared(String datatype) {
@@ -57,9 +70,17 @@ public record MappedType(String datatype, Reason reason) {
     return new MappedType(datatype, Reason.UNKNOWN_TYPE);
   }
 
+  public static MappedType review(String datatype, String note) {
+    return new MappedType(datatype, Reason.REVIEW, note);
+  }
+
+  public static MappedType schemaError(String datatype, String note) {
+    return new MappedType(datatype, Reason.SCHEMA_ERROR, note);
+  }
+
   /** True when this mapping is a guess worth a review comment in the output. */
   public boolean flagged() {
-    return reason == Reason.NAME_HINT || reason == Reason.UNKNOWN_TYPE;
+    return reason != Reason.DECLARED && reason != Reason.DEFAULT_RANGE;
   }
 
   /** The review comment for a flagged mapping, or null when no comment is warranted. */
@@ -67,6 +88,7 @@ public record MappedType(String datatype, Reason reason) {
     return switch (reason) {
       case NAME_HINT -> "guessed from column name — verify";
       case UNKNOWN_TYPE -> "unrecognized source type, defaulted — verify";
+      case REVIEW, SCHEMA_ERROR -> note;
       default -> null;
     };
   }

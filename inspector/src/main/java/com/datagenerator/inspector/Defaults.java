@@ -31,7 +31,8 @@ public final class Defaults {
   public static final String DECIMAL_MAX = "9999.99";
   public static final String DATE = "date[2020-01-01..2030-12-31]";
   public static final String TIMESTAMP = "timestamp[now-365d..now]";
-  public static final String STRING = "char[1..50]";
+  public static final int STRING_MAX_LENGTH = 50;
+  public static final String STRING = "char[1.." + STRING_MAX_LENGTH + "]";
 
   /**
    * ID-pool range appended to synthesized flat foreign-key refs. A bare {@code ref[t.col]} is

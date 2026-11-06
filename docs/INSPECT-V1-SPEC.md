@@ -67,10 +67,12 @@ Resolution order per property:
 | `string` + `format: email` | `email` |
 | `string` + `format: date` | `date[<dateMin>..<dateMax>]` |
 | `string` + `format: date-time` | `timestamp[now-<window>..now]` |
-| `string` + `format: uuid` | `uuid` |
-| `string` + `enum:[A,B,C]` | `enum[A,B,C]` |
-| `string` + `maxLength: n` | `char[1..n]` |
-| `string` (no format/len) | name-hint → else `char[1..50]` |
+| `string` + `format: uuid` | `uuid` — or `char[min..max]` + review comment when `maxLength < 36` or `minLength > 36` (a UUID is always 36 chars) |
+| `string` + `format: email` + `maxLength < 64` or `minLength > 6` | `char[min..max]` + review comment (Datafaker emails: longest of 1M samples was 36 chars; 64 leaves headroom for other locales; see #440 for length caps) |
+| `string` + `enum:[A,B,C]` | `enum[A,B,C]` (lengths ignored) |
+| `string` + `minLength: m` and/or `maxLength: n` | `char[m..n]`; a missing side defaults to `1` / `max(m, 50)`; `minLength: 0` → `char[0..n]` |
+| `string` + `minLength > maxLength` (schema error) | `char[1..maxLength]` (`char[0..0]` when `maxLength` is 0) + review comment + a warning naming the field |
+| `string` (no format/len) | name-hint → else `char[1..50]`; with `maxLength` the declared length wins over the hint |
 | `integer` + min/max | `int[min..max]` |
 | `integer` (no bounds) | `int[<intMin>..<intMax>]` |
 | `number` + min/max | `decimal[min..max]` |
@@ -166,6 +168,11 @@ field's `datatype:` line. The **certainties** stay silent so a real DB isn't bur
 | `DEFAULT_RANGE` | `BIGINT`→`int[1..999999]`, `TEXT`→`char[1..500]` (inherent SQL/OpenAPI gap) | none |
 | `NAME_HINT` | `city`→`city`, custom `beer_style`→`beer_style` (guessed from the name) | `# guessed from column name — verify` |
 | `UNKNOWN_TYPE` | `JSONB`→`char[1..50]` (type not recognized) | `# unrecognized source type, defaulted — verify` |
+| `REVIEW` | `NUMBER(5,-2)`→`int[...]`, MySQL `SET(...)`→`enum[...]`, an ENUM member that `enum[...]` cannot express, `format: uuid` that cannot fit `maxLength` | a specific note, e.g. `# uuid format cannot fit maxLength 20 — verify` |
+| `SCHEMA_ERROR` | `minLength > maxLength` (the source schema contradicts itself) | a specific note, plus a warning naming the field |
+
+Arrays carry their item's comment: `array[char[1..5], 1..10]` built from items with `minLength > maxLength`
+keeps the `SCHEMA_ERROR` note and warning whether or not the array declares `minItems`/`maxItems`.
 
 Comments are appended after Jackson serialization (the body is serialized normally; only the comment
 text is added, matched positionally so a repeated datatype value is never mis-tagged). SeedStream's
@@ -220,6 +227,39 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   Genuinely opaque types (`JSON`, `JSONB`, `BYTEA`, `GEOMETRY`, …) still fall back to `char[1..50]`
   flagged `UNKNOWN_TYPE`. Oracle `RAW(n)`, which JSQLParser cannot parse, is rewritten to
   `VARBINARY(n)` by the preprocessor and lands on the same flagged fallback.
+- **Type spellings.** Quoted type names (`"int"`, `` `int` ``, `[int]` — SQL Server's original
+  scripts quote them) map exactly like the bare name. Oracle length semantics are ignored for the
+  length: `VARCHAR2(15 BYTE)` / `CHAR(5 CHAR)` → `char[1..15]` / `char[1..5]`. A zero-length
+  `VARCHAR(0)` / `CHAR(0)` → `char[0..0]` (empty string), never an inverted range.
+- **MySQL types.** `ENUM('a','b')` → `enum[a,b]` (`''` and, for double-quoted members, `""` are
+  unescaped; double-quoted members are rewritten to SQL literals before parsing). `SET('x','y')` →
+  `enum[x,y]` with a review comment (one member per row). A member `enum[...]` cannot express — one
+  containing `,` or `]`, an empty member, or one with leading/trailing whitespace (the engine trims
+  members) — falls back to `char[1..longest]` with a review comment. `TINYINT(1)` (MySQL's boolean
+  convention) → `boolean`; other `TINYINT` widths stay integers.
+- **Exact numerics with scale 0 are integers.** `NUMBER(p)`, `NUMBER(p,0)`, `DECIMAL(p,0)`,
+  `NUMERIC(p,0)` → `int[1..min(10^p − 1, 999999)]`, so they take part in key detection (`serial`,
+  `unique`, `ref`) — this is what makes Oracle keys (`NUMBER(9,0)`) enforced. `NUMBER` /
+  `NUMBER(*)` (no precision) stay decimal; `NUMBER(*,0)` → the default int range; a negative scale
+  (`NUMBER(5,-2)`) → the default int range with a review comment. `NUMBER(*,0)` and negative scales
+  are mapped correctly but JSQLParser 5.4 cannot parse them inside a `CREATE TABLE` yet.
+  Decimals with scale > 2 whose capacity exceeds the default cap keep the default bounds rendered at
+  the declared scale (`DECIMAL(19,4)` → `decimal[0.0000..9999.9900]`); scales 0–2 keep
+  `decimal[0.0..9999.99]` (databases round on insert).
+- **Script handling.** Runs of two or more empty lines (`pg_dump`, SSMS) are collapsed outside
+  quotes, comments and dollar bodies (empty lines inside string literals are preserved). psql
+  meta-command lines (`\connect`, `\restrict`, `\.` …) are dropped. A leading UTF-8 BOM is ignored.
+  Statements are classified on their text with comments and literals removed:
+  - no `CREATE … TABLE` left, a routine body (`CREATE FUNCTION|PROCEDURE|TRIGGER|PACKAGE|EVENT …`),
+    or `GRANT|REVOKE|DENY …` → skipped silently;
+  - a table without a column list — `CREATE TABLE … AS SELECT`, `… PARTITION OF …`, MySQL
+    `… LIKE other`, PostgreSQL `(LIKE other)` → skipped with a warning naming the table;
+  - anything else that still mentions `CREATE … TABLE` is parsed: it is modelled, or fails strict
+    mode loudly (best-effort: skipped with a warning). A real table is never dropped silently.
+- **SQL Server `IDENTITY`.** `IDENTITY`, `IDENTITY(seed, increment)` and `… NOT FOR REPLICATION`
+  after a column's type mark the column as database-assigned (SQL Server rejects explicit values);
+  it then follows the same rules as `GENERATED ALWAYS AS IDENTITY` (see the key mapping in §8).
+  The word `identity` as a table, column, constraint or FK-target name is not affected.
 - Key constraints ignore column sort direction: `PRIMARY KEY CLUSTERED ([id] ASC)` (SSMS's default
   scripting) is the same key as `PRIMARY KEY (id)`.
 - Constraints added later with `ALTER TABLE … ADD CONSTRAINT` (the `pg_dump` / SSMS / Oracle export
@@ -229,6 +269,11 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   column `REFERENCES table(col)` (best-effort token scan). The `1..count` ID-pool range is appended
   by default — a bare `ref[t.col]` is rejected by the engine — so the pool scales with `--count` and
   the emitted YAML runs at any size. Optionally inverted into nested documents — see §9.
+  The referenced **column** in the target is snake-cased (`REFERENCES [dbo].[Employees] ([EmployeeID])`
+  → `ref[employees.employee_id, …]`) and a schema prefix on the referenced table is dropped, so
+  PascalCase / UPPERCASE schemas produce loadable structures; the structure's own field keys keep the
+  declared case (they are the database column names). If two columns of a referenced table
+  snake-case to the same name (`OrderId`, `ORDER_ID`), a warning names both.
 - String columns run through the same `NameHints` before falling back to `char[1..n]`.
 
 ## 8. Out of scope (with rationale)
@@ -257,6 +302,7 @@ These stay out of v1 — but the reason matters, because two of them are *not* i
   - Single-column integer PK (e.g. `id BIGINT PRIMARY KEY`) → `serial` (independent of seed, ordered by record index).
   - `SERIAL` / `BIGSERIAL` / `SMALLSERIAL` column not in any key → `serial` (same semantics).
   - Single-column `GENERATED ALWAYS AS IDENTITY` PK → **omitted** from the structure (the database rejects a client-supplied value, so the DB assigns it); a warning is logged. If another table's FK references it, the column is instead **kept** as `serial` with a warning, because omitting it would dangle that reference — the referenced case needs DB-assigned ordered generation (#400). `GENERATED BY DEFAULT AS IDENTITY` accepts a client value and stays `serial`.
+  - SQL Server `IDENTITY` single-column PK → same rule as `GENERATED ALWAYS` (omitted, or kept as `serial` with the #400 warning when referenced). An `IDENTITY` column outside the PK (SQL Server only) is omitted when nothing references it and kept otherwise, with a warning either way; an `IDENTITY` member of a composite PK is kept with a warning. Warnings say "kept as serial" only when the emitted type actually is `serial`.
   - Single-column integer `UNIQUE` constraint → `unique[1..count]` (collision-free, **not** prefix-stable when --count changes).
   - FK column that is a single-column PK/UNIQUE (1:1 relationship) → `ref[parent.column, 1..count, unique]` (documents referential intent).
   - Composite PK or composite `UNIQUE` constraint → members tagged `unique[pk, 1..count]` / `unique[uq1, 1..count]` / etc. (pk for primary key, uq1/uq2/… for UNIQUE constraints in declaration order; the group name ensures the tuple is unique).

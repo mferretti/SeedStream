@@ -252,4 +252,108 @@ class SqlStatementSplitterTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0)).isEqualTo("SELECT 1");
   }
+
+  // ---- #436: runs of empty lines ----
+
+  @Test
+  void shouldKeepSingleEmptyLineInsideStatement() {
+    String sql = "CREATE TABLE t (\n  a INT,\n\n  b INT\n)";
+    assertThat(splitter.split(sql)).containsExactly(sql);
+  }
+
+  @Test
+  void shouldStripSingleEmptyLineBetweenStatements() {
+    assertThat(splitter.split("SELECT 1;\n\nSELECT 2;")).containsExactly("SELECT 1", "SELECT 2");
+  }
+
+  @Test
+  void shouldStripLeadingEmptyLinesBetweenStatements() {
+    assertThat(splitter.split("SELECT 1;\n\n\n\nSELECT 2;"))
+        .containsExactly("SELECT 1", "SELECT 2");
+  }
+
+  @Test
+  void shouldCollapseEmptyLineRunInsideColumnList() {
+    String sql = "CREATE TABLE t (\n  a INT,\n\n\n  b INT\n)";
+    assertThat(splitter.split(sql)).containsExactly("CREATE TABLE t (\n  a INT,\n  b INT\n)");
+  }
+
+  @Test
+  void shouldCollapseEmptyLineRunInsideColumnListWithCrlf() {
+    String sql = "CREATE TABLE t (\r\n  a INT,\r\n\r\n\r\n  b INT\r\n)";
+    assertThat(splitter.split(sql)).containsExactly("CREATE TABLE t (\n  a INT,\n  b INT\n)");
+  }
+
+  @Test
+  void shouldCollapseEmptyLineRunAfterLineComment() {
+    String sql = "-- note\n\n\nCREATE TABLE t (a INT);";
+    assertThat(splitter.split(sql)).containsExactly("-- note\nCREATE TABLE t (a INT)");
+  }
+
+  @Test
+  void shouldStripEmptyLineRunAtStartOfInput() {
+    assertThat(splitter.split("\n\n\nCREATE TABLE t (a INT);"))
+        .containsExactly("CREATE TABLE t (a INT)");
+  }
+
+  @Test
+  void shouldPreserveEmptyLineRunInsideStringLiteral() {
+    String sql = "CREATE TABLE t (a VARCHAR(10) DEFAULT 'a\n\n\nb');";
+    assertThat(splitter.split(sql))
+        .containsExactly("CREATE TABLE t (a VARCHAR(10) DEFAULT 'a\n\n\nb')");
+  }
+
+  @Test
+  void shouldPreserveEmptyLineRunInsideDollarQuotedBody() {
+    String sql =
+        "CREATE FUNCTION f() RETURNS int AS $$\nSELECT 1;\n\n\nSELECT 2;\n$$ LANGUAGE sql;";
+    assertThat(splitter.split(sql))
+        .containsExactly(
+            "CREATE FUNCTION f() RETURNS int AS $$\nSELECT 1;\n\n\nSELECT 2;\n$$ LANGUAGE sql");
+  }
+
+  @Test
+  void shouldSplitOnGoSurroundedByEmptyLineRuns() {
+    assertThat(splitter.split("SELECT 1\n\n\nGO\n\n\nSELECT 2\n\n\nGO\n\n\nSELECT 3"))
+        .containsExactly("SELECT 1", "SELECT 2", "SELECT 3");
+  }
+
+  @Test
+  void shouldSplitOnSlashSurroundedByEmptyLineRuns() {
+    assertThat(splitter.split("SELECT 1\n\n\n/\n\n\nSELECT 2\n\n\n/\n\n\nSELECT 3"))
+        .containsExactly("SELECT 1", "SELECT 2", "SELECT 3");
+  }
+
+  // ---- #443: psql meta-commands ----
+
+  @Test
+  void shouldDropPsqlMetaCommandLinesBeforeStatement() {
+    String sql =
+        "\\restrict abc123\n\\connect northwind\nCREATE TABLE t (a INT);\n\\unrestrict abc123\n";
+    assertThat(splitter.split(sql)).containsExactly("CREATE TABLE t (a INT)");
+  }
+
+  @Test
+  void shouldDropIndentedPsqlMetaCommandLine() {
+    assertThat(splitter.split("  \t\\connect db\nCREATE TABLE t (a INT);"))
+        .containsExactly("CREATE TABLE t (a INT)");
+  }
+
+  @Test
+  void shouldDropPsqlMetaCommandLineWithCrlf() {
+    assertThat(splitter.split("\\connect db\r\nCREATE TABLE t (a INT);"))
+        .containsExactly("CREATE TABLE t (a INT)");
+  }
+
+  @Test
+  void shouldKeepBackslashLineInsideStringLiteral() {
+    String sql = "SELECT 'line1\n\\connect db\nline3'";
+    assertThat(splitter.split(sql)).containsExactly(sql);
+  }
+
+  @Test
+  void shouldKeepBackslashLineInsideDollarQuotedBody() {
+    String sql = "CREATE FUNCTION f() RETURNS int AS $$\n\\connect db\n$$ LANGUAGE sql";
+    assertThat(splitter.split(sql)).containsExactly(sql);
+  }
 }
