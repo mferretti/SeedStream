@@ -78,25 +78,18 @@ and `smallint` keys.
 
 ### 2. Inspect it
 
-The file has the usual `pg_dump` layout. `inspect` reads it as is (13 structures), but the dump
-declares every primary and foreign key with `ALTER TABLE ONLY … ADD CONSTRAINT` after the tables,
-which the inspector doesn't apply yet: run on `schema.sql` directly, you get no `serial` keys and no
-`ref[]` foreign keys.
-
-[`schema-inspect.sql`](schema-inspect.sql) is the same schema after one mechanical rewrite, which
-disappears when its issue lands:
-
-| Rewrite | Why | Issue |
-|---|---|---|
-| Move `ALTER TABLE ONLY … ADD CONSTRAINT` PK/FK clauses into the table bodies | constraints declared after the table are ignored: without this, no `serial`, no `ref[]`, and no warning | [#376](https://github.com/mferretti/SeedStream/issues/376) |
-
-(Earlier versions also needed `cat -s`: runs of empty lines broke every `pg_dump` file until
-[#436](https://github.com/mferretti/SeedStream/issues/436) was fixed.)
+The file has the usual `pg_dump` layout, with every primary and foreign key declared by
+`ALTER TABLE ONLY … ADD CONSTRAINT` after the tables. `inspect` reads it as is:
 
 ```bash
-seedstream inspect schema-inspect.sql -o structures/
+seedstream inspect schema.sql -o structures/
 # inspect complete: 13 written, 0 skipped, 29 fields flagged for review (commented)
 ```
+
+(Earlier versions needed the dump rewritten first: `cat -s` until
+[#436](https://github.com/mferretti/SeedStream/issues/436), because runs of empty lines broke every
+`pg_dump` file, and the constraints moved into the table bodies until
+[#376](https://github.com/mferretti/SeedStream/issues/376), because they were otherwise ignored.)
 
 Out of the box, from 88 columns, the inspector produced:
 
@@ -206,14 +199,13 @@ The jobs rely on the sibling `../structures/` auto-resolution, so no `structures
 ## How the edits produced the issues
 
 The method: run the inspected output, and for each failure find the root cause, check whether an
-issue already covers it, and open one if not. Then work around it, either with a DDL rewrite or a
-hand edit tagged with that issue. The workaround is what you see in this folder; the issue is what
-will remove it.
+issue already covers it, and open one if not. Then work around it, usually with a hand edit tagged
+with that issue. The workaround is what you see in this folder; the issue is what will remove it.
 
 | Where it broke | Symptom | Root cause | Workaround here | Issue |
 |---|---|---|---|---|
 | `inspect` | `Failed to parse 12 CREATE TABLE statement(s)` | 2+ consecutive empty lines end a statement in JSQLParser | none needed any more | [#436](https://github.com/mferretti/SeedStream/issues/436) (fixed) |
-| `inspect` | no `serial`, no `ref[]`, no warning | `ALTER TABLE … ADD CONSTRAINT` not applied | constraints moved into the table bodies | [#376](https://github.com/mferretti/SeedStream/issues/376) |
+| `inspect` | no `serial`, no `ref[]`, no warning | `ALTER TABLE … ADD CONSTRAINT` not applied | none needed any more | [#376](https://github.com/mferretti/SeedStream/issues/376) (fixed) |
 | `execute` | `data structure file not found: config/structures/…` | sibling `../structures` not inferred for a relative job path | none needed any more | [#438](https://github.com/mferretti/SeedStream/issues/438) (fixed) |
 | load | `column "picture" is of type bytea …` | no binary type; `bytea` falls back to `char` | 2 fields removed | [#439](https://github.com/mferretti/SeedStream/issues/439) |
 | load | `value too long for type character varying(15)` | name-hinted types ignore `varchar(n)` | 14 fields edited | [#440](https://github.com/mferretti/SeedStream/issues/440) |
@@ -249,9 +241,8 @@ blocked.
 
 | File | Purpose |
 |---|---|
-| `schema.sql` | Unmodified `pg_dump --schema-only` of the Northwind schema; load this into PostgreSQL |
+| `schema.sql` | Unmodified `pg_dump --schema-only` of the Northwind schema; load this into PostgreSQL and feed it to `inspect` |
 | `scale.sql` | Widens `orders.order_id` / `order_details.order_id` to `integer` for the 1M-row run |
-| `schema-inspect.sql` | `schema.sql` after the rewrite above; feed this to `inspect` |
 | `structures/*.yaml` | Inspector output plus the commented hand edits |
 | `jobs/db_*.yaml`, `jobs/file_*.yaml` | One PostgreSQL job and one file job per table |
 | `seed.sh` | `./seed.sh db` or `./seed.sh file`: all 13 tables, parents first, with timings |
