@@ -23,6 +23,9 @@ import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.StructureYamlWriter;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.parser.DataStructureParser;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -93,5 +96,21 @@ final class DdlTestSupport {
   static String refTarget(String datatype) {
     Matcher m = REF.matcher(datatype);
     return m.find() ? m.group(1).trim() : null;
+  }
+
+  /** Writes {@code ddl} to a fresh file under {@code dir} and inspects it in strict mode. */
+  static Inspection inspectDdl(Path dir, String ddl) {
+    return inspectDdl(dir, ddl, NestingOptions.none(), false);
+  }
+
+  /** Writes {@code ddl} to a fresh file under {@code dir} and inspects it. */
+  static Inspection inspectDdl(Path dir, String ddl, NestingOptions nesting, boolean bestEffort) {
+    try {
+      Path sql = Files.createTempFile(dir, "schema", ".sql");
+      Files.writeString(sql, ddl);
+      return new DdlInspector().inspect(sql, nesting, bestEffort);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }
