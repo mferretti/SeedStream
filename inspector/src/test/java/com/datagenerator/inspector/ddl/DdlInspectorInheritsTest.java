@@ -22,6 +22,7 @@ import static com.datagenerator.inspector.ddl.DdlTestSupport.loadAll;
 import static org.assertj.core.api.Assertions.*;
 
 import com.datagenerator.inspector.Inspection;
+import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.schema.model.DataStructure;
 import java.nio.file.Path;
 import java.util.List;
@@ -651,6 +652,13 @@ class DdlInspectorInheritsTest {
     assertThat(datatypesOf(in, "b"))
         .containsExactly(
             entry("id", "serial"), entry("a_id", "ref[a.x, 1..count]"), entry("s", "char[1..5]"));
+  }
+
+  @Test
+  void guardShouldStillFailOnEmptyColumnListWithoutInherits(@TempDir Path dir) {
+    assertThatThrownBy(() -> inspectDdl(dir, "CREATE TABLE t ();\nCREATE TABLE u (id int);\n"))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("Failed to parse 1 CREATE TABLE");
   }
 
   @Test
