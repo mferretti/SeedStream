@@ -40,6 +40,17 @@ public final class SchemaTypeMapper {
   private static final String MIN_ITEMS = "minItems";
   private static final String MAX_ITEMS = "maxItems";
   private static final String ENUM = "enum";
+  private static final String MIN_LENGTH = "minLength";
+  private static final String MAX_LENGTH = "maxLength";
+
+  /** A canonical UUID string ("8-4-4-4-12" with hyphens) is always 36 characters. */
+  private static final int UUID_LENGTH = 36;
+
+  /** Measured on 1M Datafaker emails: longest 36 chars; 64 leaves headroom for other locales. */
+  private static final int EMAIL_MAX_LENGTH_FLOOR = 64;
+
+  /** Same sample: no email shorter than 7 chars, so a minLength up to 6 is always satisfied. */
+  private static final int EMAIL_MIN_LENGTH_CEILING = 6;
 
   public MappedType map(String fieldName, JsonNode schema) {
     if (schema.hasNonNull("$ref")) {
@@ -81,9 +92,13 @@ public final class SchemaTypeMapper {
     String format = schema.path("format").asText("");
     switch (format) {
       case "email":
-        return fakerOr("email", () -> MappedType.declared("char[1..50]"));
+        return emailFits(schema)
+            ? fakerOr("email", () -> MappedType.declared(Defaults.STRING))
+            : charRange(schema, emailMisfit(schema));
       case "uuid":
-        return fakerOr("uuid", () -> MappedType.declared("char[36..36]"));
+        return uuidFits(schema)
+            ? fakerOr("uuid", () -> MappedType.declared("char[36..36]"))
+            : charRange(schema, "uuid format cannot fit " + uuidMisfit(schema));
       case "date":
         return MappedType.declared(Defaults.DATE);
       case "date-time":
@@ -95,14 +110,56 @@ public final class SchemaTypeMapper {
     if (schema.has(ENUM)) {
       return MappedType.declared(enumType(schema.get(ENUM)));
     }
-    if (schema.has("maxLength")) {
-      return MappedType.declared("char[1.." + schema.get("maxLength").asInt() + "]");
+    if (schema.has(MAX_LENGTH) || schema.has(MIN_LENGTH)) {
+      return charRange(schema, null);
     }
     return NameHints.forFieldName(fieldName)
         .flatMap(FakerTypes::canonical)
         .or(() -> FakerTypes.canonical(Names.toSnakeCase(fieldName)))
         .map(MappedType::nameHint)
         .orElseGet(() -> MappedType.defaultRange(Defaults.STRING));
+  }
+
+  private static boolean emailFits(JsonNode schema) {
+    return schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE) >= EMAIL_MAX_LENGTH_FLOOR
+        && schema.path(MIN_LENGTH).asInt(0) <= EMAIL_MIN_LENGTH_CEILING;
+  }
+
+  private static String emailMisfit(JsonNode schema) {
+    return schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE) < EMAIL_MAX_LENGTH_FLOOR
+        ? "email values can exceed maxLength " + schema.get(MAX_LENGTH).asInt() + "; see #440"
+        : "email values can be shorter than minLength " + schema.get(MIN_LENGTH).asInt();
+  }
+
+  private static boolean uuidFits(JsonNode schema) {
+    return schema.path(MAX_LENGTH).asInt(UUID_LENGTH) >= UUID_LENGTH
+        && schema.path(MIN_LENGTH).asInt(UUID_LENGTH) <= UUID_LENGTH;
+  }
+
+  private static String uuidMisfit(JsonNode schema) {
+    return schema.path(MAX_LENGTH).asInt(UUID_LENGTH) < UUID_LENGTH
+        ? "maxLength " + schema.get(MAX_LENGTH).asInt()
+        : "minLength " + schema.get(MIN_LENGTH).asInt();
+  }
+
+  /**
+   * {@code char[min..max]} from minLength/maxLength. A missing minLength is 1; a missing maxLength
+   * is the default max, raised to minLength so the range is never inverted. {@code misfitNote}
+   * (nullable) flags a format fallback for review; a minLength above maxLength is a schema error.
+   */
+  private static MappedType charRange(JsonNode schema, String misfitNote) {
+    int min = schema.path(MIN_LENGTH).asInt(1);
+    int max = schema.path(MAX_LENGTH).asInt(Math.max(min, Defaults.STRING_MAX_LENGTH));
+    if (min > max) {
+      int cap = Math.max(0, max); // never invert: maxLength 0 gives char[0..0]
+      return MappedType.schemaError(
+          "char[" + Math.min(1, cap) + ".." + cap + "]",
+          "schema error: minLength " + min + " exceeds maxLength " + max + " — verify");
+    }
+    String datatype = "char[" + min + ".." + max + "]";
+    return misfitNote == null
+        ? MappedType.declared(datatype)
+        : MappedType.review(datatype, misfitNote + " — verify");
   }
 
   /** Emits the datafaker key (a name guess) if registered, otherwise the declared fallback. */
@@ -238,7 +295,13 @@ public final class SchemaTypeMapper {
       max = min <= Defaults.ARRAY_MAX ? Defaults.ARRAY_MAX : min + span;
     }
     String datatype = "array[" + inner.datatype() + ", " + min + ".." + max + "]";
-    return new MappedType(datatype, !bounded ? MappedType.Reason.DEFAULT_RANGE : inner.reason());
+    boolean itemNeedsReview =
+        inner.reason() == MappedType.Reason.REVIEW
+            || inner.reason() == MappedType.Reason.SCHEMA_ERROR;
+    return new MappedType(
+        datatype,
+        bounded || itemNeedsReview ? inner.reason() : MappedType.Reason.DEFAULT_RANGE,
+        inner.note());
   }
 
   private String enumType(JsonNode enumNode) {

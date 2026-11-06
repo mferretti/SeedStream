@@ -450,19 +450,14 @@ public class ExecuteCommand implements Callable<Integer> {
     log.info("Using seed: {}", seed);
 
     // 3. Load data structure
-    Path structuresPath;
-    if (jobConfig.getStructuresPath() != null) {
-      structuresPath = Paths.get(jobConfig.getStructuresPath());
-    } else {
-      // Default to config/structures relative to job file location
-      Path jobDir = jobFile.getParent();
-      Path jobDirParent = jobDir != null ? jobDir.getParent() : null;
-      if (jobDir != null && jobDir.endsWith("jobs") && jobDirParent != null) {
-        structuresPath = jobDirParent.resolve("structures");
-      } else {
-        structuresPath = Paths.get("config/structures");
-      }
-    }
+    Path structuresPath =
+        JobPaths.resolveStructuresPath(
+                jobFile,
+                jobConfig.getStructuresPath(),
+                jobConfig.getSource(),
+                Paths.get("").toAbsolutePath())
+            .structuresPath();
+    log.info("Structures path: {}", structuresPath);
 
     DataStructureParser structureParser = new DataStructureParser();
     Path structureFile = structuresPath.resolve(jobConfig.getSource());

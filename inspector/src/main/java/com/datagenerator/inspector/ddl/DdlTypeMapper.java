@@ -124,16 +124,26 @@ public final class DdlTypeMapper {
     if ("BIT".equals(raw) && isAtMostOneBit(args)) {
       return MappedType.declared("boolean"); // SQL Server BIT / BIT(1): a 0/1 flag
     }
+    if ("TINYINT".equals(raw)
+        && args != null
+        && args.size() == 1
+        && "1".equals(args.get(0).trim())) {
+      return MappedType.declared("boolean"); // MySQL's boolean convention
+    }
     return switch (type) {
       case "BOOLEAN" -> MappedType.declared("boolean");
       case "DATE" -> MappedType.declared(Defaults.DATE);
       case TYPE_TIMESTAMP -> MappedType.declared(Defaults.TIMESTAMP);
       case "UUID" -> uuidType();
       case "INT" -> MappedType.defaultRange("int[" + Defaults.INT_MIN + ".." + intMax(raw) + "]");
-      case TYPE_DECIMAL -> MappedType.defaultRange(decimalRange(raw, args));
+      case TYPE_DECIMAL -> mapNumeric(raw, args);
+      case "ENUM", "SET" -> mapEnum(raw, args);
       case TYPE_VARCHAR -> {
         boolean hasLength = args != null && !args.isEmpty();
-        yield mapString(columnName, length(args, Defaults.VARCHAR_DEFAULT_LENGTH), !hasLength);
+        int length = length(args, Defaults.VARCHAR_DEFAULT_LENGTH);
+        yield length == 0
+            ? MappedType.declared("char[0..0]") // zero-length column: only "" fits
+            : mapString(columnName, length, !hasLength);
       }
       case "TEXT" -> mapString(columnName, Defaults.TEXT_MAX_LENGTH, true);
       default -> MappedType.unknownType(Defaults.STRING); // unknown — §6 Q2
@@ -172,38 +182,100 @@ public final class DdlTypeMapper {
   }
 
   /**
-   * Default decimal range, capped to a fixed-point column's capacity (#377): {@code
-   * DECIMAL/NUMERIC/NUMBER(p,s)} holds at most {@code 10^(p-s) - 10^-s} (e.g. {@code DECIMAL(4,2)}
-   * -> {@code 99.99}). Floating types (FLOAT, REAL, MONEY, ...) take no precision/scale and keep
-   * the default.
+   * Exact and floating numerics. Fixed-point {@code DECIMAL/NUMERIC/NUMBER(p,s)} with scale 0 are
+   * integers (#447), capped to the column capacity {@code 10^p - 1} and the default int max;
+   * otherwise the decimal range is capped to the column capacity {@code 10^(p-s) - 10^-s} (#377,
+   * e.g. {@code DECIMAL(4,2)} -> {@code 99.99}). Floating types (FLOAT, REAL, MONEY, ...) take no
+   * precision/scale and keep the default; so do {@code NUMBER} and {@code NUMBER(*)}.
    */
-  private static String decimalRange(String rawType, List<String> args) {
+  private static MappedType mapNumeric(String rawType, List<String> args) {
     String defaultRange = "decimal[" + Defaults.DECIMAL_MIN + ".." + Defaults.DECIMAL_MAX + "]";
+    String defaultInt = "int[" + Defaults.INT_MIN + ".." + Defaults.INT_MAX + "]";
     boolean fixedPoint = Set.of(TYPE_DECIMAL, "NUMERIC", "NUMBER", "DEC").contains(rawType);
     if (!fixedPoint || args == null || args.isEmpty()) {
-      return defaultRange;
+      return MappedType.defaultRange(defaultRange);
     }
     try {
-      int precision = Integer.parseInt(args.get(0).trim());
+      boolean unboundedPrecision = "*".equals(args.get(0).trim());
+      int precision = unboundedPrecision ? 0 : Integer.parseInt(args.get(0).trim());
       int scale = args.size() > 1 ? Integer.parseInt(args.get(1).trim()) : 0;
-      if (precision <= 0 || scale < 0) {
-        return defaultRange;
+      if (scale < 0) {
+        return MappedType.review(
+            defaultInt, "negative scale rounds values to a power of ten — verify the range");
+      }
+      if (unboundedPrecision && scale == 0 && args.size() > 1) {
+        return MappedType.defaultRange(defaultInt); // NUMBER(*,0)
+      }
+      if (precision <= 0) {
+        return MappedType.defaultRange(defaultRange);
+      }
+      if (scale == 0) {
+        long capacity = precision < 6 ? (long) Math.pow(10, precision) - 1 : Defaults.INT_MAX;
+        return capacity < Defaults.INT_MAX
+            ? MappedType.declared("int[" + Defaults.INT_MIN + ".." + capacity + "]")
+            : MappedType.defaultRange(defaultInt);
       }
       BigDecimal capacity =
           BigDecimal.TEN
-              .pow(precision - scale, MathContext.UNLIMITED)
+              .pow(Math.max(precision - scale, 0), MathContext.UNLIMITED)
               .subtract(BigDecimal.ONE.movePointLeft(scale));
-      if (precision < scale) {
-        capacity = BigDecimal.ONE.subtract(BigDecimal.ONE.movePointLeft(scale));
-      }
-      if (capacity.compareTo(new BigDecimal(Defaults.DECIMAL_MAX)) >= 0) {
-        return defaultRange;
+      BigDecimal defaultMax = new BigDecimal(Defaults.DECIMAL_MAX);
+      if (capacity.compareTo(defaultMax) >= 0) {
+        // keep the default bounds, but at the declared scale so values fit the column
+        return MappedType.defaultRange(
+            scale > defaultMax.scale()
+                ? "decimal["
+                    + BigDecimal.ZERO.setScale(scale).toPlainString()
+                    + ".."
+                    + defaultMax.setScale(scale).toPlainString()
+                    + "]"
+                : defaultRange);
       }
       String min = BigDecimal.ZERO.setScale(scale).toPlainString();
-      return "decimal[" + min + ".." + capacity.setScale(scale).toPlainString() + "]";
+      return MappedType.defaultRange(
+          "decimal[" + min + ".." + capacity.setScale(scale).toPlainString() + "]");
     } catch (NumberFormatException | ArithmeticException e) {
-      return defaultRange;
+      return MappedType.defaultRange(defaultRange);
     }
+  }
+
+  /**
+   * MySQL {@code ENUM('a','b')} / {@code SET(...)}: args are the raw SQL literals. Members that
+   * {@code enum[...]} cannot express (comma, closing bracket, empty) fall back to a char sized to
+   * the longest member.
+   */
+  private static MappedType mapEnum(String rawType, List<String> args) {
+    if (args == null || args.isEmpty()) {
+      return MappedType.unknownType(Defaults.STRING);
+    }
+    List<String> members = args.stream().map(DdlTypeMapper::unquoteLiteral).toList();
+    if (members.stream()
+        .anyMatch(m -> m.isEmpty() || !m.equals(m.strip()) || m.contains(",") || m.contains("]"))) {
+      int longest = members.stream().mapToInt(String::length).max().orElse(1);
+      return MappedType.review(
+          "char[1.." + Math.max(longest, 1) + "]",
+          rawType + " members cannot be expressed as enum[...] — generated as char, verify");
+    }
+    String datatype = "enum[" + String.join(",", members) + "]";
+    return "SET".equals(rawType)
+        ? MappedType.review(
+            datatype, "SET holds several members per row; one member generated — verify")
+        : MappedType.declared(datatype);
+  }
+
+  /**
+   * A SQL string literal's value: {@code 'it''s'} and {@code "it""s"} lose their quotes and
+   * doubling.
+   */
+  private static String unquoteLiteral(String literal) {
+    String a = literal.trim();
+    if (a.length() >= 2
+        && (a.charAt(0) == '\'' || a.charAt(0) == '"')
+        && a.endsWith(a.substring(0, 1))) {
+      String quote = a.substring(0, 1);
+      return a.substring(1, a.length() - 1).replace(quote + quote, quote);
+    }
+    return a;
   }
 
   /**
@@ -232,7 +304,8 @@ public final class DdlTypeMapper {
       return fallback;
     }
     try {
-      return Integer.parseInt(args.get(0).trim());
+      // first token only: Oracle writes VARCHAR2(15 BYTE) / CHAR(5 CHAR)
+      return Integer.parseInt(WHITESPACE.split(args.get(0).trim())[0]);
     } catch (NumberFormatException e) {
       return fallback;
     }
