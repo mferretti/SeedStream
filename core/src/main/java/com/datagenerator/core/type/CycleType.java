@@ -21,6 +21,11 @@ import lombok.Value;
 
 /**
  * An index-driven enumeration: {@code cycle[a,b,c]}. Record {@code i} gets {@code values[i mod n]}.
+ *
+ * <p>The value is a pure function of the global record index: it is seed-independent, consumes no
+ * draws from the per-record {@link java.util.Random}, and is therefore thread-count independent.
+ * With {@code --count n} each value appears exactly once per {@code n} records. Not allowed under
+ * {@code array[...]}, because array elements share their record's index.
  */
 @Value
 public class CycleType implements DataType {

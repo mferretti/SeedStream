@@ -16,20 +16,45 @@
 
 package com.datagenerator.generators.primitive;
 
+import com.datagenerator.core.engine.RecordIndex;
+import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.generators.DataGenerator;
+import com.datagenerator.generators.GeneratorException;
+import java.util.List;
 import java.util.Random;
 
-/** STUB (#456): compile-only placeholder, the developer implements it. */
+/**
+ * Generates {@code values[recordIndex mod n]} for {@code cycle[...]} fields. Stateless, draws
+ * nothing from the per-record {@link Random}, so it never shifts other fields' values.
+ *
+ * <p><b>Example:</b>
+ *
+ * <pre>
+ * cycle[NEW,OPEN,CLOSED] → records 0,1,2,3,... get NEW,OPEN,CLOSED,NEW,...
+ * </pre>
+ */
 public class CycleGenerator implements DataGenerator {
 
   @Override
   public Object generate(Random random, DataType dataType) {
-    throw new UnsupportedOperationException("cycle[...] not implemented yet (#456)");
+    if (!(dataType instanceof CycleType cycle)) {
+      throw new GeneratorException(
+          "CycleGenerator requires CycleType, got: " + dataType.getClass().getSimpleName());
+    }
+    long index = RecordIndex.current();
+    if (index < 0) {
+      throw new GeneratorException("cycle requires the generation engine's record index");
+    }
+    List<String> values = cycle.getValues();
+    if (values.isEmpty()) {
+      throw new GeneratorException("CycleType has no values to generate from");
+    }
+    return values.get(Math.floorMod(index, values.size()));
   }
 
   @Override
   public boolean supports(DataType dataType) {
-    return false;
+    return dataType instanceof CycleType;
   }
 }
