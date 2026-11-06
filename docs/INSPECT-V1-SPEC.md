@@ -274,6 +274,13 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
 - **`REFERENCES t` without a column list** resolves to `t`'s primary key, positionally for composite
   keys, wherever that key is declared. If `t` is unknown, has no primary key, or the column counts
   differ, a warning is logged and the column keeps its plain type (never a guessed `id`).
+- **PostgreSQL `INHERITS`.** A child gets its parents' columns first (recursively, parents in clause
+  order, in any order relative to the child), then its own; a same-named column appears once, at its
+  first position, and a child that redeclares it wins on the type. Only columns are inherited, as in
+  PostgreSQL: not PRIMARY KEY, UNIQUE, FOREIGN KEY or the identity property. Keys the child declares
+  itself, inline or by `ALTER`, may use inherited columns. A parent not in the script or an inheritance
+  cycle is a warning and the child keeps its own columns; a child left with no columns at all
+  (`CREATE TABLE c () INHERITS (missing)`) is skipped with a warning. Neither aborts strict mode.
 - Foreign keys → `ref[table.column, 1..count]`: table-level `FOREIGN KEY` constraints (reliable)
   and inline
   column `REFERENCES table(col)` (best-effort token scan). The `1..count` ID-pool range is appended
