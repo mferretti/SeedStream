@@ -14,6 +14,7 @@ sample structures, see [`config/`](../config/) and the [root README](../README.m
 | CI pipeline database seeding | Platform / DevOps | Truncate-and-reseed a disposable DB before integration tests — identical rows, identical ids, every run | **Ready** | [`ci-pipeline-seeding/`](ci-pipeline-seeding/) |
 | Performance and load testing | Performance engineer | Millions of realistic events driven into Kafka/Postgres — throughput + index/query benchmarking against your own system | **Ready** | [`performance-load-testing/`](performance-load-testing/) |
 | SaaS demo environments | Sales / solutions engineering | One command fills a demo tenant with a linked accounts/contacts/deals/activities CRM dataset — no customer PII, identical every reseed | **Ready** | [`saas-demo-environments/`](saas-demo-environments/) |
+| Northwind at scale | Anyone evaluating SeedStream | The classic Northwind schema, bootstrapped with `inspect` and seeded to 3.7M rows (1M orders) with every FK enforced — each remaining hand edit tagged with its issue | **Ready** | [`northwind-inspect/`](northwind-inspect/) |
 
 *Planned* rows are tracked use-case issues; contributions welcome — follow the
 [`dora-gdpr-sepa-payments/`](dora-gdpr-sepa-payments/) layout.

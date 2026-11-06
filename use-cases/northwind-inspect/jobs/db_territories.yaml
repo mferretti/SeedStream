@@ -1,0 +1,14 @@
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: territories.yaml
+type: database
+seed:
+  type: embedded
+  value: 1996
+conf:
+  jdbc_url: "jdbc:postgresql://localhost:5432/northwind"
+  username: "northwind"
+  password: "${DB_PASSWORD}"
+  table: "territories"
+  batch_size: 5000
+  transaction_strategy: per_batch
+  truncate_before_insert: true   # ⚠️ DESTRUCTIVE — disposable database only

@@ -1,0 +1,6 @@
+name: "region"
+data:
+  region_id:
+    datatype: "serial"
+  region_description:
+    datatype: "char[1..50]"

@@ -1,0 +1,6 @@
+name: "customer_demographics"
+data:
+  customer_type_id:
+    datatype: "serial"  # hand edit (#441): text PK as numeric strings
+  customer_desc:
+    datatype: "char[1..500]"

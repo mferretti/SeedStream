@@ -1,0 +1,22 @@
+name: "products"
+data:
+  product_id:
+    datatype: "serial"
+  product_name:
+    datatype: "product_name"  # guessed from column name — verify
+  supplier_id:
+    datatype: "ref[suppliers.supplier_id, 1..29]"  # hand edit (#442): static parent row count
+  category_id:
+    datatype: "ref[categories.category_id, 1..8]"  # hand edit (#442): static parent row count
+  quantity_per_unit:
+    datatype: "char[1..20]"
+  unit_price:
+    datatype: "decimal[2.00..265.00]"  # realism (optional): Northwind-like range
+  units_in_stock:
+    datatype: "int[1..32767]"
+  units_on_order:
+    datatype: "int[1..32767]"
+  reorder_level:
+    datatype: "int[1..32767]"
+  discontinued:
+    datatype: "boolean"

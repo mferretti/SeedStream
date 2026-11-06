@@ -1,0 +1,8 @@
+# structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+source: categories.yaml
+type: file
+seed:
+  type: embedded
+  value: 1996
+conf:
+  path: output/categories
