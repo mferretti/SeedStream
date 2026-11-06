@@ -41,7 +41,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  * {@code company} were wired to the name provider or the geolocation were ignored; this does not.
  *
  * <p>Types with their own logic (IBAN/BIC per country, locale currency, regex, phone formatting,
- * ...) have dedicated tests elsewhere.
+ * ...) have dedicated tests elsewhere. {@code currency} is one of them: Datafaker's {@code money()}
+ * list order depends on identity hashes, so it is covered by {@code DatafakerRegistryCurrencyTest}
+ * (#458).
  */
 class DatafakerProviderWiringTest {
 
@@ -95,7 +97,6 @@ class DatafakerProviderWiringTest {
         wire("credit_card", f -> f.finance().creditCard()),
         wire("credit_card_type", f -> f.business().creditCardType()),
         wire("random_iban", f -> f.finance().iban()),
-        wire("currency", f -> f.money().currencyCode()),
         wire("price", f -> f.commerce().price()),
         wire("domain", f -> f.internet().domainName()),
         wire("url", f -> f.internet().url()),
