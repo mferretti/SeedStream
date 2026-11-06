@@ -89,7 +89,8 @@ class DatafakerRegistryCurrencyTest {
         List.of("-cp", System.getProperty("java.class.path"), CurrencyReproMain.class.getName()));
 
     Path err = tmp.resolve(name + ".err");
-    Process process = new ProcessBuilder(cmd).redirectError(err.toFile()).start();
+    // Fixed argv: this JVM's own java binary and classpath plus constant flags, no external input
+    Process process = new ProcessBuilder(cmd).redirectError(err.toFile()).start(); // nosemgrep
     List<String> lines;
     try (var reader = process.inputReader(StandardCharsets.UTF_8)) {
       // stdout also carries the logging framework's debug output: keep only our value lines
@@ -193,6 +194,7 @@ class DatafakerRegistryCurrencyTest {
 
     assertThat(DatafakerRegistry.generate("locale_currency", faker, random)).isEqualTo("EUR");
     // no draw consumed: the stream continues exactly where a fresh Random(SEED) starts
-    assertThat(random.ints(3).toArray()).isEqualTo(new Random(SEED).ints(3).toArray());
+    // Seeded RNG needed as the determinism oracle (not used for security)
+    assertThat(random.ints(3).toArray()).isEqualTo(new Random(SEED).ints(3).toArray()); // nosemgrep
   }
 }
