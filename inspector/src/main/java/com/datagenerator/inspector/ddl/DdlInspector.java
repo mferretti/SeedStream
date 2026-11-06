@@ -364,9 +364,11 @@ public class DdlInspector {
   private void expandInheritance(
       List<TableModel> models, Map<String, TableModel> byName, List<String> warnings) {
     Map<String, List<Column>> effective = new LinkedHashMap<>();
+    Set<String> inheritanceWarnings = new LinkedHashSet<>();
     for (TableModel table : models) {
-      effective.put(table.name, inheritedColumns(table, byName, warnings));
+      effective.put(table.name, inheritedColumns(table, byName, inheritanceWarnings));
     }
+    warnings.addAll(inheritanceWarnings);
     for (TableModel table : List.copyOf(models)) {
       table.columns.clear();
       table.columns.addAll(effective.get(table.name));
@@ -379,7 +381,7 @@ public class DdlInspector {
   }
 
   private List<Column> inheritedColumns(
-      TableModel table, Map<String, TableModel> byName, List<String> warnings) {
+      TableModel table, Map<String, TableModel> byName, Set<String> warnings) {
     if (table.parents.isEmpty()) {
       return List.copyOf(table.columns);
     }
