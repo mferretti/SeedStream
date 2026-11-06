@@ -90,14 +90,17 @@ class DdlInspectorNorthwindTypesTest {
     long asInteger =
         inspection.structures().stream()
             .flatMap(s -> s.getData().values().stream())
-            .filter(f -> f.getDatatype().equals("int[1..999999]"))
+            .map(f -> f.getDatatype())
+            // keys declared via ALTER TABLE (#376) are integers rendered as serial / ref[...]
+            .filter(d -> d.equals("int[1..999999]") || d.equals("serial") || d.startsWith("ref["))
             .count();
     assertThat(declared).as("fixture sanity: NUMBER(9,0) columns").isEqualTo(19);
     assertThat(asInteger).as("every NUMBER(9,0) column is an integer").isEqualTo(declared);
     assertThat(datatypesOf(inspection, "categories"))
-        .containsEntry("CATEGORY_ID", "int[1..999999]")
+        .containsEntry("CATEGORY_ID", "serial")
         .containsEntry("CATEGORY_NAME", "char[1..15]");
-    assertThat(datatypesOf(inspection, "products")).containsEntry("CATEGORY_ID", "int[1..999999]");
+    assertThat(datatypesOf(inspection, "products"))
+        .containsEntry("CATEGORY_ID", "ref[categories.category_id, 1..count]");
   }
 
   @Test
