@@ -101,6 +101,20 @@ public class DdlInspector {
               + IDENT_PART
               + ")*)(?:\\s+(?:AS|PARTITION\\s+OF|LIKE)\\b|\\s*\\(\\s*LIKE\\b)");
 
+  // PostgreSQL "INHERITS (a, b)" right after the column list, run on comment/literal-free text.
+  private static final String QUALIFIED_NAME = IDENT_PART + "(?:\\." + IDENT_PART + ")*";
+  private static final Pattern INHERITS_CLAUSE =
+      Pattern.compile(
+          "(?is)\\A\\s*INHERITS\\s*\\(\\s*(?<parents>"
+              + QUALIFIED_NAME
+              + "(?:\\s*,\\s*"
+              + QUALIFIED_NAME
+              + ")*)\\s*\\)");
+  private static final Pattern QUALIFIED_NAME_PATTERN = Pattern.compile(QUALIFIED_NAME);
+  // Stands in for "()" so the parser accepts a child without own columns; never reaches the model.
+  private static final Pattern EMPTY_COLUMN_LIST = Pattern.compile("\\(\\s*\\)");
+  private static final String NO_OWN_COLUMNS = "__seedstream_inherits__";
+
   private static final Set<String> SERIAL_TYPES =
       Set.of("SERIAL", "BIGSERIAL", "SMALLSERIAL", "SERIAL4", "SERIAL8");
   private static final Set<String> UUID_TYPES = Set.of("UUID", "UNIQUEIDENTIFIER");
@@ -174,6 +188,7 @@ public class DdlInspector {
     // PK, and only then are datatypes rendered, keys applied and tables nested.
     Map<String, TableModel> byName = new LinkedHashMap<>();
     models.forEach(m -> byName.put(m.name, m));
+    expandInheritance(models, byName, warnings);
     new AlterTableApplier().apply(alters, byName, warnings);
     resolveForeignKeys(models, byName, warnings);
     Map<String, TableKeys> keys = new LinkedHashMap<>();
@@ -265,6 +280,10 @@ public class DdlInspector {
       return;
     }
     String cleaned = preprocessor.sanitize(raw);
+    List<String> parents = inheritedParents(code);
+    if (!parents.isEmpty()) {
+      cleaned = withPlaceholderColumn(cleaned);
+    }
     Statement statement;
     try {
       statement = CCJSqlParserUtil.parse(cleaned);
@@ -273,7 +292,7 @@ public class DdlInspector {
       return;
     }
     if (statement instanceof CreateTable createTable) {
-      TableModel table = toTableModel(createTable, models.size(), warnings);
+      TableModel table = toTableModel(createTable, models.size(), warnings, parents);
       if (table != null) {
         models.add(table);
       } else {
@@ -297,16 +316,130 @@ public class DdlInspector {
     return Inspection.of(structures, comments, warnings);
   }
 
+  /**
+   * Snake-cased parents of a PostgreSQL {@code INHERITS (...)} clause, found on
+   * comment/literal-free {@code code} right after the balanced column list; empty when there is
+   * none.
+   */
+  private static List<String> inheritedParents(String code) {
+    int depth = 0;
+    for (int i = 0; i < code.length(); i++) {
+      char c = code.charAt(i);
+      if (c == '"' || c == '`') {
+        i = SqlScan.skipDelimited(code, i, c) - 1;
+      } else if (c == '(') {
+        depth++;
+      } else if (c == ')' && --depth == 0) {
+        Matcher clause = INHERITS_CLAUSE.matcher(code.substring(i + 1));
+        List<String> parents = new ArrayList<>();
+        if (clause.find()) {
+          Matcher name = QUALIFIED_NAME_PATTERN.matcher(clause.group("parents"));
+          while (name.find()) {
+            String qualified = name.group();
+            parents.add(
+                Names.toSnakeCase(unquote(qualified.substring(qualified.lastIndexOf('.') + 1))));
+          }
+        }
+        return parents;
+      }
+    }
+    return List.of();
+  }
+
+  /** {@code ()} is not valid for the parser: gives an empty column list a throw-away column. */
+  private static String withPlaceholderColumn(String sql) {
+    int open = sql.indexOf('(');
+    Matcher empty = EMPTY_COLUMN_LIST.matcher(sql).region(Math.max(open, 0), sql.length());
+    return open >= 0 && empty.lookingAt()
+        ? sql.substring(0, open) + "(" + NO_OWN_COLUMNS + " int)" + sql.substring(empty.end())
+        : sql;
+  }
+
+  /**
+   * Gives every child the columns of its {@code INHERITS} parents (recursively, parents in clause
+   * order, same-named columns once at their first position, a redeclaring child's type winning),
+   * then its own. Keys, identity and defaults are not inherited. A table on an inheritance cycle
+   * keeps its own columns; a child left without any column is dropped.
+   */
+  private void expandInheritance(
+      List<TableModel> models, Map<String, TableModel> byName, List<String> warnings) {
+    Map<String, List<Column>> effective = new LinkedHashMap<>();
+    for (TableModel table : models) {
+      effective.put(table.name, inheritedColumns(table, byName, warnings));
+    }
+    for (TableModel table : List.copyOf(models)) {
+      table.columns.clear();
+      table.columns.addAll(effective.get(table.name));
+      if (table.columns.isEmpty()) {
+        warnings.add("table '" + table.name + "' has no columns — skipped");
+        models.remove(table);
+        byName.remove(table.name);
+      }
+    }
+  }
+
+  private List<Column> inheritedColumns(
+      TableModel table, Map<String, TableModel> byName, List<String> warnings) {
+    if (table.parents.isEmpty()) {
+      return List.copyOf(table.columns);
+    }
+    if (inheritsFromItself(table, byName)) {
+      warnings.add(
+          "table '"
+              + table.name
+              + "' is part of an INHERITS cycle ("
+              + String.join(", ", table.parents)
+              + ") — inherited columns not applied");
+      return List.copyOf(table.columns);
+    }
+    Map<String, Column> merged = new LinkedHashMap<>();
+    for (String parent : table.parents) {
+      TableModel source = byName.get(parent);
+      if (source == null) {
+        warnings.add(
+            "table '" + table.name + "' INHERITS '" + parent + "', which is not in the script");
+        continue;
+      }
+      inheritedColumns(source, byName, warnings)
+          .forEach(c -> merged.putIfAbsent(lower(c.name()), c));
+    }
+    table.columns.forEach(c -> merged.compute(lower(c.name()), (k, inherited) -> c));
+    return List.copyOf(merged.values());
+  }
+
+  private static boolean inheritsFromItself(TableModel table, Map<String, TableModel> byName) {
+    Set<String> seen = new LinkedHashSet<>();
+    List<String> pending = new ArrayList<>(table.parents);
+    while (!pending.isEmpty()) {
+      String next = pending.remove(pending.size() - 1);
+      if (next.equals(table.name)) {
+        return true;
+      }
+      TableModel parent = byName.get(next);
+      if (parent != null && seen.add(next)) {
+        pending.addAll(parent.parents);
+      }
+    }
+    return false;
+  }
+
   /** Reads columns, keys, foreign keys and identity flags of a {@code CREATE TABLE}. */
-  private TableModel toTableModel(CreateTable createTable, int order, List<String> warnings) {
+  private TableModel toTableModel(
+      CreateTable createTable, int order, List<String> warnings, List<String> parents) {
     String name = Names.toSnakeCase(unquote(createTable.getTable().getName()));
-    List<ColumnDefinition> columns = createTable.getColumnDefinitions();
-    if (columns == null || columns.isEmpty()) {
+    List<ColumnDefinition> columns =
+        createTable.getColumnDefinitions() == null
+            ? List.of()
+            : createTable.getColumnDefinitions().stream()
+                .filter(c -> !NO_OWN_COLUMNS.equals(c.getColumnName()))
+                .toList();
+    if (columns.isEmpty() && parents.isEmpty()) {
       warnings.add("table '" + name + "' has no columns — skipped");
       return null;
     }
 
     TableModel table = new TableModel(name, order);
+    table.parents.addAll(parents);
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
       table.columns.add(new Column(columnName, column.getColDataType()));
