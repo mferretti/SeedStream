@@ -575,6 +575,28 @@ class DdlInspectorAlterTableTest {
 
   // ---------------------------------------------------------------- unparseable ALTER
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "ALTER TABLE ONLY t ALTER COLUMN n SET STATISTICS 100;",
+        "ALTER TABLE ONLY t ALTER COLUMN n SET STORAGE EXTERNAL;"
+      })
+  void shouldIgnorePgDumpColumnStorageSettingsSilently(String alter, @TempDir Path dir) {
+    Inspection in = inspectDdl(dir, "CREATE TABLE t (id integer, n integer);\n" + alter + "\n");
+
+    assertThat(in.warnings()).isEmpty();
+  }
+
+  @Test
+  void shouldStillWarnWhenAlterColumnChangesTheType(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "CREATE TABLE t (id integer, n integer);\nALTER TABLE t ALTER COLUMN n TYPE bigint;\n");
+
+    assertThat(in.warnings()).anyMatch(w -> w.contains("t") && w.contains("not applied"));
+  }
+
   @Test
   void shouldReportUnparseableAlterAsWarningAndKeepApplyingTheRestInStrictMode(@TempDir Path dir) {
     Inspection in =

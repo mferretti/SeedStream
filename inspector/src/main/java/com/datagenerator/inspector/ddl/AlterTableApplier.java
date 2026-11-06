@@ -73,6 +73,9 @@ final class AlterTableApplier {
     }
   }
 
+  private static final Pattern STORAGE_SETTING =
+      Pattern.compile("(?i)\\bSET\\s+(?:STATISTICS|STORAGE|COMPRESSION)\\b");
+
   private void applyStatement(
       String sql, String raw, Map<String, TableModel> tables, List<String> warnings) {
     Statement parsed;
@@ -149,6 +152,9 @@ final class AlterTableApplier {
       return; // SET / DROP NOT NULL, SET DEFAULT, ...
     }
     ColumnDataType column = columns.get(0);
+    if (STORAGE_SETTING.matcher(expression.toString()).find()) {
+      return; // pg_dump's SET STATISTICS / SET STORAGE / SET COMPRESSION do not change the type
+    }
     if (column.getColDataType() != null) {
       warnNotApplied(table, expression, warnings); // ALTER COLUMN c TYPE ...
     } else if (GENERATED_ALWAYS.matcher(expression.toString()).find()) {
