@@ -91,8 +91,9 @@ class DdlInspectorNorthwindTypesTest {
         inspection.structures().stream()
             .flatMap(s -> s.getData().values().stream())
             .map(f -> f.getDatatype())
-            // keys declared via ALTER TABLE (#376) are integers rendered as serial / ref[...]
-            .filter(d -> d.equals("int[1..999999]") || d.equals("serial") || d.startsWith("ref["))
+            // keys declared via ALTER TABLE (#376) are integers rendered as serial / ref[...];
+            // a CHECK (#449) can narrow the range, e.g. int[0..999999] from CHECK (x >= 0)
+            .filter(d -> d.startsWith("int[") || d.equals("serial") || d.startsWith("ref["))
             .count();
     assertThat(declared).as("fixture sanity: NUMBER(9,0) columns").isEqualTo(19);
     assertThat(asInteger).as("every NUMBER(9,0) column is an integer").isEqualTo(declared);
