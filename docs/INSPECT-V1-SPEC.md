@@ -298,6 +298,9 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
     time is already satisfied by `timestamp[now-365d..now]`; anything else gets a comment.
   - `OR` across columns, functions, other columns, `NOT`, and casts that can change the value (`c::int < 5`) are not
     applied. `serial`, `unique[...]` and `ref[...]` keep their type, with a comment if the CHECK can be violated.
+  - A single-column text PRIMARY KEY or UNIQUE with a value list (a CHECK, or MySQL `ENUM` / `SET`) becomes `cycle[…]`, not
+    `enum[…]`: an enum draws at random and collides, while `cycle` gives each value once up to `--count` n. A warning
+    states the limit. With `--nest` it stays `enum[…]`, since `cycle` can't run under `array[…]`.
 - **`REFERENCES t` without a column list** resolves to `t`'s primary key, positionally for composite
   keys, wherever that key is declared. If `t` is unknown, has no primary key, or the column counts
   differ, a warning is logged and the column keeps its plain type (never a guessed `id`).
