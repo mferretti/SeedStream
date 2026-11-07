@@ -117,6 +117,40 @@ class DdlInspectorCheckConstraintSafetyTest {
     assertThat(comment(in, "t", "x")).contains("x > 5").contains("x < 3");
   }
 
+  /** A bracket after a keyword is a T-SQL identifier; only after a type or ARRAY a subscript. */
+  @Test
+  void shouldStillReadABracketIdentifierDirectlyAfterAKeyword(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "CREATE TABLE p (id INT PRIMARY KEY);\n"
+                + "CREATE TABLE c ([id] INT NOT NULL PRIMARY KEY, [p] INT REFERENCES[p]([id]));\n"
+                + "CREATE TABLE t (id INT NOT NULL, x INT CONSTRAINT[ck] CHECK (x>=5));\n");
+
+    assertThat(datatypesOf(in, "c")).containsEntry("p", "ref[p.id, 1..count]");
+    assertThat(datatypesOf(in, "t")).containsEntry("x", "int[5..999999]");
+  }
+
+  @Test
+  void guardShouldReadASubscriptAfterATypeOrArray(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "CREATE TABLE t (a int[], b text[3], c text[] DEFAULT ARRAY[]::text[], d int);\n"
+                + "CREATE TABLE u (id int);\n");
+
+    assertThat(in.structures()).extracting("name").containsExactly("t", "u");
+    assertThat(datatypesOf(in, "t")).containsKeys("a", "b", "c", "d");
+  }
+
+  @Test
+  void shouldNotBlameTheColumnTypeForAValueAnEnumCantExpress(@TempDir Path dir) {
+    Inspection in = inspectCheck(dir, "s varchar(10)", "s IN ('a,b','c')");
+
+    assertThat(datatypesOf(in, "t")).containsEntry("s", "char[1..10]");
+    assertThat(comment(in, "t", "s")).doesNotContain("column type").contains("enum");
+  }
+
   @Test
   void shouldKeepLaterTablesWhenAnArrayLiteralHoldsABracket(@TempDir Path dir) {
     Inspection in =
