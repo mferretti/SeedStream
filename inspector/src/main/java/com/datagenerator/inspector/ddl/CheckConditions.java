@@ -474,6 +474,7 @@ final class CheckConditions {
 
   private static Op opOf(BinaryExpression e) {
     return switch (e) {
+      case null -> null;
       case EqualsTo x -> Op.EQ;
       case GreaterThan x -> Op.GT;
       case GreaterThanEquals x -> Op.GE;
