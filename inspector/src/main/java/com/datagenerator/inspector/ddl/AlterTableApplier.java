@@ -40,12 +40,12 @@ import net.sf.jsqlparser.statement.create.table.Index;
  * DBMS_METADATA), so a key declared by {@code ALTER} must come out exactly as the same key declared
  * inline.
  *
- * <p>Read: {@code ADD [CONSTRAINT] PRIMARY KEY | UNIQUE | FOREIGN KEY} and {@code ALTER COLUMN ...
- * ADD GENERATED ALWAYS AS IDENTITY}. Ignored silently: everything else that leaves the columns as
- * they are (owner, triggers, {@code CHECK} constraints, {@code NOT NULL}, {@code AUTO_INCREMENT},
- * defaults, ...). Warned and not applied: statements that change the structure (add / drop / rename
- * / retype a column). An {@code ALTER} never aborts the inspection: one that cannot be parsed, or
- * that names an unknown table, becomes a warning.
+ * <p>Read: {@code ADD [CONSTRAINT] PRIMARY KEY | UNIQUE | FOREIGN KEY | CHECK} and {@code ALTER
+ * COLUMN ... ADD GENERATED ALWAYS AS IDENTITY}. Ignored silently: everything else that leaves the
+ * columns as they are (owner, triggers, {@code NOT NULL}, {@code AUTO_INCREMENT}, defaults, ...).
+ * Warned and not applied: statements that change the structure (add / drop / rename / retype a
+ * column). An {@code ALTER} never aborts the inspection: one that cannot be parsed, or that names
+ * an unknown table, becomes a warning.
  */
 final class AlterTableApplier {
 
@@ -95,6 +95,7 @@ final class AlterTableApplier {
       warnings.add("ALTER TABLE " + name + ": table is not in the script — ignored");
       return;
     }
+    table.addChecks(raw);
     for (AlterExpression expression : alter.getAlterExpressions()) {
       apply(table, expression, tables, warnings);
     }

@@ -153,6 +153,9 @@ public class DdlPreprocessor {
       return s.isBlank() ? statement : s;
     }
 
+    // CHECK conditions are read from the raw text; the parser only needs to see a placeholder
+    s = CheckClauses.neutralize(s, false);
+
     // Dequote bracket identifiers and strip schema prefix from table name
     s = dequoteBrackets(s);
 
@@ -184,6 +187,7 @@ public class DdlPreprocessor {
   public String sanitizeAlter(String statement) {
     String s = SqlScan.stripCommentsAndLiterals(statement).strip();
     s = stripLeadingDirectives(s);
+    s = CheckClauses.neutralize(s, true);
     s = bracketsToQuotes(s);
     s = TRAILING_SEMICOLON.matcher(s).replaceAll("");
     s = WITH_CHECK_ADD.matcher(s).replaceAll("");

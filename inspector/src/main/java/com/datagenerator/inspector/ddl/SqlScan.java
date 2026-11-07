@@ -84,6 +84,24 @@ final class SqlScan {
   }
 
   /**
+   * Index just past the comment, string literal or quoted identifier ({@code "..."}, {@code `...`},
+   * {@code [...]}) that starts at {@code i}, else {@code i} itself.
+   */
+  static int skipOpaque(String s, int i) {
+    char c = s.charAt(i);
+    if (isBlockCommentStart(s, i)) {
+      return skipBlockComment(s, i);
+    } else if (isLineCommentStart(s, i)) {
+      return skipLineComment(s, i);
+    } else if (c == '\'') {
+      return skipSingleQuoted(s, i);
+    } else if (c == '"' || c == '`' || c == '[') {
+      return skipDelimited(s, i, c == '[' ? ']' : c);
+    }
+    return i;
+  }
+
+  /**
    * Returns {@code s} with comments removed and single-quoted strings and dollar-quoted bodies
    * replaced by {@code ''}, so keyword checks cannot be fooled by text inside them. Quoted
    * identifiers are copied verbatim (a {@code --} or {@code '} inside one is not a

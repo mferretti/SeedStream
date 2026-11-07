@@ -44,6 +44,12 @@ final class TableModel {
   /** A column with its SQL type, rendered to a SeedStream datatype later. */
   record Column(String name, ColDataType type) {}
 
+  /**
+   * A {@code CHECK} condition as written (name is null when unnamed). {@code noInherit}: PostgreSQL
+   * {@code NO INHERIT}, which keeps it off the {@code INHERITS} children.
+   */
+  record CheckCondition(String name, String text, boolean noInherit) {}
+
   /** The snake_case structure name; also the key ALTER TABLE statements are matched on. */
   final String name;
 
@@ -51,6 +57,9 @@ final class TableModel {
   final int order;
 
   final List<Column> columns = new ArrayList<>();
+
+  /** The table's own {@code CHECK} conditions, from {@code CREATE TABLE} and {@code ALTER}. */
+  final List<CheckCondition> checks = new ArrayList<>();
 
   /** Snake-cased names of the {@code INHERITS} parents, in clause order. */
   final List<String> parents = new ArrayList<>();
@@ -72,6 +81,11 @@ final class TableModel {
   TableModel(String tableName, int declarationOrder) {
     this.name = tableName;
     this.order = declarationOrder;
+  }
+
+  void addChecks(String sql) {
+    CheckClauses.find(sql)
+        .forEach(c -> checks.add(new CheckCondition(c.name(), c.condition(), c.noInherit())));
   }
 
   void addPrimaryKey(List<String> columnNames) {
