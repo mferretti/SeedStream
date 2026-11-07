@@ -358,16 +358,15 @@ class DdlInspectorUniqueIndexTest {
 
   @Test
   void guardNotDoubleCountOracleIndexWithAlterPrimaryKeyUsingIndex(@TempDir Path dir) {
-    String ddl =
-        "CREATE TABLE \"N\".\"T\" (\"ID\" NUMBER(9,0) NOT NULL, \"C\" NUMBER(9,0));\n"
-            + "%s"
-            + "ALTER TABLE \"N\".\"T\" ADD CONSTRAINT \"PK_T\" PRIMARY KEY (\"ID\")\n"
+    String table = "CREATE TABLE \"N\".\"T\" (\"ID\" NUMBER(9,0) NOT NULL, \"C\" NUMBER(9,0));\n";
+    String alter =
+        "ALTER TABLE \"N\".\"T\" ADD CONSTRAINT \"PK_T\" PRIMARY KEY (\"ID\")\n"
             + "  USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS\n"
             + "  TABLESPACE \"N\" ENABLE;\n";
     String index =
         "CREATE UNIQUE INDEX \"N\".\"PK_T\" ON \"N\".\"T\" (\"ID\") PCTFREE 10 TABLESPACE \"N\" ;\n";
-    Inspection in = inspectDdl(dir, ddl.formatted(index));
-    Inspection withoutIndex = inspectDdl(dir, ddl.formatted(""));
+    Inspection in = inspectDdl(dir, table + index + alter);
+    Inspection withoutIndex = inspectDdl(dir, table + alter);
 
     assertThat(datatypesOf(in, "t").entrySet())
         .containsExactlyInAnyOrder(entry("ID", "serial"), entry("C", INT));
@@ -408,9 +407,9 @@ class DdlInspectorUniqueIndexTest {
   void guardCountAlterUniqueAndSameIndexOnce(@TempDir Path dir) {
     String ddl =
         "CREATE TABLE t (a int, b int, c int);\n"
-            + "ALTER TABLE t ADD CONSTRAINT uq UNIQUE (a, b) USING INDEX u;\n%s";
-    Inspection in = inspectDdl(dir, ddl.formatted("CREATE UNIQUE INDEX u ON t (a, b);\n"));
-    Inspection withoutIndex = inspectDdl(dir, ddl.formatted(""));
+            + "ALTER TABLE t ADD CONSTRAINT uq UNIQUE (a, b) USING INDEX u;\n";
+    Inspection in = inspectDdl(dir, ddl + "CREATE UNIQUE INDEX u ON t (a, b);\n");
+    Inspection withoutIndex = inspectDdl(dir, ddl);
 
     assertThat(datatypesOf(in, "t").entrySet())
         .containsExactlyInAnyOrder(
