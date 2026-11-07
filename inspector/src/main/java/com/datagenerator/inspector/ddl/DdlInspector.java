@@ -70,21 +70,30 @@ public class DdlInspector {
   private static final Pattern CREATE_TABLE_QUICK =
       Pattern.compile("(?is)\\bCREATE\\b.{0,50}\\bTABLE\\b");
   static final String DIRECTIVES = "(?:(?:SET|PROMPT|USE|EXEC)\\b[^\\n]*\\n\\s*)*";
+  private static final String ROUTINE_MODIFIERS =
+      "(?:(?:DEFINER\\s*=\\s*\\S+|EDITIONABLE|NONEDITIONABLE)\\s+)*";
 
   /**
-   * Statements skipped silently although they mention {@code CREATE ... TABLE}: routine, package
-   * and event bodies, publications ({@code FOR TABLE}) and subscriptions, and privilege statements
-   * ({@code GRANT CREATE TABLE ...}). Body-less kinds (INDEX, VIEW, ...) are deliberately not
-   * listed: they never contain {@code CREATE ... TABLE}, and an unterminated one must not swallow a
-   * table.
+   * Statements skipped silently although they mention {@code CREATE ... TABLE}: routine, type,
+   * package and event bodies ({@code CREATE [OR REPLACE|OR ALTER] PROCEDURE|PROC|FUNCTION|TRIGGER|
+   * TYPE|...}), {@code ALTER PROCEDURE|PROC|FUNCTION|TRIGGER} bodies, publications ({@code FOR
+   * TABLE}) and subscriptions, and privilege statements ({@code GRANT CREATE TABLE ...}). Body-less
+   * kinds (INDEX, VIEW, ...) are deliberately not listed: they never contain {@code CREATE ...
+   * TABLE}, and an unterminated one must not swallow a table. {@code ALTER TABLE} is not matched
+   * here; it is handled before this check.
    */
   private static final Pattern NON_TABLE_CREATE =
       Pattern.compile(
           "(?is)\\A\\s*"
               + DIRECTIVES
-              + "(?:(?:GRANT|REVOKE|DENY)\\b|CREATE\\s+(?:OR\\s+REPLACE\\s+)?"
-              + "(?:(?:DEFINER\\s*=\\s*\\S+|EDITIONABLE|NONEDITIONABLE)\\s+)*"
-              + "(?:FUNCTION|PROCEDURE|TRIGGER|PACKAGE|EVENT|PUBLICATION|SUBSCRIPTION)\\b)");
+              + "(?:(?:GRANT|REVOKE|DENY)\\b"
+              + "|CREATE\\s+(?:OR\\s+(?:REPLACE|ALTER)\\s+)?"
+              + ROUTINE_MODIFIERS
+              + "(?:FUNCTION|PROCEDURE|PROC|TRIGGER|PACKAGE|EVENT|PUBLICATION|SUBSCRIPTION"
+              + "|TYPE\\s+\\S+\\s+AS\\s+TABLE)\\b"
+              + "|ALTER\\s+"
+              + ROUTINE_MODIFIERS
+              + "(?:PROCEDURE|PROC|FUNCTION|TRIGGER)\\b)");
 
   // CREATE TABLE <name> followed by AS / PARTITION OF / LIKE / (LIKE ...): no column list to model.
   private static final String IDENT_PART =
@@ -132,6 +141,7 @@ public class DdlInspector {
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
   private final DdlPreprocessor preprocessor = new DdlPreprocessor();
+  private final EmbeddedStatementExpander expander = new EmbeddedStatementExpander();
 
   /** Inspects a SQL DDL file and returns one structure per {@code CREATE TABLE} (no nesting). */
   public Inspection inspect(Path sqlFile) {
@@ -159,7 +169,10 @@ public class DdlInspector {
    * directives, …) are always skipped silently in both modes.
    */
   public Inspection inspect(Path sqlFile, NestingOptions nesting, boolean bestEffort) {
-    List<String> rawStatements = splitter.split(readFile(sqlFile));
+    List<String> rawStatements =
+        splitter.split(readFile(sqlFile)).stream()
+            .flatMap(chunk -> expander.expand(chunk).stream())
+            .toList();
 
     // Phase 1: every CREATE TABLE becomes a model (no datatypes yet); ALTER TABLEs wait their turn.
     List<TableModel> models = new ArrayList<>();
