@@ -102,7 +102,7 @@ identical pipeline:
 You don't have to hand-write the structures. `seedstream inspect schema.sql --output structures/`
 generates one flat structure per `CREATE TABLE` and emits each FK as `ref[table.column, 1..count]`
 already. After inspecting, you delete the emitted `id` lines (the DB assigns them) and switch the
-`1..count` ranges to static parent volumes — exactly what ships here. Two inspect enhancements would
-remove those manual steps: skip identity PKs on emit
-([#215](https://github.com/mferretti/SeedStream/issues/215)) and map `CHECK IN(...)` to `enum[...]`
-([#214](https://github.com/mferretti/SeedStream/issues/214)).
+`1..count` ranges to static parent volumes — exactly what ships here. `inspect` now omits
+`GENERATED ALWAYS` identity PKs ([#215](https://github.com/mferretti/SeedStream/issues/215)) and maps
+`CHECK IN(...)` to `enum[...]` ([#214](https://github.com/mferretti/SeedStream/issues/214)), so those steps
+no longer apply to tables declared that way.
