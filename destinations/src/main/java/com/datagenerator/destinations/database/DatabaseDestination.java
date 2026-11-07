@@ -587,7 +587,8 @@ public class DatabaseDestination extends AbstractDestination {
   private static final Pattern PLAIN_IDENTIFIER = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_$]*");
 
   /** Allowlist for one identifier part. Excludes every quote, ';', '.', '\\' and control char. */
-  private static final Pattern SAFE_IDENTIFIER_PART = Pattern.compile("[\\p{L}\\p{N}_$#@ -]+");
+  private static final Pattern SAFE_IDENTIFIER_PART =
+      Pattern.compile("[\\p{L}\\p{N}\\p{M}_$#@ -]+");
 
   /**
    * Quotes a possibly schema-qualified table name (1 to 3 dot-separated parts), each part per
@@ -633,6 +634,10 @@ public class DatabaseDestination extends AbstractDestination {
       if (!fixed && !vendorKeywords.contains(lower)) {
         return part;
       }
+      // Without a quote string a vendor keyword can only go out unquoted, as it works today.
+      if (!fixed && vendorQuote.isEmpty()) {
+        return part;
+      }
       if (!fixed) {
         text = fold(part);
       }
@@ -663,34 +668,58 @@ public class DatabaseDestination extends AbstractDestination {
             + "'");
   }
 
-  /** Reads the quote string, keywords and case storage once; tolerates drivers without metadata. */
+  /**
+   * Reads the quote string, keywords and case storage once. Each call is read on its own: one that
+   * fails falls back to a safe default and is logged, so the others still apply.
+   */
   private void loadVendorMetadata() {
     if (vendorQuote != null) {
       return;
     }
-    Set<String> keywords = new HashSet<>();
+    DatabaseMetaData meta = readOr("database metadata", null, connection::getMetaData);
     String quote = "";
+    String keywordList = "";
     boolean lower = false;
     boolean upper = false;
-    try {
-      DatabaseMetaData meta = connection.getMetaData();
-      if (meta != null) {
-        // Objects.toString: stubbed or minimal drivers may return null
-        quote = Objects.toString(meta.getIdentifierQuoteString(), "").strip();
-        Arrays.stream(Objects.toString(meta.getSQLKeywords(), "").split(","))
+    if (meta != null) {
+      // Objects.toString: stubbed or minimal drivers may return null
+      quote =
+          readOr(
+                  "identifier quote string",
+                  "",
+                  () -> Objects.toString(meta.getIdentifierQuoteString(), ""))
+              .strip();
+      keywordList = readOr("SQL keywords", "", () -> Objects.toString(meta.getSQLKeywords(), ""));
+      lower = readOr("lower-case storage", false, meta::storesLowerCaseIdentifiers);
+      upper = readOr("upper-case storage", false, meta::storesUpperCaseIdentifiers);
+    }
+    vendorKeywords =
+        Arrays.stream(keywordList.split(","))
             .map(w -> w.strip().toLowerCase(Locale.ROOT))
             .filter(w -> !w.isEmpty())
-            .forEach(keywords::add);
-        lower = meta.storesLowerCaseIdentifiers();
-        upper = meta.storesUpperCaseIdentifiers();
-      }
-    } catch (SQLException e) {
-      throw new DestinationException("Failed to read identifier metadata from the database", e);
-    }
-    vendorKeywords = keywords;
+            .collect(Collectors.toSet());
     storesLowerCase = lower;
     storesUpperCase = upper;
     vendorQuote = quote;
+  }
+
+  /** A JDBC metadata call that may throw. */
+  @FunctionalInterface
+  private interface MetadataRead<T> {
+    T read() throws SQLException;
+  }
+
+  /**
+   * Runs one metadata call; on SQLException logs what could not be read and returns the fallback.
+   */
+  private static <T> T readOr(String what, T fallback, MetadataRead<T> read) {
+    try {
+      return read.read();
+    } catch (SQLException e) {
+      log.warn(
+          "Could not read {} from the JDBC driver, using a safe default: {}", what, e.getMessage());
+      return fallback;
+    }
   }
 
   /**
