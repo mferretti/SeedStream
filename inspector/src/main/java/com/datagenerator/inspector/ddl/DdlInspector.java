@@ -584,6 +584,9 @@ public class DdlInspector {
         if (mapped.flagged()) {
           fieldComments.put(column.name(), mapped.comment());
         }
+        if (colType.getArrayData() != null && !colType.getArrayData().isEmpty()) {
+          fieldComments.put(column.name(), "array column generated as a scalar — verify");
+        }
         datatype = mapped.datatype();
         ColumnChecks columnChecks = checks.get(lower(column.name()));
         if (columnChecks != null) {
