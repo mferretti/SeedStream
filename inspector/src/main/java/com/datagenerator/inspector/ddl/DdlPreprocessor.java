@@ -218,7 +218,11 @@ public class DdlPreprocessor {
     StringBuilder sb = new StringBuilder(s.length());
     int i = 0;
     while (i < s.length()) {
-      if (s.charAt(i) == '[') {
+      if (s.charAt(i) == '\'') {
+        int end = Math.min(SqlScan.skipSingleQuoted(s, i), s.length());
+        sb.append(s, i, end);
+        i = end;
+      } else if (SqlScan.opensBracketIdentifier(s, i)) {
         StringBuilder identifier = new StringBuilder();
         i = appendBracketContent(s, i, identifier);
         sb.append('"').append(identifier.toString().replace("\"", "\"\"")).append('"');
@@ -411,7 +415,11 @@ public class DdlPreprocessor {
     int i = 0;
     while (i < len) {
       char c = s.charAt(i);
-      if (c == '[') {
+      if (c == '\'') {
+        int end = Math.min(SqlScan.skipSingleQuoted(s, i), len);
+        sb.append(s, i, end);
+        i = end;
+      } else if (SqlScan.opensBracketIdentifier(s, i)) {
         i = appendBracketContent(s, i, sb);
       } else {
         sb.append(c);

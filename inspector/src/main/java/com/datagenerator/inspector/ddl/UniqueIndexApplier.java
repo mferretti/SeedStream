@@ -202,7 +202,7 @@ final class UniqueIndexApplier {
       while (i < head.length() && !Character.isWhitespace(head.charAt(i))) {
         char c = head.charAt(i);
         i =
-            c == '"' || c == '`' || c == '['
+            c == '"' || c == '`' || SqlScan.opensBracketIdentifier(head, i)
                 ? SqlScan.skipDelimited(head, i, c == '[' ? ']' : c)
                 : i + 1;
       }
@@ -222,7 +222,7 @@ final class UniqueIndexApplier {
     int i = 0;
     while (i < s.length()) {
       char c = s.charAt(i);
-      if (c == '"' || c == '`' || c == '[') {
+      if (c == '"' || c == '`' || SqlScan.opensBracketIdentifier(s, i)) {
         i = SqlScan.skipDelimited(s, i, c == '[' ? ']' : c);
       } else if (c == '(') {
         return i;
@@ -253,7 +253,7 @@ final class UniqueIndexApplier {
     int i = open;
     while (i < s.length()) {
       char c = s.charAt(i);
-      if (c == '"' || c == '`' || c == '[') {
+      if (c == '"' || c == '`' || SqlScan.opensBracketIdentifier(s, i)) {
         i = SqlScan.skipDelimited(s, i, c == '[' ? ']' : c);
         continue;
       }
@@ -274,7 +274,7 @@ final class UniqueIndexApplier {
     int i = 0;
     while (i < list.length()) {
       char c = list.charAt(i);
-      if (c == '"' || c == '`' || c == '[') {
+      if (c == '"' || c == '`' || SqlScan.opensBracketIdentifier(list, i)) {
         i = SqlScan.skipDelimited(list, i, c == '[' ? ']' : c);
         continue;
       }

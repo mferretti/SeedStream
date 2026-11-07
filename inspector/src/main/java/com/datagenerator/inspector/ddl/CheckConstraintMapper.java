@@ -26,6 +26,7 @@ import com.datagenerator.inspector.ddl.CheckConditions.Lit;
 import com.datagenerator.inspector.ddl.CheckConditions.Now;
 import com.datagenerator.inspector.ddl.CheckConditions.Num;
 import com.datagenerator.inspector.ddl.CheckConditions.Op;
+import com.datagenerator.inspector.ddl.CheckConditions.Today;
 import com.datagenerator.inspector.ddl.CheckConditions.Txt;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,10 +35,12 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Turns the {@code CHECK} conditions of one column and its mapped type into a narrower datatype, or
@@ -49,12 +52,31 @@ import java.util.regex.Pattern;
 final class CheckConstraintMapper {
 
   /** The column type a CHECK is applied to. */
-  record ColumnType(String datatype, boolean text, int maxLength, int scale) {
+  record ColumnType(
+      String datatype, boolean text, int maxLength, int scale, boolean singlePrecision) {
 
-    /** Type of a mapped column; {@code args} are the SQL type arguments, e.g. {@code (10,2)}. */
-    static ColumnType of(MappedType mapped, List<String> args) {
+    /**
+     * Type of a mapped column; {@code sqlType} is the SQL type name and {@code args} its arguments,
+     * e.g. {@code (10,2)}.
+     */
+    static ColumnType of(MappedType mapped, String sqlType, List<String> args) {
       boolean text = mapped.reason() == Reason.NAME_HINT || mapped.datatype().startsWith("char[");
-      return new ColumnType(mapped.datatype(), text, argument(args, 0, -1), argument(args, 1, 2));
+      int precision = argument(args, 0, -1);
+      return new ColumnType(
+          mapped.datatype(),
+          text,
+          precision,
+          argument(args, 1, 2),
+          isSinglePrecision(sqlType.toUpperCase(Locale.ROOT), precision));
+    }
+
+    /** 4-byte floats; a bare FLOAT may be one too (MySQL), so it is treated as one. */
+    private static boolean isSinglePrecision(String sqlType, int precision) {
+      return switch (sqlType) {
+        case "REAL", "FLOAT4", "BINARY_FLOAT" -> true;
+        case "FLOAT" -> precision < 0 || precision <= FLOAT4_PRECISION;
+        default -> false;
+      };
     }
 
     private static int argument(List<String> args, int index, int fallback) {
@@ -81,6 +103,7 @@ final class CheckConstraintMapper {
   private static final LocalDate FUTURE_START = LocalDate.of(2100, 1, 1);
   private static final LocalDate FUTURE_END = LocalDate.of(2100, 12, 31);
   private static final int OPEN_BOUND_YEARS = 10;
+  private static final int FLOAT4_PRECISION = 24;
   private static final long KEY_MAX = Defaults.INT_MAX;
 
   private CheckConstraintMapper() {}
@@ -120,7 +143,7 @@ final class CheckConstraintMapper {
     if (reference) {
       checks.atoms.forEach(atom -> notes.add(atom.source() + " cannot be applied to a reference"));
     } else {
-      ColumnType ints = new ColumnType("int[1.." + KEY_MAX + "]", false, -1, 0);
+      ColumnType ints = new ColumnType("int[1.." + KEY_MAX + "]", false, -1, 0, false);
       Result result = apply(checks, ints);
       notes.addAll(result.notes());
       if (result.datatype() != null && boundsKeyValues(result.datatype())) {
@@ -143,8 +166,11 @@ final class CheckConstraintMapper {
     return atom.source() + " not applied — generated values may violate it, verify";
   }
 
-  private static String unsatisfiable(Atom atom) {
-    return atom.source() + " leaves no value the column type can hold — not applied, verify";
+  /** Names every constraint that took part, so the whole condition shows. */
+  private static String unsatisfiable(ColumnChecks checks) {
+    String sources =
+        checks.atoms.stream().map(Atom::source).distinct().collect(Collectors.joining(" and "));
+    return sources + " leaves no value the column type can hold — not applied, verify";
   }
 
   // ------------------------------------------------------------------ integers and decimals
@@ -169,6 +195,8 @@ final class CheckConstraintMapper {
         high = min(high, max(list.get()));
       } else if (value.isEmpty() || atom.op() == Op.IN) {
         notes.add(unsupported(atom));
+      } else if (type.singlePrecision() && !exactFloat(value.get())) {
+        notes.add(unsupported(atom)); // the stored float4 would differ from the bound
       } else {
         BigDecimal v = value.get();
         BigDecimal up = v.setScale(scale, RoundingMode.CEILING);
@@ -192,7 +220,7 @@ final class CheckConstraintMapper {
             : high != null && high.compareTo(currentMin) <= 0 ? floor : currentMin;
     BigDecimal newHigh = high != null ? high.min(currentMax) : currentMax;
     if (newLow.compareTo(newHigh) > 0) {
-      checks.atoms.stream().findFirst().ifPresent(atom -> notes.add(unsatisfiable(atom)));
+      notes.add(unsatisfiable(checks));
       return null;
     }
     if (newLow.compareTo(currentMin) == 0 && newHigh.compareTo(currentMax) == 0) {
@@ -200,6 +228,10 @@ final class CheckConstraintMapper {
     }
     String prefix = integer ? "int[" : "decimal[";
     return prefix + render(newLow, integer) + ".." + render(newHigh, integer) + "]";
+  }
+
+  private static boolean exactFloat(BigDecimal value) {
+    return new BigDecimal((double) value.floatValue()).compareTo(value) == 0;
   }
 
   private static Optional<BigDecimal> singleNumber(Atom atom) {
@@ -264,7 +296,9 @@ final class CheckConstraintMapper {
     boolean future = false;
     for (Atom atom : checks.atoms) {
       Optional<LocalDate> day = singleDay(atom);
-      boolean now = atom.values().size() == 1 && atom.values().get(0) instanceof Now;
+      boolean now =
+          atom.values().size() == 1
+              && (atom.values().get(0) instanceof Now || atom.values().get(0) instanceof Today);
       if (now && (atom.op() == Op.LT || atom.op() == Op.LE)) {
         past = true;
       } else if (now && (atom.op() == Op.GT || atom.op() == Op.GE)) {
@@ -289,7 +323,7 @@ final class CheckConstraintMapper {
     LocalDate baseStart = LocalDate.parse(range.group(1));
     LocalDate baseEnd = LocalDate.parse(range.group(2));
     if (past && future) {
-      notes.add(unsatisfiable(checks.atoms.get(0)));
+      notes.add(unsatisfiable(checks));
       return null;
     }
     if (clock) {
@@ -298,7 +332,7 @@ final class CheckConstraintMapper {
     }
     Optional<LocalDate[]> bounds = dateBounds(low, high, baseStart, baseEnd, clock);
     if (bounds.isEmpty()) {
-      notes.add(unsatisfiable(checks.atoms.get(0)));
+      notes.add(unsatisfiable(checks));
       return null;
     }
     if (clock) {
@@ -383,23 +417,23 @@ final class CheckConstraintMapper {
    */
   private static String text(ColumnChecks checks, ColumnType type, Set<String> notes) {
     List<String> allowed = null;
-    Atom first = null;
+    boolean honoured = checks.notes.isEmpty();
     for (Atom atom : checks.atoms) {
       Optional<List<String>> values = texts(atom);
       if (values.isEmpty()) {
         notes.add(unsupported(atom));
+        honoured = false;
       } else if (allowed == null) {
         allowed = values.get().stream().distinct().toList();
-        first = atom;
       } else {
         allowed = allowed.stream().filter(values.get()::contains).toList();
       }
     }
-    if (allowed == null) {
+    if (allowed == null || !honoured) { // a part left on the column could reject the values
       return null;
     }
     if (allowed.isEmpty() || !allowed.stream().allMatch(v -> fits(v, type.maxLength()))) {
-      notes.add(unsatisfiable(first));
+      notes.add(unsatisfiable(checks));
       return null;
     }
     return "enum[" + String.join(",", allowed) + "]";

@@ -589,7 +589,8 @@ public class DdlInspector {
         if (columnChecks != null) {
           CheckConstraintMapper.Result applied =
               CheckConstraintMapper.apply(
-                  columnChecks, ColumnType.of(mapped, typeArguments(colType)));
+                  columnChecks,
+                  ColumnType.of(mapped, baseTypeName(colType), typeArguments(colType)));
           if (applied.datatype() != null) {
             datatype = applied.datatype();
             if (mapped.reason() == MappedType.Reason.NAME_HINT) {

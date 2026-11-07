@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.BinaryExpression;
@@ -79,7 +80,7 @@ final class CheckConditions {
   }
 
   /** A literal as the constraint wrote it. */
-  sealed interface Lit permits Num, Txt, Day, Now, Other {}
+  sealed interface Lit permits Num, Txt, Day, Now, Today, Other {}
 
   record Num(BigDecimal value) implements Lit {}
 
@@ -87,8 +88,13 @@ final class CheckConditions {
 
   record Day(LocalDate value) implements Lit {}
 
-  /** The current date / time ({@code CURRENT_DATE}, {@code now()}, {@code getdate()}, ...). */
+  /**
+   * The current date and time ({@code now()}, {@code CURRENT_TIMESTAMP}, {@code getdate()}, ...).
+   */
   record Now() implements Lit {}
+
+  /** Today's date ({@code CURRENT_DATE}, {@code CURDATE()}): midnight, not the current instant. */
+  record Today() implements Lit {}
 
   /** NULL, a boolean, an expression: nothing a range or list can be built from. */
   record Other() implements Lit {}
@@ -100,10 +106,6 @@ final class CheckConditions {
   static final class ColumnChecks {
     final List<Atom> atoms = new ArrayList<>();
     final Set<String> notes = new LinkedHashSet<>();
-
-    boolean isEmpty() {
-      return atoms.isEmpty() && notes.isEmpty();
-    }
   }
 
   private static final Set<String> NOW_NAMES =
@@ -113,11 +115,16 @@ final class CheckConditions {
           "SYSDATE",
           "SYSDATETIME",
           "GETUTCDATE",
-          "CURDATE",
           "SYSTIMESTAMP",
-          "CURRENT_DATE",
           "CURRENT_TIMESTAMP",
           "LOCALTIMESTAMP");
+  private static final Set<String> TODAY_NAMES = Set.of("CURDATE", "CURRENT_DATE");
+  private static final Pattern TEXT_TYPE =
+      Pattern.compile("(?:text|varchar|character varying)(?:\\[])?");
+  private static final Pattern NUMERIC_TYPE = Pattern.compile("(?:numeric|decimal)(?:\\[])?");
+  private static final Pattern DOUBLE_TYPE = Pattern.compile("double precision|float8");
+  private static final Pattern INTEGER_TYPE =
+      Pattern.compile("int|integer|int2|int4|int8|smallint|bigint");
   private static final int SNIPPET_LENGTH = 60;
 
   private final String table;
@@ -324,7 +331,7 @@ final class CheckConditions {
           @Override
           public <S> Void visit(Column column, S context) {
             String lower = lowerName(column);
-            if (columns.contains(lower) || !NOW_NAMES.contains(lower.toUpperCase(Locale.ROOT))) {
+            if (columns.contains(lower) || !isClockName(lower)) {
               names.add(lower);
             }
             return null;
@@ -342,9 +349,7 @@ final class CheckConditions {
   private String columnName(Expression operand) {
     if (stripCasts(operand) instanceof Column column) {
       String lower = lowerName(column);
-      return columns.contains(lower) || !NOW_NAMES.contains(lower.toUpperCase(Locale.ROOT))
-          ? lower
-          : null;
+      return columns.contains(lower) || !isClockName(lower) ? lower : null;
     }
     return null;
   }
@@ -358,12 +363,11 @@ final class CheckConditions {
       case StringValue text -> new Txt(text.getValue().replace("''", "'"));
       case DateTimeLiteralExpression literal -> dateLiteral(literal);
       case CastExpression cast -> cast(cast);
-      case TimeKeyExpression key -> new Now();
+      case TimeKeyExpression key -> clock(key.getStringValue());
       case Function function -> function(function);
       case Column column ->
-          !columns.contains(lowerName(column))
-                  && NOW_NAMES.contains(lowerName(column).toUpperCase(Locale.ROOT))
-              ? new Now()
+          !columns.contains(lowerName(column)) && isClockName(lowerName(column))
+              ? clock(lowerName(column))
               : new Other();
       default -> new Other();
     };
@@ -390,19 +394,46 @@ final class CheckConditions {
     return literal.getType() == DateTime.DATE ? day(value) : new Other();
   }
 
+  /** A cast of a literal keeps it only when the value stays what the constraint wrote. */
   private Lit cast(CastExpression cast) {
     Lit inner = literal(cast.getLeftExpression());
-    boolean toDate =
-        cast.getColDataType() != null
-            && "DATE".equalsIgnoreCase(cast.getColDataType().getDataType());
-    return toDate && inner instanceof Txt text ? day(text.value()) : inner;
+    String type = typeOf(cast);
+    boolean keeps =
+        switch (inner) {
+          case Txt t -> TEXT_TYPE.matcher(type).matches();
+          case Num n ->
+              NUMERIC_TYPE.matcher(type).matches()
+                  || DOUBLE_TYPE.matcher(type).matches()
+                  || (INTEGER_TYPE.matcher(type).matches()
+                      && n.value().stripTrailingZeros().scale() <= 0);
+          case Day d -> "date".equals(type);
+          default -> false;
+        };
+    if (keeps) {
+      return inner;
+    }
+    if ("date".equals(type)) {
+      return switch (inner) {
+        case Txt t -> day(t.value());
+        case Now n -> new Today();
+        case Today t -> inner;
+        default -> new Other();
+      };
+    }
+    return new Other();
+  }
+
+  private static String typeOf(CastExpression cast) {
+    return cast.getColDataType() == null
+        ? ""
+        : cast.getColDataType().toString().toLowerCase(Locale.ROOT).strip().replaceAll("\\s+", " ");
   }
 
   private Lit function(Function function) {
     String name = function.getName() == null ? "" : function.getName().toUpperCase(Locale.ROOT);
     ExpressionList<?> parameters = function.getParameters();
-    if (NOW_NAMES.contains(name) && (parameters == null || parameters.isEmpty())) {
-      return new Now();
+    if (isClockName(name) && (parameters == null || parameters.isEmpty())) {
+      return clock(name);
     }
     if ("TO_DATE".equals(name)
         && parameters != null
@@ -413,6 +444,17 @@ final class CheckConditions {
       return day(text.value());
     }
     return new Other();
+  }
+
+  private static boolean isClockName(String name) {
+    String upper = name.toUpperCase(Locale.ROOT);
+    return NOW_NAMES.contains(upper) || TODAY_NAMES.contains(upper);
+  }
+
+  private static Lit clock(String name) {
+    return name != null && TODAY_NAMES.contains(name.toUpperCase(Locale.ROOT))
+        ? new Today()
+        : new Now();
   }
 
   private static Lit day(String text) {
@@ -483,9 +525,12 @@ final class CheckConditions {
     return x;
   }
 
+  /** Under parentheses and the casts that leave a column's value as it is (text, numeric). */
   private static Expression stripCasts(Expression e) {
     Expression x = unwrap(e);
-    while (x instanceof CastExpression cast) {
+    while (x instanceof CastExpression cast
+        && (TEXT_TYPE.matcher(typeOf(cast)).matches()
+            || NUMERIC_TYPE.matcher(typeOf(cast)).matches())) {
       x = unwrap(cast.getLeftExpression());
     }
     return x;

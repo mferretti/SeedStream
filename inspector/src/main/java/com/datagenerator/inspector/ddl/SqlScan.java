@@ -95,10 +95,25 @@ final class SqlScan {
       return skipLineComment(s, i);
     } else if (c == '\'') {
       return skipSingleQuoted(s, i);
-    } else if (c == '"' || c == '`' || c == '[') {
+    } else if (c == '"' || c == '`' || opensBracketIdentifier(s, i)) {
       return skipDelimited(s, i, c == '[' ? ']' : c);
     }
     return i;
+  }
+
+  /**
+   * True if the {@code [} at {@code i} opens a bracket-quoted identifier. A bracket right after a
+   * word ({@code ARRAY[...]}, {@code text[]}) is a subscript or array, not an identifier.
+   */
+  static boolean opensBracketIdentifier(String s, int i) {
+    if (s.charAt(i) != '[') {
+      return false;
+    }
+    if (i == 0) {
+      return true;
+    }
+    char before = s.charAt(i - 1);
+    return !(Character.isLetterOrDigit(before) || before == '_');
   }
 
   /**
@@ -120,7 +135,7 @@ final class SqlScan {
       } else if (c == '\'') {
         i = skipSingleQuoted(s, i);
         out.append("''");
-      } else if (c == '"' || c == '`' || c == '[') {
+      } else if (c == '"' || c == '`' || opensBracketIdentifier(s, i)) {
         int end = skipDelimited(s, i, c == '[' ? ']' : c); // identifiers: copied verbatim
         out.append(s, i, Math.min(end, s.length()));
         i = end;
