@@ -25,6 +25,7 @@ dependencies {
 
     // Slow end-to-end tests (execute/inspect → real PostgreSQL); run via slowTest
     testImplementation(libs.postgresql)
+    testRuntimeOnly(libs.h2)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit.jupiter)
 }
