@@ -27,11 +27,11 @@ import java.util.Set;
  * embedded statements, so each goes through the normal pipeline (#459). Only chunks that start
  * (after leading {@code SET|PROMPT|USE|EXEC} lines) with {@code CREATE SCHEMA}, {@code IF}, {@code
  * BEGIN} or {@code DROP} are expanded, cutting at statement-starting keywords at parenthesis depth
- * 0. A routine ({@code CREATE PROCEDURE|FUNCTION|TRIGGER|...}) ends the expansion: it and
- * everything after it stays one piece, its body is never read. Any other chunk, and any chunk that
- * cannot be split (unbalanced parentheses, a single piece), is returned unchanged. Scans run on a
- * same-length copy with comments, literals and quoted identifiers blanked out; the pieces are taken
- * from the original text.
+ * 0. A routine ({@code CREATE|ALTER PROCEDURE|PROC|FUNCTION|TRIGGER|TYPE|...}) ends the expansion:
+ * it and everything after it stays one piece, its body is never read. Any other chunk, and any
+ * chunk that cannot be split (unbalanced parentheses, a single piece), is returned unchanged. Scans
+ * run on a same-length copy with comments, literals and quoted identifiers blanked out; the pieces
+ * are taken from the original text.
  */
 final class EmbeddedStatementExpander {
 
@@ -69,7 +69,8 @@ final class EmbeddedStatementExpander {
           "PACKAGE",
           "EVENT",
           "PUBLICATION",
-          "SUBSCRIPTION");
+          "SUBSCRIPTION",
+          "TYPE");
   // Words after which a statement keyword is part of the previous statement, not a new one.
   private static final Set<String> PRIVILEGE_CONTEXT = Set.of("GRANT", "REVOKE", "DENY", ",", ".");
   private static final Set<String> SET_OPERATORS = Set.of("UNION", "ALL", "INTERSECT", "EXCEPT");
@@ -163,7 +164,7 @@ final class EmbeddedStatementExpander {
         if (depth == 0 && isStatementStart(code, word, end, previous, head)) {
           cuts.add(i);
           head = word;
-          if ("CREATE".equals(word) && isRoutine(code, end)) {
+          if (("CREATE".equals(word) || "ALTER".equals(word)) && isRoutine(code, end)) {
             return cuts; // a routine body is never read
           }
         }
@@ -213,8 +214,8 @@ final class EmbeddedStatementExpander {
     return next >= code.length() || code.charAt(next) != '(';
   }
 
-  private static boolean isRoutine(String code, int afterCreate) {
-    int i = skipWhitespace(code, afterCreate);
+  private static boolean isRoutine(String code, int afterKeyword) {
+    int i = skipWhitespace(code, afterKeyword);
     String word = wordAt(code, i);
     while (CREATE_MODIFIERS.contains(word)) {
       i = skipWhitespace(code, i + word.length());
@@ -241,6 +242,6 @@ final class EmbeddedStatementExpander {
   }
 
   private static boolean isWordChar(char c) {
-    return Character.isLetterOrDigit(c) || c == '_' || c == '#' || c == '@';
+    return Character.isLetterOrDigit(c) || c == '_' || c == '#' || c == '@' || c == '$';
   }
 }
