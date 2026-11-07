@@ -50,15 +50,14 @@ class InspectToExecuteE2EIT extends PostgresE2ESupport {
     assertThat(structures.resolve("customers.yaml")).exists();
     assertThat(structures.resolve("orders.yaml")).exists();
 
-    // Post-inspect edit (the "review, then adjust" step): the inspector emits `serial` for every
-    // PK (recordIndex + 1), so the flat FK `ref[customers.id, 1..count]` lines up with it as long
-    // as parent and child jobs run at the same --count. The join table needs no edit at all: its
-    // composite PK comes out as `ref[..., 1..count, unique=pk]` on both columns.
-    // orders.status: the inspector does not translate CHECK (status IN (...)) into an enum, so
-    // it emits char[1..16] (gap tracked as issue #214); replace it with the allowed values or
-    // the CHECK rejects the insert.
-    replaceDatatype(
-        structures.resolve("orders.yaml"), "status", "enum[new,paid,shipped,cancelled]");
+    // No post-inspect edit: the inspector emits `serial` for every PK (recordIndex + 1), so the
+    // flat FK `ref[customers.id, 1..count]` lines up with it as long as parent and child jobs run
+    // at the same --count; the join table's composite PK comes out as
+    // `ref[..., 1..count, unique=pk]` on both columns; and CHECK (status IN (...)) becomes an enum
+    // (#214), which the database's own CHECK verifies on load below.
+    assertThat(structures.resolve("orders.yaml"))
+        .content()
+        .contains("enum[new,paid,shipped,cancelled]");
 
     runSql("DROP TABLE IF EXISTS order_tags, tags, orders, customers CASCADE");
     runSql(Files.readString(ddl));
@@ -95,14 +94,5 @@ class InspectToExecuteE2EIT extends PostgresE2ESupport {
     assertThat(count("SELECT count(DISTINCT (order_id, tag_id)) FROM order_tags"))
         .as("distinct join pairs")
         .isEqualTo(ROWS);
-  }
-
-  /** Rewrites the {@code datatype:} line of one field in a generated structure YAML. */
-  private static void replaceDatatype(Path file, String field, String datatype) throws Exception {
-    String yaml = Files.readString(file);
-    String updated =
-        yaml.replaceFirst("(?m)^(  " + field + ":\\R    datatype: ).*$", "$1\"" + datatype + "\"");
-    assertThat(updated).as("field %s found in %s", field, file).isNotEqualTo(yaml);
-    Files.writeString(file, updated);
   }
 }

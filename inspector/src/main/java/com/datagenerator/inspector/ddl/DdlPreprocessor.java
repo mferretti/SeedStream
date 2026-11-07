@@ -153,6 +153,9 @@ public class DdlPreprocessor {
       return s.isBlank() ? statement : s;
     }
 
+    // CHECK conditions are read from the raw text; the parser only needs to see a placeholder
+    s = CheckClauses.neutralize(s, false);
+
     // Dequote bracket identifiers and strip schema prefix from table name
     s = dequoteBrackets(s);
 
@@ -184,6 +187,7 @@ public class DdlPreprocessor {
   public String sanitizeAlter(String statement) {
     String s = SqlScan.stripCommentsAndLiterals(statement).strip();
     s = stripLeadingDirectives(s);
+    s = CheckClauses.neutralize(s, true);
     s = bracketsToQuotes(s);
     s = TRAILING_SEMICOLON.matcher(s).replaceAll("");
     s = WITH_CHECK_ADD.matcher(s).replaceAll("");
@@ -214,9 +218,14 @@ public class DdlPreprocessor {
     StringBuilder sb = new StringBuilder(s.length());
     int i = 0;
     while (i < s.length()) {
-      if (s.charAt(i) == '[') {
+      if (s.charAt(i) == '\'') {
+        int end = Math.min(SqlScan.skipSingleQuoted(s, i), s.length());
+        sb.append(s, i, end);
+        i = end;
+      } else if (SqlScan.opensBracketIdentifier(s, i)) {
         StringBuilder identifier = new StringBuilder();
         i = appendBracketContent(s, i, identifier);
+        separateFromWord(s, i, sb);
         sb.append('"').append(identifier.toString().replace("\"", "\"\"")).append('"');
       } else {
         sb.append(s.charAt(i++));
@@ -407,7 +416,12 @@ public class DdlPreprocessor {
     int i = 0;
     while (i < len) {
       char c = s.charAt(i);
-      if (c == '[') {
+      if (c == '\'') {
+        int end = Math.min(SqlScan.skipSingleQuoted(s, i), len);
+        sb.append(s, i, end);
+        i = end;
+      } else if (SqlScan.opensBracketIdentifier(s, i)) {
+        separateFromWord(s, i, sb);
         i = appendBracketContent(s, i, sb);
       } else {
         sb.append(c);
@@ -415,6 +429,16 @@ public class DdlPreprocessor {
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * A bracket identifier after a keyword ({@code REFERENCES[p]}) loses its brackets, so a space
+   * goes in first to keep the keyword a separate word.
+   */
+  private static void separateFromWord(String s, int i, StringBuilder sb) {
+    if (i > 0 && (Character.isLetterOrDigit(s.charAt(i - 1)) || s.charAt(i - 1) == '_')) {
+      sb.append(' ');
+    }
   }
 
   /**

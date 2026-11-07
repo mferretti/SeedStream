@@ -16,6 +16,9 @@
 
 package com.datagenerator.inspector.ddl;
 
+import java.util.Locale;
+import java.util.Set;
+
 /**
  * Low-level character-scan primitives shared by the DDL splitter and preprocessor. Each {@code
  * skip} method takes the source string and the index of the construct's opening character and
@@ -84,6 +87,77 @@ final class SqlScan {
   }
 
   /**
+   * Index just past the comment, string literal or quoted identifier ({@code "..."}, {@code `...`},
+   * {@code [...]}) that starts at {@code i}, else {@code i} itself.
+   */
+  static int skipOpaque(String s, int i) {
+    char c = s.charAt(i);
+    if (isBlockCommentStart(s, i)) {
+      return skipBlockComment(s, i);
+    } else if (isLineCommentStart(s, i)) {
+      return skipLineComment(s, i);
+    } else if (c == '\'') {
+      return skipSingleQuoted(s, i);
+    } else if (c == '"' || c == '`' || opensBracketIdentifier(s, i)) {
+      return skipDelimited(s, i, c == '[' ? ']' : c);
+    }
+    return i;
+  }
+
+  /** Keywords after which an identifier comes, so a {@code [} directly after one opens it. */
+  private static final Set<String> IDENTIFIER_KEYWORDS =
+      Set.of(
+          "TABLE",
+          "REFERENCES",
+          "CONSTRAINT",
+          "ON",
+          "AS",
+          "INDEX",
+          "UNIQUE",
+          "KEY",
+          "FOREIGN",
+          "PRIMARY",
+          "CHECK",
+          "ALTER",
+          "COLUMN",
+          "ADD",
+          "INTO",
+          "FROM",
+          "JOIN",
+          "EXISTS",
+          "ONLY",
+          "SCHEMA",
+          "VIEW",
+          "CLUSTERED",
+          "NONCLUSTERED",
+          "BY");
+
+  /**
+   * True if the {@code [} at {@code i} opens a bracket-quoted identifier. A bracket after a space
+   * or punctuation does. A bracket right after a word is an identifier only when that word is a
+   * keyword such as {@code REFERENCES[p]}; after a type or other word ({@code ARRAY[...]}, {@code
+   * text[]}, {@code int[]}) it is a subscript or array.
+   */
+  static boolean opensBracketIdentifier(String s, int i) {
+    if (s.charAt(i) != '[') {
+      return false;
+    }
+    if (i == 0) {
+      return true;
+    }
+    char before = s.charAt(i - 1);
+    if (!(Character.isLetterOrDigit(before) || before == '_')) {
+      return true;
+    }
+    int start = i - 1;
+    while (start > 0
+        && (Character.isLetterOrDigit(s.charAt(start - 1)) || s.charAt(start - 1) == '_')) {
+      start--;
+    }
+    return IDENTIFIER_KEYWORDS.contains(s.substring(start, i).toUpperCase(Locale.ROOT));
+  }
+
+  /**
    * Returns {@code s} with comments removed and single-quoted strings and dollar-quoted bodies
    * replaced by {@code ''}, so keyword checks cannot be fooled by text inside them. Quoted
    * identifiers are copied verbatim (a {@code --} or {@code '} inside one is not a
@@ -102,7 +176,7 @@ final class SqlScan {
       } else if (c == '\'') {
         i = skipSingleQuoted(s, i);
         out.append("''");
-      } else if (c == '"' || c == '`' || c == '[') {
+      } else if (c == '"' || c == '`' || opensBracketIdentifier(s, i)) {
         int end = skipDelimited(s, i, c == '[' ? ']' : c); // identifiers: copied verbatim
         out.append(s, i, Math.min(end, s.length()));
         i = end;

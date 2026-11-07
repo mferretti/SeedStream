@@ -118,7 +118,12 @@ public class SqlStatementSplitter {
         case '\'' -> consumeQuoted('\'', true);
         case '"' -> consumeQuoted('"', false);
         case '`' -> consumeQuoted('`', false);
-        case '[' -> consumeBracket();
+        case '[' -> {
+          if (!SqlScan.opensBracketIdentifier(sql, i)) {
+            return false; // ARRAY[...] and text[]: an ordinary character
+          }
+          consumeBracket();
+        }
         case '\r' -> swallowCarriageReturn();
         case '\n' -> consumeNewline();
         case '\\' -> {

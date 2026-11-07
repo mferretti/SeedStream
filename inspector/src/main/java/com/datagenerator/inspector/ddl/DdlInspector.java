@@ -23,8 +23,11 @@ import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
 import com.datagenerator.inspector.MappedType;
 import com.datagenerator.inspector.Names;
+import com.datagenerator.inspector.ddl.CheckConditions.ColumnChecks;
+import com.datagenerator.inspector.ddl.CheckConstraintMapper.ColumnType;
 import com.datagenerator.inspector.ddl.NestingPlanner.ForeignKeyRef;
 import com.datagenerator.inspector.ddl.NestingPlanner.TableInfo;
+import com.datagenerator.inspector.ddl.TableModel.CheckCondition;
 import com.datagenerator.inspector.ddl.TableModel.Column;
 import com.datagenerator.schema.model.DataStructure;
 import com.datagenerator.schema.model.FieldDefinition;
@@ -44,6 +47,7 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -136,7 +140,8 @@ public class DdlInspector {
       Set<String> serialColumns,
       Set<String> uuidColumns,
       Set<String> dbAssignedColumns,
-      Set<String> identityColumns) {}
+      Set<String> identityColumns,
+      Map<String, ColumnChecks> checks) {}
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
@@ -211,7 +216,8 @@ public class DdlInspector {
     new UniqueIndexApplier().apply(uniqueIndexes, byName, warnings);
     resolveForeignKeys(models, byName, warnings);
     Map<String, TableKeys> keys = new LinkedHashMap<>();
-    List<TableInfo> tables = models.stream().map(m -> toTableInfo(m, keys)).toList();
+    List<TableInfo> tables =
+        models.stream().map(m -> toTableInfo(m, keys, byName, warnings)).toList();
 
     Map<String, Set<String>> referenced = new LinkedHashMap<>();
     for (TableInfo t : tables) {
@@ -312,6 +318,9 @@ public class DdlInspector {
     }
     if (statement instanceof CreateTable createTable) {
       TableModel table = toTableModel(createTable, models.size(), warnings, parents);
+      if (table != null) {
+        table.addChecks(raw);
+      }
       if (table != null) {
         models.add(table);
       } else {
@@ -543,8 +552,18 @@ public class DdlInspector {
   }
 
   /** Renders the datatypes of a finished model; its key facts go to {@code keys}. */
-  private TableInfo toTableInfo(TableModel table, Map<String, TableKeys> keys) {
+  private TableInfo toTableInfo(
+      TableModel table,
+      Map<String, TableKeys> keys,
+      Map<String, TableModel> byName,
+      List<String> warnings) {
     Map<String, String> foreignKeyTypes = foreignKeyDatatypes(table.foreignKeys);
+    Map<String, ColumnChecks> checks =
+        CheckConditions.analyse(
+            table.name,
+            effectiveChecks(table, byName, new LinkedHashSet<>()),
+            table.columns.stream().map(c -> lower(c.name())).collect(Collectors.toSet()),
+            warnings);
     LinkedHashMap<String, FieldDefinition> data = new LinkedHashMap<>();
     LinkedHashMap<String, String> fieldComments = new LinkedHashMap<>();
     Set<String> serialColumns = new LinkedHashSet<>();
@@ -565,7 +584,26 @@ public class DdlInspector {
         if (mapped.flagged()) {
           fieldComments.put(column.name(), mapped.comment());
         }
+        if (colType.getArrayData() != null && !colType.getArrayData().isEmpty()) {
+          fieldComments.put(column.name(), "array column generated as a scalar — verify");
+        }
         datatype = mapped.datatype();
+        ColumnChecks columnChecks = checks.get(lower(column.name()));
+        if (columnChecks != null) {
+          CheckConstraintMapper.Result applied =
+              CheckConstraintMapper.apply(
+                  columnChecks,
+                  ColumnType.of(mapped, baseTypeName(colType), typeArguments(colType)));
+          if (applied.datatype() != null) {
+            datatype = applied.datatype();
+            if (mapped.reason() == MappedType.Reason.NAME_HINT) {
+              fieldComments.remove(column.name()); // the CHECK settles what the name only guessed
+            }
+          }
+          applied
+              .notes()
+              .forEach(note -> fieldComments.merge(column.name(), note, DdlInspector::join));
+        }
       }
       data.put(column.name(), new FieldDefinition(datatype, null));
     }
@@ -578,7 +616,8 @@ public class DdlInspector {
             serialColumns,
             uuidColumns,
             table.dbAssigned,
-            table.identity));
+            table.identity,
+            checks));
     return new TableInfo(
         table.name,
         data,
@@ -587,6 +626,33 @@ public class DdlInspector {
         flatten(table.uniques),
         table.foreignKeys,
         table.order);
+  }
+
+  /**
+   * The table's own CHECKs plus those of its {@code INHERITS} parents (recursively), except the
+   * ones declared {@code NO INHERIT}. Resolved here, after the {@code ALTER}s, so a parent CHECK
+   * added by {@code ALTER} reaches children declared before it.
+   */
+  private List<CheckCondition> effectiveChecks(
+      TableModel table, Map<String, TableModel> byName, Set<String> path) {
+    List<CheckCondition> all = new ArrayList<>();
+    if (path.add(table.name)) {
+      for (String parent : table.parents) {
+        TableModel source = byName.get(parent);
+        if (source != null) {
+          effectiveChecks(source, byName, path).stream()
+              .filter(c -> !c.noInherit())
+              .forEach(all::add);
+        }
+      }
+      path.remove(table.name);
+    }
+    all.addAll(table.checks);
+    return all;
+  }
+
+  private static String join(String old, String added) {
+    return old + "; " + added;
   }
 
   private Set<String> flatten(List<List<String>> constraints) {
@@ -630,7 +696,26 @@ public class DdlInspector {
         setKeyType(table, column, "serial");
       }
     }
+    applyKeyChecks(table, keys);
     handleDbAssigned(table, keys, warnings, referenced);
+  }
+
+  /**
+   * Generated keys and references are not narrowed by a CHECK; the column says so unless the CHECK
+   * holds for every value the key takes (it starts at 1).
+   */
+  private void applyKeyChecks(TableInfo table, TableKeys keys) {
+    keys.checks()
+        .forEach(
+            (column, checks) -> {
+              FieldDefinition field = table.data().get(actualKey(table, column));
+              String datatype = field == null ? "" : field.getDatatype();
+              boolean reference = datatype.startsWith("ref[");
+              if (reference || "serial".equals(datatype) || datatype.startsWith("unique[")) {
+                CheckConstraintMapper.keyNotes(checks, reference)
+                    .forEach(note -> addComment(table, column, note));
+              }
+            });
   }
 
   /**
@@ -777,7 +862,7 @@ public class DdlInspector {
 
   private void addComment(TableInfo table, String column, String comment) {
     String key = actualKey(table, column);
-    table.comments().merge(key, comment, (old, added) -> old + "; " + added);
+    table.comments().merge(key, comment, DdlInspector::join);
   }
 
   private String actualKey(TableInfo table, String column) {

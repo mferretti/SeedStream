@@ -9,7 +9,7 @@ identical on every run.
 This use case is also an honest test of the inspector. It was built by feeding a real `pg_dump` of
 the schema to `inspect` and loading the result, then fixing whatever broke. Every hand edit needed
 to get a working load exposed a gap, and every gap became a GitHub issue. The
-[edit list](#3-hand-edits-34-of-88-fields) and the [issue map](#how-the-edits-produced-the-issues)
+[edit list](#3-hand-edits-32-of-88-fields) and the [issue map](#how-the-edits-produced-the-issues)
 below show which edit came from which issue. When those issues are fixed, the edits can go.
 
 ## Quick start
@@ -83,7 +83,7 @@ The file has the usual `pg_dump` layout, with every primary and foreign key decl
 
 ```bash
 seedstream inspect schema.sql -o structures/
-# inspect complete: 13 written, 0 skipped, 29 fields flagged for review (commented)
+# inspect complete: 13 written, 0 skipped, 30 fields flagged for review (commented)
 ```
 
 (Earlier versions needed the dump rewritten first: `cat -s` until
@@ -103,7 +103,7 @@ Out of the box, from 88 columns, the inspector produced:
 - **Review comments** on every guess, and **warnings** on the 3 text primary keys it couldn't
   enforce.
 
-### 3. Hand edits: 34 of 88 fields
+### 3. Hand edits: 32 of 88 fields
 
 Every edit in [`structures/`](structures/) carries a comment naming its issue: `# hand edit (#NNN)`
 is required to load the data, and `# realism (optional)` only makes it look more like Northwind.
@@ -113,15 +113,14 @@ is required to load the data, and `# realism (optional)` only makes it look more
 | 12 | every FK `ref[]` | `1..count` → the parent's real row count (`1..8` categories, `1..90000` customers, …); `count` is the *child* job's `--count`, so different table sizes need static ranges kept in sync with `seed.sh` | [#442](https://github.com/mferretti/SeedStream/issues/442) |
 | 14 | `country`, `city`, `address`, `title`, `first_name` | name-hinted types overflow `varchar(n)` (`country` reaches 51 chars against `varchar(15)`); replaced with Northwind-style enums or a shorter type | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | 3 | `customer_id`, `territory_id`, `customer_type_id` | text PKs inspected as random `char[1..n]` collide and can't be referenced; set to `serial` (numeric strings, so `varchar(5)` caps customers at 99 999) | [#441](https://github.com/mferretti/SeedStream/issues/441) |
-| 2 | `order_details.discount`, `employees.birth_date` | the original's CHECK constraints (`discount BETWEEN 0 AND 1`, `birth_date < CURRENT_DATE`) are ignored, so the default ranges violate them | [#449](https://github.com/mferretti/SeedStream/issues/449) |
 | 2 | `categories.picture`, `employees.photo` | `bytea` inspected as `char`, which PostgreSQL rejects; removed (nullable, stored as `NULL`) | [#439](https://github.com/mferretti/SeedStream/issues/439) |
 | 1 | `employees.reports_to` | a self-FK row may reference an id not inserted yet; `1..1` makes everyone report to employee 1 | [#213](https://github.com/mferretti/SeedStream/issues/213) |
-| 13 | prices, dates, names | *optional realism*: the 8 real category names, `full_name` contacts, Northwind-like price and date ranges, … | — |
+| 15 | prices, dates, names | *optional realism*: the 8 real category names, `full_name` contacts, Northwind-like price and date ranges, … | — |
 
 <details>
 <summary><b>Full edit list</b>: every field changed after <code>inspect</code>, before and after</summary>
 
-**Required (34).** Without these, the load fails or the FKs don't resolve.
+**Required (32).** Without these, the load fails or the FKs don't resolve.
 
 | Issue | Table | Field | Inspected | Edited to |
 |---|---|---|---|---|
@@ -154,19 +153,19 @@ is required to load the data, and `# realism (optional)` only makes it look more
 | [#441](https://github.com/mferretti/SeedStream/issues/441) | `customer_demographics` | `customer_type_id` | `char[1..10]` | `serial` |
 | [#441](https://github.com/mferretti/SeedStream/issues/441) | `customers` | `customer_id` | `char[1..5]` | `serial` |
 | [#441](https://github.com/mferretti/SeedStream/issues/441) | `territories` | `territory_id` | `char[1..20]` | `serial` |
-| [#449](https://github.com/mferretti/SeedStream/issues/449) | `employees` | `birth_date` | `date[2020-01-01..2030-12-31]` | `date[1950-01-01..1990-12-31]` |
-| [#449](https://github.com/mferretti/SeedStream/issues/449) | `order_details` | `discount` | `decimal[0.0..9999.99]` | `decimal[0.00..0.25]` |
 | [#439](https://github.com/mferretti/SeedStream/issues/439) | `categories` | `picture` | `char[1..50]` | `*removed*` |
 | [#439](https://github.com/mferretti/SeedStream/issues/439) | `employees` | `photo` | `char[1..50]` | `*removed*` |
 | [#213](https://github.com/mferretti/SeedStream/issues/213) | `employees` | `reports_to` | `ref[employees.employee_id, 1..count]` | `ref[employees.employee_id, 1..1]` |
 
-**Optional realism (13).** The data loads without these; they make it read like Northwind.
+**Optional realism (15).** The data loads without these; they make it read like Northwind.
 
 | Table | Field | Inspected | Edited to |
 |---|---|---|---|
 | `categories` | `category_name` | `char[1..15]` | `enum[Beverages,Condiments,… (8 values)]` |
 | `customers` | `contact_name` | `char[1..30]` | `full_name` |
+| `employees` | `birth_date` | `date[1970-01-01..2019-12-31]` | `date[1950-01-01..1990-12-31]` |
 | `employees` | `hire_date` | `date[2020-01-01..2030-12-31]` | `date[1992-01-01..2024-12-31]` |
+| `order_details` | `discount` | `decimal[0.0..1.0]` | `decimal[0.00..0.25]` |
 | `order_details` | `unit_price` | `decimal[0.0..9999.99]` | `decimal[2.00..265.00]` |
 | `order_details` | `quantity` | `int[1..32767]` | `int[1..120]` |
 | `orders` | `order_date` | `date[2020-01-01..2030-12-31]` | `date[1996-07-01..2026-06-30]` |
@@ -211,7 +210,7 @@ with that issue. The workaround is what you see in this folder; the issue is wha
 | load | `value too long for type character varying(15)` | name-hinted types ignore `varchar(n)` | 14 fields edited | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | load at scale | `smallint out of range` after 32 000 committed rows | `serial` drops the column's integer capacity | `scale.sql` widens `order_id` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | load | duplicate key on `customer_demographics`; FK miss on `orders.customer_id` | text PKs inspected as random `char` | 3 fields → `serial` | [#441](https://github.com/mferretti/SeedStream/issues/441) |
-| load | `new row … violates check constraint` | range CHECK constraints ignored | 2 ranges set from the CHECK | [#449](https://github.com/mferretti/SeedStream/issues/449) |
+| load | `new row … violates check constraint` | CHECK constraints ignored | none needed any more | [#449](https://github.com/mferretti/SeedStream/issues/449) (fixed) |
 | load | `Key (category_id)=(43) is not present in table "categories"` | `1..count` uses the child's `--count` | 12 ranges set to parent counts | [#442](https://github.com/mferretti/SeedStream/issues/442) |
 | load | self-FK can reference a row not inserted yet | no ordered or self-referencing generation | `reports_to` → `1..1` | [#213](https://github.com/mferretti/SeedStream/issues/213) |
 

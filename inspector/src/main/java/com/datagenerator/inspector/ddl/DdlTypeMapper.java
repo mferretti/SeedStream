@@ -249,8 +249,7 @@ public final class DdlTypeMapper {
       return MappedType.unknownType(Defaults.STRING);
     }
     List<String> members = args.stream().map(DdlTypeMapper::unquoteLiteral).toList();
-    if (members.stream()
-        .anyMatch(m -> m.isEmpty() || !m.equals(m.strip()) || m.contains(",") || m.contains("]"))) {
+    if (!members.stream().allMatch(DdlTypeMapper::isEnumMember)) {
       int longest = members.stream().mapToInt(String::length).max().orElse(1);
       return MappedType.review(
           "char[1.." + Math.max(longest, 1) + "]",
@@ -263,11 +262,19 @@ public final class DdlTypeMapper {
         : MappedType.declared(datatype);
   }
 
+  /** Whether {@code enum[...]} can express the value (no comma or bracket, not blank-padded). */
+  static boolean isEnumMember(String member) {
+    return !member.isEmpty()
+        && member.equals(member.strip())
+        && !member.contains(",")
+        && !member.contains("]");
+  }
+
   /**
    * A SQL string literal's value: {@code 'it''s'} and {@code "it""s"} lose their quotes and
    * doubling.
    */
-  private static String unquoteLiteral(String literal) {
+  static String unquoteLiteral(String literal) {
     String a = literal.trim();
     if (a.length() >= 2
         && (a.charAt(0) == '\'' || a.charAt(0) == '"')

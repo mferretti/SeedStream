@@ -109,7 +109,7 @@ final class EmbeddedStatementExpander {
         end = SqlScan.skipBlockComment(s, i);
       } else if (c == '\'') {
         end = SqlScan.skipSingleQuoted(s, i);
-      } else if (c == '"' || c == '`' || c == '[') {
+      } else if (c == '"' || c == '`' || SqlScan.opensBracketIdentifier(s, i)) {
         end = SqlScan.skipDelimited(s, i, c == '[' ? ']' : c);
         fill = '_';
       } else if (c == '$' && SqlScan.skipDollarQuoted(s, i) > i) {

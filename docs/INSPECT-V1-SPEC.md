@@ -274,7 +274,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   export layouts, in any order relative to the table) yields exactly what the same constraint declared
   inline yields; `ALTER COLUMN … ADD GENERATED ALWAYS AS IDENTITY` counts as DB-assigned. A constraint
   declared both ways counts once. Other statements are ignored silently (`OWNER TO`, `CHECK CONSTRAINT`,
-  triggers, `SET STATISTICS`, `CHECK` / `NOT NULL` for now). Structure changes (`ADD`/`DROP COLUMN`,
+  triggers, `SET STATISTICS`, `NOT NULL` for now). Structure changes (`ADD`/`DROP COLUMN`,
   `RENAME`, `ALTER COLUMN … TYPE`) are warned about and not applied. An `ALTER` that cannot be parsed, or
   that targets a table not in the script, is a warning and never aborts strict mode; so is a foreign key
   from an `ALTER` to a table not in the script (the column keeps its plain type).
@@ -284,6 +284,20 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   A partial index (`WHERE`) or one on an expression, a column prefix, or a column with `COLLATE` or an operator
   class declares no key and gets a warning; so does an index on an unknown table or column, or one that cannot
   be read. Neither aborts strict mode. An index on a parent does not apply to its `INHERITS` children.
+- **`CHECK` constraints** narrow a column only when the result is certain to satisfy them; otherwise the type stays
+  and a review comment names the constraint. They are read inline, at table level and from `ALTER TABLE`, disabled
+  or not (narrower data still satisfies a disabled one), and pass to `INHERITS` children unless `NO INHERIT`.
+  - Text: `IN (…)`, `= 'x'`, an `OR` of equalities (SQL Server's form) and `= ANY (ARRAY[…])` (`pg_dump`'s) → `enum[…]`,
+    unless a value doesn't fit the column or `enum[...]` can't express it, or another part of the condition can fail.
+  - Integer and decimal: `>=`, `>`, `<=`, `<`, `=`, `BETWEEN` and contiguous integer `IN` lists → narrowed range,
+    intersected with the column's capacity. Bounds round inward to the column's scale. On single-precision columns
+    (`REAL`, `FLOAT4`, `FLOAT(n≤24)`, bare `FLOAT`) a bound float4 can't represent exactly is not applied: float4(0.2)
+    is above 0.2.
+  - Date: literal bounds narrow the range. `CURRENT_DATE`, `now()` and the like give a fixed past or future range
+    with a comment, never `now`, so the output doesn't depend on the clock. Timestamp: a check against the current
+    time is already satisfied by `timestamp[now-365d..now]`; anything else gets a comment.
+  - `OR` across columns, functions, other columns, `NOT`, and casts that can change the value (`c::int < 5`) are not
+    applied. `serial`, `unique[...]` and `ref[...]` keep their type, with a comment if the CHECK can be violated.
 - **`REFERENCES t` without a column list** resolves to `t`'s primary key, positionally for composite
   keys, wherever that key is declared. If `t` is unknown, has no primary key, or the column counts
   differ, a warning is logged and the column keeps its plain type (never a guessed `id`).
