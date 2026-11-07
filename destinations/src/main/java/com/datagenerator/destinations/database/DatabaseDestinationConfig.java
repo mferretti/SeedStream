@@ -132,4 +132,10 @@ public class DatabaseDestinationConfig {
    * <p>PostgreSQL only — {@code RESTART IDENTITY} is not valid Oracle TRUNCATE syntax.
    */
   @Builder.Default boolean restartIdentity = false;
+
+  /**
+   * When {@code true}, every table and column identifier is quoted with the vendor's quote
+   * character. Default: {@code false} (identifiers are quoted only when needed).
+   */
+  @Builder.Default boolean quoteIdentifiers = false;
 }

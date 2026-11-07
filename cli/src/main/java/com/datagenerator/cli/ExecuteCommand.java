@@ -954,6 +954,8 @@ public class ExecuteCommand implements Callable<Integer> {
               + "statement and has no effect on its own");
     }
     builder.truncateBeforeInsert(truncateBeforeInsert).restartIdentity(restartIdentity);
+    builder.quoteIdentifiers(
+        conf.has("quote_identifiers") && conf.get("quote_identifiers").asBoolean());
 
     DatabaseDestinationConfig dbConfig = builder.build();
     log.info(

@@ -947,7 +947,8 @@ conf:
   jdbc_url: "jdbc:postgresql://localhost:5432/testdb"
   username: "dbuser"
   password: "${DB_PASSWORD}"   # env var, ${SECRET:enc:AES256GCM:...}, or cloud backend
-  table: "passports"               # optional — defaults to structure name
+  table: "passports"               # optional — defaults to structure name; may be schema-qualified
+  quote_identifiers: false         # quote every table and column name, keeping its case
   batch_size: 1000                 # records per batch/transaction (default: 1000)
   pool_size: 5                     # HikariCP pool size (default: 5)
   transaction_strategy: per_batch  # per_batch | per_job | auto_commit
@@ -960,6 +961,13 @@ conf:
 
 - **`max_retries` / `retry_delay_ms`** here govern **connection** attempts during `open()` (exponential backoff from `retry_delay_ms`, doubling). Set `max_retries: 1` to disable retries.
 - **`inject_parent_fk`** (default `true`): the nested-record decomposer injects a `{parent_table}_id` FK column into each child record. Set to `false` when child structures already populate the FK themselves via `ref[parent.<field>]`, to avoid a redundant second column.
+
+**Table and column names**: A plain name such as `orders` is sent unquoted, so the database folds its case as usual. A name is quoted automatically when it needs it:
+- A reserved word (`order`, `user`) or a name with spaces, `-`, `#`, `@`, non-ASCII letters or a leading digit (`Order Details`) is quoted as written.
+- A word only on the driver's own keyword list (`location`, `format` on PostgreSQL) is quoted in the case the database stores unquoted names, so it reaches the same column as it would unquoted.
+- `table` can be `schema.table` or `catalog.schema.table`, and each part follows these rules.
+- Set **`quote_identifiers: true`** when names must keep their exact case, as with PostgreSQL `"Orders"` or Oracle `"Orders"`: every part of every name is then quoted as written.
+- Quotes, `;`, brackets, backslashes and other punctuation are always rejected, quoted or not. A name containing them can't be written.
 
 **CI seeding (`truncate_before_insert`)**: Set to `true` to empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert. Combined with a fixed `seed`, one `execute` gives a clean, deterministic dataset per run — no external teardown script. Defaults to `false`. Notes:
 - ⚠️ **Destructive** — wipes the table (and, via `CASCADE`, its FK dependents). Use only against a disposable/CI database.
