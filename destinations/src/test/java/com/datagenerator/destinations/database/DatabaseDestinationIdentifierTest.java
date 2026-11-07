@@ -99,14 +99,16 @@ class DatabaseDestinationIdentifierTest {
   private void h2(String... statements) throws SQLException {
     try (Statement st = observer.createStatement()) {
       for (String sql : statements) {
-        st.execute(sql);
+        // fixed test SQL against an in-memory H2; no external input
+        st.execute(sql); // nosemgrep
       }
     }
   }
 
   private String scalar(String sql) throws SQLException {
+    // fixed test SQL against an in-memory H2; no external input
     try (Statement st = observer.createStatement();
-        ResultSet rs = st.executeQuery(sql)) {
+        ResultSet rs = st.executeQuery(sql)) { // nosemgrep
       assertThat(rs.next()).isTrue();
       return rs.getString(1);
     }
@@ -902,6 +904,7 @@ class DatabaseDestinationIdentifierTest {
               config(PG_URL, "orders", quoteAll),
               jdbc.ds,
               row(ID, 1, "lines", List.of(row(bad, 1))));
+      default -> throw new IllegalArgumentException("unknown position " + pos);
     }
   }
 
