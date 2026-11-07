@@ -31,6 +31,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -415,6 +416,73 @@ class DatabaseDestinationIdentifierTest {
     writeH2(config(H2_URL, "key", false), row(ID, 1, "limit", 2));
 
     assertThat(scalar("SELECT \"LIMIT\" FROM \"KEY\"")).isEqualTo("2");
+  }
+
+  /** A vendor keyword works unquoted today, so a driver with no quote string keeps it that way. */
+  @ParameterizedTest
+  @ValueSource(strings = {"", " "})
+  void shouldLeaveVendorKeywordUnquotedWhenTheDriverHasNoQuoteString(String quote)
+      throws Exception {
+    Jdbc jdbc = new Jdbc(quote, "NAME,STATUS");
+
+    writeAll(config(PG_URL, "status", false), jdbc.ds, row("name", 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO status (name) VALUES (?)");
+  }
+
+  @Test
+  void shouldWritePlainNamesWhenTheDriverCantListKeywords() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "");
+    when(jdbc.meta.getSQLKeywords()).thenThrow(new SQLFeatureNotSupportedException("nope"));
+
+    writeAll(config(PG_URL, "items", false), jdbc.ds, row(ID, 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO items (id) VALUES (?)");
+  }
+
+  @Test
+  void shouldWritePlainNamesWhenTheDriverCantReportCaseFolding() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "");
+    when(jdbc.meta.storesLowerCaseIdentifiers())
+        .thenThrow(new SQLFeatureNotSupportedException("nope"));
+
+    writeAll(config(PG_URL, "items", false), jdbc.ds, row(ID, 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO items (id) VALUES (?)");
+  }
+
+  @Test
+  void shouldStillQuoteWithTheQuoteStringWhenOtherMetadataFails() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "");
+    when(jdbc.meta.getSQLKeywords()).thenThrow(new SQLFeatureNotSupportedException("nope"));
+
+    writeAll(config(PG_URL, "order", false), jdbc.ds, row(ID, 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO \"order\" (id) VALUES (?)");
+  }
+
+  @Test
+  void shouldFailClearlyWhenANameNeedsQuotingAndTheDriverCantQuote() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "");
+    when(jdbc.meta.getIdentifierQuoteString())
+        .thenThrow(new SQLFeatureNotSupportedException("nope"));
+
+    assertThatThrownBy(() -> writeAll(config(PG_URL, "order", false), jdbc.ds, row(ID, 1)))
+        .isInstanceOf(DestinationException.class)
+        .hasMessageContaining("quot")
+        .hasMessageContaining("order");
+    assertThat(jdbc.prepared).isEmpty();
+  }
+
+  /** Decomposed letters and Indic or Thai vowels are combining marks, not punctuation. */
+  @ParameterizedTest
+  @ValueSource(strings = {"citta\u0300", "\u0e01\u0e35", "\u0915\u093f"})
+  void shouldQuoteANameHoldingCombiningMarks(String name) throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "");
+
+    writeAll(config(PG_URL, name, false), jdbc.ds, row(ID, 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO " + q(name) + " (id) VALUES (?)");
   }
 
   @Test
