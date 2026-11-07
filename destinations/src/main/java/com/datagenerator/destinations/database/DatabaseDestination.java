@@ -27,17 +27,22 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
@@ -126,6 +131,11 @@ public class DatabaseDestination extends AbstractDestination {
 
   private DataSource dataSource;
   private Connection connection;
+
+  /** Vendor identifier quote and reserved words, read lazily once from the connection metadata. */
+  private String vendorQuote;
+
+  private Set<String> reservedWords;
 
   // --- Flat mode state ---
   private PreparedStatement insertStatement;
@@ -408,8 +418,9 @@ public class DatabaseDestination extends AbstractDestination {
   @SuppressFBWarnings(
       value = {"SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING", "SQL_INJECTION_JDBC"},
       justification =
-          "Table name and column names are validated by validateIdentifier(); "
-              + "any identifier with non-alphanumeric/underscore chars is rejected before reaching this point")
+          "Table name and column names go through quoteTable()/quoteColumn(): an allowlist of "
+              + "letters, digits and _ $ # @ - space rejects everything else (quotes, ';', '\\', "
+              + "control characters, ...) before this point; names are never escaped")
   private void initializeStatement(Map<String, Object> firstRecord) {
     truncateIfNeeded(config.getTableName());
     columnNames = new ArrayList<>(firstRecord.keySet());
@@ -530,7 +541,7 @@ public class DatabaseDestination extends AbstractDestination {
   @SuppressWarnings({
     "SqlSourceToSinkFlow",
     "java:S2077"
-  }) // identifiers are ANSI-quoted and validated by quoteIdentifier()
+  }) // identifiers are allowlist-validated, then quoted when needed, by quoteTable()/quoteColumn()
   @SuppressFBWarnings(
       value = {
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
@@ -538,8 +549,8 @@ public class DatabaseDestination extends AbstractDestination {
         "OBL_UNSATISFIED_OBLIGATION"
       },
       justification =
-          "Table name and column names are validated by validateIdentifier(); "
-              + "PreparedStatement is stored in nestedStatements immediately after creation — "
+          "Table name and column names go through quoteTable()/quoteColumn() (allowlist, never "
+              + "escaping); PreparedStatement is stored in nestedStatements immediately after creation — "
               + "no resource leak path exists")
   private void initNestedStatementIfAbsent(String tableName, Map<String, Object> firstRecord) {
     truncateIfNeeded(tableName);
@@ -571,13 +582,110 @@ public class DatabaseDestination extends AbstractDestination {
     if (name == null || name.isEmpty()) {
       throw new DestinationException("SQL identifier must not be null or empty");
     }
-    if (!name.matches("[a-zA-Z_][a-zA-Z0-9_$]*")) {
+    if (!PLAIN_IDENTIFIER.matcher(name).matches()) {
       throw new DestinationException(
           "SQL identifier contains illegal characters (only letters, digits, _ and $ allowed): '"
               + name
               + "'");
     }
     return name;
+  }
+
+  /** SQL words reserved by every vendor; the vendor's own list is added from the metadata. */
+  private static final Set<String> FIXED_RESERVED_WORDS =
+      Set.of(
+          ("order,group,user,select,table,from,where,insert,update,delete,create,drop,alter,join,"
+                  + "on,and,or,not,null,by,as,in,into,values,set,union,having,distinct,grant,"
+                  + "primary,foreign,references,check,default,constraint")
+              .split(","));
+
+  /** A plain identifier: the only form emitted unquoted, exactly as before #446. */
+  private static final Pattern PLAIN_IDENTIFIER = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_$]*");
+
+  /** Allowlist for one identifier part. Excludes every quote, ';', '.', '\\' and control char. */
+  private static final Pattern SAFE_IDENTIFIER_PART = Pattern.compile("[\\p{L}\\p{N}_$#@ -]+");
+
+  /**
+   * Quotes a possibly schema-qualified table name (1 to 3 dot-separated parts), each part per
+   * {@link #quotePart}.
+   */
+  private String quoteTable(String name) {
+    if (name == null || name.isEmpty()) {
+      throw new DestinationException("SQL identifier must not be null or empty");
+    }
+    String[] parts = name.split("\\.", -1);
+    if (parts.length > 3) {
+      throw illegal(name);
+    }
+    return Arrays.stream(parts).map(part -> quotePart(part, name)).collect(Collectors.joining("."));
+  }
+
+  /** Quotes a column name; a dot is not allowed (a field is not a qualified name). */
+  private String quoteColumn(String name) {
+    if (name == null || name.isEmpty()) {
+      throw new DestinationException("SQL identifier must not be null or empty");
+    }
+    return quotePart(name, name);
+  }
+
+  /**
+   * Allowlist check, then quoting with the vendor quote when the part is not plain, is reserved, or
+   * {@code quote_identifiers} is on. Quote characters are never allowed in a part, so nothing is
+   * ever escaped.
+   */
+  private String quotePart(String part, String fullName) {
+    if (part.isEmpty()
+        || !SAFE_IDENTIFIER_PART.matcher(part).matches()
+        || part.startsWith(" ")
+        || part.endsWith(" ")) {
+      throw illegal(part.isEmpty() ? fullName : part);
+    }
+    loadVendorMetadata();
+    boolean plain = PLAIN_IDENTIFIER.matcher(part).matches();
+    if (plain
+        && !config.isQuoteIdentifiers()
+        && !reservedWords.contains(part.toLowerCase(Locale.ROOT))) {
+      return part;
+    }
+    if (vendorQuote.isEmpty()) {
+      throw new DestinationException(
+          "Identifier '"
+              + part
+              + "' needs quoting but the JDBC driver reports no identifier quote string");
+    }
+    return vendorQuote + part + vendorQuote;
+  }
+
+  private static DestinationException illegal(String name) {
+    return new DestinationException(
+        "SQL identifier contains illegal characters (allowed: letters, digits, _ $ # @ - and inner"
+            + " spaces; tables may be schema-qualified with up to 3 dot-separated parts): '"
+            + name
+            + "'");
+  }
+
+  /** Reads the quote string and reserved words once; tolerates drivers without metadata. */
+  private void loadVendorMetadata() {
+    if (vendorQuote != null) {
+      return;
+    }
+    Set<String> words = new HashSet<>(FIXED_RESERVED_WORDS);
+    String quote = "";
+    try {
+      DatabaseMetaData meta = connection.getMetaData();
+      if (meta != null) {
+        // Objects.toString: stubbed or minimal drivers may return null
+        quote = Objects.toString(meta.getIdentifierQuoteString(), "").strip();
+        Arrays.stream(Objects.toString(meta.getSQLKeywords(), "").split(","))
+            .map(w -> w.strip().toLowerCase(Locale.ROOT))
+            .filter(w -> !w.isEmpty())
+            .forEach(words::add);
+      }
+    } catch (SQLException e) {
+      throw new DestinationException("Failed to read identifier metadata from the database", e);
+    }
+    reservedWords = words;
+    vendorQuote = quote;
   }
 
   /**
@@ -596,13 +704,13 @@ public class DatabaseDestination extends AbstractDestination {
   @SuppressFBWarnings(
       value = {"SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE", "SQL_INJECTION_JDBC"},
       justification =
-          "Table name is validated by validateIdentifier(); any identifier with "
-              + "non-alphanumeric/underscore chars is rejected before reaching this point")
+          "Table name goes through quoteTable(): an allowlist of letters, digits and "
+              + "_ $ # @ - space rejects everything else before this point; names are never escaped")
   private void truncateIfNeeded(String tableName) {
     if (!config.isTruncateBeforeInsert() || truncatedTables.contains(tableName)) {
       return;
     }
-    String safeTable = validateIdentifier(tableName);
+    String safeTable = quoteTable(tableName);
     String identityClause = config.isRestartIdentity() ? " RESTART IDENTITY" : "";
     String sql = "TRUNCATE TABLE " + safeTable + identityClause + " CASCADE";
     try (Statement st = connection.createStatement()) {
@@ -617,12 +725,9 @@ public class DatabaseDestination extends AbstractDestination {
     }
   }
 
-  private static String buildInsertSql(String tableName, List<String> columns) {
-    String safeTable = validateIdentifier(tableName);
-    String cols =
-        columns.stream()
-            .map(DatabaseDestination::validateIdentifier)
-            .collect(Collectors.joining(", "));
+  private String buildInsertSql(String tableName, List<String> columns) {
+    String safeTable = quoteTable(tableName);
+    String cols = columns.stream().map(this::quoteColumn).collect(Collectors.joining(", "));
     String placeholders = "?,".repeat(columns.size());
     placeholders = placeholders.substring(0, placeholders.length() - 1);
     return "INSERT INTO " + safeTable + " (" + cols + ") VALUES (" + placeholders + ")";
