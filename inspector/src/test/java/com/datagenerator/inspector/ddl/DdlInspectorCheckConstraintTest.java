@@ -662,24 +662,24 @@ class DdlInspectorCheckConstraintTest {
   }
 
   @Test
-  void shouldMapTextUniqueToEnumAndKeepTheNotEnforcedWarning(@TempDir Path dir) {
+  void shouldMapTextUniqueWithValueListToCycleWithoutTheNotEnforcedWarning(@TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir,
             "CREATE TABLE t (id int PRIMARY KEY, code varchar(8) UNIQUE CHECK (code IN ('a','b')));");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("code", "enum[a,b]");
-    assertThat(in.warnings()).anyMatch(w -> w.contains("not enforced"));
+    assertThat(datatypesOf(in, "t")).containsEntry("code", "cycle[a,b]");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
   }
 
   @Test
-  void shouldMapTextPrimaryKeyToEnumAndKeepTheNotEnforcedWarning(@TempDir Path dir) {
+  void shouldMapTextPrimaryKeyWithValueListToCycleWithoutTheNotEnforcedWarning(@TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir, "CREATE TABLE t (code varchar(8) PRIMARY KEY CHECK (code IN ('a','b')), n int);");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("code", "enum[a,b]");
-    assertThat(in.warnings()).anyMatch(w -> w.contains("not enforced"));
+    assertThat(datatypesOf(in, "t")).containsEntry("code", "cycle[a,b]");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
   }
 
   @Test
