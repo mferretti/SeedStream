@@ -188,6 +188,7 @@ final class EmbeddedStatementExpander {
       return false;
     }
     return switch (word) {
+      case null -> false;
       case "ALTER" ->
           !"OR".equals(previous)
               && !("ALTER".equals(head)
