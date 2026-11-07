@@ -94,7 +94,7 @@ class DdlInspectorEmbeddedTablesTest {
   @Test
   void shouldModelKeysAndForeignKeysAndAltersAndIndexesInsideCreateSchema(@TempDir Path dir) {
     String body =
-        "CREATE TABLE parent (id INT PRIMARY KEY, code VARCHAR(8), email VARCHAR(20))\n"
+        "CREATE TABLE parent (id INT PRIMARY KEY, code INT, email VARCHAR(20))\n"
             + "CREATE TABLE child (cid INT PRIMARY KEY, pid INT REFERENCES parent (id))\n"
             + "CREATE TABLE other (oid INT, pid INT)\n"
             + "CREATE UNIQUE INDEX uq_code ON parent (code)\n"
@@ -198,13 +198,13 @@ class DdlInspectorEmbeddedTablesTest {
 
   @Test
   void shouldModelTableAfterUnseparatedDropIntoSameResultAsStandalone(@TempDir Path dir) {
-    String table = "CREATE TABLE x (id INT PRIMARY KEY, name VARCHAR(30) NOT NULL)";
+    String table = "CREATE TABLE x (id INT PRIMARY KEY, label VARCHAR(30) NOT NULL)";
     Inspection in =
         inspectDdl(dir, "IF OBJECT_ID('dbo.x') IS NOT NULL DROP TABLE x\n" + table + ";");
 
     assertSameAsStandalone(dir, in, table + ";", "x");
     assertThat(datatypesOf(in, "x"))
-        .containsExactly(entry("id", "serial"), entry("name", "char[1..30]"));
+        .containsExactly(entry("id", "serial"), entry("label", "char[1..30]"));
   }
 
   @Test
@@ -408,14 +408,14 @@ class DdlInspectorEmbeddedTablesTest {
   @Test
   void shouldKeepSqlServerTailWithEmbeddedTable(@TempDir Path dir) {
     String tail = " ON [PRIMARY] WITH (DATA_COMPRESSION = PAGE)";
-    String table = "CREATE TABLE x (id INT NOT NULL, name VARCHAR(10))";
+    String table = "CREATE TABLE x (id INT NOT NULL, label VARCHAR(10))";
     Inspection in =
         inspectDdl(dir, "IF OBJECT_ID('dbo.x') IS NOT NULL DROP TABLE x\n" + table + tail + ";");
 
     assertSameAsStandalone(dir, in, table + tail + ";", "x");
     assertThat(names(in)).containsExactly("x");
     assertThat(datatypesOf(in, "x"))
-        .containsExactly(entry("id", INT), entry("name", "char[1..10]"));
+        .containsExactly(entry("id", INT), entry("label", "char[1..10]"));
     assertThat(in.warnings()).isEmpty();
   }
 
