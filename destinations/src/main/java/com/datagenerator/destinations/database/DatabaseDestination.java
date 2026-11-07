@@ -132,10 +132,14 @@ public class DatabaseDestination extends AbstractDestination {
   private DataSource dataSource;
   private Connection connection;
 
-  /** Vendor identifier quote and reserved words, read lazily once from the connection metadata. */
+  /** Vendor identifier quote and metadata, read lazily once from the connection metadata. */
   private String vendorQuote;
 
-  private Set<String> reservedWords;
+  /** Lower-cased words from the vendor's getSQLKeywords() list. */
+  private Set<String> vendorKeywords;
+
+  private boolean storesLowerCase;
+  private boolean storesUpperCase;
 
   // --- Flat mode state ---
   private PreparedStatement insertStatement;
@@ -570,28 +574,8 @@ public class DatabaseDestination extends AbstractDestination {
   }
 
   /**
-   * Validates a SQL identifier against a strict allowlist pattern to prevent SQL injection.
-   *
-   * <p>Permits only standard SQL identifiers: letters, digits, underscores, and dollar signs,
-   * starting with a letter or underscore. Rejects anything else (spaces, quotes, semicolons, etc.)
-   * before it can reach the statement builder.
-   *
-   * @throws DestinationException if the identifier contains unsafe characters
+   * SQL words reserved by every vendor: always quoted verbatim. Vendor keywords come from metadata.
    */
-  static String validateIdentifier(String name) {
-    if (name == null || name.isEmpty()) {
-      throw new DestinationException("SQL identifier must not be null or empty");
-    }
-    if (!PLAIN_IDENTIFIER.matcher(name).matches()) {
-      throw new DestinationException(
-          "SQL identifier contains illegal characters (only letters, digits, _ and $ allowed): '"
-              + name
-              + "'");
-    }
-    return name;
-  }
-
-  /** SQL words reserved by every vendor; the vendor's own list is added from the metadata. */
   private static final Set<String> FIXED_RESERVED_WORDS =
       Set.of(
           ("order,group,user,select,table,from,where,insert,update,delete,create,drop,alter,join,"
@@ -629,9 +613,10 @@ public class DatabaseDestination extends AbstractDestination {
   }
 
   /**
-   * Allowlist check, then quoting with the vendor quote when the part is not plain, is reserved, or
-   * {@code quote_identifiers} is on. Quote characters are never allowed in a part, so nothing is
-   * ever escaped.
+   * Allowlist check, then: a plain part stays unquoted unless it is a fixed reserved word or a
+   * vendor keyword (a vendor keyword is folded to the database's stored case, see {@link #fold});
+   * any other part is quoted verbatim. Quote characters are never allowed in a part, so nothing is
+   * escaped.
    */
   private String quotePart(String part, String fullName) {
     if (part.isEmpty()
@@ -641,11 +626,16 @@ public class DatabaseDestination extends AbstractDestination {
       throw illegal(part.isEmpty() ? fullName : part);
     }
     loadVendorMetadata();
-    boolean plain = PLAIN_IDENTIFIER.matcher(part).matches();
-    if (plain
-        && !config.isQuoteIdentifiers()
-        && !reservedWords.contains(part.toLowerCase(Locale.ROOT))) {
-      return part;
+    String lower = part.toLowerCase(Locale.ROOT);
+    String text = part;
+    if (PLAIN_IDENTIFIER.matcher(part).matches() && !config.isQuoteIdentifiers()) {
+      boolean fixed = FIXED_RESERVED_WORDS.contains(lower);
+      if (!fixed && !vendorKeywords.contains(lower)) {
+        return part;
+      }
+      if (!fixed) {
+        text = fold(part);
+      }
     }
     if (vendorQuote.isEmpty()) {
       throw new DestinationException(
@@ -653,7 +643,16 @@ public class DatabaseDestination extends AbstractDestination {
               + part
               + "' needs quoting but the JDBC driver reports no identifier quote string");
     }
-    return vendorQuote + part + vendorQuote;
+    return vendorQuote + text + vendorQuote;
+  }
+
+  /** Case the database stores unquoted names in; a vendor keyword is quoted in that case. */
+  private String fold(String part) {
+    // Quoted names are case-sensitive: match the case an unquoted name would fold to.
+    if (storesLowerCase) {
+      return part.toLowerCase(Locale.ROOT);
+    }
+    return storesUpperCase ? part.toUpperCase(Locale.ROOT) : part;
   }
 
   private static DestinationException illegal(String name) {
@@ -664,13 +663,15 @@ public class DatabaseDestination extends AbstractDestination {
             + "'");
   }
 
-  /** Reads the quote string and reserved words once; tolerates drivers without metadata. */
+  /** Reads the quote string, keywords and case storage once; tolerates drivers without metadata. */
   private void loadVendorMetadata() {
     if (vendorQuote != null) {
       return;
     }
-    Set<String> words = new HashSet<>(FIXED_RESERVED_WORDS);
+    Set<String> keywords = new HashSet<>();
     String quote = "";
+    boolean lower = false;
+    boolean upper = false;
     try {
       DatabaseMetaData meta = connection.getMetaData();
       if (meta != null) {
@@ -679,12 +680,16 @@ public class DatabaseDestination extends AbstractDestination {
         Arrays.stream(Objects.toString(meta.getSQLKeywords(), "").split(","))
             .map(w -> w.strip().toLowerCase(Locale.ROOT))
             .filter(w -> !w.isEmpty())
-            .forEach(words::add);
+            .forEach(keywords::add);
+        lower = meta.storesLowerCaseIdentifiers();
+        upper = meta.storesUpperCaseIdentifiers();
       }
     } catch (SQLException e) {
       throw new DestinationException("Failed to read identifier metadata from the database", e);
     }
-    reservedWords = words;
+    vendorKeywords = keywords;
+    storesLowerCase = lower;
+    storesUpperCase = upper;
     vendorQuote = quote;
   }
 
