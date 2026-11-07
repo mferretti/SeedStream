@@ -230,8 +230,11 @@ public class DdlInspector {
       }
     }
     warnSnakeCaseCollisions(tables, warnings);
+    // cycle[...] would be a startup error under nesting (UniqueFieldValidator), so nesting keeps
+    // enum.
+    boolean cycleKeys = !nesting.enabled();
     Consumer<TableInfo> keyMapper =
-        table -> applyKeys(table, keys.get(table.name()), warnings, referenced);
+        table -> applyKeys(table, keys.get(table.name()), warnings, referenced, cycleKeys);
     if (nesting.enabled()) {
       Inspection nested = new NestingPlanner().plan(tables, nesting, keyMapper);
       List<String> all = new ArrayList<>(warnings);
@@ -664,11 +667,16 @@ public class DdlInspector {
   /**
    * Rewrites key columns of a table so generated data honours PRIMARY KEY / UNIQUE constraints:
    * integer keys become {@code serial} / {@code unique[1..count]} / {@code ref[..., unique]},
-   * anything else is left as-is with a "not enforced" comment. Each column gets at most one key
+   * anything else is left as-is with a "not enforced" comment. A single-column key over an enum is
+   * {@code cycle[...]} unless {@code cycleKeys} is off (nesting). Each column gets at most one key
    * role (PK first, then UNIQUE in declaration order). See {@code docs/INSPECT-V1-SPEC.md}.
    */
   private void applyKeys(
-      TableInfo table, TableKeys keys, List<String> warnings, Map<String, Set<String>> referenced) {
+      TableInfo table,
+      TableKeys keys,
+      List<String> warnings,
+      Map<String, Set<String>> referenced,
+      boolean cycleKeys) {
     if (keys == null) {
       return;
     }
@@ -683,10 +691,16 @@ public class DdlInspector {
         .forEach(
             c ->
                 applyKey(
-                    table, keys, new KeySpec("pk", true, c), claimed, foreignColumns, warnings));
+                    table,
+                    keys,
+                    new KeySpec("pk", true, c),
+                    claimed,
+                    foreignColumns,
+                    cycleKeys,
+                    warnings));
     for (int i = 0; i < keys.uniques().size(); i++) {
       KeySpec spec = new KeySpec("uq" + (i + 1), false, keys.uniques().get(i));
-      applyKey(table, keys, spec, claimed, foreignColumns, warnings);
+      applyKey(table, keys, spec, claimed, foreignColumns, cycleKeys, warnings);
     }
     for (String column : List.copyOf(table.data().keySet())) {
       String key = lower(column);
@@ -781,11 +795,16 @@ public class DdlInspector {
       KeySpec spec,
       Set<String> claimed,
       Set<String> foreignColumns,
+      boolean cycleKeys,
       List<String> warnings) {
     String label =
         (spec.primary() ? "PRIMARY KEY(" : "UNIQUE(") + String.join(", ", spec.declared()) + ")";
     List<String> columns = claimColumns(table, spec, label, claimed, warnings);
     if (columns.isEmpty()) {
+      return;
+    }
+    if (cycleKeys && spec.declared().size() == 1 && isEnum(table, columns.get(0))) {
+      applyCycleKey(table, label, columns.get(0), warnings);
       return;
     }
     boolean enforceable =
@@ -814,6 +833,30 @@ public class DdlInspector {
           column,
           keyDatatype(table, spec, column, single, foreignColumns.contains(lower(column))));
     }
+  }
+
+  /**
+   * A single-column key over a value list: {@code enum[a,b]} becomes {@code cycle[a,b]}, which
+   * hands out each value once, so the key is unique only up to {@code --count} (the number of
+   * values).
+   */
+  private void applyCycleKey(TableInfo table, String label, String column, List<String> warnings) {
+    String datatype = table.data().get(actualKey(table, column)).getDatatype();
+    String values = datatype.substring("enum[".length(), datatype.length() - 1);
+    int count = values.split(",").length;
+    setKeyType(table, column, "cycle[" + values + "]");
+    addComment(
+        table,
+        column,
+        "each value once up to --count " + count + ", then values repeat and the key collides");
+    warnings.add(
+        table.name()
+            + ": "
+            + label
+            + " is cycle["
+            + values
+            + "] — unique only while --count ≤ "
+            + count);
   }
 
   /** Columns of the key not already claimed by an earlier key; warns about the ones that were. */
@@ -874,6 +917,11 @@ public class DdlInspector {
 
   private boolean isIntegerType(FieldDefinition field) {
     return field != null && field.getDatatype().startsWith("int[");
+  }
+
+  private boolean isEnum(TableInfo table, String column) {
+    FieldDefinition field = table.data().get(actualKey(table, column));
+    return field != null && field.getDatatype().startsWith("enum[");
   }
 
   private boolean isRef(FieldDefinition field) {
