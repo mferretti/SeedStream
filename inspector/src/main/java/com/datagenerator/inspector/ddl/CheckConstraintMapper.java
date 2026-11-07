@@ -73,6 +73,7 @@ final class CheckConstraintMapper {
     /** 4-byte floats; a bare FLOAT may be one too (MySQL), so it is treated as one. */
     private static boolean isSinglePrecision(String sqlType, int precision) {
       return switch (sqlType) {
+        case null -> false;
         case "REAL", "FLOAT4", "BINARY_FLOAT" -> true;
         case "FLOAT" -> precision < 0 || precision <= FLOAT4_PRECISION;
         default -> false;
@@ -382,6 +383,7 @@ final class CheckConstraintMapper {
       return Optional.empty();
     }
     return switch (atom.values().get(0)) {
+      case null -> Optional.empty();
       case Day d -> Optional.of(d.value());
       case Txt t -> parseDay(t.value());
       default -> Optional.empty();

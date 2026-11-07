@@ -357,6 +357,7 @@ final class CheckConditions {
   private Lit literal(Expression operand) {
     Expression e = unwrap(operand);
     return switch (e) {
+      case null -> new Other();
       case LongValue number -> new Num(new BigDecimal(number.getBigIntegerValue()));
       case DoubleValue number -> number(number.toString());
       case SignedExpression signed -> signed(signed);
@@ -400,6 +401,7 @@ final class CheckConditions {
     String type = typeOf(cast);
     boolean keeps =
         switch (inner) {
+          case null -> false;
           case Txt t -> TEXT_TYPE.matcher(type).matches();
           case Num n ->
               NUMERIC_TYPE.matcher(type).matches()
@@ -414,6 +416,7 @@ final class CheckConditions {
     }
     if ("date".equals(type)) {
       return switch (inner) {
+        case null -> new Other();
         case Txt t -> day(t.value());
         case Now n -> new Today();
         case Today t -> inner;
