@@ -143,6 +143,24 @@ class DdlInspectorCheckConstraintSafetyTest {
     assertThat(datatypesOf(in, "t")).containsKeys("a", "b", "c", "d");
   }
 
+  /** A scalar can't load into an array column, so each one is flagged, however it is spelled. */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "a int[]",
+        "a text[]",
+        "a text[3]",
+        "a int[2][2]",
+        "a varchar(5)[]",
+        "a int ARRAY[3]"
+      })
+  void shouldFlagAnArrayColumn(String colDef, @TempDir Path dir) {
+    Inspection in = inspectDdl(dir, "CREATE TABLE t (" + colDef + ", n int);\n");
+
+    assertThat(comment(in, "t", "a")).contains("array");
+    assertThat(comment(in, "t", "n")).isNull();
+  }
+
   @Test
   void shouldNotBlameTheColumnTypeForAValueAnEnumCantExpress(@TempDir Path dir) {
     Inspection in = inspectCheck(dir, "s varchar(10)", "s IN ('a,b','c')");
