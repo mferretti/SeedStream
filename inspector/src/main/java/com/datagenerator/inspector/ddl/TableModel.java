@@ -52,6 +52,9 @@ final class TableModel {
 
   final List<Column> columns = new ArrayList<>();
 
+  /** Snake-cased names of the {@code INHERITS} parents, in clause order. */
+  final List<String> parents = new ArrayList<>();
+
   /** One column list per PRIMARY KEY / UNIQUE constraint (composite ones have several columns). */
   final List<List<String>> primary = new ArrayList<>();
 
