@@ -593,6 +593,67 @@ class DdlInspectorEmbeddedTablesTest {
     assertOnlyBase(dir, BASE + ddl + ";\n");
   }
 
+  /**
+   * ALTER of a routine carries a body like CREATE does, T-SQL also spells it PROC and CREATE OR
+   * ALTER, and a table glued after a routine is part of that routine's batch. None is a table.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "DROP TABLE x\nALTER PROCEDURE p AS BEGIN CREATE TABLE #t (i INT) END",
+        "DROP TABLE x\nALTER PROC p AS BEGIN CREATE TABLE q (i INT) END",
+        "IF 1 = 1 DROP TABLE x\nALTER FUNCTION f() RETURNS INT AS BEGIN CREATE TABLE q (i INT) END",
+        "DROP TABLE x\nALTER TRIGGER tr ON base AFTER INSERT AS CREATE TABLE q (i INT)",
+        "ALTER PROCEDURE p AS BEGIN CREATE TABLE q (i INT) END",
+        "ALTER PROC p AS CREATE TABLE q (i INT)",
+        "ALTER FUNCTION f() RETURNS INT AS BEGIN CREATE TABLE q (i INT) END",
+        "ALTER TRIGGER tr ON base AFTER INSERT AS CREATE TABLE q (i INT)",
+        "IF OBJECT_ID('p') IS NOT NULL DROP PROC p\nCREATE PROC p AS SELECT 1\nCREATE TABLE q (i INT)",
+        "IF 1 = 1 DROP TABLE z\nCREATE OR ALTER PROCEDURE pp AS SELECT 1\nCREATE TABLE q (i INT)",
+        "IF OBJECT_ID('p') IS NOT NULL DROP PROC p\n"
+            + "CREATE PROC p AS BEGIN CREATE TABLE #t (i INT) END\nCREATE TABLE q (i INT)",
+        "CREATE PROC p AS BEGIN CREATE TABLE q (i INT) END",
+        "CREATE OR ALTER PROCEDURE p AS BEGIN CREATE TABLE q (i INT) END",
+        "CREATE OR ALTER PROC p AS CREATE TABLE q (i INT)",
+        "CREATE OR ALTER FUNCTION f() RETURNS INT AS BEGIN CREATE TABLE q (i INT) END",
+        "CREATE OR ALTER TRIGGER tr ON base AFTER INSERT AS CREATE TABLE q (i INT)",
+        "CREATE TYPE t AS TABLE (id INT)",
+        "IF TYPE_ID('t') IS NOT NULL DROP TYPE t\nCREATE TYPE t AS TABLE (id INT)"
+      })
+  void shouldNotReadARoutineOrTableTypeBodyAsATable(String ddl, @TempDir Path dir) {
+    assertOnlyBase(dir, BASE + ddl + ";\n");
+  }
+
+  @Test
+  void shouldKeepTablesBeforeARoutineAndNothingFromItsBody(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "DROP TABLE x\nCREATE TABLE before_r (id INT)\n"
+                + "ALTER PROC p AS BEGIN CREATE TABLE q (i INT) END;\n");
+
+    assertThat(names(in)).containsExactly("before_r");
+    assertThat(datatypesOf(in, "before_r")).containsExactly(entry("id", INT));
+    assertThat(in.warnings()).isEmpty();
+  }
+
+  /** $, # and @ are part of an unquoted name: {@code app$end} holds no END statement. */
+  @ParameterizedTest
+  @ValueSource(strings = {"app$end", "sys$select", "t$delete", "x$update", "tmp#end", "t@print"})
+  void shouldNotCutInsideANameHoldingAKeyword(String table, @TempDir Path dir) {
+    String standalone = "CREATE TABLE " + table + " (id INT, n INT);";
+    List<String> expected = names(inspectDdl(dir, standalone + "\n"));
+
+    for (String wrapper :
+        List.of("DROP TABLE x\n", "IF 1 = 1 DROP TABLE x\n", "CREATE SCHEMA s ")) {
+      Inspection in = inspectDdl(dir, wrapper + standalone + "\n");
+
+      assertThat(names(in)).as(wrapper).isEqualTo(expected).hasSize(1);
+      assertThat(datatypesOf(in, expected.get(0)).keySet()).containsExactly("id", "n");
+      assertThat(in.warnings()).isEmpty();
+    }
+  }
+
   /** Today these abort strict mode (the whole chunk is parsed as a table); expansion fixes it. */
   @ParameterizedTest
   @ValueSource(
