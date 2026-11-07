@@ -225,6 +225,7 @@ public class DdlPreprocessor {
       } else if (SqlScan.opensBracketIdentifier(s, i)) {
         StringBuilder identifier = new StringBuilder();
         i = appendBracketContent(s, i, identifier);
+        separateFromWord(s, i, sb);
         sb.append('"').append(identifier.toString().replace("\"", "\"\"")).append('"');
       } else {
         sb.append(s.charAt(i++));
@@ -420,6 +421,7 @@ public class DdlPreprocessor {
         sb.append(s, i, end);
         i = end;
       } else if (SqlScan.opensBracketIdentifier(s, i)) {
+        separateFromWord(s, i, sb);
         i = appendBracketContent(s, i, sb);
       } else {
         sb.append(c);
@@ -427,6 +429,16 @@ public class DdlPreprocessor {
       }
     }
     return sb.toString();
+  }
+
+  /**
+   * A bracket identifier after a keyword ({@code REFERENCES[p]}) loses its brackets, so a space
+   * goes in first to keep the keyword a separate word.
+   */
+  private static void separateFromWord(String s, int i, StringBuilder sb) {
+    if (i > 0 && (Character.isLetterOrDigit(s.charAt(i - 1)) || s.charAt(i - 1) == '_')) {
+      sb.append(' ');
+    }
   }
 
   /**

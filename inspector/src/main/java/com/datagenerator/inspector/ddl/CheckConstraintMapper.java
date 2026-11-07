@@ -168,9 +168,16 @@ final class CheckConstraintMapper {
 
   /** Names every constraint that took part, so the whole condition shows. */
   private static String unsatisfiable(ColumnChecks checks) {
-    String sources =
-        checks.atoms.stream().map(Atom::source).distinct().collect(Collectors.joining(" and "));
-    return sources + " leaves no value the column type can hold — not applied, verify";
+    return sources(checks) + " leaves no value the column type can hold — not applied, verify";
+  }
+
+  /** A value enum[...] cannot express (comma, bracket, empty, outer space); not the column type. */
+  private static String inexpressible(ColumnChecks checks) {
+    return sources(checks) + " has a value enum[...] can't express — not applied, verify";
+  }
+
+  private static String sources(ColumnChecks checks) {
+    return checks.atoms.stream().map(Atom::source).distinct().collect(Collectors.joining(" and "));
   }
 
   // ------------------------------------------------------------------ integers and decimals
@@ -432,7 +439,15 @@ final class CheckConstraintMapper {
     if (allowed == null || !honoured) { // a part left on the column could reject the values
       return null;
     }
-    if (allowed.isEmpty() || !allowed.stream().allMatch(v -> fits(v, type.maxLength()))) {
+    if (allowed.isEmpty()) {
+      notes.add(unsatisfiable(checks));
+      return null;
+    }
+    if (!allowed.stream().allMatch(DdlTypeMapper::isEnumMember)) {
+      notes.add(inexpressible(checks));
+      return null;
+    }
+    if (!allowed.stream().allMatch(v -> fits(v, type.maxLength()))) {
       notes.add(unsatisfiable(checks));
       return null;
     }
@@ -440,7 +455,7 @@ final class CheckConstraintMapper {
   }
 
   private static boolean fits(String value, int maxLength) {
-    return DdlTypeMapper.isEnumMember(value) && (maxLength < 0 || value.length() <= maxLength);
+    return maxLength < 0 || value.length() <= maxLength;
   }
 
   private static Optional<List<String>> texts(Atom atom) {

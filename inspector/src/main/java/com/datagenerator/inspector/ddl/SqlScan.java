@@ -16,6 +16,9 @@
 
 package com.datagenerator.inspector.ddl;
 
+import java.util.Locale;
+import java.util.Set;
+
 /**
  * Low-level character-scan primitives shared by the DDL splitter and preprocessor. Each {@code
  * skip} method takes the source string and the index of the construct's opening character and
@@ -101,9 +104,39 @@ final class SqlScan {
     return i;
   }
 
+  /** Keywords after which an identifier comes, so a {@code [} directly after one opens it. */
+  private static final Set<String> IDENTIFIER_KEYWORDS =
+      Set.of(
+          "TABLE",
+          "REFERENCES",
+          "CONSTRAINT",
+          "ON",
+          "AS",
+          "INDEX",
+          "UNIQUE",
+          "KEY",
+          "FOREIGN",
+          "PRIMARY",
+          "CHECK",
+          "ALTER",
+          "COLUMN",
+          "ADD",
+          "INTO",
+          "FROM",
+          "JOIN",
+          "EXISTS",
+          "ONLY",
+          "SCHEMA",
+          "VIEW",
+          "CLUSTERED",
+          "NONCLUSTERED",
+          "BY");
+
   /**
-   * True if the {@code [} at {@code i} opens a bracket-quoted identifier. A bracket right after a
-   * word ({@code ARRAY[...]}, {@code text[]}) is a subscript or array, not an identifier.
+   * True if the {@code [} at {@code i} opens a bracket-quoted identifier. A bracket after a space
+   * or punctuation does. A bracket right after a word is an identifier only when that word is a
+   * keyword such as {@code REFERENCES[p]}; after a type or other word ({@code ARRAY[...]}, {@code
+   * text[]}, {@code int[]}) it is a subscript or array.
    */
   static boolean opensBracketIdentifier(String s, int i) {
     if (s.charAt(i) != '[') {
@@ -113,7 +146,15 @@ final class SqlScan {
       return true;
     }
     char before = s.charAt(i - 1);
-    return !(Character.isLetterOrDigit(before) || before == '_');
+    if (!(Character.isLetterOrDigit(before) || before == '_')) {
+      return true;
+    }
+    int start = i - 1;
+    while (start > 0
+        && (Character.isLetterOrDigit(s.charAt(start - 1)) || s.charAt(start - 1) == '_')) {
+      start--;
+    }
+    return IDENTIFIER_KEYWORDS.contains(s.substring(start, i).toUpperCase(Locale.ROOT));
   }
 
   /**
