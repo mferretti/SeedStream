@@ -132,6 +132,7 @@ public class DdlInspector {
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
   private final DdlPreprocessor preprocessor = new DdlPreprocessor();
+  private final EmbeddedStatementExpander expander = new EmbeddedStatementExpander();
 
   /** Inspects a SQL DDL file and returns one structure per {@code CREATE TABLE} (no nesting). */
   public Inspection inspect(Path sqlFile) {
@@ -159,7 +160,10 @@ public class DdlInspector {
    * directives, …) are always skipped silently in both modes.
    */
   public Inspection inspect(Path sqlFile, NestingOptions nesting, boolean bestEffort) {
-    List<String> rawStatements = splitter.split(readFile(sqlFile));
+    List<String> rawStatements =
+        splitter.split(readFile(sqlFile)).stream()
+            .flatMap(chunk -> expander.expand(chunk).stream())
+            .toList();
 
     // Phase 1: every CREATE TABLE becomes a model (no datatypes yet); ALTER TABLEs wait their turn.
     List<TableModel> models = new ArrayList<>();
