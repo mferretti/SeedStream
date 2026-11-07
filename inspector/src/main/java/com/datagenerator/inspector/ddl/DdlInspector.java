@@ -89,7 +89,8 @@ public class DdlInspector {
               + "(?:(?:GRANT|REVOKE|DENY)\\b"
               + "|CREATE\\s+(?:OR\\s+(?:REPLACE|ALTER)\\s+)?"
               + ROUTINE_MODIFIERS
-              + "(?:FUNCTION|PROCEDURE|PROC|TRIGGER|PACKAGE|EVENT|PUBLICATION|SUBSCRIPTION|TYPE)\\b"
+              + "(?:FUNCTION|PROCEDURE|PROC|TRIGGER|PACKAGE|EVENT|PUBLICATION|SUBSCRIPTION"
+              + "|TYPE\\s+\\S+\\s+AS\\s+TABLE)\\b"
               + "|ALTER\\s+"
               + ROUTINE_MODIFIERS
               + "(?:PROCEDURE|PROC|FUNCTION|TRIGGER)\\b)");

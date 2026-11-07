@@ -637,6 +637,20 @@ class DdlInspectorEmbeddedTablesTest {
     assertThat(in.warnings()).isEmpty();
   }
 
+  /** Only a table type has a body worth skipping; any other type must not swallow a table. */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "CREATE TYPE mood FROM INT\nCREATE TABLE lost (id INT);",
+        "CREATE TYPE mood AS ENUM ('a')\nCREATE TABLE lost (id INT);",
+        "DROP TYPE mood\nCREATE TYPE mood FROM INT\nCREATE TABLE lost (id INT);"
+      })
+  void shouldNotLetAnotherTypeSwallowAGluedTable(String ddl, @TempDir Path dir) {
+    assertThatThrownBy(() -> inspectDdl(dir, BASE + ddl + "\n"))
+        .isInstanceOf(InspectorException.class)
+        .hasMessageContaining("lost");
+  }
+
   /** $, # and @ are part of an unquoted name: {@code app$end} holds no END statement. */
   @ParameterizedTest
   @ValueSource(strings = {"app$end", "sys$select", "t$delete", "x$update", "tmp#end", "t@print"})

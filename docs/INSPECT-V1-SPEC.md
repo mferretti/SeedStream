@@ -256,6 +256,13 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
     `… LIKE other`, PostgreSQL `(LIKE other)` → skipped with a warning naming the table;
   - anything else that still mentions `CREATE … TABLE` is parsed: it is modelled, or fails strict
     mode loudly (best-effort: skipped with a warning). A real table is never dropped silently.
+- **Tables inside other statements.** A chunk starting with `CREATE SCHEMA`, `IF`, `BEGIN` or `DROP` is split into
+  its statements first, so `CREATE SCHEMA s CREATE TABLE t (…)`, `IF … DROP TABLE x CREATE TABLE x (…)` with no `GO`
+  or `;` between them, and `IF … BEGIN CREATE TABLE z (…) END` yield what the same statements standing alone yield.
+  A routine (`CREATE|ALTER PROC|FUNCTION|TRIGGER …`, `CREATE TYPE … AS TABLE`) ends the split: it and everything after
+  it stay one statement, skipped silently, since in T-SQL what follows belongs to its batch. A chunk that can't be
+  split reaches the parser unchanged. `GRANT CREATE TABLE TO u` with a table glued after it is not split, and that
+  table is lost.
 - **SQL Server `IDENTITY`.** `IDENTITY`, `IDENTITY(seed, increment)` and `… NOT FOR REPLICATION`
   after a column's type mark the column as database-assigned (SQL Server rejects explicit values);
   it then follows the same rules as `GENERATED ALWAYS AS IDENTITY` (see the key mapping in §8).
