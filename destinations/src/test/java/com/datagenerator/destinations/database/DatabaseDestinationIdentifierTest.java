@@ -35,6 +35,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -310,8 +311,7 @@ class DatabaseDestinationIdentifierTest {
   // ======================================================= Rule 1: reserved words
 
   @ParameterizedTest
-  @ValueSource(
-      strings = {"order", "ORDER", "Order", "group", "user", "select", "table", "key", "limit"})
+  @ValueSource(strings = {"order", "ORDER", "Order", "group", "user", "select", "table"})
   void shouldQuoteReservedWordTableAndColumnVerbatimWhenWritingToH2(String word) throws Exception {
     h2("CREATE TABLE " + q(word) + " (id INT, " + q(word) + " INT)");
 
@@ -339,6 +339,82 @@ class DatabaseDestinationIdentifierTest {
     writeAll(config(PG_URL, "foo", false), jdbc.ds, row("Bar", 1, "baz", 2));
 
     assertThat(jdbc.prepared).containsExactly("INSERT INTO \"foo\" (\"Bar\", baz) VALUES (?,?)");
+  }
+
+  /**
+   * getSQLKeywords() isn't "reserved": on real PostgreSQL 192 of its 207 words work unquoted. A
+   * column {@code Location} works today because the database folds it, so a word only on the vendor
+   * list is quoted in the case the database stores unquoted names, and resolves the same way.
+   */
+  @Test
+  void shouldFoldAVendorKeywordToLowerCaseWhenTheDatabaseStoresLowerCase() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "LOCATION,COMMENT");
+    when(jdbc.meta.storesLowerCaseIdentifiers()).thenReturn(true);
+
+    writeAll(config(PG_URL, "Location", false), jdbc.ds, row("Comment", 1, "COMMENT2", 2));
+
+    assertThat(jdbc.prepared)
+        .containsExactly("INSERT INTO \"location\" (\"comment\", COMMENT2) VALUES (?,?)");
+  }
+
+  @Test
+  void shouldFoldAVendorKeywordToUpperCaseWhenTheDatabaseStoresUpperCase() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "DATE,COMMENT");
+    when(jdbc.meta.storesUpperCaseIdentifiers()).thenReturn(true);
+
+    writeAll(config(PG_URL, "comment", false), jdbc.ds, row("Date", 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO \"COMMENT\" (\"DATE\") VALUES (?)");
+  }
+
+  @Test
+  void shouldKeepVendorKeywordCaseWhenTheDatabaseFoldsNeither() throws Exception {
+    Jdbc jdbc = new Jdbc(BT, "KEY");
+
+    writeAll(config(PG_URL, "items", false), jdbc.ds, row("Key", 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO items (`Key`) VALUES (?)");
+  }
+
+  /** A word every vendor reserves had to be quoted at creation, so its case is the user's. */
+  @ParameterizedTest
+  @ValueSource(strings = {"Order", "ORDER", "order", "User"})
+  void shouldNotFoldAFixedReservedWord(String word) throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, word.toUpperCase(Locale.ROOT));
+    when(jdbc.meta.storesLowerCaseIdentifiers()).thenReturn(true);
+
+    writeAll(config(PG_URL, "items", false), jdbc.ds, row(word, 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO items (" + q(word) + ") VALUES (?)");
+  }
+
+  @Test
+  void shouldNotFoldAnyNameWhenQuoteIdentifiersIsOn() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "LOCATION");
+    when(jdbc.meta.storesLowerCaseIdentifiers()).thenReturn(true);
+
+    writeAll(config(PG_URL, "Location", true), jdbc.ds, row("Name", 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO \"Location\" (\"Name\") VALUES (?)");
+  }
+
+  @Test
+  void shouldNotFoldANameQuotedForItsCharacters() throws Exception {
+    Jdbc jdbc = new Jdbc(DQ, "");
+    when(jdbc.meta.storesLowerCaseIdentifiers()).thenReturn(true);
+
+    writeAll(config(PG_URL, "Order Details", false), jdbc.ds, row(ID, 1));
+
+    assertThat(jdbc.prepared).containsExactly("INSERT INTO \"Order Details\" (id) VALUES (?)");
+  }
+
+  @Test
+  void shouldFindAVendorKeywordOnH2WhichStoresUpperCase() throws Exception {
+    h2("CREATE TABLE \"KEY\" (id INT, \"LIMIT\" INT)");
+
+    writeH2(config(H2_URL, "key", false), row(ID, 1, "limit", 2));
+
+    assertThat(scalar("SELECT \"LIMIT\" FROM \"KEY\"")).isEqualTo("2");
   }
 
   @Test

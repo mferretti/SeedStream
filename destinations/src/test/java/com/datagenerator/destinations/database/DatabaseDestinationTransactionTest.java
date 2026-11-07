@@ -345,23 +345,4 @@ class DatabaseDestinationTransactionTest {
 
     assertThat(visibleIds()).isEmpty();
   }
-
-  @Test
-  void shouldRejectUnsafeIdentifiers() {
-    for (String bad :
-        List.of("", "1abc", "a b", "a-b", "a;b", "a'b", "a\"b", "tbl.col", "x\n", "über")) {
-      assertThatThrownBy(() -> DatabaseDestination.validateIdentifier(bad))
-          .as("identifier '%s'", bad)
-          .isInstanceOf(DestinationException.class);
-    }
-    assertThatThrownBy(() -> DatabaseDestination.validateIdentifier(null))
-        .isInstanceOf(DestinationException.class);
-  }
-
-  @Test
-  void shouldAcceptSafeIdentifiersUnchanged() {
-    for (String ok : List.of("users", "_x", "A1_b$c", "T")) {
-      assertThat(DatabaseDestination.validateIdentifier(ok)).isEqualTo(ok);
-    }
-  }
 }
