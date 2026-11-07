@@ -271,6 +271,12 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   `RENAME`, `ALTER COLUMN … TYPE`) are warned about and not applied. An `ALTER` that cannot be parsed, or
   that targets a table not in the script, is a warning and never aborts strict mode; so is a foreign key
   from an `ALTER` to a table not in the script (the column keeps its plain type).
+- **`CREATE UNIQUE INDEX`** yields what the same inline `UNIQUE (…)` yields, wherever the statement sits in
+  the script; `CLUSTERED`, `USING`, `INCLUDE`, `NULLS [NOT] DISTINCT`, sort direction and vendor storage clauses
+  don't change the key. An index repeating a declared PRIMARY KEY or UNIQUE, in any column order, counts once.
+  A partial index (`WHERE`) or one on an expression, a column prefix, or a column with `COLLATE` or an operator
+  class declares no key and gets a warning; so does an index on an unknown table or column, or one that cannot
+  be read. Neither aborts strict mode. An index on a parent does not apply to its `INHERITS` children.
 - **`REFERENCES t` without a column list** resolves to `t`'s primary key, positionally for composite
   keys, wherever that key is declared. If `t` is unknown, has no primary key, or the column counts
   differ, a warning is logged and the column keeps its plain type (never a guessed `id`).

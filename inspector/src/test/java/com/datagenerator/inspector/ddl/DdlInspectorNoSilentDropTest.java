@@ -161,7 +161,6 @@ class DdlInspectorNoSilentDropTest {
         "CREATE INDEX i ON \"table\" (x);",
         "CREATE INDEX i ON [Table] (x)\nGO",
         "CREATE INDEX \"create table\" ON t (x);",
-        "CREATE UNIQUE INDEX i ON \"create\".\"table\" (x);",
         "CREATE VIEW \"create table\" AS SELECT 1;",
         "CREATE MATERIALIZED VIEW mv AS SELECT * FROM \"table\";",
         "COMMENT ON TABLE \"create table\" IS 'x';",
@@ -173,6 +172,23 @@ class DdlInspectorNoSilentDropTest {
 
     assertThat(names(inspection)).as("tables after: %s", statement).containsExactly("base", "keep");
     assertThat(inspection.warnings()).as("warnings after: %s", statement).isEmpty();
+  }
+
+  /**
+   * A unique index naming a table "table" is not a table either. Since #450 a unique index is a
+   * key, so one on a table missing from the script is warned about, but it never aborts.
+   */
+  @Test
+  void shouldNotTreatUniqueIndexNamingTableAsATable(@TempDir Path dir) throws IOException {
+    Inspection inspection =
+        strict(
+            dir,
+            BASE
+                + "CREATE UNIQUE INDEX i ON \"create\".\"table\" (x);\nCREATE TABLE keep (id INT);\n");
+
+    assertThat(names(inspection)).containsExactly("base", "keep");
+    assertThat(inspection.warnings()).hasSize(1);
+    assertThat(inspection.warnings().get(0)).contains("INDEX i").contains("not in the script");
   }
 
   @ParameterizedTest

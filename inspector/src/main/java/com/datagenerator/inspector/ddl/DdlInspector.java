@@ -102,7 +102,7 @@ public class DdlInspector {
               + ")*)(?:\\s+(?:AS|PARTITION\\s+OF|LIKE)\\b|\\s*\\(\\s*LIKE\\b)");
 
   // PostgreSQL "INHERITS (a, b)" right after the column list, run on comment/literal-free text.
-  private static final String QUALIFIED_NAME = IDENT_PART + "(?:\\." + IDENT_PART + ")*";
+  static final String QUALIFIED_NAME = IDENT_PART + "(?:\\." + IDENT_PART + ")*";
   private static final Pattern INHERITS_CLAUSE =
       Pattern.compile(
           "(?is)\\A\\s*INHERITS\\s*\\(\\s*(?<parents>"
@@ -164,10 +164,15 @@ public class DdlInspector {
     // Phase 1: every CREATE TABLE becomes a model (no datatypes yet); ALTER TABLEs wait their turn.
     List<TableModel> models = new ArrayList<>();
     List<String> alters = new ArrayList<>();
+    List<String> uniqueIndexes = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
     List<String> failures = new ArrayList<>();
     for (String raw : rawStatements) {
-      processStatement(raw, models, alters, warnings, failures, bestEffort);
+      if (UniqueIndexApplier.isUniqueIndex(SqlScan.stripCommentsAndLiterals(raw))) {
+        uniqueIndexes.add(raw); // applied with the ALTERs; never a CREATE TABLE failure
+      } else {
+        processStatement(raw, models, alters, warnings, failures, bestEffort);
+      }
     }
 
     if (!bestEffort && !failures.isEmpty()) {
@@ -190,6 +195,7 @@ public class DdlInspector {
     models.forEach(m -> byName.put(m.name, m));
     expandInheritance(models, byName, warnings);
     new AlterTableApplier().apply(alters, byName, warnings);
+    new UniqueIndexApplier().apply(uniqueIndexes, byName, warnings);
     resolveForeignKeys(models, byName, warnings);
     Map<String, TableKeys> keys = new LinkedHashMap<>();
     List<TableInfo> tables = models.stream().map(m -> toTableInfo(m, keys)).toList();
