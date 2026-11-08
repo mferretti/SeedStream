@@ -824,7 +824,7 @@ public class DdlInspector {
                 c ->
                     foreignColumns.contains(lower(c))
                         || isIntegerType(table.data().get(actualKey(table, c)))
-                        || isTextKey(table, keys, c));
+                        || isTextKey(table, keys, c, spec.primary()));
     if (!enforceable) {
       boolean singleUuid =
           columns.size() == 1 && keys.uuidColumns().contains(lower(columns.get(0)));
@@ -856,8 +856,15 @@ public class DdlInspector {
     }
   }
 
-  private boolean isTextKey(TableInfo table, TableKeys keys, String column) {
-    return keys.textColumns().contains(lower(column)) && !isEnum(table, column);
+  /**
+   * A text column a key can generate as numeric strings. Outside a PRIMARY KEY, a name-hinted one
+   * (email, username) keeps its semantic type: collision-free semantic strings are #455.
+   */
+  private boolean isTextKey(TableInfo table, TableKeys keys, String column, boolean primary) {
+    String datatype = table.data().get(actualKey(table, column)).getDatatype();
+    return keys.textColumns().contains(lower(column))
+        && !isEnum(table, column)
+        && (primary || datatype.startsWith("char["));
   }
 
   /** {@code serial[1..ceiling]} when the column type has a ceiling, else plain {@code serial}. */

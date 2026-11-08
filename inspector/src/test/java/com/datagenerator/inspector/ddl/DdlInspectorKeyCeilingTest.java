@@ -176,6 +176,18 @@ class DdlInspectorKeyCeilingTest {
     assertThat(comment(in, "t", "country")).isEqualTo(TEXT_KEY + " — max 999999999999999 rows");
   }
 
+  /** Name-hinted UNIQUE text (email, username) keeps its semantic type: #455 makes it distinct. */
+  @Test
+  void shouldKeepNameHintedTextUniqueSemanticAndNotEnforced(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(dir, "CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(100) UNIQUE);");
+    loadAll(in, dir);
+
+    assertThat(datatypesOf(in, "users")).containsEntry("email", "email");
+    assertThat(comment(in, "users", "email")).contains(NOT_ENFORCED).doesNotContain(TEXT_KEY);
+    assertThat(in.warnings()).anyMatch(w -> w.contains("UNIQUE(email) " + NOT_ENFORCED));
+  }
+
   @Test
   void shouldCommentCeilingOnSmallIntUniqueButNotOnIntegerUnique(@TempDir Path dir) {
     Inspection in =
