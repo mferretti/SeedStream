@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -179,6 +180,52 @@ public final class DdlTypeMapper {
       case "TINYINT" -> Math.min(Defaults.INT_MAX, 127L);
       case null, default -> Defaults.INT_MAX;
     };
+  }
+
+  /** True for the {@code VARCHAR} / {@code TEXT} families (any length). */
+  static boolean isText(String sqlType) {
+    String type = SYNONYMS.getOrDefault(normalize(sqlType), normalize(sqlType));
+    return TYPE_VARCHAR.equals(type) || "TEXT".equals(type);
+  }
+
+  /**
+   * Largest key value a column of this SQL type can hold when keys are generated from 1 (numeric
+   * strings for text); empty when unbounded or not a key type.
+   */
+  static OptionalLong keyCeiling(String sqlType, List<String> args) {
+    String raw = normalize(sqlType);
+    String type = SYNONYMS.getOrDefault(raw, raw);
+    switch (raw) {
+      case "TINYINT":
+        return OptionalLong.of(127L);
+      case "SMALLINT", "INT2", "SMALLSERIAL":
+        return OptionalLong.of(32_767L);
+      case "MEDIUMINT":
+        return OptionalLong.of(8_388_607L);
+      case "INT", "INTEGER", "INT4", "SERIAL", "SERIAL4":
+        return OptionalLong.of(Integer.MAX_VALUE);
+      case null, default:
+        break;
+    }
+    if (args == null
+        || args.isEmpty()
+        || !(TYPE_DECIMAL.equals(type) || TYPE_VARCHAR.equals(type))) {
+      return OptionalLong.empty();
+    }
+    boolean text = TYPE_VARCHAR.equals(type);
+    if (!text
+        && (!Set.of("DECIMAL", "NUMERIC", "NUMBER", "DEC").contains(raw)
+            || (args.size() > 1 && !"0".equals(args.get(1).trim())))) {
+      return OptionalLong.empty();
+    }
+    try {
+      int digits = Integer.parseInt(args.get(0).trim().split("\\s+")[0]); // "5 BYTE" -> 5
+      return digits >= 1 && digits <= 18
+          ? OptionalLong.of((long) Math.pow(10, digits) - 1)
+          : OptionalLong.empty();
+    } catch (NumberFormatException e) {
+      return OptionalLong.empty();
+    }
   }
 
   /**
