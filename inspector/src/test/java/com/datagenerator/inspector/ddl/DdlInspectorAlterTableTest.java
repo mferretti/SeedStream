@@ -56,7 +56,9 @@ class DdlInspectorAlterTableTest {
                 ADD CONSTRAINT items_pkey PRIMARY KEY (id);
             """);
 
-    assertThat(datatypesOf(in, "items")).containsEntry("id", "serial").containsEntry("n", INT);
+    assertThat(datatypesOf(in, "items"))
+        .containsEntry("id", "serial[1..2147483647]")
+        .containsEntry("n", INT);
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -72,12 +74,12 @@ class DdlInspectorAlterTableTest {
             """);
 
     assertThat(datatypesOf(in, "items"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("code", "unique[1..count]");
   }
 
   @Test
-  void shouldNotEnforceNonIntegerUniqueAddedByAlterAndWarnLikeInline(@TempDir Path dir) {
+  void shouldEnforceTextUniqueAddedByAlterAsNumericStringsLikeInline(@TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir,
@@ -86,10 +88,10 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE t ADD CONSTRAINT t_sku_key UNIQUE (sku);
             """);
 
-    assertThat(datatypesOf(in, "t")).containsEntry("sku", "char[1..20]");
+    assertThat(datatypesOf(in, "t")).containsEntry("sku", "unique[1..count]");
     assertThat(in.comments().get("t"))
-        .containsEntry("sku", "UNIQUE/PRIMARY KEY not enforced — values may collide");
-    assertThat(in.warnings()).anyMatch(w -> w.contains("UNIQUE(sku) not enforced"));
+        .containsEntry("sku", "text key generated as numeric strings");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
   }
 
   @Test
@@ -124,9 +126,9 @@ class DdlInspectorAlterTableTest {
                 REFERENCES "public"."customers" ("id");
             """);
 
-    assertThat(datatypesOf(in, "customers")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "customers")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("customer_id", "ref[customers.id, 1..count]");
   }
 
@@ -145,7 +147,7 @@ class DdlInspectorAlterTableTest {
             """);
 
     assertThat(datatypesOf(in, "c"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("p_id", "ref[p.id, 1..count]")
         .containsEntry("code", "unique[1..count]");
   }
@@ -163,7 +165,9 @@ class DdlInspectorAlterTableTest {
             """);
 
     // a plain KEY is a (non-unique) index: neither unique nor a warning
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial").containsEntry("code", INT);
+    assertThat(datatypesOf(in, "t"))
+        .containsEntry("id", "serial[1..2147483647]")
+        .containsEntry("code", INT);
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -178,7 +182,7 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE t MODIFY id int NOT NULL AUTO_INCREMENT;
             """);
 
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial[1..2147483647]");
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -214,7 +218,7 @@ class DdlInspectorAlterTableTest {
               TABLESPACE "NORTHWIND"  ENABLE;
             """);
 
-    assertThat(datatypesOf(in, "cats")).containsEntry("CAT_ID", "serial");
+    assertThat(datatypesOf(in, "cats")).containsEntry("CAT_ID", "serial[1..999999999]");
   }
 
   @Test
@@ -307,7 +311,7 @@ class DdlInspectorAlterTableTest {
             false);
 
     assertThat(datatypesOf(in, "region"))
-        .containsEntry("RegionID", "serial")
+        .containsEntry("RegionID", "serial[1..2147483647]")
         .containsEntry("Code", "unique[1..count]");
   }
 
@@ -458,7 +462,8 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE u ADD UNIQUE KEY uq_code (code);
             """);
 
-    assertThat(inline.warnings()).anyMatch(w -> w.contains("UNIQUE(code) not enforced"));
+    assertThat(datatypesOf(inline, "u")).containsEntry("code", "unique[1..count]");
+    assertThat(inline.warnings()).noneMatch(w -> w.contains("not enforced"));
     assertSameAsInline(altered, inline, "u");
   }
 
@@ -484,7 +489,9 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE t ADD CONSTRAINT t_flag_check CHECK (flag in ('Y','N')) ENABLE;
             """);
 
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial").containsEntry("qty", INT);
+    assertThat(datatypesOf(in, "t"))
+        .containsEntry("id", "serial[1..2147483647]")
+        .containsEntry("qty", INT);
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -608,7 +615,7 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE t ADD CONSTRAINT t_pk PRIMARY KEY (id);
             """);
 
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial[1..2147483647]");
     assertThat(in.warnings()).anyMatch(w -> w.toLowerCase(Locale.ROOT).contains("alter"));
   }
 
@@ -641,9 +648,9 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE ONLY public.parent ADD CONSTRAINT parent_pkey PRIMARY KEY (id);
             """);
 
-    assertThat(datatypesOf(in, "parent")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "parent")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "child"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("parent_id", "ref[parent.id, 1..count]");
     assertThat(in.warnings()).isEmpty();
   }
@@ -661,7 +668,7 @@ class DdlInspectorAlterTableTest {
             """);
 
     assertThat(in.structures()).hasSize(1);
-    assertThat(datatypesOf(in, "real_t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "real_t")).containsEntry("id", "serial[1..2147483647]");
     assertThat(in.warnings())
         .anyMatch(w -> w.contains("ghost") && !w.contains("ghost2"))
         .anyMatch(w -> w.contains("ghost2"));
@@ -707,7 +714,7 @@ class DdlInspectorAlterTableTest {
   }
 
   @Test
-  void shouldWarnOnceForTextPrimaryKeyDeclaredInlineAndByAlter(@TempDir Path dir) {
+  void shouldEnforceTextPrimaryKeyOnceWhenDeclaredInlineAndByAlter(@TempDir Path dir) {
     // guard
     Inspection in =
         inspectDdl(
@@ -717,7 +724,11 @@ class DdlInspectorAlterTableTest {
             ALTER TABLE t ADD CONSTRAINT t_pk PRIMARY KEY (sku);
             """);
 
-    assertThat(in.warnings()).filteredOn(w -> w.contains("not enforced")).hasSize(1);
+    // enforced once: no "not enforced" warning, no overlap warning, comment not duplicated
+    assertThat(datatypesOf(in, "t")).containsEntry("sku", "serial[1..9999999999]");
+    assertThat(in.comments().get("t"))
+        .containsEntry("sku", "text key generated as numeric strings — max 9999999999 rows");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
     assertThat(in.warnings()).noneMatch(w -> w.contains("only the first key"));
   }
 
@@ -856,7 +867,7 @@ class DdlInspectorAlterTableTest {
                 + altered
                 + " ADD CONSTRAINT o_pk PRIMARY KEY (id);\n");
 
-    assertThat(datatypesOf(in, "orders")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "orders")).containsEntry("id", "serial[1..2147483647]");
     assertThat(in.warnings()).as("%s / %s", created, altered).isEmpty();
   }
 
@@ -900,7 +911,7 @@ class DdlInspectorAlterTableTest {
             NestingOptions.none(),
             false);
 
-    assertThat(datatypesOf(in, "region")).containsEntry("RegionID", "serial");
+    assertThat(datatypesOf(in, "region")).containsEntry("RegionID", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "territories"))
         .containsEntry("RegionID", "ref[region.region_id, 1..count]");
   }

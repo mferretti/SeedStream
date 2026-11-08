@@ -54,7 +54,7 @@ class DdlInspectorForeignKeyCaseTest {
 
     assertThat(datatypesOf(in, "orders"))
         .containsExactly(
-            Map.entry("OrderID", "serial"),
+            Map.entry("OrderID", "serial[1..2147483647]"),
             Map.entry("EmployeeID", "ref[employees.employee_id, 1..count]"));
     assertThat(datatypesOf(in, "employees")).containsKeys("EmployeeID", "Name");
     assertLoads(in, dir);

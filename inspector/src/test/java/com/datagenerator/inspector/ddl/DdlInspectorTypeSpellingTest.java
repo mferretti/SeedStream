@@ -169,7 +169,7 @@ class DdlInspectorTypeSpellingTest {
               CONSTRAINT pk PRIMARY KEY ("Id"));
             """);
 
-    assertThat(datatypesOf(inspection, "t")).containsEntry("Id", "serial");
+    assertThat(datatypesOf(inspection, "t")).containsEntry("Id", "serial[1..2147483647]");
     assertThat(inspection.warnings()).noneMatch(w -> w.contains("not enforced"));
   }
 
@@ -187,8 +187,8 @@ class DdlInspectorTypeSpellingTest {
               CONSTRAINT "PKC" PRIMARY KEY ("CID"));
             """);
 
-    assertThat(datatypesOf(inspection, "t")).containsEntry("ID", "serial");
-    assertThat(datatypesOf(inspection, "c")).containsEntry("CID", "serial");
+    assertThat(datatypesOf(inspection, "t")).containsEntry("ID", "serial[1..999999999]");
+    assertThat(datatypesOf(inspection, "c")).containsEntry("CID", "serial[1..999999999]");
     assertThat(datatypesOf(inspection, "c").get("T_ID")).startsWith("ref[");
     assertThat(inspection.warnings()).noneMatch(w -> w.contains("not enforced"));
   }
@@ -206,7 +206,7 @@ class DdlInspectorTypeSpellingTest {
               CONSTRAINT fk FOREIGN KEY (t_id) REFERENCES t (id));
             """);
 
-    assertThat(datatypesOf(inspection, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(inspection, "t")).containsEntry("id", "serial[1..999999999]");
     assertThat(datatypesOf(inspection, "c")).containsEntry("t_id", "ref[t.id, 1..count]");
   }
 

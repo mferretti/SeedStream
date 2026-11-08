@@ -38,7 +38,9 @@ import org.junit.jupiter.api.io.TempDir;
 class DdlInspectorAlterFixturesTest {
 
   private static final Path ROOT = Path.of("src/test/resources/northwind");
-  private static final String SERIAL = "serial";
+  private static final String SMALL_SERIAL = "serial[1..32767]";
+  private static final String INT_SERIAL = "serial[1..2147483647]";
+  private static final String NUMBER9_SERIAL = "serial[1..999999999]";
 
   // ---------------------------------------------------------------- PostgreSQL (pg_dump)
 
@@ -47,14 +49,14 @@ class DdlInspectorAlterFixturesTest {
     Inspection in = pgDump(NestingOptions.none());
 
     assertThat(in.structures()).hasSize(13);
-    assertFields(in, "categories", "category_id", SERIAL);
+    assertFields(in, "categories", "category_id", SMALL_SERIAL);
     assertFields(
-        in, "employees", "employee_id", SERIAL, "reports_to", ref("employees.employee_id"));
+        in, "employees", "employee_id", SMALL_SERIAL, "reports_to", ref("employees.employee_id"));
     assertFields(
         in,
         "orders",
         "order_id",
-        SERIAL,
+        SMALL_SERIAL,
         "customer_id",
         ref("customers.customer_id"),
         "employee_id",
@@ -65,14 +67,14 @@ class DdlInspectorAlterFixturesTest {
         in,
         "products",
         "product_id",
-        SERIAL,
+        SMALL_SERIAL,
         "supplier_id",
         ref("suppliers.supplier_id"),
         "category_id",
         ref("categories.category_id"));
-    assertFields(in, "region", "region_id", SERIAL);
-    assertFields(in, "shippers", "shipper_id", SERIAL);
-    assertFields(in, "suppliers", "supplier_id", SERIAL);
+    assertFields(in, "region", "region_id", SMALL_SERIAL);
+    assertFields(in, "shippers", "shipper_id", SMALL_SERIAL);
+    assertFields(in, "suppliers", "supplier_id", SMALL_SERIAL);
     assertFields(in, "territories", "region_id", ref("region.region_id"));
     // composite primary keys whose members are all foreign keys
     assertFields(
@@ -102,21 +104,23 @@ class DdlInspectorAlterFixturesTest {
   void shouldProduceSevenSerialThirteenRefsAndSixUniquePkRefsForThePgDump() {
     Inspection in = pgDump(NestingOptions.none());
 
-    assertThat(count(in, d -> d.equals(SERIAL))).as("serial").isEqualTo(7);
+    assertThat(count(in, d -> d.equals(SMALL_SERIAL))).as("serial").isEqualTo(7);
     assertThat(count(in, d -> d.startsWith("ref["))).as("refs").isEqualTo(13);
     assertThat(count(in, d -> d.endsWith(", unique=pk]"))).as("unique=pk refs").isEqualTo(6);
   }
 
   @Test
-  void shouldWarnExactlyAboutTheThreeTextPrimaryKeysOfThePgDump() {
+  void shouldEnforceTheThreeTextPrimaryKeysOfThePgDumpAsNumericStrings() {
     Inspection in = pgDump(NestingOptions.none());
 
-    assertThat(in.warnings())
-        .hasSize(3)
-        .allMatch(w -> w.contains("PRIMARY KEY(") && w.contains("not enforced"))
-        .anyMatch(w -> w.startsWith("customers:") && w.contains("customer_id"))
-        .anyMatch(w -> w.startsWith("customer_demographics:") && w.contains("customer_type_id"))
-        .anyMatch(w -> w.startsWith("territories:") && w.contains("territory_id"));
+    assertFields(in, "customers", "customer_id", "serial[1..99999]");
+    assertFields(in, "customer_demographics", "customer_type_id", "serial[1..9999999999]");
+    assertFields(in, "territories", "territory_id", "serial");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
+    assertThat(in.comments().get("customers"))
+        .containsEntry("customer_id", "text key generated as numeric strings — max 99999 rows");
+    assertThat(in.comments().get("territories"))
+        .containsEntry("territory_id", "text key generated as numeric strings");
   }
 
   @Test
@@ -143,7 +147,7 @@ class DdlInspectorAlterFixturesTest {
   void shouldApplyAlterKeysOfTheSqlServerScript() {
     Inspection in = bestEffort("sqlserver/instnwnd-schema.sql", NestingOptions.none());
 
-    assertFields(in, "region", "RegionID", SERIAL);
+    assertFields(in, "region", "RegionID", INT_SERIAL);
     assertFields(in, "territories", "RegionID", ref("region.region_id"));
     assertFields(
         in,
@@ -159,9 +163,10 @@ class DdlInspectorAlterFixturesTest {
         refPk("customers.customer_id"),
         "CustomerTypeID",
         refPk("customer_demographics.customer_type_id"));
-    assertThat(in.warnings())
-        .anyMatch(w -> w.contains("customer_demographics") && w.contains("not enforced"))
-        .anyMatch(w -> w.contains("territories") && w.contains("not enforced"));
+    assertFields(in, "customers", "CustomerID", "serial[1..99999]");
+    assertFields(in, "customer_demographics", "CustomerTypeID", "serial[1..9999999999]");
+    assertFields(in, "territories", "TerritoryID", "serial");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
     assertNoIdentityMarker(in);
   }
 
@@ -214,15 +219,15 @@ class DdlInspectorAlterFixturesTest {
 
     // 7 single-column PKs become serial (NUMBER(9,0) maps to int); ORDER_DETAILS has the 8th PK,
     // a composite one whose members are both foreign keys
-    assertFields(in, "categories", "CATEGORY_ID", SERIAL);
-    assertFields(in, "customers", "CUSTOMER_ID", SERIAL);
+    assertFields(in, "categories", "CATEGORY_ID", NUMBER9_SERIAL);
+    assertFields(in, "customers", "CUSTOMER_ID", NUMBER9_SERIAL);
     assertFields(
-        in, "employees", "EMPLOYEE_ID", SERIAL, "REPORTS_TO", ref("employees.employee_id"));
+        in, "employees", "EMPLOYEE_ID", NUMBER9_SERIAL, "REPORTS_TO", ref("employees.employee_id"));
     assertFields(
         in,
         "orders",
         "ORDER_ID",
-        SERIAL,
+        NUMBER9_SERIAL,
         "CUSTOMER_ID",
         ref("customers.customer_id"),
         "EMPLOYEE_ID",
@@ -240,14 +245,14 @@ class DdlInspectorAlterFixturesTest {
         in,
         "products",
         "PRODUCT_ID",
-        SERIAL,
+        NUMBER9_SERIAL,
         "CATEGORY_ID",
         ref("categories.category_id"),
         "SUPPLIER_ID",
         ref("suppliers.supplier_id"));
-    assertFields(in, "shippers", "SHIPPER_ID", SERIAL);
-    assertFields(in, "suppliers", "SUPPLIER_ID", SERIAL);
-    assertThat(count(in, d -> d.equals(SERIAL))).as("serial").isEqualTo(7);
+    assertFields(in, "shippers", "SHIPPER_ID", NUMBER9_SERIAL);
+    assertFields(in, "suppliers", "SUPPLIER_ID", NUMBER9_SERIAL);
+    assertThat(count(in, d -> d.equals(NUMBER9_SERIAL))).as("serial").isEqualTo(7);
     assertThat(count(in, d -> d.startsWith("ref["))).as("refs").isEqualTo(8);
     assertThat(loadAll(in, dir)).hasSize(8);
   }

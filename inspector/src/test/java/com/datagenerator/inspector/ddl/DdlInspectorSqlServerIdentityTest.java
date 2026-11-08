@@ -185,7 +185,13 @@ class DdlInspectorSqlServerIdentityTest {
     // kept (omitting would dangle the ref); only integer-typed keys are rewritten to serial
     assertThat(datatypesOf(in, "parent")).containsKey(pk);
     if (integerKey) {
-      assertThat(datatypesOf(in, "parent")).containsEntry(pk, "serial");
+      String expected =
+          ddl.contains("numeric(18,0)")
+              ? "serial[1..999999999999999999]"
+              : ddl.toLowerCase(Locale.ROOT).contains("bigint")
+                  ? "serial"
+                  : "serial[1..2147483647]";
+      assertThat(datatypesOf(in, "parent")).containsEntry(pk, expected);
     }
     assertThat(datatypesOf(in, "child"))
         .containsEntry("parent_id", "ref[parent." + pk.toLowerCase(Locale.ROOT) + ", 1..count]");
@@ -275,7 +281,9 @@ class DdlInspectorSqlServerIdentityTest {
     Inspection in =
         inspect(dir, "CREATE TABLE t (IdentityNumber INT PRIMARY KEY, name NVARCHAR(20));");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("IdentityNumber", "serial").containsKey("name");
+    assertThat(datatypesOf(in, "t"))
+        .containsEntry("IdentityNumber", "serial[1..2147483647]")
+        .containsKey("name");
     assertThat(in.warnings()).noneMatch(w -> w.contains("IDENTITY"));
   }
 
@@ -288,7 +296,9 @@ class DdlInspectorSqlServerIdentityTest {
             "CREATE TABLE t (id INT PRIMARY KEY, note VARCHAR(30) DEFAULT 'IDENTITY(1,1)',"
                 + " other VARCHAR(30));");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial").containsKeys("note", "other");
+    assertThat(datatypesOf(in, "t"))
+        .containsEntry("id", "serial[1..2147483647]")
+        .containsKeys("note", "other");
     assertThat(in.warnings()).noneMatch(w -> w.contains("IDENTITY"));
   }
 
@@ -313,7 +323,9 @@ class DdlInspectorSqlServerIdentityTest {
         inspect(dir, "CREATE TABLE t (id INT PRIMARY KEY, col INT, KEY idx_col (col));");
 
     assertThat(datatypesOf(indexed, "t")).isEqualTo(datatypesOf(control, "t"));
-    assertThat(datatypesOf(indexed, "t")).containsEntry("id", "serial").containsKey("col");
+    assertThat(datatypesOf(indexed, "t"))
+        .containsEntry("id", "serial[1..2147483647]")
+        .containsKey("col");
     assertThat(indexed.warnings()).isEqualTo(control.warnings());
     assertThat(indexed.warnings()).noneMatch(w -> w.contains("IDENTITY"));
   }

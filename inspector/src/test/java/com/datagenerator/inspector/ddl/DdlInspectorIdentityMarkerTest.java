@@ -37,7 +37,7 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class DdlInspectorIdentityMarkerTest {
 
-  private static final String ID_SERIAL = "serial";
+  private static final String ID_SERIAL = "serial[1..2147483647]";
   private static final String INT = "int[1..999999]";
 
   // --- table named Identity ---
