@@ -18,13 +18,36 @@ package com.datagenerator.core.type;
 
 import lombok.Value;
 
-/** A sequential integer column: {@code serial} (starts at 1) or {@code serial[min]}. */
+/**
+ * A sequential integer column: {@code serial} (starts at 1), {@code serial[min]} or {@code
+ * serial[min..max]}. The ceiling only bounds the record count (checked at startup); values are
+ * always {@code min + index}.
+ */
 @Value
 public class SerialType implements DataType {
   long min;
+  long max;
+  boolean bounded;
+
+  public SerialType(long min) {
+    this(min, Long.MAX_VALUE, false);
+  }
+
+  public SerialType(long min, long max) {
+    this(min, max, true);
+  }
+
+  private SerialType(long min, long max, boolean bounded) {
+    this.min = min;
+    this.max = max;
+    this.bounded = bounded;
+  }
 
   @Override
   public String describe() {
+    if (bounded) {
+      return "serial[" + min + ".." + max + "]";
+    }
     return min == 1 ? "serial" : "serial[" + min + "]";
   }
 }

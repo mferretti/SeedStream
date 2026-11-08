@@ -23,6 +23,7 @@ import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.SerialType;
 import com.datagenerator.core.type.UniqueType;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -71,10 +72,31 @@ final class UniqueFieldValidator {
               + field
               + "' is inside array[...]; array elements share their record's index so values"
               + " would collide. Use it only on top-level or 1:1 object[...] fields.");
+    } else if (type instanceof SerialType s && s.isBounded()) {
+      checkCeiling(field, s);
     } else if (type instanceof ObjectType o) {
       walk(o.getStructureName(), underArray);
     } else if (type instanceof ArrayType a) {
       visit(structureName, field, a.getElementType(), true);
+    }
+  }
+
+  private void checkCeiling(String field, SerialType s) {
+    // Overflow-safe: capacity = max - min + 1 computed in BigInteger.
+    BigInteger capacity =
+        BigInteger.valueOf(s.getMax()).subtract(BigInteger.valueOf(s.getMin())).add(BigInteger.ONE);
+    if (BigInteger.valueOf(count).compareTo(capacity) > 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              Locale.ROOT,
+              "field '%s': %s holds %,d values but --count is %,d."
+                  + " Widen the range to at least %d..%d.",
+              field,
+              s.describe(),
+              capacity,
+              count,
+              s.getMin(),
+              s.getMin() + count - 1));
     }
   }
 

@@ -52,7 +52,9 @@ public class TypeParser {
       Pattern.compile("^array\\[(.+),\\s*(-?\\d+)\\.\\.(-?\\d+)\\]$");
   private static final Pattern UNIQUE_PATTERN =
       Pattern.compile("^unique\\[(?:(" + IDENT + ")\\s*,\\s*)?(-?\\d+)\\.\\.(-?\\d+|count)\\]$");
-  private static final Pattern SERIAL_PATTERN = Pattern.compile("^serial(?:\\[(-?\\d+)\\])?$");
+  private static final Pattern SERIAL_PATTERN = Pattern.compile("^serial(?:\\[([^\\]]*)\\])?$");
+  private static final Pattern SERIAL_ARGS_PATTERN =
+      Pattern.compile("^(-?\\d+)(?:\\.\\.(-?\\d+))?$");
   private static final Pattern REF_UNIQUE_PATTERN =
       Pattern.compile(
           REF_OPEN
@@ -172,10 +174,26 @@ public class TypeParser {
   }
 
   private static DataType parseSerial(Matcher m, String typeString) {
-    try {
-      return new SerialType(m.group(1) == null ? 1L : Long.parseLong(m.group(1)));
-    } catch (NumberFormatException e) {
+    if (m.group(1) == null) {
+      return new SerialType(1L);
+    }
+    Matcher args = SERIAL_ARGS_PATTERN.matcher(m.group(1));
+    if (!args.matches()) {
       throw new TypeParseException("Invalid serial start in: " + typeString);
+    }
+    try {
+      long min = Long.parseLong(args.group(1));
+      if (args.group(2) == null) {
+        return new SerialType(min);
+      }
+      long max = Long.parseLong(args.group(2));
+      if (min > max) {
+        throw new TypeParseException(
+            "Invalid serial range: min (%d) > max (%d) in: %s".formatted(min, max, typeString));
+      }
+      return new SerialType(min, max);
+    } catch (NumberFormatException e) {
+      throw new TypeParseException("Invalid serial range (out of long range) in: " + typeString);
     }
   }
 
