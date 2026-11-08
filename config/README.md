@@ -815,6 +815,12 @@ id: { datatype: serial }
 id: { datatype: serial[100000] }
 ```
 
+`serial[min..max]` gives the same values as `serial[min]` and adds a ceiling: a job whose `--count` is larger than `max − min + 1` is rejected at startup, before any table is truncated or row written. Use it for a key column narrower than 64 bits, so a `smallint` key fails fast instead of after 32,767 committed rows:
+
+```yaml
+id: { datatype: serial[1..32767] }   # smallint primary key
+```
+
 **Semantics**: Within a job, the value for record `i` is `min + i` (0-indexed). Independent of seed, thread count, and `--count` — the output is deterministic and identical across runs regardless of machine or parallelism. The output is a 64-bit integer. **Restriction**: not allowed inside `array[...]` — array elements share their record's index, so values would collide. **Prefix stability**: always prefix-stable — the first N records are identical even when --count changes.
 
 Database destinations bind it as `BIGINT`. For performance details, see docs/PERFORMANCE.md.

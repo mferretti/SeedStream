@@ -90,13 +90,13 @@ final class UniqueFieldValidator {
           String.format(
               Locale.ROOT,
               "field '%s': %s holds %,d values but --count is %,d."
-                  + " Widen the range to at least %d..%d.",
+                  + " Widen the range to at least %d..%s.",
               field,
               s.describe(),
               capacity,
               count,
               s.getMin(),
-              s.getMin() + count - 1));
+              BigInteger.valueOf(s.getMin()).add(BigInteger.valueOf(count - 1))));
     }
   }
 
