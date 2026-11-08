@@ -1,7 +1,7 @@
 name: "suppliers"
 data:
   supplier_id:
-    datatype: "serial"
+    datatype: "serial[1..32767]"
   company_name:
     datatype: "char[1..40]"
   contact_name:

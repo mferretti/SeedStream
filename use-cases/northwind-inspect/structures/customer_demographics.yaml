@@ -1,6 +1,6 @@
 name: "customer_demographics"
 data:
   customer_type_id:
-    datatype: "serial"  # hand edit (#441): text PK as numeric strings
+    datatype: "serial[1..9999999999]"  # text key generated as numeric strings — max 9999999999 rows
   customer_desc:
     datatype: "char[1..500]"

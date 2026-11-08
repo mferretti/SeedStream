@@ -103,7 +103,7 @@ Out of the box, from 88 columns, the inspector produced:
 - **Review comments** on every guess, and **warnings** on the 3 text primary keys it couldn't
   enforce.
 
-### 3. Hand edits: 32 of 88 fields
+### 3. Hand edits: 30 of 88 fields
 
 Every edit in [`structures/`](structures/) carries a comment naming its issue: `# hand edit (#NNN)`
 is required to load the data, and `# realism (optional)` only makes it look more like Northwind.
@@ -112,7 +112,7 @@ is required to load the data, and `# realism (optional)` only makes it look more
 |---:|---|---|---|
 | 12 | every FK `ref[]` | `1..count` → the parent's real row count (`1..8` categories, `1..90000` customers, …); `count` is the *child* job's `--count`, so different table sizes need static ranges kept in sync with `seed.sh` | [#442](https://github.com/mferretti/SeedStream/issues/442) |
 | 14 | `country`, `city`, `address`, `title`, `first_name` | name-hinted types overflow `varchar(n)` (`country` reaches 51 chars against `varchar(15)`); replaced with Northwind-style enums or a shorter type | [#440](https://github.com/mferretti/SeedStream/issues/440) |
-| 3 | `customer_id`, `territory_id`, `customer_type_id` | text PKs inspected as random `char[1..n]` collide and can't be referenced; set to `serial` (numeric strings, so `varchar(5)` caps customers at 99 999) | [#441](https://github.com/mferretti/SeedStream/issues/441) |
+| 1 | `orders.order_id` | inspected as `serial[1..32767]` (`smallint`); [`scale.sql`](scale.sql) widens the column to `integer`, so the ceiling is raised to `serial[1..2147483647]` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | 2 | `categories.picture`, `employees.photo` | `bytea` inspected as `char`, which PostgreSQL rejects; removed (nullable, stored as `NULL`) | [#439](https://github.com/mferretti/SeedStream/issues/439) |
 | 1 | `employees.reports_to` | a self-FK row may reference an id not inserted yet; `1..1` makes everyone report to employee 1 | [#213](https://github.com/mferretti/SeedStream/issues/213) |
 | 15 | prices, dates, names | *optional realism*: the 8 real category names, `full_name` contacts, Northwind-like price and date ranges, … | — |
@@ -120,7 +120,7 @@ is required to load the data, and `# realism (optional)` only makes it look more
 <details>
 <summary><b>Full edit list</b>: every field changed after <code>inspect</code>, before and after</summary>
 
-**Required (32).** Without these, the load fails or the FKs don't resolve.
+**Required (30).** Without these, the load fails or the FKs don't resolve.
 
 | Issue | Table | Field | Inspected | Edited to |
 |---|---|---|---|---|
@@ -150,9 +150,7 @@ is required to load the data, and `# realism (optional)` only makes it look more
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `suppliers` | `address` | `address` | `street_name` |
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `suppliers` | `city` | `city` | `enum[Aachen,Barcelona,… (29 values)]` |
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `suppliers` | `country` | `country` | `enum[Argentina,Austria,… (21 values)]` |
-| [#441](https://github.com/mferretti/SeedStream/issues/441) | `customer_demographics` | `customer_type_id` | `char[1..10]` | `serial` |
-| [#441](https://github.com/mferretti/SeedStream/issues/441) | `customers` | `customer_id` | `char[1..5]` | `serial` |
-| [#441](https://github.com/mferretti/SeedStream/issues/441) | `territories` | `territory_id` | `char[1..20]` | `serial` |
+| [#440](https://github.com/mferretti/SeedStream/issues/440) | `orders` | `order_id` | `serial[1..32767]` | `serial[1..2147483647]` |
 | [#439](https://github.com/mferretti/SeedStream/issues/439) | `categories` | `picture` | `char[1..50]` | `*removed*` |
 | [#439](https://github.com/mferretti/SeedStream/issues/439) | `employees` | `photo` | `char[1..50]` | `*removed*` |
 | [#213](https://github.com/mferretti/SeedStream/issues/213) | `employees` | `reports_to` | `ref[employees.employee_id, 1..count]` | `ref[employees.employee_id, 1..1]` |
@@ -180,9 +178,10 @@ is required to load the data, and `# realism (optional)` only makes it look more
 </details>
 
 One change goes into the database rather than the YAML: the schema uses `smallint` for every key,
-which caps `orders` at 32 767 rows. [`scale.sql`](scale.sql) widens `order_id` to `integer`. Nothing
-warns you in advance: without it the load fails at row 32 768, after the earlier batches have been
-committed ([#440](https://github.com/mferretti/SeedStream/issues/440)).
+which caps `orders` at 32 767 rows. `inspect` states that ceiling as `serial[1..32767]`, and `execute`
+rejects a larger `--count` at startup, before anything is written
+([#440](https://github.com/mferretti/SeedStream/issues/440)). [`scale.sql`](scale.sql) widens
+`order_id` to `integer`, and `orders.yaml` raises the ceiling to match.
 
 ### 4. Jobs and seeding
 
@@ -208,8 +207,8 @@ with that issue. The workaround is what you see in this folder; the issue is wha
 | `execute` | `data structure file not found: config/structures/…` | sibling `../structures` not inferred for a relative job path | none needed any more | [#438](https://github.com/mferretti/SeedStream/issues/438) (fixed) |
 | load | `column "picture" is of type bytea …` | no binary type; `bytea` falls back to `char` | 2 fields removed | [#439](https://github.com/mferretti/SeedStream/issues/439) |
 | load | `value too long for type character varying(15)` | name-hinted types ignore `varchar(n)` | 14 fields edited | [#440](https://github.com/mferretti/SeedStream/issues/440) |
-| load at scale | `smallint out of range` after 32 000 committed rows | `serial` drops the column's integer capacity | `scale.sql` widens `order_id` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
-| load | duplicate key on `customer_demographics`; FK miss on `orders.customer_id` | text PKs inspected as random `char` | 3 fields → `serial` | [#441](https://github.com/mferretti/SeedStream/issues/441) |
+| load at scale | `smallint out of range` after 32 000 committed rows | `serial` dropped the column's integer capacity; now `serial[1..32767]`, rejected at startup | `scale.sql` widens `order_id`, ceiling raised in `orders.yaml` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
+| load | duplicate key on `customer_demographics`; FK miss on `orders.customer_id` | text PKs inspected as random `char` | none needed any more | [#441](https://github.com/mferretti/SeedStream/issues/441) (fixed) |
 | load | `new row … violates check constraint` | CHECK constraints ignored | none needed any more | [#449](https://github.com/mferretti/SeedStream/issues/449) (fixed) |
 | load | `Key (category_id)=(43) is not present in table "categories"` | `1..count` uses the child's `--count` | 12 ranges set to parent counts | [#442](https://github.com/mferretti/SeedStream/issues/442) |
 | load | self-FK can reference a row not inserted yet | no ordered or self-referencing generation | `reports_to` → `1..1` | [#213](https://github.com/mferretti/SeedStream/issues/213) |

@@ -1,7 +1,7 @@
 name: "customers"
 data:
   customer_id:
-    datatype: "serial"  # hand edit (#441): text PK as numeric strings; varchar(5) caps customers at 99999
+    datatype: "serial[1..99999]"  # text key generated as numeric strings — max 99999 rows
   company_name:
     datatype: "char[1..40]"
   contact_name:

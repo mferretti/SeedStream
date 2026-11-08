@@ -1,7 +1,7 @@
 name: "orders"
 data:
   order_id:
-    datatype: "serial"
+    datatype: "serial[1..2147483647]"  # hand edit (#440): inspected as serial[1..32767] (smallint); scale.sql widens order_id to integer
   customer_id:
     datatype: "ref[customers.customer_id, 1..90000]"  # hand edit (#442): static parent row count
   employee_id:
