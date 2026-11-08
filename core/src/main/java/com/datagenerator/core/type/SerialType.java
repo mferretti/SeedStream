@@ -29,18 +29,18 @@ public class SerialType implements DataType {
   long max;
   boolean bounded;
 
-  public SerialType(long min) {
-    this(min, Long.MAX_VALUE, false);
+  public SerialType(long start) {
+    this(start, Long.MAX_VALUE, false);
   }
 
-  public SerialType(long min, long max) {
-    this(min, max, true);
+  public SerialType(long start, long ceiling) {
+    this(start, ceiling, true);
   }
 
-  private SerialType(long min, long max, boolean bounded) {
-    this.min = min;
-    this.max = max;
-    this.bounded = bounded;
+  private SerialType(long start, long ceiling, boolean hasCeiling) {
+    this.min = start;
+    this.max = ceiling;
+    this.bounded = hasCeiling;
   }
 
   @Override
