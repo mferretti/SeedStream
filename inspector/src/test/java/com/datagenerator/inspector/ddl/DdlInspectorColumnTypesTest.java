@@ -84,7 +84,7 @@ class DdlInspectorColumnTypesTest {
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
-                Map.entry("id", "serial"),
+                Map.entry("id", "serial[1..2147483647]"),
                 Map.entry("c_tiny", INT_TINYINT),
                 Map.entry("c_flag", "boolean"), // MySQL's boolean convention (#448)
                 Map.entry("c_small", INT_SMALLINT),
@@ -161,7 +161,7 @@ class DdlInspectorColumnTypesTest {
     assertThat(types)
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
-                Map.entry("id", "serial"),
+                Map.entry("id", "serial[1..2147483647]"),
                 Map.entry("c_seq", "serial"),
                 Map.entry("c_small", INT_SMALLINT),
                 Map.entry("c_int", INT),
@@ -214,7 +214,7 @@ class DdlInspectorColumnTypesTest {
         .containsExactlyInAnyOrderEntriesOf(
             Map.ofEntries(
                 // NUMBER(10) is scale 0, hence an integer, so the PK is enforced (#447)
-                Map.entry("id", "serial"),
+                Map.entry("id", "serial[1..9999999999]"),
                 Map.entry("c_num", DEC),
                 Map.entry("c_dec", DEC),
                 Map.entry("c_int", INT),
@@ -308,7 +308,7 @@ class DdlInspectorColumnTypesTest {
             """);
 
     Map<String, String> types = datatypesOf(inspection, "t");
-    assertThat(types).containsEntry("id", "serial").containsEntry("n", INT);
+    assertThat(types).containsEntry("id", "serial[1..2147483647]").containsEntry("n", INT);
     assertThat(inspection.comments().getOrDefault("t", Map.of()).keySet())
         .as("review comments must be keyed by real field names")
         .isSubsetOf(types.keySet());
@@ -318,7 +318,7 @@ class DdlInspectorColumnTypesTest {
   void shouldMapPrimaryKeyColumnWithSortDirectionToSerial(@TempDir Path dir) throws IOException {
     Inspection inspection = inspect(dir, "CREATE TABLE t (id INT, n INT, PRIMARY KEY (id ASC));");
 
-    assertThat(datatypesOf(inspection, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(inspection, "t")).containsEntry("id", "serial[1..2147483647]");
   }
 
   @Test

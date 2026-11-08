@@ -1,7 +1,7 @@
 name: "shippers"
 data:
   shipper_id:
-    datatype: "serial"
+    datatype: "serial[1..32767]"
   company_name:
     datatype: "enum[Speedy Express,United Package,Federal Shipping,Alliance Shippers,UPS,DHL]"  # realism (optional): Northwind shippers
   phone:

@@ -244,20 +244,21 @@ class DdlInspectorCycleKeyTest {
     Inspection in =
         inspectDdl(dir, "CREATE TABLE status (n int PRIMARY KEY CHECK (n IN (1,2,3)));");
 
-    assertThat(datatypesOf(in, "status")).containsEntry("n", "serial");
+    assertThat(datatypesOf(in, "status")).containsEntry("n", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "status").values()).noneMatch(d -> d.startsWith("cycle["));
   }
 
   @Test
-  void guardKeyWithoutValueListKeepsTheNotEnforcedWarning(@TempDir Path dir) {
+  void shouldEnforceTextKeysWithoutValueListAsNumericStrings(@TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir, "CREATE TABLE status (kind VARCHAR(5) PRIMARY KEY, other VARCHAR(5) UNIQUE);");
 
     assertThat(datatypesOf(in, "status").values()).noneMatch(d -> d.startsWith("cycle["));
-    assertThat(in.warnings())
-        .anyMatch(w -> w.contains("PRIMARY KEY(kind)") && w.contains(NOT_ENFORCED))
-        .anyMatch(w -> w.contains("UNIQUE(other)") && w.contains(NOT_ENFORCED));
+    assertThat(datatypesOf(in, "status"))
+        .containsEntry("kind", "serial[1..99999]")
+        .containsEntry("other", "unique[1..count]");
+    assertThat(in.warnings()).noneMatch(w -> w.contains(NOT_ENFORCED));
   }
 
   // ------------------------------------------------------------------ nesting

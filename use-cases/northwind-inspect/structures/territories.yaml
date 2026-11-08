@@ -1,7 +1,7 @@
 name: "territories"
 data:
   territory_id:
-    datatype: "serial"  # hand edit (#441): text PK as numeric strings
+    datatype: "serial"  # text key generated as numeric strings
   territory_description:
     datatype: "char[1..50]"
   region_id:

@@ -139,6 +139,8 @@ public class DdlInspector {
       List<List<String>> uniques,
       Set<String> serialColumns,
       Set<String> uuidColumns,
+      Set<String> textColumns,
+      Map<String, Long> ceilings,
       Set<String> dbAssignedColumns,
       Set<String> identityColumns,
       Map<String, ColumnChecks> checks) {}
@@ -571,6 +573,8 @@ public class DdlInspector {
     LinkedHashMap<String, String> fieldComments = new LinkedHashMap<>();
     Set<String> serialColumns = new LinkedHashSet<>();
     Set<String> uuidColumns = new LinkedHashSet<>();
+    Set<String> textColumns = new LinkedHashSet<>();
+    Map<String, Long> ceilings = new LinkedHashMap<>();
 
     for (Column column : table.columns) {
       String datatype = foreignKeyTypes.get(lower(column.name()));
@@ -582,6 +586,11 @@ public class DdlInspector {
         } else if (UUID_TYPES.contains(sqlType)) {
           uuidColumns.add(lower(column.name()));
         }
+        if (DdlTypeMapper.isText(sqlType)) {
+          textColumns.add(lower(column.name()));
+        }
+        DdlTypeMapper.keyCeiling(sqlType, typeArguments(colType))
+            .ifPresent(max -> ceilings.put(lower(column.name()), max));
         MappedType mapped =
             mapper.map(column.name(), baseTypeName(colType), typeArguments(colType));
         if (mapped.flagged()) {
@@ -618,6 +627,8 @@ public class DdlInspector {
             table.uniques,
             serialColumns,
             uuidColumns,
+            textColumns,
+            ceilings,
             table.dbAssigned,
             table.identity,
             checks));
@@ -707,7 +718,7 @@ public class DdlInspector {
       if (keys.serialColumns().contains(key)
           && !claimed.contains(key)
           && !foreignColumns.contains(key)) {
-        setKeyType(table, column, "serial");
+        setKeyType(table, column, serialType(keys, key));
       }
     }
     applyKeyChecks(table, keys);
@@ -725,7 +736,7 @@ public class DdlInspector {
               FieldDefinition field = table.data().get(actualKey(table, column));
               String datatype = field == null ? "" : field.getDatatype();
               boolean reference = datatype.startsWith("ref[");
-              if (reference || "serial".equals(datatype) || datatype.startsWith("unique[")) {
+              if (reference || datatype.startsWith("serial") || datatype.startsWith("unique[")) {
                 CheckConstraintMapper.keyNotes(checks, reference)
                     .forEach(note -> addComment(table, column, note));
               }
@@ -758,7 +769,7 @@ public class DdlInspector {
         String kind = generatedAlways ? "GENERATED ALWAYS AS IDENTITY" : "IDENTITY";
         Set<String> refs = referenced.get(lower(table.name()) + "." + key);
         boolean omit = refs == null && !compositePk.contains(key);
-        boolean serial = "serial".equals(table.data().get(column).getDatatype());
+        boolean serial = table.data().get(column).getDatatype().startsWith("serial");
         warnings.add(dbAssignedWarning(table.name() + "." + column, kind, refs, omit, serial));
         if (omit) {
           table.data().remove(column);
@@ -812,7 +823,8 @@ public class DdlInspector {
             .allMatch(
                 c ->
                     foreignColumns.contains(lower(c))
-                        || isIntegerType(table.data().get(actualKey(table, c))));
+                        || isIntegerType(table.data().get(actualKey(table, c)))
+                        || isTextKey(table, keys, c, spec.primary()));
     if (!enforceable) {
       boolean singleUuid =
           columns.size() == 1 && keys.uuidColumns().contains(lower(columns.get(0)));
@@ -828,11 +840,37 @@ public class DdlInspector {
     }
     boolean single = columns.size() == 1;
     for (String column : columns) {
-      setKeyType(
-          table,
-          column,
-          keyDatatype(table, spec, column, single, foreignColumns.contains(lower(column))));
+      boolean foreign = foreignColumns.contains(lower(column));
+      String datatype = keyDatatype(table, keys, spec, column, single, foreign);
+      setKeyType(table, column, datatype);
+      Long ceiling = keys.ceilings().get(lower(column));
+      String max = ceiling == null ? "" : " — max " + ceiling + " rows";
+      if (foreign) {
+        continue;
+      }
+      if (keys.textColumns().contains(lower(column))) {
+        addComment(table, column, "text key generated as numeric strings" + max);
+      } else if (datatype.startsWith("unique[") && ceiling != null && ceiling < Integer.MAX_VALUE) {
+        addComment(table, column, "max " + ceiling + " rows");
+      }
     }
+  }
+
+  /**
+   * A text column a key can generate as numeric strings. Outside a PRIMARY KEY, a name-hinted one
+   * (email, username) keeps its semantic type: collision-free semantic strings are #455.
+   */
+  private boolean isTextKey(TableInfo table, TableKeys keys, String column, boolean primary) {
+    String datatype = table.data().get(actualKey(table, column)).getDatatype();
+    return keys.textColumns().contains(lower(column))
+        && !isEnum(table, column)
+        && (primary || datatype.startsWith("char["));
+  }
+
+  /** {@code serial[1..ceiling]} when the column type has a ceiling, else plain {@code serial}. */
+  private String serialType(TableKeys keys, String column) {
+    Long ceiling = keys.ceilings().get(column);
+    return ceiling == null ? "serial" : "serial[1.." + ceiling + "]";
   }
 
   /**
@@ -880,7 +918,12 @@ public class DdlInspector {
   }
 
   private String keyDatatype(
-      TableInfo table, KeySpec spec, String column, boolean single, boolean foreign) {
+      TableInfo table,
+      TableKeys keys,
+      KeySpec spec,
+      String column,
+      boolean single,
+      boolean foreign) {
     if (foreign) {
       String target = refTarget(table.data().get(actualKey(table, column)).getDatatype());
       return "ref["
@@ -892,7 +935,7 @@ public class DdlInspector {
           + "]";
     }
     if (single) {
-      return spec.primary() ? "serial" : "unique[" + Defaults.REF_POOL + "]";
+      return spec.primary() ? serialType(keys, lower(column)) : "unique[" + Defaults.REF_POOL + "]";
     }
     return "unique[" + spec.group() + ", " + Defaults.REF_POOL + "]";
   }

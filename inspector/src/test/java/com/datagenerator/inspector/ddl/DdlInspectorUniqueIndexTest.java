@@ -88,7 +88,8 @@ class DdlInspectorUniqueIndexTest {
         inspectDdl(dir, "CREATE TABLE t (id int PRIMARY KEY, c int, d int, UNIQUE (c));");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", UNIQ), entry("d", INT));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", UNIQ), entry("d", INT));
     assertSameAsFlat(in, flat, "t");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
@@ -114,7 +115,8 @@ class DdlInspectorUniqueIndexTest {
         inspectDdl(dir, create + alter + "ALTER TABLE t ADD CONSTRAINT uq UNIQUE (c);\n");
 
     assertThat(datatypesOf(flat, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", UNIQ), entry("d", INT));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", UNIQ), entry("d", INT));
     for (Inspection in : List.of(before, between, after)) {
       assertSameAsFlat(in, flat, "t");
       assertThat(in.warnings()).isEmpty();
@@ -190,7 +192,7 @@ class DdlInspectorUniqueIndexTest {
   // ------------------------------------------------------- text columns: not enforced
 
   @Test
-  void shouldWarnNotEnforcedLikeInlineUniqueForTextColumn(@TempDir Path dir) {
+  void shouldEnforceTextColumnLikeInlineUnique(@TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir,
@@ -198,15 +200,11 @@ class DdlInspectorUniqueIndexTest {
     Inspection flat =
         inspectDdl(dir, "CREATE TABLE t (id int PRIMARY KEY, d varchar(10), UNIQUE (d));\n");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("d", "char[1..10]");
+    assertThat(datatypesOf(in, "t")).containsEntry("d", "unique[1..count]");
     assertSameAsFlat(in, flat, "t");
-    assertThat(in.comments().get("t")).containsKey("d");
-    assertThat(in.warnings())
-        .singleElement()
-        .asString()
-        .contains("t")
-        .contains("UNIQUE(d)")
-        .contains("not enforced");
+    assertThat(in.comments().get("t"))
+        .containsEntry("d", "text key generated as numeric strings — max 9999999999 rows");
+    assertThat(in.warnings()).isEmpty();
   }
 
   // ------------------------------------------------------- composite keys
@@ -221,7 +219,7 @@ class DdlInspectorUniqueIndexTest {
 
     assertThat(datatypesOf(in, "t").entrySet())
         .containsExactlyInAnyOrder(
-            entry("id", "serial"),
+            entry("id", "serial[1..2147483647]"),
             entry("a", "unique[uq1, 1..count]"),
             entry("b", "unique[uq1, 1..count]"),
             entry("c", INT));
@@ -297,7 +295,7 @@ class DdlInspectorUniqueIndexTest {
 
     assertThat(datatypesOf(in, "t").entrySet())
         .containsExactlyInAnyOrder(
-            entry("id", "serial"), entry("p_id", "ref[p.id, 1..count, unique]"));
+            entry("id", "serial[1..2147483647]"), entry("p_id", "ref[p.id, 1..count, unique]"));
     assertSameAsFlat(in, flat, "t");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
@@ -351,7 +349,7 @@ class DdlInspectorUniqueIndexTest {
     Inspection withoutIndex = inspectDdl(dir, "CREATE TABLE t (id int PRIMARY KEY, c int);\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", INT));
+        .containsExactlyInAnyOrder(entry("id", "serial[1..2147483647]"), entry("c", INT));
     assertSameAsFlat(in, withoutIndex, "t");
     assertThat(in.warnings()).isEmpty();
   }
@@ -369,7 +367,7 @@ class DdlInspectorUniqueIndexTest {
     Inspection withoutIndex = inspectDdl(dir, table + alter);
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("ID", "serial"), entry("C", INT));
+        .containsExactlyInAnyOrder(entry("ID", "serial[1..999999999]"), entry("C", INT));
     assertSameAsFlat(in, withoutIndex, "t");
     assertThat(in.warnings()).isEmpty();
   }
@@ -421,12 +419,13 @@ class DdlInspectorUniqueIndexTest {
   }
 
   @Test
-  void guardWarnOnceForTextColumnWhenUniqueAndSameIndexRepeat(@TempDir Path dir) {
+  void guardTextColumnEnforcedOnceWhenUniqueAndSameIndexRepeat(@TempDir Path dir) {
     String create = "CREATE TABLE t (id int PRIMARY KEY, d varchar(10), UNIQUE (d));\n";
     Inspection in = inspectDdl(dir, create + "CREATE UNIQUE INDEX u ON t (d);\n");
     Inspection withoutIndex = inspectDdl(dir, create);
 
-    assertThat(withoutIndex.warnings()).hasSize(1);
+    assertThat(datatypesOf(in, "t")).containsEntry("d", "unique[1..count]");
+    assertThat(withoutIndex.warnings()).isEmpty();
     assertThat(in.warnings()).isEqualTo(withoutIndex.warnings());
     assertSameAsFlat(in, withoutIndex, "t");
   }
@@ -473,7 +472,8 @@ class DdlInspectorUniqueIndexTest {
     Inspection in = inspectDdl(dir, T + index + ";\nCREATE TABLE other (x int);\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", INT), entry("d", INT));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", INT), entry("d", INT));
     assertThat(datatypesOf(in, "other").entrySet()).containsExactlyInAnyOrder(entry("x", INT));
     assertThat(in.warnings()).singleElement().asString().contains("t").contains("uq_part");
   }
@@ -509,7 +509,8 @@ class DdlInspectorUniqueIndexTest {
     Inspection in = inspectDdl(dir, T + "CREATE UNIQUE INDEX u ON t (c, ghost);\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", INT), entry("d", INT));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", INT), entry("d", INT));
     assertThat(in.warnings()).singleElement().asString().contains("t").contains("ghost");
   }
 
@@ -593,7 +594,8 @@ class DdlInspectorUniqueIndexTest {
     Inspection in = inspectDdl(dir, T + index + ";\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", INT), entry("d", INT));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", INT), entry("d", INT));
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -609,7 +611,7 @@ class DdlInspectorUniqueIndexTest {
 
     assertThat(datatypesOf(in, "t").entrySet())
         .containsExactlyInAnyOrder(
-            entry("id", "serial"), entry("c", INT), entry("d", "char[1..20]"));
+            entry("id", "serial[1..2147483647]"), entry("c", INT), entry("d", "char[1..20]"));
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -624,7 +626,8 @@ class DdlInspectorUniqueIndexTest {
                 + "$$ LANGUAGE plpgsql;\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", INT), entry("d", INT));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", INT), entry("d", INT));
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -640,7 +643,8 @@ class DdlInspectorUniqueIndexTest {
                 + "CREATE UNIQUE INDEX u2 ON t (d) /* WHERE */;\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("c", UNIQ), entry("d", UNIQ));
+        .containsExactlyInAnyOrder(
+            entry("id", "serial[1..2147483647]"), entry("c", UNIQ), entry("d", UNIQ));
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -653,7 +657,7 @@ class DdlInspectorUniqueIndexTest {
                 + "CREATE UNIQUE INDEX u ON t (\"where\");\n");
 
     assertThat(datatypesOf(in, "t").entrySet())
-        .containsExactlyInAnyOrder(entry("id", "serial"), entry("where", UNIQ));
+        .containsExactlyInAnyOrder(entry("id", "serial[1..2147483647]"), entry("where", UNIQ));
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -671,22 +675,15 @@ class DdlInspectorUniqueIndexTest {
   void shouldApplyUidxKeysOfTheOracleNorthwindExport(@TempDir Path dir) {
     Inspection in = oracleNorthwind();
 
-    assertThat(datatypesOf(in, "customers")).containsEntry("CUSTOMER_CODE", "char[1..5]");
-    assertThat(datatypesOf(in, "categories")).containsEntry("CATEGORY_NAME", "char[1..15]");
-    // both UIDX_* keys are on text columns: the key cannot be enforced, exactly like inline UNIQUE
-    assertThat(in.warnings())
-        .anyMatch(
-            w ->
-                w.contains("customers")
-                    && w.contains("UNIQUE(CUSTOMER_CODE)")
-                    && w.contains("not enforced"))
-        .anyMatch(
-            w ->
-                w.contains("categories")
-                    && w.contains("UNIQUE(CATEGORY_NAME)")
-                    && w.contains("not enforced"));
-    assertThat(in.comments().get("customers")).containsKey("CUSTOMER_CODE");
-    assertThat(in.comments().get("categories")).containsKey("CATEGORY_NAME");
+    assertThat(datatypesOf(in, "customers")).containsEntry("CUSTOMER_CODE", "unique[1..count]");
+    assertThat(datatypesOf(in, "categories")).containsEntry("CATEGORY_NAME", "unique[1..count]");
+    // both UIDX_* keys are on text columns: enforced as numeric strings, exactly like inline UNIQUE
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
+    assertThat(in.comments().get("customers"))
+        .containsEntry("CUSTOMER_CODE", "text key generated as numeric strings — max 99999 rows");
+    assertThat(in.comments().get("categories"))
+        .containsEntry(
+            "CATEGORY_NAME", "text key generated as numeric strings — max 999999999999999 rows");
     assertThat(loadAll(in, dir)).hasSize(8);
   }
 
@@ -709,8 +706,8 @@ class DdlInspectorUniqueIndexTest {
   void guardOraclePkIndexesChangeNothing(@TempDir Path dir) {
     Inspection in = oracleNorthwind();
 
-    assertThat(datatypesOf(in, "customers")).containsEntry("CUSTOMER_ID", "serial");
-    assertThat(datatypesOf(in, "categories")).containsEntry("CATEGORY_ID", "serial");
+    assertThat(datatypesOf(in, "customers")).containsEntry("CUSTOMER_ID", "serial[1..999999999]");
+    assertThat(datatypesOf(in, "categories")).containsEntry("CATEGORY_ID", "serial[1..999999999]");
     assertThat(datatypesOf(in, "order_details"))
         .containsEntry("ORDER_ID", "ref[orders.order_id, 1..count, unique=pk]")
         .containsEntry("PRODUCT_ID", "ref[products.product_id, 1..count, unique=pk]");

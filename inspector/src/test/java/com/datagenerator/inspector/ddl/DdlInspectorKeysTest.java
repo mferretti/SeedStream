@@ -114,12 +114,22 @@ class DdlInspectorKeysTest {
   }
 
   @Test
-  void shouldLeaveNonIntegerUniqueUnchangedWithCommentAndWarning(@TempDir Path dir)
+  void shouldEnforceTextUniqueAsNumericStringsWithCommentAndNoWarning(@TempDir Path dir)
       throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE t (id BIGINT PRIMARY KEY, sku VARCHAR(20) UNIQUE);");
-    assertThat(datatypesOf(in, "t")).containsEntry("sku", "char[1..20]");
-    assertThat(in.comments().get("t")).containsEntry("sku", NOT_ENFORCED);
-    assertThat(in.warnings()).anyMatch(w -> w.contains("UNIQUE(sku) not enforced"));
+    assertThat(datatypesOf(in, "t")).containsEntry("sku", "unique[1..count]");
+    assertThat(in.comments().get("t"))
+        .containsEntry("sku", "text key generated as numeric strings");
+    assertThat(in.warnings()).noneMatch(w -> w.contains("not enforced"));
+  }
+
+  @Test
+  void shouldStillLeaveNonIntegerNonTextUniqueNotEnforcedWithCommentAndWarning(@TempDir Path dir)
+      throws IOException {
+    Inspection in = inspect(dir, "CREATE TABLE t (id BIGINT PRIMARY KEY, d DATE UNIQUE);");
+    assertThat(datatypesOf(in, "t").get("d")).startsWith("date[");
+    assertThat(in.comments().get("t")).containsEntry("d", NOT_ENFORCED);
+    assertThat(in.warnings()).anyMatch(w -> w.contains("UNIQUE(d) not enforced"));
   }
 
   @Test

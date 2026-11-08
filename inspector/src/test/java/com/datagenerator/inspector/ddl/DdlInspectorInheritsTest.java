@@ -228,7 +228,7 @@ class DdlInspectorInheritsTest {
     assertSameAsFlat(in, flat, "b");
     assertThat(datatypesOf(in, "b")).containsEntry("id", INT);
     assertThat(datatypesOf(in, "a"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("code", "unique[1..count]")
         .containsEntry("o", "ref[other.id, 1..count]");
     loadAll(in, dir);
@@ -249,7 +249,7 @@ class DdlInspectorInheritsTest {
             """);
 
     assertThat(datatypesOf(in, "a"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("code", "unique[1..count]");
     assertThat(datatypesOf(in, "b")).containsExactly(entry("id", INT), entry("code", INT));
   }
@@ -331,7 +331,7 @@ class DdlInspectorInheritsTest {
     Inspection flat = inspectDdl(dir, "CREATE TABLE b (id serial, n int, y int);\n");
 
     assertSameAsFlat(in, flat, "b");
-    assertThat(datatypesOf(in, "b")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "b")).containsEntry("id", "serial[1..2147483647]");
   }
 
   // ---------------------------------------------------------------- child keys on inherited
@@ -349,7 +349,7 @@ class DdlInspectorInheritsTest {
     Inspection flat = inspectDdl(dir, "CREATE TABLE b (x int, y int, PRIMARY KEY (x));\n");
 
     assertSameAsFlat(in, flat, "b");
-    assertThat(datatypesOf(in, "b")).containsEntry("x", "serial");
+    assertThat(datatypesOf(in, "b")).containsEntry("x", "serial[1..2147483647]");
   }
 
   @Test
@@ -422,7 +422,7 @@ class DdlInspectorInheritsTest {
 
     assertSameAsFlat(in, flat, "b");
     assertThat(datatypesOf(in, "b"))
-        .containsEntry("x", "serial")
+        .containsEntry("x", "serial[1..2147483647]")
         .containsEntry("k", "unique[1..count]")
         .containsEntry("o", "ref[other.id, 1..count]");
     // the parent is untouched by the child's constraints
@@ -648,10 +648,12 @@ class DdlInspectorInheritsTest {
             CREATE TABLE c (LIKE a);
             """);
 
-    assertThat(datatypesOf(in, "a")).containsExactly(entry("x", "serial"));
+    assertThat(datatypesOf(in, "a")).containsExactly(entry("x", "serial[1..2147483647]"));
     assertThat(datatypesOf(in, "b"))
         .containsExactly(
-            entry("id", "serial"), entry("a_id", "ref[a.x, 1..count]"), entry("s", "char[1..5]"));
+            entry("id", "serial[1..2147483647]"),
+            entry("a_id", "ref[a.x, 1..count]"),
+            entry("s", "char[1..5]"));
   }
 
   @Test

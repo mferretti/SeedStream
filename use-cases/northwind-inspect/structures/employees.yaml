@@ -2,7 +2,7 @@ name: "employees"
 # hand edit (#439): binary column `photo` removed (nullable, stored as NULL)
 data:
   employee_id:
-    datatype: "serial"
+    datatype: "serial[1..32767]"
   last_name:
     datatype: "last_name"  # guessed from column name — verify
   first_name:

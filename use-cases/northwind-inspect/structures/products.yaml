@@ -1,7 +1,7 @@
 name: "products"
 data:
   product_id:
-    datatype: "serial"
+    datatype: "serial[1..32767]"
   product_name:
     datatype: "product_name"  # guessed from column name — verify
   supplier_id:

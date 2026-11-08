@@ -140,7 +140,7 @@ class DdlInspectorGeneratedIdentityTest {
   void shouldKeepSerialPrimaryKeyAsSerial(@TempDir Path dir) throws IOException {
     Inspection in = inspect(dir, "CREATE TABLE s (id SERIAL PRIMARY KEY, n INT);");
 
-    assertThat(datatypesOf(in, "s")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "s")).containsEntry("id", "serial[1..2147483647]");
   }
 
   @Test

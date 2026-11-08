@@ -110,11 +110,11 @@ class DdlInspectorEmbeddedTablesTest {
       assertSameAsStandalone(in, flat, table);
     }
     assertThat(datatypesOf(in, "parent"))
-        .containsEntry("id", "serial")
+        .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("code", "unique[1..count]");
     assertThat(datatypesOf(in, "child")).containsEntry("pid", "ref[parent.id, 1..count]");
     assertThat(datatypesOf(in, "other"))
-        .containsEntry("oid", "serial")
+        .containsEntry("oid", "serial[1..2147483647]")
         .containsEntry("pid", "ref[parent.id, 1..count]");
     assertThat(in.warnings()).isEqualTo(flat.warnings());
     loadAll(in, dir);
@@ -204,7 +204,7 @@ class DdlInspectorEmbeddedTablesTest {
 
     assertSameAsStandalone(dir, in, table + ";", "x");
     assertThat(datatypesOf(in, "x"))
-        .containsExactly(entry("id", "serial"), entry("label", "char[1..30]"));
+        .containsExactly(entry("id", "serial[1..2147483647]"), entry("label", "char[1..30]"));
   }
 
   @Test
@@ -280,7 +280,7 @@ class DdlInspectorEmbeddedTablesTest {
                 + "CREATE TABLE b (id INT, a_id INT REFERENCES a (id)) END");
 
     assertThat(names(in)).containsExactly("a", "b");
-    assertThat(datatypesOf(in, "a")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "a")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id, 1..count]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
@@ -355,7 +355,9 @@ class DdlInspectorEmbeddedTablesTest {
                 + "ALTER TABLE x ADD PRIMARY KEY (id);");
 
     assertThat(names(in)).containsExactly("x");
-    assertThat(datatypesOf(in, "x")).containsEntry("id", "serial").containsEntry("n", INT);
+    assertThat(datatypesOf(in, "x"))
+        .containsEntry("id", "serial[1..2147483647]")
+        .containsEntry("n", INT);
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -768,7 +770,7 @@ class DdlInspectorEmbeddedTablesTest {
                 + "DROP TABLE IF EXISTS gone;\n");
 
     assertThat(names(in)).containsExactly("a", "b");
-    assertThat(datatypesOf(in, "a")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "a")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id, 1..count]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);

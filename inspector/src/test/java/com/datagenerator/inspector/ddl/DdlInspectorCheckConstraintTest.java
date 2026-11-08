@@ -602,7 +602,7 @@ class DdlInspectorCheckConstraintTest {
   void guardSerialPrimaryKeyWithoutCommentWhenCheckHoldsFromOne(String check, @TempDir Path dir) {
     Inspection in = inspectDdl(dir, "CREATE TABLE t (id int PRIMARY KEY, CHECK (" + check + "));");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial[1..2147483647]");
     assertThat(comment(in, "t", "id")).as("comment for %s", check).isNull();
     assertThat(in.warnings()).isEmpty();
   }
@@ -626,7 +626,7 @@ class DdlInspectorCheckConstraintTest {
   void shouldKeepKeyAndCommentThatTheCheckCanBeViolated(String check, @TempDir Path dir) {
     Inspection in = inspectDdl(dir, "CREATE TABLE t (id int PRIMARY KEY, CHECK (" + check + "));");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial");
+    assertThat(datatypesOf(in, "t")).containsEntry("id", "serial[1..2147483647]");
     assertThat(comment(in, "t", "id"))
         .as("comment for %s", check)
         .isNotNull()

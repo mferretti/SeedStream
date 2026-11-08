@@ -77,8 +77,9 @@ class DdlInspectorNorthwindTypesTest {
         .matches("(timestamp|date)\\[.*\\]");
     assertThat(datatypesOf(inspection, "products").get("UnitPrice")).startsWith("decimal[");
     assertThat(datatypesOf(inspection, "products").get("Discontinued")).isEqualTo("boolean");
-    assertThat(datatypesOf(inspection, "employees").get("EmployeeID")).isEqualTo("serial");
-    assertThat(datatypesOf(inspection, "orders").get("OrderID")).isEqualTo("serial");
+    assertThat(datatypesOf(inspection, "employees").get("EmployeeID"))
+        .isEqualTo("serial[1..2147483647]");
+    assertThat(datatypesOf(inspection, "orders").get("OrderID")).isEqualTo("serial[1..2147483647]");
   }
 
   @Test
@@ -93,13 +94,13 @@ class DdlInspectorNorthwindTypesTest {
             .map(f -> f.getDatatype())
             // keys declared via ALTER TABLE (#376) are integers rendered as serial / ref[...];
             // a CHECK (#449) can narrow the range, e.g. int[0..999999] from CHECK (x >= 0)
-            .filter(d -> d.startsWith("int[") || d.equals("serial") || d.startsWith("ref["))
+            .filter(d -> d.startsWith("int[") || d.startsWith("serial[") || d.startsWith("ref["))
             .count();
     assertThat(declared).as("fixture sanity: NUMBER(9,0) columns").isEqualTo(19);
     assertThat(asInteger).as("every NUMBER(9,0) column is an integer").isEqualTo(declared);
     assertThat(datatypesOf(inspection, "categories"))
-        .containsEntry("CATEGORY_ID", "serial")
-        .containsEntry("CATEGORY_NAME", "char[1..15]");
+        .containsEntry("CATEGORY_ID", "serial[1..999999999]")
+        .containsEntry("CATEGORY_NAME", "unique[1..count]");
     assertThat(datatypesOf(inspection, "products"))
         .containsEntry("CATEGORY_ID", "ref[categories.category_id, 1..count]");
   }
