@@ -39,6 +39,7 @@ class SerialCeilingValidatorTest {
     STRUCTURES.put("full", Map.of("id", "serial[-9223372036854775808..9223372036854775807]"));
     STRUCTURES.put("zero_max", Map.of("id", "serial[0..9223372036854775807]"));
     STRUCTURES.put("open", Map.of("id", "serial[100]"));
+    STRUCTURES.put("near_max", Map.of("id", "serial[9223372036854775800..9223372036854775806]"));
     STRUCTURES.put("child", Map.of("cid", "serial[1..100]"));
     STRUCTURES.put("via_object", Map.of("kid", "object[child]"));
     STRUCTURES.put("via_array", Map.of("kids", "array[object[child], 1..3]"));
@@ -65,6 +66,16 @@ class SerialCeilingValidatorTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "field 'id': serial[1..32767] holds 32,767 values but --count is 40,000");
+  }
+
+  /** The suggested range must not wrap past Long.MAX_VALUE into a negative number. */
+  @Test
+  void shouldSuggestARangeWithoutOverflowNearLongMax() {
+    assertThatThrownBy(() -> validator(10).validate("near_max"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("holds 7 values but --count is 10")
+        .hasMessageContaining("9223372036854775809")
+        .hasMessageNotContaining("..-");
   }
 
   @Test
