@@ -759,7 +759,35 @@ order_id:    { datatype: ref[order.id, 1..count] }
 
 **`count` keyword**: `ref[s.f, 1..count]` — the `count` placeholder expands to the value of `--count` passed to the CLI (or configured in the job). Use it so FK ranges scale automatically without editing YAML when the count changes.
 
-**Limitation**: `count` refers to the *current* job's count. For a parent→child FK chain, run both jobs with the same `--count`, or use a static range derived from the parent job's count.
+**Limitation**: `count` refers to the *current* job's count. For a parent→child FK chain, run both jobs with the same `--count`, use a static range derived from the parent job's count, or use the parent-aware form below.
+
+**Parent-aware pool (`ref[s.f]`, #442)**: no range — the pool is worked out at startup from the parent's key type and the parent's row count, taken from a **counts file** named by the job and/or `--counts`:
+
+```yaml
+# counts.yaml — one per use case, shared by every job (and by your seeding script)
+customers: 90000
+orders: 1000000
+
+# jobs/db_orders.yaml
+source: orders.yaml
+counts: ../counts.yaml        # relative to the job file's directory (absolute paths as-is)
+
+# structures/orders.yaml
+customer_id: { datatype: ref[customers.customer_id] }   # parent key serial → pool 1..90000
+```
+
+```bash
+seedstream execute --job jobs/db_orders.yaml --count 1000000 --counts customers=120000   # CLI wins per entry
+```
+
+| Parent key | Pool for N parent rows |
+|---|---|
+| `serial` / `serial[min]` / `serial[min..max]` | `min..min+N−1` (rejected if `serial[min..max]` cannot hold N) |
+| `unique[1..count]` | `1..N` |
+| `unique[a..b]` (incl. `ref[..., a..b, unique]`) | `a..b` when it holds exactly N values; **wider → rejected as sparse** (only some values exist), narrower → rejected |
+| anything else (`int`, `char`, `cycle`, Datafaker, plain `ref`) | rejected: not referenceable |
+
+The resolved field generates exactly what the explicit form would (`ref[customers.customer_id]` with 90000 customers ≡ `ref[customers.customer_id, 1..90000]`, byte for byte). All checks run at startup, before any table is truncated: a parent missing from the counts, a missing parent structure or field, and self-references (#213) fail with a message naming the field. Unknown names in the counts file or `--counts` are ignored, so one file can serve a whole use case. Explicit ranges never read the counts or load the parent.
 
 **Parent reference (`ref[parent.<field>]`)**: copies the value of `<field>` from the **immediately enclosing parent record** (as opposed to `ref[<struct>.<field>, a..b]`, which samples a random id from *another* structure's pool). No range spec — it propagates the parent's actual generated value, guaranteeing referential integrity in nested trees.
 
@@ -850,6 +878,10 @@ customer_id: { datatype: ref[customer.id, 1..count, unique] }
 # Named composite FK group (1:1 join table):
 parent_id: { datatype: ref[parent_table.id, 1..count, unique=composite_key] }
 other_id:  { datatype: ref[other.id, 1..count, unique=composite_key] }
+
+# Parent-aware forms (pool from the parent key + counts file, see above):
+customer_id: { datatype: ref[customer.id, unique] }
+parent_id:   { datatype: ref[parent_table.id, unique=composite_key] }
 ```
 
 **Semantics**: Behaves identically to `unique[range]` / `unique[group, range]` but documents that the column references a foreign table. The `unique` annotation signals that the FK is also a unique key in this table (1:1 relationship). **Prefix stability**: same as the underlying range — fixed `1..N` is prefix-stable, dynamic `1..count` is not.
@@ -863,6 +895,7 @@ other_id:  { datatype: ref[other.id, 1..count, unique=composite_key] }
 | `unique[1..N]` (fixed) | yes |
 | `unique[1..count]` | no — reshuffles |
 | `ref[t.c, 1..count]` | no (values depend on the bound) |
+| `ref[t.c]` | no — values depend on the parent's count |
 
 ### Field Aliases
 
