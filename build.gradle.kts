@@ -140,7 +140,7 @@ subprojects {
             // snappy-java: kafka-clients 4.4.0 (:cli/:benchmarks) pulls snappy-java 1.1.10.7,
             // vulnerable to GHSA-q233-g92q-qxp6 + GHSA-gwq9-9ffj-mvrv (high) and GHSA-xqrx-qh46-34m7
             // (medium), all <= 1.1.10.8 and fixed in 1.1.10.9. Force everywhere.
-            "org.xerial.snappy:snappy-java:1.1.10.9"
+            "org.xerial.snappy:snappy-java:1.1.10.12"
         )
         // netty ships ~20 coordinated artifacts, all pulled transitively via
         // software.amazon.awssdk:netty-nio-client. 4.1.135.Final was vulnerable to
