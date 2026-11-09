@@ -136,7 +136,7 @@ subprojects {
             // guava: google-cloud-secretmanager 2.100.0 (:schema/:inspector/:cli) pulls guava
             // 33.6.0-jre, flagged by GHSA-xxph-c9ww-hj94 (vulnerable range <= 33.7.1). Fixed in
             // 33.7.2. Force everywhere so no configuration ships a pre-33.7.2 guava.
-            "com.google.guava:guava:33.7.2-jre",
+            "com.google.guava:guava:33.8.0-jre",
             // snappy-java: kafka-clients 4.4.0 (:cli/:benchmarks) pulls snappy-java 1.1.10.7,
             // vulnerable to GHSA-q233-g92q-qxp6 + GHSA-gwq9-9ffj-mvrv (high) and GHSA-xqrx-qh46-34m7
             // (medium), all <= 1.1.10.8 and fixed in 1.1.10.9. Force everywhere.
