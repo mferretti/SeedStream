@@ -75,9 +75,14 @@ class ParentRefExecuteTest {
   }
 
   private Path job(String name, String... extraLines) throws IOException {
+    return jobOf(name, name, extraLines);
+  }
+
+  /** Job {@code name} (output dir {@code name}) generating structure {@code source}. */
+  private Path jobOf(String name, String source, String... extraLines) throws IOException {
     Path jobFile = tempDir.resolve("job_" + name + ".yaml");
     List<String> lines = new ArrayList<>();
-    lines.add("source: " + name + ".yaml");
+    lines.add("source: " + source + ".yaml");
     lines.add("type: file");
     lines.add("structures_path: " + structDir.toAbsolutePath());
     lines.addAll(List.of(extraLines));
@@ -129,18 +134,22 @@ class ParentRefExecuteTest {
     return set;
   }
 
-  /** Asserts bare child output equals explicit child output, for 1 and 4 threads. */
+  /**
+   * Asserts bare child output equals explicit child output, for 1 and 4 threads. Both runs generate
+   * the same structure name ({@code kid}, rewritten in between): a unique group's permutation is
+   * keyed by structure name, so only the field's type may differ.
+   */
   private void assertBareEqualsExplicit(
       String bareType, String explicitType, int count, String counts, String... cliCounts)
       throws IOException {
-    child("bare", bareType);
-    child("expl", explicitType);
-    Path bareJob = job("bare", "counts: counts.yaml");
     countsFile("counts.yaml", counts);
-    Path explJob = job("expl");
+    Path bareJob = jobOf("bare", "kid", "counts: counts.yaml");
+    Path explJob = jobOf("expl", "kid");
     for (int threads : new int[] {1, 4}) {
+      child("kid", explicitType);
       List<String> expected = lines("expl", explJob, count, threads);
       assertThat(expected).hasSize(count);
+      child("kid", bareType);
       assertThat(lines("bare", bareJob, count, threads, cliCounts))
           .as("%s vs %s with %d threads", bareType, explicitType, threads)
           .isEqualTo(expected);
@@ -188,14 +197,16 @@ class ParentRefExecuteTest {
   void shouldMatchExplicitCompositeUniqueWhenTwoParentsShareGroup() throws Exception {
     structure("p1", "id", "serial");
     structure("p2", "id", "unique[1..count]");
-    structure("bare", "a", "ref[p1.id, unique=pk]", "b", "ref[p2.id, unique=pk]");
-    structure("expl", "a", "ref[p1.id, 1..20, unique=pk]", "b", "ref[p2.id, 1..30, unique=pk]");
     countsFile("counts.yaml", "p1: 20\np2: 30\n");
-    Path bareJob = job("bare", "counts: counts.yaml");
-    Path explJob = job("expl");
+    Path bareJob = jobOf("bare", "kid", "counts: counts.yaml");
+    Path explJob = jobOf("expl", "kid");
 
+    // same structure name for both runs: the group permutation is keyed by it
     for (int threads : new int[] {1, 4}) {
+      structure("kid", "a", "ref[p1.id, 1..20, unique=pk]", "b", "ref[p2.id, 1..30, unique=pk]");
       List<String> expected = lines("expl", explJob, 100, threads);
+      assertThat(expected).hasSize(100);
+      structure("kid", "a", "ref[p1.id, unique=pk]", "b", "ref[p2.id, unique=pk]");
       assertThat(lines("bare", bareJob, 100, threads)).isEqualTo(expected);
     }
   }
@@ -306,6 +317,18 @@ class ParentRefExecuteTest {
     assertThat(outDir.resolve("orders/output.json")).doesNotExist();
   }
 
+  /** max − min + 1 overflows a long for the whole long range; it is still sparse, not too small. */
+  @Test
+  void shouldFailSparseWhenParentUniqueRangeSpansWholeLongDomain() throws Exception {
+    structure("users", "id", "unique[-9223372036854775808..9223372036854775807]");
+    structure("orders", "user_id", "ref[users.id]");
+
+    CliTestSupport.Result r = exec(job("orders"), 10, 1, OPT_COUNTS, "users=500");
+
+    assertThat(r.exit()).isEqualTo(1);
+    assertThat(r.err()).contains("so only some of its values exist");
+  }
+
   @Test
   void shouldFailSparseWhenBareUniqueRefOverSparseParent() throws Exception {
     structure("users", "id", "unique[1..1000000]");
@@ -343,7 +366,12 @@ class ParentRefExecuteTest {
   @ParameterizedTest
   @CsvSource(
       delimiter = '|',
-      value = {"serial[1..100]", "unique[1..300]", "unique[1..100]"})
+      value = {
+        "serial[1..100]",
+        "unique[1..300]",
+        "unique[1..100]",
+        "serial[9223372036854775800]" // min + 499 would overflow a long
+      })
   void shouldFailWhenParentCannotHaveNRows(String parentType) throws Exception {
     structure("users", "id", parentType);
     structure("orders", "user_id", "ref[users.id]");
