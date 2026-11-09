@@ -27,6 +27,7 @@ public sealed interface DataType
         ArrayType,
         ReferenceType,
         ParentReferenceType,
+        ParentUniqueReferenceType,
         UniqueType,
         SerialType,
         CycleType,

@@ -40,6 +40,8 @@ public class JobConfig {
   String
       structuresPath; // Optional path for loading nested structures (default: config/structures/)
 
+  String counts; // Optional counts file (row counts of parent structures), relative to the job file
+
   @Valid SecretsConfig secrets; // Optional secrets resolver config (default: env var resolution)
 
   @NotNull JsonNode conf; // Destination-specific config (parsed based on type)
@@ -51,12 +53,14 @@ public class JobConfig {
       @JsonProperty("type") String type,
       @JsonProperty("seed") SeedConfig seed,
       @JsonProperty("structures_path") String structuresPath,
+      @JsonProperty("counts") String counts,
       @JsonProperty("secrets") SecretsConfig secrets,
       @JsonProperty("conf") JsonNode conf) {
     this.source = source;
     this.type = type;
     this.seed = seed;
     this.structuresPath = structuresPath;
+    this.counts = counts;
     this.secrets = secrets;
     this.conf = conf;
   }
