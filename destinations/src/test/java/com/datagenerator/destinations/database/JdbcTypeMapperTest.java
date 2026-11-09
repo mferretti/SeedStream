@@ -21,6 +21,7 @@ import static org.mockito.Mockito.*;
 
 import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.CycleType;
+import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
@@ -457,6 +458,22 @@ class JdbcTypeMapperTest {
 
       verify(ps).setNull(4, Types.BIGINT);
       verifyNoMoreInteractions(ps);
+    }
+
+    /** The destination re-parses raw datatypes, so it sees the unresolved form (#442). */
+    @Test
+    void shouldBindParentUniqueReferenceAsLong() throws SQLException {
+      for (String raw : List.of("ref[p.id, unique]", "ref[p.id, unique=pk]")) {
+        PreparedStatement statement = mock(PreparedStatement.class);
+        DataType type = new TypeParser().parse(raw);
+
+        JdbcTypeMapper.bind(statement, 1, 42L, type);
+        JdbcTypeMapper.bind(statement, 2, null, type);
+
+        verify(statement).setLong(1, 42L);
+        verify(statement).setNull(2, Types.BIGINT);
+        verifyNoMoreInteractions(statement);
+      }
     }
 
     @Test

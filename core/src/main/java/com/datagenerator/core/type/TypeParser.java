@@ -64,6 +64,9 @@ public class TypeParser {
               + "),\\s*(-?\\d+)\\.\\.(-?\\d+|count),\\s*unique(?:=("
               + IDENT
               + "))?\\]$");
+  private static final Pattern REF_BARE_UNIQUE_PATTERN =
+      Pattern.compile(
+          REF_OPEN + IDENT + DOT_SEP + IDENT + ")\\s*,\\s*unique(?:=(" + IDENT + "))?\\]$");
   private static final Pattern PARENT_REF_PATTERN =
       Pattern.compile("^ref\\[parent\\.(" + IDENT + CLOSE_END);
 
@@ -104,6 +107,8 @@ public class TypeParser {
     if (m.matches())
       return parseUnique(
           m.group(5), m.group(3), m.group(4), m.group(1) + "." + m.group(2), typeString);
+    m = REF_BARE_UNIQUE_PATTERN.matcher(trimmed);
+    if (m.matches()) return new ParentUniqueReferenceType(m.group(1), m.group(2), m.group(3));
     m = REF_COUNT_PATTERN.matcher(trimmed);
     if (m.matches()) return parseRefCount(m, typeString);
     m = REF_RANGE_PATTERN.matcher(trimmed);

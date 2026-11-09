@@ -19,6 +19,7 @@ package com.datagenerator.destinations.database;
 import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
+import com.datagenerator.core.type.ParentUniqueReferenceType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
 import com.datagenerator.core.type.SerialType;
@@ -161,7 +162,7 @@ public class JdbcTypeMapper {
       return;
     }
 
-    if (type instanceof ReferenceType || type instanceof UniqueType || type instanceof SerialType) {
+    if (isIntegerKey(type)) {
       // ref[] generates Long; bind as BIGINT (fits INT columns when value is in range)
       ps.setLong(
           index,
@@ -196,9 +197,19 @@ public class JdbcTypeMapper {
         case TIMESTAMP -> Types.TIMESTAMP;
       };
     }
-    if (type instanceof ReferenceType || type instanceof UniqueType || type instanceof SerialType)
-      return Types.BIGINT;
+    if (isIntegerKey(type)) return Types.BIGINT;
     return Types.VARCHAR; // EnumType, CustomDatafakerType
+  }
+
+  /**
+   * Key-like types that generate a {@code Long}: refs (incl. unresolved #442 forms), unique,
+   * serial.
+   */
+  private static boolean isIntegerKey(DataType type) {
+    return type instanceof ReferenceType
+        || type instanceof ParentUniqueReferenceType
+        || type instanceof UniqueType
+        || type instanceof SerialType;
   }
 
   private static int toInt(Object value) {

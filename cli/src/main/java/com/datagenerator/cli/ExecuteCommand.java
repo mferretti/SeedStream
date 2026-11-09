@@ -26,6 +26,7 @@ import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.destinations.DestinationAdapter;
@@ -60,6 +61,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -364,6 +366,13 @@ public class ExecuteCommand implements Callable<Integer> {
   private Integer threads;
 
   @Option(
+      names = {"--counts"},
+      description =
+          "Row counts of the structures that bare ref[t.c] forms point at, as name=N,name=N."
+              + " Overrides the job's counts file entry by entry.")
+  private String counts;
+
+  @Option(
       names = {"--faker-types"},
       description =
           "YAML config of custom Datafaker types to register before generation. Must match the "
@@ -468,7 +477,9 @@ public class ExecuteCommand implements Callable<Integer> {
         dataStructure.getData().size());
 
     // 3a. Validate unique[...] fields before anything is opened (open() may truncate tables)
-    StructureRegistry registry = createStructureRegistry(structuresPath, count, dataStructure);
+    ParentRefResolver refResolver = new ParentRefResolver(resolveCounts(jobConfig), structuresPath);
+    StructureRegistry registry =
+        createStructureRegistry(structuresPath, count, dataStructure, refResolver);
     new UniqueFieldValidator(registry, structuresPath, count).validate(dataStructure.getName());
 
     // 3b. Check every field's constraints (ranges, array lengths) before anything is opened:
@@ -978,9 +989,22 @@ public class ExecuteCommand implements Callable<Integer> {
     return new DatabaseDestination(dbConfig, rawFieldTypes);
   }
 
+  /** Job counts file (relative to the job file) overridden per entry by {@code --counts}. */
+  private Map<String, Long> resolveCounts(JobConfig jobConfig) {
+    Map<String, Long> merged = new HashMap<>();
+    if (jobConfig.getCounts() != null) {
+      Path countsFile = jobFile.toAbsolutePath().resolveSibling(jobConfig.getCounts()).normalize();
+      merged.putAll(ParentRefResolver.readCountsFile(countsFile));
+    }
+    if (counts != null) {
+      merged.putAll(ParentRefResolver.parseCliCounts(counts));
+    }
+    return merged;
+  }
+
   @SuppressWarnings("PMD.AvoidCatchingGenericException")
   private StructureRegistry createStructureRegistry(
-      Path structuresPath, long jobCount, DataStructure root) {
+      Path structuresPath, long jobCount, DataStructure root, ParentRefResolver refResolver) {
     StructureLoader loader =
         (structureName, basePath, registry) -> {
           try {
@@ -995,13 +1019,16 @@ public class ExecuteCommand implements Callable<Integer> {
             // declaration order: it drives generation and every output layout (CSV columns,
             // JSON keys, Avro/protobuf field order) (#374). A plain toMap() gave hash order.
             TypeParser typeParser = new TypeParser();
-            return structure.getData().entrySet().stream()
-                .collect(
-                    Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> typeParser.parse(entry.getValue().getDatatype()),
-                        (a, b) -> a,
-                        LinkedHashMap::new));
+            Map<String, DataType> parsed =
+                structure.getData().entrySet().stream()
+                    .collect(
+                        Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> typeParser.parse(entry.getValue().getDatatype()),
+                            (a, b) -> a,
+                            LinkedHashMap::new));
+            // bare ref[t.c] forms become explicit ranges here, before unique layouts are computed
+            return refResolver.resolve(structureName, parsed);
           } catch (Exception e) {
             throw new GeneratorException("Failed to load structure: " + structureName, e);
           }
