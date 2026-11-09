@@ -52,9 +52,9 @@ final class ParentRefResolver {
   private final Path structuresPath;
   private final TypeParser typeParser = new TypeParser();
 
-  ParentRefResolver(Map<String, Long> counts, Path structuresPath) {
-    this.counts = counts;
-    this.structuresPath = structuresPath;
+  ParentRefResolver(Map<String, Long> rowCounts, Path structuresDir) {
+    this.counts = rowCounts;
+    this.structuresPath = structuresDir;
   }
 
   /** Returns {@code fields} with every count-resolved reference replaced; same order. */
