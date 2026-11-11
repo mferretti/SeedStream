@@ -20,6 +20,7 @@ import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.ParentUniqueReferenceType;
 import com.datagenerator.core.type.ReferenceType;
+import com.datagenerator.core.type.SelfReferenceType;
 import com.datagenerator.core.type.SerialType;
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.core.type.UniqueType;
@@ -43,6 +44,9 @@ import java.util.Map;
  * is loaded, before unique layouts are computed, so the resolved types flow through the existing
  * generators and checks unchanged. Explicit forms are never touched and no parent is loaded for
  * them.
+ *
+ * <p>A bare {@code ref[t.c]} inside {@code t} itself is a self-reference (#213): it needs no row
+ * count and becomes a {@link SelfReferenceType} (only the job's root structure may have one).
  */
 final class ParentRefResolver {
   private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
@@ -50,22 +54,30 @@ final class ParentRefResolver {
 
   private final Map<String, Long> counts;
   private final Path structuresPath;
+  private final String rootStructure;
   private final TypeParser typeParser = new TypeParser();
 
-  ParentRefResolver(Map<String, Long> rowCounts, Path structuresDir) {
+  ParentRefResolver(Map<String, Long> rowCounts, Path structuresDir, String root) {
     this.counts = rowCounts;
     this.structuresPath = structuresDir;
+    this.rootStructure = root;
   }
 
   /** Returns {@code fields} with every count-resolved reference replaced; same order. */
   Map<String, DataType> resolve(String structureName, Map<String, DataType> fields) {
     Map<String, DataType> out = new LinkedHashMap<>();
-    fields.forEach((name, type) -> out.put(name, resolveType(structureName, name, type)));
+    fields.forEach((name, type) -> out.put(name, resolveType(structureName, name, type, false)));
     return out;
   }
 
-  private DataType resolveType(String structure, String field, DataType type) {
+  private DataType resolveType(String structure, String field, DataType type, boolean inArray) {
     return switch (type) {
+      case ReferenceType r when r.getMin() == null && r.getTargetStructure().equals(structure) ->
+          selfReference(structure, field, r, inArray);
+      case ParentUniqueReferenceType p when p.getTargetStructure().equals(structure) ->
+          throw new IllegalArgumentException(
+              "%s in %s.%s: a self-reference cannot be unique (a row cannot own its own key twice)"
+                  .formatted(p.describe(), structure, field));
       case ReferenceType r when r.getMin() == null -> {
         long[] pool =
             pool(structure, field, r.describe(), r.getTargetStructure(), r.getTargetField());
@@ -84,7 +96,7 @@ final class ParentRefResolver {
       }
       case ArrayType a ->
           new ArrayType(
-              resolveType(structure, field, a.getElementType()),
+              resolveType(structure, field, a.getElementType(), true),
               a.getMinLength(),
               a.getMaxLength());
       case null, default -> type;
@@ -95,9 +107,6 @@ final class ParentRefResolver {
   private long[] pool(String structure, String field, String ref, String parent, String key) {
     String label = ref + " in " + structure + "." + field;
     String parentKey = parent + "." + key;
-    if (parent.equals(structure)) {
-      throw new IllegalArgumentException(label + ": self-references are not supported yet (#213)");
-    }
     Long rows = counts.get(parent);
     if (rows == null) {
       throw new IllegalArgumentException(
@@ -130,12 +139,39 @@ final class ParentRefResolver {
         }
         yield new long[] {u.getMin(), u.getMax()};
       }
-      case null, default ->
-          throw new IllegalArgumentException(
-              "%s: %s is %s, which cannot be referenced without a range. Use serial,"
-                      .formatted(label, parentKey, keyType.describe())
-                  + " unique[1..count] or a fixed unique range on it, or an explicit"
-                  + " ref[%s, lo..hi].".formatted(parentKey));
+      case null, default -> throw notReferenceable(label, parentKey, keyType);
+    };
+  }
+
+  private static IllegalArgumentException notReferenceable(
+      String label, String parentKey, DataType keyType) {
+    return new IllegalArgumentException(
+        "%s: %s is %s, which cannot be referenced without a range. Use serial,"
+                .formatted(label, parentKey, keyType.describe())
+            + " unique[1..count] or a fixed unique range on it, or an explicit"
+            + " ref[%s, lo..hi].".formatted(parentKey));
+  }
+
+  /** Bare {@code ref[t.c]} in {@code t}: points at the key of an earlier record of {@code t}. */
+  private DataType selfReference(
+      String structure, String field, ReferenceType ref, boolean inArray) {
+    String label = ref.describe() + " in " + structure + "." + field;
+    if (inArray) {
+      throw new IllegalArgumentException(
+          label + ": a self-reference cannot be an array element (elements share the record)");
+    }
+    if (!structure.equals(rootStructure)) {
+      throw new IllegalArgumentException(
+          "%s: a self-reference is only allowed in the job's root structure ('%s'), not in a nested one"
+              .formatted(label, rootStructure));
+    }
+    String key = ref.getTargetField();
+    DataType keyType = parentKeyType(label, structure, key);
+    return switch (keyType) {
+      case SerialType s -> new SelfReferenceType(structure + "." + field, key, s);
+      case UniqueType u when u.getGroup() == null ->
+          new SelfReferenceType(structure + "." + field, key, u);
+      case null, default -> throw notReferenceable(label, structure + "." + key, keyType);
     };
   }
 

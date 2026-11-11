@@ -200,7 +200,7 @@ class DdlInspectorForeignKeyCaseTest {
             """);
 
     assertThat(datatypesOf(in, "employees"))
-        .containsEntry("ReportsTo", "ref[employees.employee_id, 1..count]")
+        .containsEntry("ReportsTo", "ref[employees.employee_id]")
         .containsKey("EmployeeID");
     assertLoads(in, dir);
   }

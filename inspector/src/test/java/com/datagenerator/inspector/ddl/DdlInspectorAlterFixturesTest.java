@@ -273,9 +273,9 @@ class DdlInspectorAlterFixturesTest {
     return "ref[" + target + "]";
   }
 
-  /** A self-referencing FK keeps the explicit pool (#213). */
+  /** A self-referencing FK is a bare ref (#213). */
   private static String selfRef(String target) {
-    return "ref[" + target + ", 1..count]";
+    return "ref[" + target + "]";
   }
 
   private static String refPk(String target) {

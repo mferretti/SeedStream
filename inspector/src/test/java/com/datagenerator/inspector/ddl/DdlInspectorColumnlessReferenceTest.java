@@ -170,7 +170,7 @@ class DdlInspectorColumnlessReferenceTest {
             CREATE TABLE emp (emp_id int PRIMARY KEY, boss int REFERENCES emp);
             """);
 
-    assertThat(datatypesOf(in, "emp")).containsEntry("boss", "ref[emp.emp_id, 1..count]");
+    assertThat(datatypesOf(in, "emp")).containsEntry("boss", "ref[emp.emp_id]");
   }
 
   @Test

@@ -264,8 +264,9 @@ public class DdlInspector {
   /**
    * #442: rewrites {@code ref[p.c, 1..count...]} to {@code ref[p.c...]} where the engine can
    * resolve the pool from the parent's key: single-column FK to another top-level table whose
-   * referenced column ended up as serial / a plain unique range / a unique FK key. Returns whether
-   * any ref was rewritten.
+   * referenced column ended up as serial / a plain unique range / a unique FK key. A single-column
+   * self-FK becomes bare too (#213; its key must be serial or unique, not a unique FK key). Returns
+   * whether any ref to ANOTHER table was rewritten (only those need a row count).
    */
   private boolean bareRefs(List<TableInfo> tables, List<TableInfo> topLevel) {
     Map<String, TableInfo> byName = new LinkedHashMap<>();
@@ -274,10 +275,7 @@ public class DdlInspector {
     for (TableInfo table : tables) {
       for (ForeignKeyRef fk : table.foreignKeys()) {
         TableInfo parent = byName.get(lower(fk.refTable()));
-        if (parent == null
-            || parent == table
-            || fk.localColumns().size() != 1
-            || fk.refColumns().size() != 1) {
+        if (parent == null || fk.localColumns().size() != 1 || fk.refColumns().size() != 1) {
           continue;
         }
         String column = actualKey(table, fk.localColumns().get(0));
@@ -290,13 +288,15 @@ public class DdlInspector {
         if (isRef(field)
             && field.getDatatype().contains(suffix)
             && parentColumns.size() == 1
-            && resolvableKey(parent.data().get(parentColumns.get(0)).getDatatype())) {
+            && resolvableKey(parent.data().get(parentColumns.get(0)).getDatatype())
+            && (parent != table
+                || !parent.data().get(parentColumns.get(0)).getDatatype().startsWith("ref["))) {
           String bare = field.getDatatype().replaceFirst(Pattern.quote(suffix), "");
           if (bare.startsWith("ref[parent.") && bare.indexOf(',') < 0) {
             continue; // ref[parent.c] is the nested parent-record reference, not table "parent"
           }
           table.data().put(column, new FieldDefinition(bare, null));
-          rewritten = true;
+          rewritten |= parent != table; // a self-reference needs no row count (#213)
         }
       }
     }

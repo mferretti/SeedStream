@@ -46,13 +46,21 @@ public class UniqueGenerator implements DataGenerator {
       throw new GeneratorException(
           "UniqueGenerator requires UniqueType, got: " + dataType.getClass().getSimpleName());
     }
-    if (!u.isResolved()) {
-      throw new GeneratorException(
-          "Unresolved " + u.describe() + ": structure was not loaded via StructureRegistry");
-    }
     long index = RecordIndex.current();
     if (index < 0) {
       throw new GeneratorException("unique requires the generation engine's record index");
+    }
+    return valueAt(u, index);
+  }
+
+  /**
+   * The value of {@code u} for record {@code index}: a pure function of the master seed, the group
+   * and the index (also used to recompute the key of an earlier record for a self-reference).
+   */
+  public static long valueAt(UniqueType u, long index) {
+    if (!u.isResolved()) {
+      throw new GeneratorException(
+          "Unresolved " + u.describe() + ": structure was not loaded via StructureRegistry");
     }
     if (index >= u.getDomain()) {
       throw new GeneratorException(

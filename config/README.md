@@ -789,6 +789,18 @@ seedstream execute --job jobs/db_orders.yaml --count 1000000 --counts customers=
 
 The resolved field generates exactly what the explicit form would (`ref[customers.customer_id]` with 90000 customers ≡ `ref[customers.customer_id, 1..90000]`, byte for byte). All checks run at startup, before any table is truncated: a parent missing from the counts, a missing parent structure or field, and self-references (#213) fail with a message naming the field. Unknown names in the counts file or `--counts` are ignored, so one file can serve a whole use case. Explicit ranges never read the counts or load the parent.
 
+**Self-reference (`ref[t.c]` inside `t`, #213)**: a bare reference to the structure's own key — an org chart's `reports_to`, a task's `parent_task_id`. Record `i` gets the key of a random **earlier** record `j < i`, so the row it points at has always been written already (the engine's single writer inserts in record order: committed in an earlier batch, earlier in the same transaction, or earlier in the same batch) and cycles are impossible:
+
+```yaml
+# employees.yaml
+employee_id: { datatype: serial }
+reports_to:  { datatype: ref[employees.employee_id], nullable: 0.05 }
+```
+
+- Record 0 has no earlier row: it is NULL when the field is `nullable`, otherwise it points at itself.
+- `j` is a hash of (seed, field, record index), not a draw from the record's random stream, so adding a self-reference changes no other field; thread-count independent and prefix-stable. The shape is a shallow tree (early rows collect many children).
+- The key must be `serial[...]` or a group-less `unique[...]` field of the same structure; no counts file needed. Rejected at startup: `ref[t.c, unique]` on itself, inside `array[...]`, or in a nested structure (only the job's root structure can self-reference).
+
 **Parent reference (`ref[parent.<field>]`)**: copies the value of `<field>` from the **immediately enclosing parent record** (as opposed to `ref[<struct>.<field>, a..b]`, which samples a random id from *another* structure's pool). No range spec — it propagates the parent's actual generated value, guaranteeing referential integrity in nested trees.
 
 - Valid **only** inside a nested `object[...]` or `array[object[...], ...]` field; used at the top level it fails fast (no parent record on the stack).

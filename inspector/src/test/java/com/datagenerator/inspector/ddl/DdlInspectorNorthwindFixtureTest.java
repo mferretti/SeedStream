@@ -116,7 +116,8 @@ class DdlInspectorNorthwindFixtureTest {
     assertThat(loaded.get("employees").getData()).containsKeys("EmployeeID", "ReportsTo");
     assertThat(loaded.get("orders").getData()).containsKeys("OrderID", "CustomerID", "EmployeeID");
     assertThat(loaded.get("employees").getData().get("ReportsTo").getDatatype())
-        .isEqualTo("ref[employees.employee_id, 1..count]");
+        .isEqualTo("ref[employees.employee_id]");
+    assertThat(loaded.get("employees").getData().get("ReportsTo").getNullable()).isEqualTo(0.05);
   }
 
   private static Inspection inspectFixture() {
