@@ -117,7 +117,7 @@ class DdlInspectorKeyCeilingTest {
     assertThat(datatypesOf(in, "customers")).containsEntry("customer_id", "serial[1..99999]");
     assertThat(comment(in, "customers", "customer_id")).isEqualTo(TEXT_KEY + " — max 99999 rows");
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("customer_id", "ref[customers.customer_id, 1..count]");
+        .containsEntry("customer_id", "ref[customers.customer_id]");
     assertThat(in.warnings()).noneMatch(w -> w.contains(NOT_ENFORCED));
     assertThat(loaded).containsKeys("customers", "orders");
   }

@@ -432,8 +432,7 @@ class DdlInspectorColumnTypesTest {
             );
             """);
 
-    assertThat(datatypesOf(inspection, "orders"))
-        .containsEntry("customer_id", "ref[customers.id, 1..count]");
+    assertThat(datatypesOf(inspection, "orders")).containsEntry("customer_id", "ref[customers.id]");
   }
 
   @Test

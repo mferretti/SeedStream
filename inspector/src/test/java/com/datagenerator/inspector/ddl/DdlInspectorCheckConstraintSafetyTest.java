@@ -127,7 +127,7 @@ class DdlInspectorCheckConstraintSafetyTest {
                 + "CREATE TABLE c ([id] INT NOT NULL PRIMARY KEY, [p] INT REFERENCES[p]([id]));\n"
                 + "CREATE TABLE t (id INT NOT NULL, x INT CONSTRAINT[ck] CHECK (x>=5));\n");
 
-    assertThat(datatypesOf(in, "c")).containsEntry("p", "ref[p.id, 1..count]");
+    assertThat(datatypesOf(in, "c")).containsEntry("p", "ref[p.id]");
     assertThat(datatypesOf(in, "t")).containsEntry("x", "int[5..999999]");
   }
 

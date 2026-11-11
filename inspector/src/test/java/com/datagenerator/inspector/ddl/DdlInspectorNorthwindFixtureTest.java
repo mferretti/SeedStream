@@ -88,8 +88,7 @@ class DdlInspectorNorthwindFixtureTest {
 
     // Orders.EmployeeID -> Employees.EmployeeID, so Employees.EmployeeID must stay for the ref.
     assertThat(datatypesOf(in, "employees")).containsKey("EmployeeID");
-    assertThat(datatypesOf(in, "orders"))
-        .containsEntry("EmployeeID", "ref[employees.employee_id, 1..count]");
+    assertThat(datatypesOf(in, "orders")).containsEntry("EmployeeID", "ref[employees.employee_id]");
     assertThat(in.warnings())
         .anyMatch(
             w ->

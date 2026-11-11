@@ -87,7 +87,7 @@ class DdlInspectorGeneratedIdentityTest {
 
     // Omitting would leave txn.account_id referencing a missing field, so the PK is kept...
     assertThat(datatypesOf(in, "account")).containsEntry("id", "serial");
-    assertThat(datatypesOf(in, "txn")).containsEntry("account_id", "ref[account.id, 1..count]");
+    assertThat(datatypesOf(in, "txn")).containsEntry("account_id", "ref[account.id]");
     // ...with a warning that names the referencing situation and points at the follow-up (#400).
     assertThat(in.warnings())
         .anyMatch(

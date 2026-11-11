@@ -6,9 +6,8 @@
 #
 # ⚠️ DESTRUCTIVE (db): every job truncates its table first. Disposable database only.
 #
-# Row counts MUST stay in sync with the static ref[] ranges in structures/*.yaml
-# (e.g. orders.customer_id = ref[customers.customer_id, 1..90000] ⇔ customers seeded with 90000).
-# Inspector gap tracked in #442.
+# Row counts come from structures/counts.yaml, the same file the jobs read for their bare
+# ref[table.column] fields (#442): change a size there and the references follow.
 set -euo pipefail
 
 TARGET="${1:-db}"
@@ -21,30 +20,32 @@ cd "$DIR" # file jobs write to ./output/
 
 total=0
 start=$SECONDS
-seed() { # seed <table> <count>
-  local t0=$SECONDS
-  echo "==> $1 ($2 rows)"
+seed() { # seed <table>   (count from structures/counts.yaml)
+  local t0=$SECONDS n
+  n=$(awk -F': *' -v t="$1" '$1 == t { print $2 }' "$DIR/structures/counts.yaml")
+  [[ -n "$n" ]] || { echo "no count for $1 in structures/counts.yaml" >&2; exit 1; }
+  echo "==> $1 ($n rows)"
   # shellcheck disable=SC2086 # SEEDSTREAM_ARGS is intentionally word-split
-  "$SEEDSTREAM" execute --job "$DIR/jobs/${TARGET}_$1.yaml" --count "$2" ${SEEDSTREAM_ARGS:-}
+  "$SEEDSTREAM" execute --job "$DIR/jobs/${TARGET}_$1.yaml" --count "$n" ${SEEDSTREAM_ARGS:-}
   echo "    $1 done in $((SECONDS - t0))s"
-  total=$((total + $2))
+  total=$((total + n))
 }
 
 # Lookup tables: original Northwind sizes.
-seed categories 8
-seed region 4
-seed shippers 6
-seed suppliers 29
-seed customer_demographics 10
-seed employees 9
-seed territories 53
-seed products 77
-seed employee_territories 49
+seed categories
+seed region
+seed shippers
+seed suppliers
+seed customer_demographics
+seed employees
+seed territories
+seed products
+seed employee_territories
 # Scaled tables.
-seed customers 90000 # varchar(5) key: max 99 999 (#441)
-seed customer_customer_demo 20000
-seed orders 1000000
-seed order_details 2600000
+seed customers # varchar(5) key: max 99 999 (#441)
+seed customer_customer_demo
+seed orders
+seed order_details
 
 elapsed=$((SECONDS - start))
 echo "==> Done: $total rows in ${elapsed}s (~$((total / (elapsed > 0 ? elapsed : 1))) rows/s overall)"

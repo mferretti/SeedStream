@@ -179,7 +179,9 @@ class DdlInspectorCycleKeyTest {
                 + "CREATE TABLE orders (id int PRIMARY KEY, st VARCHAR(5) REFERENCES status (kind));");
 
     assertThat(datatypesOf(in, "status")).containsEntry("kind", "cycle[new,paid]");
-    assertThat(datatypesOf(in, "orders").get("st")).startsWith("ref[status.kind");
+    assertThat(datatypesOf(in, "orders").get("st"))
+        .as("a cycle[...] parent keeps the explicit pool")
+        .isEqualTo("ref[status.kind, 1..count]");
     assertThat(loadAll(in, dir)).containsKeys("status", "orders");
   }
 
@@ -235,7 +237,9 @@ class DdlInspectorCycleKeyTest {
                 + "CREATE TABLE detail (kind VARCHAR(5) PRIMARY KEY REFERENCES status (kind)"
                 + " CHECK (kind IN ('a','b')));");
 
-    assertThat(datatypesOf(in, "detail").get("kind")).startsWith("ref[status.kind");
+    assertThat(datatypesOf(in, "detail").get("kind"))
+        .as("a cycle[...] parent keeps the explicit pool")
+        .isEqualTo("ref[status.kind, 1..count, unique]");
     assertThat(loadAll(in, dir)).containsKeys("status", "detail");
   }
 

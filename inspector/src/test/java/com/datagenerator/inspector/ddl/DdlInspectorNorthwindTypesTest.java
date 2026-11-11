@@ -102,7 +102,7 @@ class DdlInspectorNorthwindTypesTest {
         .containsEntry("CATEGORY_ID", "serial[1..999999999]")
         .containsEntry("CATEGORY_NAME", "unique[1..count]");
     assertThat(datatypesOf(inspection, "products"))
-        .containsEntry("CATEGORY_ID", "ref[categories.category_id, 1..count]");
+        .containsEntry("CATEGORY_ID", "ref[categories.category_id]");
   }
 
   @Test

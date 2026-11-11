@@ -295,7 +295,7 @@ class DdlInspectorUniqueIndexTest {
 
     assertThat(datatypesOf(in, "t").entrySet())
         .containsExactlyInAnyOrder(
-            entry("id", "serial[1..2147483647]"), entry("p_id", "ref[p.id, 1..count, unique]"));
+            entry("id", "serial[1..2147483647]"), entry("p_id", "ref[p.id, unique]"));
     assertSameAsFlat(in, flat, "t");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
@@ -311,7 +311,7 @@ class DdlInspectorUniqueIndexTest {
                 + "CREATE TABLE t (id int PRIMARY KEY, p_id int);\n"
                 + "ALTER TABLE t ADD CONSTRAINT fk FOREIGN KEY (p_id) REFERENCES p (id);\n");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("p_id", "ref[p.id, 1..count, unique]");
+    assertThat(datatypesOf(in, "t")).containsEntry("p_id", "ref[p.id, unique]");
   }
 
   @Test
@@ -709,8 +709,8 @@ class DdlInspectorUniqueIndexTest {
     assertThat(datatypesOf(in, "customers")).containsEntry("CUSTOMER_ID", "serial[1..999999999]");
     assertThat(datatypesOf(in, "categories")).containsEntry("CATEGORY_ID", "serial[1..999999999]");
     assertThat(datatypesOf(in, "order_details"))
-        .containsEntry("ORDER_ID", "ref[orders.order_id, 1..count, unique=pk]")
-        .containsEntry("PRODUCT_ID", "ref[products.product_id, 1..count, unique=pk]");
+        .containsEntry("ORDER_ID", "ref[orders.order_id, unique=pk]")
+        .containsEntry("PRODUCT_ID", "ref[products.product_id, unique=pk]");
     assertThat(in.warnings()).noneMatch(w -> w.contains("also in") || w.contains("PK_"));
     assertThat(in.comments().values().stream().flatMap(m -> m.keySet().stream()))
         .doesNotContain("CUSTOMER_ID", "CATEGORY_ID", "SHIPPER_ID", "ORDER_ID", "PRODUCT_ID");

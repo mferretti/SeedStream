@@ -1,9 +1,9 @@
 name: "order_details"
 data:
   order_id:
-    datatype: "ref[orders.order_id, 1..1000000, unique=pk]"  # hand edit (#442): static parent row count
+    datatype: "ref[orders.order_id, unique=pk]"
   product_id:
-    datatype: "ref[products.product_id, 1..77, unique=pk]"  # hand edit (#442): static parent row count
+    datatype: "ref[products.product_id, unique=pk]"
   unit_price:
     datatype: "decimal[2.00..265.00]"  # realism (optional): Northwind-like range
   quantity:

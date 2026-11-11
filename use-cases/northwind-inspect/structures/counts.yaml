@@ -1,0 +1,16 @@
+# Row counts per table: seed.sh seeds each table with its count, and bare ref[table.column]
+# fields take their parent's pool from it (jobs: counts: ../structures/counts.yaml).
+# Written by inspect with placeholder values; set to Northwind-at-scale sizes here.
+categories: 8
+region: 4
+shippers: 6
+suppliers: 29
+customer_demographics: 10
+employees: 9
+territories: 53
+products: 77
+employee_territories: 49
+customers: 90000
+customer_customer_demo: 20000
+orders: 1000000
+order_details: 2600000

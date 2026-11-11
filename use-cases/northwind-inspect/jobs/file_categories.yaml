@@ -1,4 +1,5 @@
 # structures_path auto-resolves to ../structures/ (dir ends in "jobs").
+counts: ../structures/counts.yaml   # parent row counts for bare ref[t.c]
 source: categories.yaml
 type: file
 seed:

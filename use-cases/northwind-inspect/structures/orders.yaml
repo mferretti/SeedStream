@@ -3,9 +3,9 @@ data:
   order_id:
     datatype: "serial[1..2147483647]"  # hand edit (#440): inspected as serial[1..32767] (smallint); scale.sql widens order_id to integer
   customer_id:
-    datatype: "ref[customers.customer_id, 1..90000]"  # hand edit (#442): static parent row count
+    datatype: "ref[customers.customer_id]"
   employee_id:
-    datatype: "ref[employees.employee_id, 1..9]"  # hand edit (#442): static parent row count
+    datatype: "ref[employees.employee_id]"
   order_date:
     datatype: "date[1996-07-01..2026-06-30]"  # realism (optional): Northwind-like range
   required_date:
@@ -13,7 +13,7 @@ data:
   shipped_date:
     datatype: "date[1996-07-01..2026-06-30]"  # realism (optional): Northwind-like range
   ship_via:
-    datatype: "ref[shippers.shipper_id, 1..6]"  # hand edit (#442): static parent row count
+    datatype: "ref[shippers.shipper_id]"
   freight:
     datatype: "decimal[0.02..1007.64]"  # realism (optional): Northwind-like range
   ship_name:

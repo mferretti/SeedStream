@@ -103,14 +103,13 @@ Out of the box, from 88 columns, the inspector produced:
 - **Review comments** on every guess, and **warnings** on the 3 text primary keys it couldn't
   enforce.
 
-### 3. Hand edits: 30 of 88 fields
+### 3. Hand edits: 18 of 88 fields
 
 Every edit in [`structures/`](structures/) carries a comment naming its issue: `# hand edit (#NNN)`
 is required to load the data, and `# realism (optional)` only makes it look more like Northwind.
 
 | Edits | Fields | What and why | Issue |
 |---:|---|---|---|
-| 12 | every FK `ref[]` | `1..count` → the parent's real row count (`1..8` categories, `1..90000` customers, …); `count` is the *child* job's `--count`, so different table sizes need static ranges kept in sync with `seed.sh` | [#442](https://github.com/mferretti/SeedStream/issues/442) |
 | 14 | `country`, `city`, `address`, `title`, `first_name` | name-hinted types overflow `varchar(n)` (`country` reaches 51 chars against `varchar(15)`); replaced with Northwind-style enums or a shorter type | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | 1 | `orders.order_id` | inspected as `serial[1..32767]` (`smallint`); [`scale.sql`](scale.sql) widens the column to `integer`, so the ceiling is raised to `serial[1..2147483647]` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | 2 | `categories.picture`, `employees.photo` | `bytea` inspected as `char`, which PostgreSQL rejects; removed (nullable, stored as `NULL`) | [#439](https://github.com/mferretti/SeedStream/issues/439) |
@@ -120,22 +119,10 @@ is required to load the data, and `# realism (optional)` only makes it look more
 <details>
 <summary><b>Full edit list</b>: every field changed after <code>inspect</code>, before and after</summary>
 
-**Required (30).** Without these, the load fails or the FKs don't resolve.
+**Required (18).** Without these, the load fails or the FKs don't resolve.
 
 | Issue | Table | Field | Inspected | Edited to |
 |---|---|---|---|---|
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `customer_customer_demo` | `customer_id` | `ref[customers.customer_id, 1..count, unique=pk]` | `ref[customers.customer_id, 1..90000, unique=pk]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `customer_customer_demo` | `customer_type_id` | `ref[customer_demographics.customer_type_id, 1..count, unique=pk]` | `ref[customer_demographics.customer_type_id, 1..10, unique=pk]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `employee_territories` | `employee_id` | `ref[employees.employee_id, 1..count, unique=pk]` | `ref[employees.employee_id, 1..9, unique=pk]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `employee_territories` | `territory_id` | `ref[territories.territory_id, 1..count, unique=pk]` | `ref[territories.territory_id, 1..53, unique=pk]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `order_details` | `order_id` | `ref[orders.order_id, 1..count, unique=pk]` | `ref[orders.order_id, 1..1000000, unique=pk]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `order_details` | `product_id` | `ref[products.product_id, 1..count, unique=pk]` | `ref[products.product_id, 1..77, unique=pk]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `orders` | `customer_id` | `ref[customers.customer_id, 1..count]` | `ref[customers.customer_id, 1..90000]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `orders` | `employee_id` | `ref[employees.employee_id, 1..count]` | `ref[employees.employee_id, 1..9]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `orders` | `ship_via` | `ref[shippers.shipper_id, 1..count]` | `ref[shippers.shipper_id, 1..6]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `products` | `category_id` | `ref[categories.category_id, 1..count]` | `ref[categories.category_id, 1..8]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `products` | `supplier_id` | `ref[suppliers.supplier_id, 1..count]` | `ref[suppliers.supplier_id, 1..29]` |
-| [#442](https://github.com/mferretti/SeedStream/issues/442) | `territories` | `region_id` | `ref[region.region_id, 1..count]` | `ref[region.region_id, 1..4]` |
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `customers` | `address` | `address` | `street_name` |
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `customers` | `city` | `city` | `enum[Aachen,Barcelona,… (29 values)]` |
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `customers` | `country` | `country` | `enum[Argentina,Austria,… (21 values)]` |
@@ -186,9 +173,13 @@ rejects a larger `--count` at startup, before anything is written
 ### 4. Jobs and seeding
 
 `jobs/` holds one database job and one file job per table, all with seed `1996`. The database jobs
-truncate their table first. [`seed.sh`](seed.sh) runs them parents first with the counts above.
-Those counts must match the static `ref[]` ranges in `structures/`
-([#442](https://github.com/mferretti/SeedStream/issues/442)).
+truncate their table first. [`seed.sh`](seed.sh) runs them parents first, each with its row count
+from [`structures/counts.yaml`](structures/counts.yaml). The same file sizes the foreign keys:
+`inspect` emits `ref[customers.customer_id]` (no range) and writes a `counts.yaml` skeleton with
+every table at 100, and each job points at it with `counts: ../structures/counts.yaml`, so a
+reference always draws from the parent's real key pool
+([#442](https://github.com/mferretti/SeedStream/issues/442)). Change a size in one place and both
+the seeding and the references follow.
 
 The jobs rely on the sibling `../structures/` auto-resolution, so no `structures_path:` is needed.
 `seed.sh` passes absolute paths; from inside this folder a relative `--job jobs/x.yaml` works too
@@ -210,7 +201,7 @@ with that issue. The workaround is what you see in this folder; the issue is wha
 | load at scale | `smallint out of range` after 32 000 committed rows | `serial` dropped the column's integer capacity; now `serial[1..32767]`, rejected at startup | `scale.sql` widens `order_id`, ceiling raised in `orders.yaml` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | load | duplicate key on `customer_demographics`; FK miss on `orders.customer_id` | text PKs inspected as random `char` | none needed any more | [#441](https://github.com/mferretti/SeedStream/issues/441) (fixed) |
 | load | `new row … violates check constraint` | CHECK constraints ignored | none needed any more | [#449](https://github.com/mferretti/SeedStream/issues/449) (fixed) |
-| load | `Key (category_id)=(43) is not present in table "categories"` | `1..count` uses the child's `--count` | 12 ranges set to parent counts | [#442](https://github.com/mferretti/SeedStream/issues/442) |
+| load | `Key (category_id)=(43) is not present in table "categories"` | `1..count` used the child's `--count` | none needed any more: bare `ref[t.c]` + `counts.yaml` | [#442](https://github.com/mferretti/SeedStream/issues/442) (fixed) |
 | load | self-FK can reference a row not inserted yet | no ordered or self-referencing generation | `reports_to` → `1..1` | [#213](https://github.com/mferretti/SeedStream/issues/213) |
 
 The same exercise on the SQL Server, MySQL and Oracle versions of Northwind, and on hand-written
@@ -242,6 +233,7 @@ blocked.
 | `schema.sql` | Unmodified `pg_dump --schema-only` of the Northwind schema; load this into PostgreSQL and feed it to `inspect` |
 | `scale.sql` | Widens `orders.order_id` / `order_details.order_id` to `integer` for the 1M-row run |
 | `structures/*.yaml` | Inspector output plus the commented hand edits |
+| `structures/counts.yaml` | Row count per table: read by `seed.sh` and by the jobs' bare `ref[t.c]` fields |
 | `jobs/db_*.yaml`, `jobs/file_*.yaml` | One PostgreSQL job and one file job per table |
 | `seed.sh` | `./seed.sh db` or `./seed.sh file`: all 13 tables, parents first, with timings |
 | `verify.sql` | Row counts, FK check, orphan check, two Northwind reports |

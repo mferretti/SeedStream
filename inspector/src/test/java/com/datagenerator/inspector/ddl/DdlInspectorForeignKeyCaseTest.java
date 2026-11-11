@@ -55,7 +55,7 @@ class DdlInspectorForeignKeyCaseTest {
     assertThat(datatypesOf(in, "orders"))
         .containsExactly(
             Map.entry("OrderID", "serial[1..2147483647]"),
-            Map.entry("EmployeeID", "ref[employees.employee_id, 1..count]"));
+            Map.entry("EmployeeID", "ref[employees.employee_id]"));
     assertThat(datatypesOf(in, "employees")).containsKeys("EmployeeID", "Name");
     assertLoads(in, dir);
   }
@@ -77,7 +77,7 @@ class DdlInspectorForeignKeyCaseTest {
             """);
 
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("EmployeeID", "ref[employees.employee_id, 1..count]")
+        .containsEntry("EmployeeID", "ref[employees.employee_id]")
         .containsKey("OrderID");
     assertLoads(in, dir);
   }
@@ -93,8 +93,7 @@ class DdlInspectorForeignKeyCaseTest {
             CREATE TABLE Orders (OrderID INT PRIMARY KEY, EmployeeID INT REFERENCES Employees (EmployeeID));
             """);
 
-    assertThat(datatypesOf(in, "orders"))
-        .containsEntry("EmployeeID", "ref[employees.employee_id, 1..count]");
+    assertThat(datatypesOf(in, "orders")).containsEntry("EmployeeID", "ref[employees.employee_id]");
     assertLoads(in, dir);
   }
 
@@ -114,7 +113,7 @@ class DdlInspectorForeignKeyCaseTest {
             """);
 
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("EMPLOYEE_ID", "ref[employees.employee_id, 1..count]")
+        .containsEntry("EMPLOYEE_ID", "ref[employees.employee_id]")
         .containsKey("ORDER_ID");
     assertThat(datatypesOf(in, "employees")).containsKeys("EMPLOYEE_ID", "LAST_NAME");
     assertLoads(in, dir);
@@ -140,8 +139,8 @@ class DdlInspectorForeignKeyCaseTest {
             """);
 
     assertThat(datatypesOf(in, "order_details"))
-        .containsEntry("OrderID", "ref[orders.order_id, 1..count, unique=pk]")
-        .containsEntry("ProductID", "ref[products.product_id, 1..count, unique=pk]")
+        .containsEntry("OrderID", "ref[orders.order_id, unique=pk]")
+        .containsEntry("ProductID", "ref[products.product_id, unique=pk]")
         .containsKey("Quantity");
     assertLoads(in, dir);
   }
@@ -161,7 +160,7 @@ class DdlInspectorForeignKeyCaseTest {
             """);
 
     assertThat(datatypesOf(in, "employee_profile"))
-        .containsEntry("EmployeeID", "ref[employees.employee_id, 1..count, unique]");
+        .containsEntry("EmployeeID", "ref[employees.employee_id, unique]");
     assertLoads(in, dir);
   }
 
@@ -183,7 +182,7 @@ class DdlInspectorForeignKeyCaseTest {
             """);
 
     assertThat(datatypesOf(in, "badges"))
-        .containsEntry("EmployeeID", "ref[employees.employee_id, 1..count, unique=uq1]");
+        .containsEntry("EmployeeID", "ref[employees.employee_id, unique=uq1]");
     assertLoads(in, dir);
   }
 
@@ -231,7 +230,7 @@ class DdlInspectorForeignKeyCaseTest {
         .containsEntry("invoices", "array[object[invoice], 1..10]");
     assertThat(datatypesOf(in, "invoice"))
         .doesNotContainKey("CustomerID")
-        .containsEntry("ShipperID", "ref[shippers.shipper_id, 1..count]")
+        .containsEntry("ShipperID", "ref[shippers.shipper_id]")
         .containsKey("InvoiceID");
     assertLoads(in, dir);
   }
@@ -286,8 +285,7 @@ class DdlInspectorForeignKeyCaseTest {
             CREATE TABLE invoice (id BIGINT PRIMARY KEY, customer_id BIGINT REFERENCES customer(id));
             """);
 
-    assertThat(datatypesOf(in, "invoice"))
-        .containsEntry("customer_id", "ref[customer.id, 1..count]");
+    assertThat(datatypesOf(in, "invoice")).containsEntry("customer_id", "ref[customer.id]");
     assertLoads(in, dir);
   }
 

@@ -281,7 +281,7 @@ class DdlInspectorEmbeddedTablesTest {
 
     assertThat(names(in)).containsExactly("a", "b");
     assertThat(datatypesOf(in, "a")).containsEntry("id", "serial[1..2147483647]");
-    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
   }
@@ -771,7 +771,7 @@ class DdlInspectorEmbeddedTablesTest {
 
     assertThat(names(in)).containsExactly("a", "b");
     assertThat(datatypesOf(in, "a")).containsEntry("id", "serial[1..2147483647]");
-    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
   }

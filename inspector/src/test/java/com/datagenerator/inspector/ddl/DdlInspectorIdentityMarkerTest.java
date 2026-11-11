@@ -76,7 +76,7 @@ class DdlInspectorIdentityMarkerTest {
                 + ");");
 
     assertThat(datatypesOf(in, "child"))
-        .containsEntry("iid", "ref[identity.id, 1..count]")
+        .containsEntry("iid", "ref[identity.id]")
         .containsKey("cid");
     assertThat(in.warnings()).noneMatch(w -> w.contains("IDENTITY") || w.contains("omitted"));
   }

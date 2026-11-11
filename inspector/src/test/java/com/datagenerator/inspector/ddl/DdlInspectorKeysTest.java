@@ -71,8 +71,8 @@ class DdlInspectorKeysTest {
             );
             """);
     assertThat(datatypesOf(in, "ab"))
-        .containsEntry("a_id", "ref[a.id, 1..count, unique=pk]")
-        .containsEntry("b_id", "ref[b.id, 1..count, unique=pk]");
+        .containsEntry("a_id", "ref[a.id, unique=pk]")
+        .containsEntry("b_id", "ref[b.id, unique=pk]");
   }
 
   @Test
@@ -84,7 +84,7 @@ class DdlInspectorKeysTest {
             CREATE TABLE a (id BIGINT PRIMARY KEY);
             CREATE TABLE a_detail (a_id BIGINT PRIMARY KEY REFERENCES a(id));
             """);
-    assertThat(datatypesOf(in, "a_detail")).containsEntry("a_id", "ref[a.id, 1..count, unique]");
+    assertThat(datatypesOf(in, "a_detail")).containsEntry("a_id", "ref[a.id, unique]");
   }
 
   @Test
@@ -102,7 +102,7 @@ class DdlInspectorKeysTest {
             );
             """);
     assertThat(datatypesOf(in, "t"))
-        .containsEntry("a_id", "ref[a.id, 1..count, unique=uq1]")
+        .containsEntry("a_id", "ref[a.id, unique=uq1]")
         .containsEntry("slot", "unique[uq1, 1..count]");
   }
 

@@ -397,6 +397,9 @@ class DataStructureParserHardeningTest {
                   return parent != null && parent.endsWith("structures");
                 })
             .filter(p -> p.toString().endsWith(".yaml"))
+            // counts.yaml sits next to the structures but is a row-count map, not a structure
+            // (#442)
+            .filter(p -> !"counts.yaml".equals(String.valueOf(p.getFileName())))
             .forEach(files::add);
       }
     }

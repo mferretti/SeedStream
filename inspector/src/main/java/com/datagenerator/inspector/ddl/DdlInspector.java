@@ -235,16 +235,77 @@ public class DdlInspector {
     // cycle[...] would be a startup error under nesting (UniqueFieldValidator), so nesting keeps
     // enum.
     boolean cycleKeys = !nesting.enabled();
+    Set<String> roots = new LinkedHashSet<>();
     Consumer<TableInfo> keyMapper =
-        table -> applyKeys(table, keys.get(table.name()), warnings, referenced, cycleKeys);
+        table -> {
+          roots.add(table.name());
+          applyKeys(table, keys.get(table.name()), warnings, referenced, cycleKeys);
+        };
+    List<String> all = new ArrayList<>();
     if (nesting.enabled()) {
-      Inspection nested = new NestingPlanner().plan(tables, nesting, keyMapper);
-      List<String> all = new ArrayList<>(warnings);
-      all.addAll(nested.warnings());
-      return Inspection.of(nested.structures(), nested.comments(), all);
+      all.addAll(new NestingPlanner().plan(tables, nesting, keyMapper).warnings());
+    } else {
+      tables.forEach(keyMapper);
     }
-    tables.forEach(keyMapper);
-    return toInspection(tables, warnings);
+    all.addAll(0, warnings);
+    List<TableInfo> topLevel = tables.stream().filter(t -> roots.contains(t.name())).toList();
+    boolean bare = bareRefs(tables, topLevel);
+    Inspection flat = toInspection(tables, all);
+    return new Inspection(
+        flat.structures(),
+        flat.comments(),
+        flat.warnings(),
+        Map.of(),
+        bare ? topLevel.stream().map(TableInfo::name).toList() : List.of());
+  }
+
+  /**
+   * #442: rewrites {@code ref[p.c, 1..count...]} to {@code ref[p.c...]} where the engine can
+   * resolve the pool from the parent's key: single-column FK to another top-level table whose
+   * referenced column ended up as serial / a plain unique range / a unique FK key. Returns whether
+   * any ref was rewritten.
+   */
+  private boolean bareRefs(List<TableInfo> tables, List<TableInfo> topLevel) {
+    Map<String, TableInfo> byName = new LinkedHashMap<>();
+    topLevel.forEach(t -> byName.put(lower(t.name()), t));
+    boolean rewritten = false;
+    for (TableInfo table : tables) {
+      for (ForeignKeyRef fk : table.foreignKeys()) {
+        TableInfo parent = byName.get(lower(fk.refTable()));
+        if (parent == null
+            || parent == table
+            || fk.localColumns().size() != 1
+            || fk.refColumns().size() != 1) {
+          continue;
+        }
+        String column = actualKey(table, fk.localColumns().get(0));
+        FieldDefinition field = table.data().get(column);
+        List<String> parentColumns =
+            parent.data().keySet().stream()
+                .filter(k -> Names.toSnakeCase(k).equals(Names.toSnakeCase(fk.refColumns().get(0))))
+                .toList();
+        String suffix = ", " + Defaults.REF_POOL;
+        if (isRef(field)
+            && field.getDatatype().contains(suffix)
+            && parentColumns.size() == 1
+            && resolvableKey(parent.data().get(parentColumns.get(0)).getDatatype())) {
+          String bare = field.getDatatype().replaceFirst(Pattern.quote(suffix), "");
+          if (bare.startsWith("ref[parent.") && bare.indexOf(',') < 0) {
+            continue; // ref[parent.c] is the nested parent-record reference, not table "parent"
+          }
+          table.data().put(column, new FieldDefinition(bare, null));
+          rewritten = true;
+        }
+      }
+    }
+    return rewritten;
+  }
+
+  private static boolean resolvableKey(String datatype) {
+    return "serial".equals(datatype)
+        || datatype.startsWith("serial[")
+        || (datatype.startsWith("unique[") && datatype.indexOf(',') < 0)
+        || (datatype.startsWith("ref[") && datatype.endsWith(", unique]"));
   }
 
   /**
@@ -973,7 +1034,10 @@ public class DdlInspector {
 
   /** {@code ref[customers.id, 1..count]} → {@code customers.id}. */
   private String refTarget(String refDatatype) {
-    return refDatatype.substring("ref[".length(), refDatatype.indexOf(',')).trim();
+    int comma = refDatatype.indexOf(',');
+    return refDatatype
+        .substring("ref[".length(), comma < 0 ? refDatatype.length() - 1 : comma)
+        .trim();
   }
 
   private String lower(String value) {
