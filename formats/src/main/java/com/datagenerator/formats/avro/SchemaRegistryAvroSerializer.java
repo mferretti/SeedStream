@@ -77,6 +77,11 @@ public final class SchemaRegistryAvroSerializer implements FormatSerializer {
   @SuppressWarnings("java:S5164")
   private static final ThreadLocal<BinaryEncoder> ENCODER = new ThreadLocal<>();
 
+  @Override
+  public void declareNullableFields(Map<String, Class<?>> types) {
+    avroSerializer.declareNullableFields(types);
+  }
+
   /**
    * @param avroSerializer the base Avro serializer (schema inference and record building)
    * @param registryClient Schema Registry client for schema registration

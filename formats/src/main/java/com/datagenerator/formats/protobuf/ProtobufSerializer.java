@@ -89,6 +89,14 @@ public class ProtobufSerializer implements FormatSerializer {
 
   private final Object schemaLock = new Object();
 
+  // Declared types of nullable fields; set once before the first record (see FormatSerializer).
+  private volatile Map<String, Class<?>> nullableTypes = Map.of();
+
+  @Override
+  public void declareNullableFields(Map<String, Class<?>> types) {
+    nullableTypes = Map.copyOf(types);
+  }
+
   @Override
   public String serialize(Map<String, Object> data) {
     try {
@@ -146,35 +154,33 @@ public class ProtobufSerializer implements FormatSerializer {
       fieldBuilder.setName(fieldName);
       fieldBuilder.setNumber(fieldNumber++);
 
-      // Determine protobuf type from Java value
-      if (value == null) {
-        // Default to string for null values
+      // Determine protobuf type from the value, or from the declared type when it is null
+      Class<?> type =
+          value != null ? value.getClass() : nullableTypes.getOrDefault(fieldName, String.class);
+      if (String.class.equals(type)) {
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_STRING);
-      } else if (value instanceof String) {
-        fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_STRING);
-      } else if (value instanceof Integer || value instanceof Long) {
+      } else if (Integer.class.equals(type) || Long.class.equals(type)) {
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_INT64);
-      } else if (value instanceof Boolean) {
+      } else if (Boolean.class.equals(type)) {
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_BOOL);
-      } else if (value instanceof Double || value instanceof Float || value instanceof BigDecimal) {
+      } else if (Double.class.equals(type)
+          || Float.class.equals(type)
+          || BigDecimal.class.equals(type)) {
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_DOUBLE);
-      } else if (value instanceof LocalDate || value instanceof Instant) {
+      } else if (LocalDate.class.equals(type) || Instant.class.equals(type)) {
         // Serialize dates as ISO-8601 strings
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_STRING);
-      } else if (value instanceof List) {
+      } else if (List.class.isAssignableFrom(type)) {
         // Repeated string field for arrays
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_STRING);
         fieldBuilder.setLabel(FieldDescriptorProto.Label.LABEL_REPEATED);
-      } else if (value instanceof Map) {
+      } else if (Map.class.isAssignableFrom(type)) {
         // Nested maps as JSON string
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_STRING);
       } else {
         // Fallback to string for unknown types
         fieldBuilder.setType(FieldDescriptorProto.Type.TYPE_STRING);
-        log.warn(
-            "Unknown type for field {}: {}, using string",
-            fieldName,
-            value.getClass().getSimpleName());
+        log.warn("Unknown type for field {}: {}, using string", fieldName, type.getSimpleName());
       }
 
       messageBuilder.addField(fieldBuilder.build());

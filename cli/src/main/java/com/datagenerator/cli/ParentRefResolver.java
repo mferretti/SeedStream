@@ -161,6 +161,11 @@ final class ParentRefResolver {
       throw new IllegalArgumentException(
           "%s: field '%s.%s' not found in structure '%s'".formatted(label, parent, key, parent));
     }
+    if (def.getNullable() != null && def.getNullable() > 0) {
+      throw new IllegalArgumentException(
+          "%s: '%s.%s' is nullable (%s) but a referenced parent key must never be null"
+              .formatted(label, parent, key, def.getNullable()));
+    }
     return typeParser.parse(def.getDatatype());
   }
 

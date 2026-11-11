@@ -227,7 +227,8 @@ public class StructureRegistry {
     }
   }
 
-  private void validateType(DataType type, Path structuresPath) {
+  private void validateType(DataType declared, Path structuresPath) {
+    DataType type = declared.unwrap();
     if (type instanceof ObjectType objectType) {
       // This will trigger loading and cycle detection
       loadStructure(objectType.getStructureName(), structuresPath);

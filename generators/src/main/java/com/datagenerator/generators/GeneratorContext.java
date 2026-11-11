@@ -44,7 +44,36 @@ public class GeneratorContext implements AutoCloseable {
   private static final ThreadLocal<java.util.Deque<java.util.Map<String, Object>>>
       PARENT_RECORD_STACK = new ThreadLocal<>();
 
+  private static final ThreadLocal<OccurrenceCounter> OCCURRENCES = new ThreadLocal<>();
+
+  /** Per-record count of how often each key was seen; restarts when the record index changes. */
+  private static final class OccurrenceCounter {
+    private long recordIndex = Long.MIN_VALUE;
+    private final java.util.Map<String, int[]> counts = new java.util.HashMap<>();
+  }
+
   private GeneratorContext() {}
+
+  /**
+   * How many times {@code key} was asked for during the current record, counting from 0. Lets one
+   * path that is generated several times per record (an {@code object[...]} inside an array, or
+   * used by two fields) get a distinct but deterministic position each time.
+   *
+   * @param key what is being counted, e.g. a field path
+   * @param recordIndex global index of the record being generated
+   */
+  public static int nextOccurrence(String key, long recordIndex) {
+    OccurrenceCounter c = OCCURRENCES.get();
+    if (c == null) {
+      c = new OccurrenceCounter();
+      OCCURRENCES.set(c);
+    }
+    if (c.recordIndex != recordIndex) {
+      c.recordIndex = recordIndex;
+      c.counts.clear();
+    }
+    return c.counts.computeIfAbsent(key, k -> new int[1])[0]++;
+  }
 
   /**
    * Enter a new generator context.
@@ -79,6 +108,7 @@ public class GeneratorContext implements AutoCloseable {
     JOB_COUNT.set(jobCount);
     MASTER_SEED.set(masterSeed);
     PARENT_RECORD_STACK.set(new java.util.ArrayDeque<>());
+    OCCURRENCES.remove();
     return new GeneratorContext();
   }
 
@@ -191,6 +221,7 @@ public class GeneratorContext implements AutoCloseable {
     JOB_COUNT.remove();
     MASTER_SEED.remove();
     PARENT_RECORD_STACK.remove();
+    OCCURRENCES.remove();
   }
 
   @Override

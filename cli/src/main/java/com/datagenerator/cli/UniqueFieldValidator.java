@@ -61,7 +61,8 @@ final class UniqueFieldValidator {
     checkGroups(fields);
   }
 
-  private void visit(String structureName, String field, DataType type, boolean underArray) {
+  private void visit(String structureName, String field, DataType declared, boolean underArray) {
+    DataType type = declared.unwrap();
     if ((type instanceof UniqueType || type instanceof SerialType || type instanceof CycleType)
         && underArray) {
       throw new IllegalArgumentException(

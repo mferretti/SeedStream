@@ -26,9 +26,13 @@ import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.NullableType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.SerialType;
 import com.datagenerator.core.type.TypeParser;
+import com.datagenerator.core.type.UniqueType;
 import com.datagenerator.destinations.DestinationAdapter;
 import com.datagenerator.destinations.database.DatabaseDestination;
 import com.datagenerator.destinations.database.DatabaseDestinationConfig;
@@ -491,6 +495,8 @@ public class ExecuteCommand implements Callable<Integer> {
     // 4. Create format serializer
     FormatSerializer serializer = createSerializer(format, jobConfig, secretResolver);
     log.info("Created serializer: {}", serializer.getFormatName());
+    serializer.declareNullableFields(
+        NullableFieldTypes.of(registry.loadStructure(dataStructure.getName(), structuresPath)));
 
     // 5. Create destination adapter
     DestinationAdapter destination =
@@ -1028,13 +1034,42 @@ public class ExecuteCommand implements Callable<Integer> {
                             (a, b) -> a,
                             LinkedHashMap::new));
             // bare ref[t.c] forms become explicit ranges here, before unique layouts are computed
-            return refResolver.resolve(structureName, parsed);
+            return withNullable(
+                structureName, structure, refResolver.resolve(structureName, parsed));
           } catch (Exception e) {
             throw new GeneratorException("Failed to load structure: " + structureName, e);
           }
         };
 
     return new StructureRegistry(loader, jobCount);
+  }
+
+  /**
+   * Wraps every field declared with {@code nullable: <rate>} (rate &gt; 0) in a {@link
+   * NullableType}; a rate of 0 leaves the type untouched. Keys (serial, unique, cycle, unique refs)
+   * must never be null, so a positive rate on them is an error.
+   */
+  private static Map<String, DataType> withNullable(
+      String structureName, DataStructure structure, Map<String, DataType> types) {
+    Map<String, DataType> out = new LinkedHashMap<>();
+    types.forEach(
+        (field, type) -> {
+          Double rate = structure.getData().get(field).getNullable();
+          if (rate == null || rate <= 0) {
+            out.put(field, type);
+            return;
+          }
+          if (type instanceof UniqueType
+              || type instanceof SerialType
+              || type instanceof CycleType) {
+            throw new IllegalArgumentException(
+                "field '%s' in %s: nullable: %s is not allowed on a key (%s); keys are never null"
+                    .formatted(
+                        field, structureName, rate, structure.getData().get(field).getDatatype()));
+          }
+          out.put(field, new NullableType(type, rate, structureName + "." + field));
+        });
+    return out;
   }
 
   /**

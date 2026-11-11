@@ -515,9 +515,31 @@ public class DatabaseDestination extends AbstractDestination {
     return type instanceof ArrayType arrayType && arrayType.getElementType() instanceof ObjectType;
   }
 
+  /**
+   * A null {@code object[...]} / {@code array[object[...]]} field (nullable) has no child row, so
+   * it must not reach the decomposer as a column of the parent. Uses the declared root schema, so
+   * only the root record's own nested fields are covered (child records' nested fields are not).
+   */
+  private Map<String, Object> withoutNullChildren(Map<String, Object> data) {
+    if (schema == null) {
+      return data;
+    }
+    Map<String, Object> cleaned = null;
+    for (Map.Entry<String, Object> e : data.entrySet()) {
+      DataType declared = schema.get(e.getKey());
+      if (e.getValue() == null && declared != null && isNestedType(declared)) {
+        if (cleaned == null) {
+          cleaned = new LinkedHashMap<>(data);
+        }
+        cleaned.remove(e.getKey());
+      }
+    }
+    return cleaned == null ? data : cleaned;
+  }
+
   private void writeNested(Map<String, Object> data) {
     List<NestedRecordDecomposer.TableRecord> tableRecords =
-        decomposer.decompose(data, config.getTableName(), null);
+        decomposer.decompose(withoutNullChildren(data), config.getTableName(), null);
 
     for (NestedRecordDecomposer.TableRecord tr : tableRecords) {
       initNestedStatementIfAbsent(tr.tableName(), tr.fields());
