@@ -41,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -250,6 +251,7 @@ public class DdlInspector {
     all.addAll(0, warnings);
     List<TableInfo> topLevel = tables.stream().filter(t -> roots.contains(t.name())).toList();
     boolean bare = bareRefs(tables, topLevel);
+    markNullable(tables, byName);
     Inspection flat = toInspection(tables, all);
     return new Inspection(
         flat.structures(),
@@ -299,6 +301,50 @@ public class DdlInspector {
       }
     }
     return rewritten;
+  }
+
+  /**
+   * #492: nullable non-key columns get {@code nullable: 0.05}. Runs last so it sees final
+   * datatypes; primary-key columns are implicitly NOT NULL, and INHERITS children inherit the NOT
+   * NULL columns of their ancestors.
+   */
+  private void markNullable(List<TableInfo> tables, Map<String, TableModel> byName) {
+    for (TableInfo table : tables) {
+      TableModel model = byName.get(table.name());
+      if (model == null) {
+        continue;
+      }
+      Set<String> required = new LinkedHashSet<>();
+      Set<String> seen = new LinkedHashSet<>();
+      List<TableModel> pending = new ArrayList<>(List.of(model));
+      while (!pending.isEmpty()) { // the table and its INHERITS ancestors
+        TableModel next = pending.remove(pending.size() - 1);
+        if (seen.add(next.name)) {
+          required.addAll(next.notNull);
+          next.primary.forEach(key -> key.forEach(c -> required.add(lower(c))));
+          next.parents.stream().map(byName::get).filter(Objects::nonNull).forEach(pending::add);
+        }
+      }
+      for (Column column : model.columns) {
+        FieldDefinition field = table.data().get(column.name());
+        if (field != null
+            && !required.contains(lower(column.name()))
+            && !isKeyType(field.getDatatype())) {
+          table
+              .data()
+              .put(
+                  column.name(),
+                  new FieldDefinition(field.getDatatype(), null, Defaults.NULLABLE_RATE));
+        }
+      }
+    }
+  }
+
+  private static boolean isKeyType(String datatype) {
+    return datatype.startsWith("serial")
+        || datatype.startsWith("unique[")
+        || datatype.startsWith("cycle[")
+        || (datatype.startsWith("ref[") && datatype.endsWith(", unique]"));
   }
 
   private static boolean resolvableKey(String datatype) {
@@ -546,6 +592,9 @@ public class DdlInspector {
       }
       if (joined.contains(DdlPreprocessor.IDENTITY_MARKER)) {
         table.identity.add(lower(columnName));
+      }
+      if (joined.contains("NOT NULL")) {
+        table.notNull.add(lower(columnName));
       }
       if (specs.stream().anyMatch("PRIMARY"::equalsIgnoreCase)) {
         table.addPrimaryKey(List.of(columnName));

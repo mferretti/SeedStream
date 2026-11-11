@@ -73,6 +73,18 @@ public final class SchemaTypeMapper {
    * nullability needs no mapping (§8), so the single non-null member is the type. Anything else
    * that is not a plain string (several non-null types, missing) is unknown.
    */
+  /** True for OpenAPI 3.0 {@code nullable: true} or a {@code type} array containing "null". */
+  public static Double nullableRate(JsonNode schema) {
+    boolean nullable = schema.path("nullable").asBoolean(false);
+    JsonNode type = schema.path("type");
+    if (type.isArray()) {
+      for (JsonNode t : type) {
+        nullable |= "null".equals(t.asText());
+      }
+    }
+    return nullable ? Defaults.NULLABLE_RATE : null;
+  }
+
   private static String typeOf(JsonNode schema) {
     JsonNode type = schema.path("type");
     if (type.isArray()) {
