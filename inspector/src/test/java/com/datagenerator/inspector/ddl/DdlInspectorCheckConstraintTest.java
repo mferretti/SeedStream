@@ -654,7 +654,7 @@ class DdlInspectorCheckConstraintTest {
                 + check
                 + "));");
 
-    assertThat(datatypesOf(in, "t")).containsEntry("parent_id", "ref[p.id, 1..count]");
+    assertThat(datatypesOf(in, "t")).containsEntry("parent_id", "ref[p.id]");
     assertThat(comment(in, "t", "parent_id"))
         .as("comment for %s", check)
         .isNotNull()

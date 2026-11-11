@@ -51,7 +51,12 @@ class DdlInspectorAlterFixturesTest {
     assertThat(in.structures()).hasSize(13);
     assertFields(in, "categories", "category_id", SMALL_SERIAL);
     assertFields(
-        in, "employees", "employee_id", SMALL_SERIAL, "reports_to", ref("employees.employee_id"));
+        in,
+        "employees",
+        "employee_id",
+        SMALL_SERIAL,
+        "reports_to",
+        selfRef("employees.employee_id"));
     assertFields(
         in,
         "orders",
@@ -183,7 +188,7 @@ class DdlInspectorAlterFixturesTest {
   void shouldApplyTheEightAlterForeignKeysOfTheMysqlSchema(@TempDir Path dir) {
     Inspection in = bestEffort("mysql/northwind-mysql-schema.sql", NestingOptions.none());
 
-    assertFields(in, "employee", "reports_to", ref("employee.employee_id"));
+    assertFields(in, "employee", "reports_to", selfRef("employee.employee_id"));
     assertFields(
         in,
         "order_detail",
@@ -222,7 +227,12 @@ class DdlInspectorAlterFixturesTest {
     assertFields(in, "categories", "CATEGORY_ID", NUMBER9_SERIAL);
     assertFields(in, "customers", "CUSTOMER_ID", NUMBER9_SERIAL);
     assertFields(
-        in, "employees", "EMPLOYEE_ID", NUMBER9_SERIAL, "REPORTS_TO", ref("employees.employee_id"));
+        in,
+        "employees",
+        "EMPLOYEE_ID",
+        NUMBER9_SERIAL,
+        "REPORTS_TO",
+        selfRef("employees.employee_id"));
     assertFields(
         in,
         "orders",
@@ -260,11 +270,16 @@ class DdlInspectorAlterFixturesTest {
   // ---------------------------------------------------------------- helpers
 
   private static String ref(String target) {
+    return "ref[" + target + "]";
+  }
+
+  /** A self-referencing FK keeps the explicit pool (#213). */
+  private static String selfRef(String target) {
     return "ref[" + target + ", 1..count]";
   }
 
   private static String refPk(String target) {
-    return "ref[" + target + ", 1..count, unique=pk]";
+    return "ref[" + target + ", unique=pk]";
   }
 
   private static Inspection pgDump(NestingOptions nesting) {

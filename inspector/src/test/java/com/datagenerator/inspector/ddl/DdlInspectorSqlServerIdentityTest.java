@@ -193,8 +193,12 @@ class DdlInspectorSqlServerIdentityTest {
                   : "serial[1..2147483647]";
       assertThat(datatypesOf(in, "parent")).containsEntry(pk, expected);
     }
+    // an integer identity PK is serial, and a bare ref resolves from it; the UNIQUE (non-pk) form
+    // is a plain unique[1..count] key, which the bare form resolves from too
+    assertThat(datatypesOf(in, "parent"))
+        .containsEntry(pk, integerKey ? datatypesOf(in, "parent").get(pk) : "unique[1..count]");
     assertThat(datatypesOf(in, "child"))
-        .containsEntry("parent_id", "ref[parent." + pk.toLowerCase(Locale.ROOT) + ", 1..count]");
+        .containsEntry("parent_id", "ref[parent." + pk.toLowerCase(Locale.ROOT) + "]");
     assertThat(in.warnings())
         .anyMatch(
             w ->
@@ -252,7 +256,8 @@ class DdlInspectorSqlServerIdentityTest {
             """);
 
     assertThat(datatypesOf(in, "t")).containsKeys("code", "seq", "n");
-    assertThat(datatypesOf(in, "u")).containsEntry("t_seq", "ref[t.seq, 1..count]");
+    assertThat(datatypesOf(in, "t")).containsEntry("seq", "unique[1..count]");
+    assertThat(datatypesOf(in, "u")).containsEntry("t_seq", "ref[t.seq]");
     assertThat(in.warnings()).anyMatch(w -> w.contains("t.seq") && w.contains("IDENTITY"));
   }
 

@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
 /** Test helpers that load inspected structures back with the real parsers. */
 final class DdlTestSupport {
 
-  private static final Pattern REF = Pattern.compile("^ref\\[([^,\\]]+),");
+  private static final Pattern REF = Pattern.compile("^ref\\[([^,\\]]+)[,\\]]");
 
   private DdlTestSupport() {}
 
@@ -92,7 +92,10 @@ final class DdlTestSupport {
         .noneMatch(v -> v != null && v.toUpperCase(Locale.ROOT).contains("SEEDSTREAM_IDENTITY"));
   }
 
-  /** {@code ref[orders.order_id, 1..count, unique]} to {@code orders.order_id}, else null. */
+  /**
+   * {@code ref[orders.order_id, unique]} or {@code ref[orders.order_id]} to {@code
+   * orders.order_id}, else null.
+   */
   static String refTarget(String datatype) {
     Matcher m = REF.matcher(datatype);
     return m.find() ? m.group(1).trim() : null;

@@ -52,7 +52,7 @@ class DdlInspectorColumnlessReferenceTest {
             """);
 
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("customer_id", "ref[customers.customer_id, 1..count]");
+        .containsEntry("customer_id", "ref[customers.customer_id]");
   }
 
   @Test
@@ -66,7 +66,7 @@ class DdlInspectorColumnlessReferenceTest {
             """);
 
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("customer_id", "ref[customers.customer_id, 1..count]");
+        .containsEntry("customer_id", "ref[customers.customer_id]");
   }
 
   @Test
@@ -80,8 +80,7 @@ class DdlInspectorColumnlessReferenceTest {
               FOREIGN KEY (account_no) REFERENCES accounts);
             """);
 
-    assertThat(datatypesOf(in, "ledgers"))
-        .containsEntry("account_no", "ref[accounts.account_no, 1..count]");
+    assertThat(datatypesOf(in, "ledgers")).containsEntry("account_no", "ref[accounts.account_no]");
   }
 
   @Test
@@ -111,8 +110,7 @@ class DdlInspectorColumnlessReferenceTest {
             CREATE TABLE parent (parent_id int, CONSTRAINT parent_pkey PRIMARY KEY (parent_id));
             """);
 
-    assertThat(datatypesOf(in, "child"))
-        .containsEntry("parent_ref", "ref[parent.parent_id, 1..count]");
+    assertThat(datatypesOf(in, "child")).containsEntry("parent_ref", "ref[parent.parent_id]");
   }
 
   @Test
@@ -128,8 +126,7 @@ class DdlInspectorColumnlessReferenceTest {
             ALTER TABLE ONLY accounts ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id);
             """);
 
-    assertThat(datatypesOf(in, "ledgers"))
-        .containsEntry("account_id", "ref[accounts.account_id, 1..count]");
+    assertThat(datatypesOf(in, "ledgers")).containsEntry("account_id", "ref[accounts.account_id]");
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -160,8 +157,7 @@ class DdlInspectorColumnlessReferenceTest {
             CREATE TABLE Ledgers (id int PRIMARY KEY, acc int REFERENCES Accounts);
             """);
 
-    assertThat(datatypesOf(in, "ledgers"))
-        .containsEntry("acc", "ref[accounts.account_id, 1..count]");
+    assertThat(datatypesOf(in, "ledgers")).containsEntry("acc", "ref[accounts.account_id]");
   }
 
   @Test
@@ -259,8 +255,8 @@ class DdlInspectorColumnlessReferenceTest {
             """);
 
     assertThat(datatypesOf(in, "orders"))
-        .containsEntry("c1", "ref[customers.customer_id, 1..count]")
-        .containsEntry("c2", "ref[customers.code, 1..count]");
+        .containsEntry("c1", "ref[customers.customer_id]")
+        .containsEntry("c2", "ref[customers.code]");
   }
 
   @Test
@@ -268,8 +264,8 @@ class DdlInspectorColumnlessReferenceTest {
     Inspection in = new DdlInspector().inspect(FIXTURE, NestingOptions.none(), false);
 
     assertThat(datatypesOf(in, "ledgers"))
-        .containsEntry("account_id", "ref[accounts.account_id, 1..count]")
-        .containsEntry("owner_account", "ref[accounts.account_id, 1..count]");
+        .containsEntry("account_id", "ref[accounts.account_id]")
+        .containsEntry("owner_account", "ref[accounts.account_id]");
     assertThat(datatypesOf(in, "pair_refs"))
         .containsEntry("a", "ref[pairs.a, 1..count]")
         .containsEntry("b", "ref[pairs.b, 1..count]");

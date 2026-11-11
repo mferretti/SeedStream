@@ -107,8 +107,7 @@ class DdlInspectorAlterTableTest {
                 REFERENCES public.customers(id);
             """);
 
-    assertThat(datatypesOf(in, "orders"))
-        .containsEntry("customer_id", "ref[customers.id, 1..count]");
+    assertThat(datatypesOf(in, "orders")).containsEntry("customer_id", "ref[customers.id]");
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -129,7 +128,7 @@ class DdlInspectorAlterTableTest {
     assertThat(datatypesOf(in, "customers")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "orders"))
         .containsEntry("id", "serial[1..2147483647]")
-        .containsEntry("customer_id", "ref[customers.id, 1..count]");
+        .containsEntry("customer_id", "ref[customers.id]");
   }
 
   @Test
@@ -148,7 +147,7 @@ class DdlInspectorAlterTableTest {
 
     assertThat(datatypesOf(in, "c"))
         .containsEntry("id", "serial[1..2147483647]")
-        .containsEntry("p_id", "ref[p.id, 1..count]")
+        .containsEntry("p_id", "ref[p.id]")
         .containsEntry("code", "unique[1..count]");
   }
 
@@ -234,7 +233,7 @@ class DdlInspectorAlterTableTest {
                 REFERENCES "NORTHWIND"."CATS" ("CAT_ID") ENABLE;
             """);
 
-    assertThat(datatypesOf(in, "prods")).containsEntry("CAT_ID", "ref[cats.cat_id, 1..count]");
+    assertThat(datatypesOf(in, "prods")).containsEntry("CAT_ID", "ref[cats.cat_id]");
   }
 
   // ---------------------------------------------------------------- rewrites
@@ -259,7 +258,7 @@ class DdlInspectorAlterTableTest {
                 + attributes
                 + ";\n");
 
-    assertThat(datatypesOf(in, "c")).containsEntry("p_id", "ref[p.id, 1..count]");
+    assertThat(datatypesOf(in, "c")).containsEntry("p_id", "ref[p.id]");
     assertThat(in.warnings()).as(attributes).isEmpty();
   }
 
@@ -365,8 +364,7 @@ class DdlInspectorAlterTableTest {
             """);
 
     assertThat(datatypesOf(altered, "account")).containsEntry("id", "serial");
-    assertThat(datatypesOf(altered, "txn"))
-        .containsEntry("account_id", "ref[account.id, 1..count]");
+    assertThat(datatypesOf(altered, "txn")).containsEntry("account_id", "ref[account.id]");
     assertThat(altered.warnings())
         .anyMatch(w -> w.contains("account.id") && w.contains("referenc") && w.contains("#400"));
     assertThat(altered.warnings()).containsExactlyInAnyOrderElementsOf(inline.warnings());
@@ -651,7 +649,7 @@ class DdlInspectorAlterTableTest {
     assertThat(datatypesOf(in, "parent")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "child"))
         .containsEntry("id", "serial[1..2147483647]")
-        .containsEntry("parent_id", "ref[parent.id, 1..count]");
+        .containsEntry("parent_id", "ref[parent.id]");
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -762,7 +760,7 @@ class DdlInspectorAlterTableTest {
     Inspection flat = inspectDdl(dir, ddl);
     Inspection nested = inspectDdl(dir, ddl, NEST, false);
 
-    assertThat(datatypesOf(flat, "c")).containsEntry("p_id", "ref[p.id, 1..count]");
+    assertThat(datatypesOf(flat, "c")).containsEntry("p_id", "ref[p.id]");
     assertThat(flat.warnings()).isEmpty();
     assertThat(datatypesOf(nested, "p")).hasSize(2).containsValue("array[object[c], 1..10]");
     // only the planner's own "nested 'c' into 'p'" note, once
@@ -784,7 +782,7 @@ class DdlInspectorAlterTableTest {
                 + "CREATE TABLE detail (a_id integer, info varchar(10));\n"
                 + (pkFirst ? pk + fk : fk + pk));
 
-    assertThat(datatypesOf(in, "detail")).containsEntry("a_id", "ref[a.id, 1..count, unique]");
+    assertThat(datatypesOf(in, "detail")).containsEntry("a_id", "ref[a.id, unique]");
   }
 
   @Test
@@ -820,8 +818,8 @@ class DdlInspectorAlterTableTest {
             """);
 
     assertThat(datatypesOf(in, "ab"))
-        .containsEntry("a_id", "ref[a.id, 1..count, unique=pk]")
-        .containsEntry("b_id", "ref[b.id, 1..count, unique=pk]");
+        .containsEntry("a_id", "ref[a.id, unique=pk]")
+        .containsEntry("b_id", "ref[b.id, unique=pk]");
   }
 
   @Test
@@ -837,7 +835,7 @@ class DdlInspectorAlterTableTest {
             """);
 
     assertThat(datatypesOf(in, "t"))
-        .containsEntry("a_id", "ref[a.id, 1..count, unique=uq1]")
+        .containsEntry("a_id", "ref[a.id, unique=uq1]")
         .containsEntry("slot", "unique[uq1, 1..count]");
   }
 
@@ -892,7 +890,7 @@ class DdlInspectorAlterTableTest {
                 + target
                 + " (id);\n");
 
-    assertThat(datatypesOf(in, "child")).containsEntry("parent_id", "ref[parent.id, 1..count]");
+    assertThat(datatypesOf(in, "child")).containsEntry("parent_id", "ref[parent.id]");
     assertThat(in.warnings()).as(target).isEmpty();
   }
 
@@ -912,8 +910,7 @@ class DdlInspectorAlterTableTest {
             false);
 
     assertThat(datatypesOf(in, "region")).containsEntry("RegionID", "serial[1..2147483647]");
-    assertThat(datatypesOf(in, "territories"))
-        .containsEntry("RegionID", "ref[region.region_id, 1..count]");
+    assertThat(datatypesOf(in, "territories")).containsEntry("RegionID", "ref[region.region_id]");
   }
 
   // ---------------------------------------------------------------- nesting
@@ -1005,9 +1002,8 @@ class DdlInspectorAlterTableTest {
     Map<String, DataStructure> loaded = loadAll(in, dir);
 
     assertThat(loaded.get("ab").getData().get("a_id").getDatatype())
-        .isEqualTo("ref[a.id, 1..count, unique=pk]");
-    assertThat(loaded.get("b").getData().get("a_id").getDatatype())
-        .isEqualTo("ref[a.id, 1..count]");
+        .isEqualTo("ref[a.id, unique=pk]");
+    assertThat(loaded.get("b").getData().get("a_id").getDatatype()).isEqualTo("ref[a.id]");
   }
 
   @Test
@@ -1031,9 +1027,9 @@ class DdlInspectorAlterTableTest {
         .containsEntry("id", "serial")
         .containsEntry("code", "unique[1..count]");
     assertThat(datatypesOf(in, "b"))
-        .containsEntry("a_id", "ref[a.id, 1..count, unique=uq1]")
+        .containsEntry("a_id", "ref[a.id, unique=uq1]")
         .containsEntry("slot", "unique[uq1, 1..count]");
-    assertThat(datatypesOf(in, "c")).containsEntry("a_id", "ref[a.id, 1..count]");
+    assertThat(datatypesOf(in, "c")).containsEntry("a_id", "ref[a.id]");
     assertThat(in.warnings()).isEmpty();
   }
 }

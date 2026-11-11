@@ -54,8 +54,7 @@ class DdlInspectorNestingTest {
   @Test
   void defaultInspectKeepsFlatRefs(@TempDir Path dir) throws IOException {
     Inspection flat = inspect(dir, CHAIN, NestingOptions.none());
-    assertThat(datatypes(flat, "invoice"))
-        .containsEntry("customer_id", "ref[customer.id, 1..count]");
+    assertThat(datatypes(flat, "invoice")).containsEntry("customer_id", "ref[customer.id]");
     assertThat(datatypes(flat, "customer")).doesNotContainKey("invoices");
   }
 

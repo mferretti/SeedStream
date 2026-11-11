@@ -230,7 +230,7 @@ class DdlInspectorInheritsTest {
     assertThat(datatypesOf(in, "a"))
         .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("code", "unique[1..count]")
-        .containsEntry("o", "ref[other.id, 1..count]");
+        .containsEntry("o", "ref[other.id]");
     loadAll(in, dir);
   }
 
@@ -386,7 +386,7 @@ class DdlInspectorInheritsTest {
             """);
 
     assertSameAsFlat(in, flat, "b");
-    assertThat(datatypesOf(in, "b")).containsEntry("o", "ref[other.id, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("o", "ref[other.id]");
   }
 
   @Test
@@ -424,7 +424,7 @@ class DdlInspectorInheritsTest {
     assertThat(datatypesOf(in, "b"))
         .containsEntry("x", "serial[1..2147483647]")
         .containsEntry("k", "unique[1..count]")
-        .containsEntry("o", "ref[other.id, 1..count]");
+        .containsEntry("o", "ref[other.id]");
     // the parent is untouched by the child's constraints
     assertThat(datatypesOf(in, "a")).containsEntry("x", INT).containsEntry("k", INT);
     loadAll(in, dir);
@@ -467,7 +467,8 @@ class DdlInspectorInheritsTest {
             CREATE TABLE r (id int PRIMARY KEY, bx int REFERENCES b(x));
             """);
 
-    assertThat(datatypesOf(in, "r")).containsEntry("bx", "ref[b.x, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("x", "serial[1..2147483647]");
+    assertThat(datatypesOf(in, "r")).containsEntry("bx", "ref[b.x]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
   }
@@ -483,7 +484,8 @@ class DdlInspectorInheritsTest {
             CREATE TABLE r (id int PRIMARY KEY, bx int REFERENCES b);
             """);
 
-    assertThat(datatypesOf(in, "r")).containsEntry("bx", "ref[b.x, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("x", "serial[1..2147483647]");
+    assertThat(datatypesOf(in, "r")).containsEntry("bx", "ref[b.x]");
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -652,7 +654,7 @@ class DdlInspectorInheritsTest {
     assertThat(datatypesOf(in, "b"))
         .containsExactly(
             entry("id", "serial[1..2147483647]"),
-            entry("a_id", "ref[a.x, 1..count]"),
+            entry("a_id", "ref[a.x]"),
             entry("s", "char[1..5]"));
   }
 

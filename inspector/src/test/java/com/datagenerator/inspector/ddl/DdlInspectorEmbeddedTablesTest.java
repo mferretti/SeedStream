@@ -112,10 +112,10 @@ class DdlInspectorEmbeddedTablesTest {
     assertThat(datatypesOf(in, "parent"))
         .containsEntry("id", "serial[1..2147483647]")
         .containsEntry("code", "unique[1..count]");
-    assertThat(datatypesOf(in, "child")).containsEntry("pid", "ref[parent.id, 1..count]");
+    assertThat(datatypesOf(in, "child")).containsEntry("pid", "ref[parent.id]");
     assertThat(datatypesOf(in, "other"))
         .containsEntry("oid", "serial[1..2147483647]")
-        .containsEntry("pid", "ref[parent.id, 1..count]");
+        .containsEntry("pid", "ref[parent.id]");
     assertThat(in.warnings()).isEqualTo(flat.warnings());
     loadAll(in, dir);
   }
@@ -192,7 +192,7 @@ class DdlInspectorEmbeddedTablesTest {
                 + "GO\n");
 
     assertThat(names(in)).containsExactly("x", "y");
-    assertThat(datatypesOf(in, "y")).containsEntry("x_id", "ref[x.id, 1..count]");
+    assertThat(datatypesOf(in, "y")).containsEntry("x_id", "ref[x.id]");
     loadAll(in, dir);
   }
 
@@ -281,7 +281,7 @@ class DdlInspectorEmbeddedTablesTest {
 
     assertThat(names(in)).containsExactly("a", "b");
     assertThat(datatypesOf(in, "a")).containsEntry("id", "serial[1..2147483647]");
-    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
   }
@@ -771,7 +771,7 @@ class DdlInspectorEmbeddedTablesTest {
 
     assertThat(names(in)).containsExactly("a", "b");
     assertThat(datatypesOf(in, "a")).containsEntry("id", "serial[1..2147483647]");
-    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id, 1..count]");
+    assertThat(datatypesOf(in, "b")).containsEntry("a_id", "ref[a.id]");
     assertThat(in.warnings()).isEmpty();
     loadAll(in, dir);
   }

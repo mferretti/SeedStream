@@ -207,7 +207,7 @@ class DdlInspectorTypeSpellingTest {
             """);
 
     assertThat(datatypesOf(inspection, "t")).containsEntry("id", "serial[1..999999999]");
-    assertThat(datatypesOf(inspection, "c")).containsEntry("t_id", "ref[t.id, 1..count]");
+    assertThat(datatypesOf(inspection, "c")).containsEntry("t_id", "ref[t.id]");
   }
 
   @Test
