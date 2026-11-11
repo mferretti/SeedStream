@@ -19,6 +19,7 @@ package com.datagenerator.generators.composite;
 import com.datagenerator.core.engine.RecordIndex;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.NullableType;
+import com.datagenerator.core.type.SelfReferenceType;
 import com.datagenerator.generators.DataGenerator;
 import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
@@ -55,6 +56,9 @@ public class NullableGenerator implements DataGenerator {
       return true;
     }
     long index = RecordIndex.current();
+    if (index == 0 && n.getInner() instanceof SelfReferenceType) {
+      return true; // record 0 has no earlier row to point at, whatever the rate (#213)
+    }
     long occurrence = GeneratorContext.nextOccurrence(n.getPath(), index);
     long h =
         FeistelPermutation.mix64(

@@ -23,6 +23,7 @@ import com.datagenerator.core.type.NullableType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.ReferenceType;
+import com.datagenerator.core.type.SelfReferenceType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -66,6 +67,7 @@ final class NullableFieldTypes {
           };
       case EnumType e -> String.class;
       case ReferenceType r -> Long.class;
+      case SelfReferenceType s -> Long.class;
       case ArrayType a -> List.class;
       case ObjectType o -> Map.class;
       case null, default -> null;

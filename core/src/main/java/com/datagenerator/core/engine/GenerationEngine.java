@@ -425,6 +425,8 @@ public class GenerationEngine {
     // Single writer thread: pulls chunk c from its owning worker's queue, in ascending c, and
     // writes
     // it. Because each worker emits its chunks in order, this reconstructs the exact global order.
+    // Self-references (ref[t.c] inside t, #213) rely on this: a row is written after every earlier
+    // row it points at, so the destination never sees a reference ahead of its target.
     Thread writerThread =
         new Thread(
             () -> {

@@ -20,7 +20,9 @@ import com.datagenerator.core.exception.CircularReferenceException;
 import com.datagenerator.core.exception.TypeParseException;
 import com.datagenerator.core.type.ArrayType;
 import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.NullableType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.SelfReferenceType;
 import com.datagenerator.core.type.UniqueType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -83,8 +85,9 @@ public class StructureRegistry {
     stack.push(structureName);
     try {
       Map<String, DataType> fields =
-          resolveUniqueGroups(
-              structureName, loader.load(structureName, structuresPath, this), jobCount);
+          linkSelfReferences(
+              resolveUniqueGroups(
+                  structureName, loader.load(structureName, structuresPath, this), jobCount));
       structureCache.put(structureName, fields);
       return fields;
     } finally {
@@ -136,6 +139,32 @@ public class StructureRegistry {
     groups.forEach(
         (group, names) -> resolveGroup(structureName, group, names, fields, jobCount, resolved));
     return resolved;
+  }
+
+  /**
+   * Gives each {@link SelfReferenceType} (possibly under a {@link NullableType}) its key field's
+   * resolved type, so a unique key's group layout is known when the key of an earlier record is
+   * recomputed. Returns {@code fields} itself when the structure has none.
+   */
+  private static Map<String, DataType> linkSelfReferences(Map<String, DataType> fields) {
+    if (fields.values().stream().noneMatch(t -> t.unwrap() instanceof SelfReferenceType)) {
+      return fields;
+    }
+    Map<String, DataType> linked = new LinkedHashMap<>();
+    fields.forEach(
+        (name, type) -> {
+          if (type.unwrap() instanceof SelfReferenceType s) {
+            DataType self = s.withKeyType(fields.get(s.getKeyField()));
+            linked.put(
+                name,
+                type instanceof NullableType n
+                    ? new NullableType(self, n.getRate(), n.getPath())
+                    : self);
+          } else {
+            linked.put(name, type);
+          }
+        });
+    return linked;
   }
 
   private static void resolveGroup(

@@ -26,6 +26,7 @@ public sealed interface DataType
         ObjectType,
         ArrayType,
         ReferenceType,
+        SelfReferenceType,
         ParentReferenceType,
         ParentUniqueReferenceType,
         UniqueType,

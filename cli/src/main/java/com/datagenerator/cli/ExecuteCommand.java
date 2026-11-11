@@ -481,7 +481,8 @@ public class ExecuteCommand implements Callable<Integer> {
         dataStructure.getData().size());
 
     // 3a. Validate unique[...] fields before anything is opened (open() may truncate tables)
-    ParentRefResolver refResolver = new ParentRefResolver(resolveCounts(jobConfig), structuresPath);
+    ParentRefResolver refResolver =
+        new ParentRefResolver(resolveCounts(jobConfig), structuresPath, dataStructure.getName());
     StructureRegistry registry =
         createStructureRegistry(structuresPath, count, dataStructure, refResolver);
     new UniqueFieldValidator(registry, structuresPath, count).validate(dataStructure.getName());
