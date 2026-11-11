@@ -918,6 +918,7 @@ address:
 - Outputs write a real null: JSON `null`, an empty CSV cell, an Avro `["null", T]` union (decided from the structure, not the first record), an unset Protobuf field, SQL `NULL` bound with the column's type.
 - Rejected at startup with `nullable` > 0: key types (`serial`, `unique[...]`, `cycle[...]`, `ref[..., unique]`), and a field that a bare `ref[t.c]` uses as parent key.
 - A NOT NULL database column with `nullable` fails at insert: match the rate to the schema.
+- `inspect` emits `nullable: 0.05` on every column the source schema allows to be NULL (except keys); lower it, raise it, or delete the key per field.
 
 ### Field Aliases
 

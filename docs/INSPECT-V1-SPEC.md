@@ -311,6 +311,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   itself, inline or by `ALTER`, may use inherited columns. A parent not in the script or an inheritance
   cycle is a warning and the child keeps its own columns; a child left with no columns at all
   (`CREATE TABLE c () INHERITS (missing)`) is skipped with a warning. Neither aborts strict mode.
+- Nullability (#492): a column that allows NULL gets `nullable: 0.05` (≈5% nulls; dense data by default) unless it is a key — `NOT NULL` (inline, `ALTER TABLE … SET NOT NULL`, or inherited through `INHERITS`), in a PRIMARY KEY, or emitted as `serial` / `unique` / `cycle` / `ref[..., unique]`. Plain FK columns that allow NULL get it too. OpenAPI 3.0 `nullable: true` and OpenAPI 3.1 / JSON Schema `type` arrays containing `"null"` map the same way; a property that is merely not `required` does not (absent ≠ null). Protobuf: unchanged.
 - Foreign keys → `ref[table.column]`: table-level `FOREIGN KEY` constraints (reliable) and inline
   column `REFERENCES table(col)` (best-effort token scan). The bare form takes its pool from the
   parent's key and the parent's row count in a counts file (#442); `inspect` writes a
