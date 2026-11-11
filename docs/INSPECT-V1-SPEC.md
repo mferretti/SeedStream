@@ -317,8 +317,8 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   parent's key and the parent's row count in a counts file (#442); `inspect` writes a
   `counts.yaml` skeleton next to the structures (every top-level table at 100; skipped if it exists,
   unless `--force`), which jobs reference with `counts:`. The bare form is emitted only when the
-  engine can resolve it: a single-column FK to another top-level table whose referenced column is
-  `serial[...]`, a group-less `unique[...]` or a `ref[..., unique]` key. Otherwise — self-FKs (#213),
+  engine can resolve it: a single-column FK to a top-level table (another one, or itself — a self-FK becomes a self-reference, #213) whose referenced column is
+  `serial[...]`, a group-less `unique[...]` or a `ref[..., unique]` key. Otherwise —
   multi-column FKs, composite / enum / text-not-enforced / keyless parent columns, parents folded by
   `--nest`, and a plain FK to a table named `parent` (`ref[parent.c]` is the nested parent-record
   reference) — the old `ref[table.column, 1..count]` is kept. Optionally inverted into nested
