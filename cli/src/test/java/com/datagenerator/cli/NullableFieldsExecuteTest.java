@@ -384,7 +384,8 @@ class NullableFieldsExecuteTest {
     writeStructure(NAME, standard(FIELD, "0.3"));
     List<String> got = run(NAME, "csv", 200, 4);
 
-    int col = List.of(base.get(0).split(",")).indexOf(FIELD);
+    // CsvSerializer quotes every cell (header too); a null is written as an empty cell ""
+    int col = List.of(base.get(0).split(",")).indexOf("\"" + FIELD + "\"");
     assertThat(col).isEqualTo(COLUMNS.indexOf(FIELD));
     assertThat(got.get(0)).isEqualTo(base.get(0));
     int empty = 0;
@@ -393,7 +394,7 @@ class NullableFieldsExecuteTest {
       String[] g = got.get(i).split(",", -1);
       assertThat(g).hasSameSizeAs(b);
       for (int c = 0; c < b.length; c++) {
-        if (c == col && g[c].isEmpty()) {
+        if (c == col && "\"\"".equals(g[c])) {
           empty++;
         } else {
           assertThat(g[c]).as("row %d col %d", i, c).isEqualTo(b[c]);
