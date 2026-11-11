@@ -170,6 +170,37 @@ class DdlInspectorNullableTest {
     assertThat(rates.get("id")).as("key column, whether kept or omitted").isNull();
   }
 
+  /** pg_dump-style NOT NULL added after the table: a NULL would fail the insert (#492). */
+  @Test
+  void shouldNotMarkColumnMadeNotNullByAlterTable(@TempDir Path dir) {
+    Inspection in =
+        DdlTestSupport.inspectDdl(
+            dir,
+            "CREATE TABLE t (id BIGINT PRIMARY KEY, a VARCHAR(10), b VARCHAR(10), c INT);"
+                + "ALTER TABLE t ALTER COLUMN a SET NOT NULL;"
+                + "ALTER TABLE ONLY t ALTER COLUMN c SET NOT NULL;");
+
+    assertThat(nullables(in, "t"))
+        .containsEntry("a", null)
+        .containsEntry("c", null)
+        .containsEntry("b", 0.05);
+  }
+
+  /** PostgreSQL INHERITS copies the parent's NOT NULL to the child's column. */
+  @Test
+  void shouldNotMarkColumnInheritedAsNotNull(@TempDir Path dir) {
+    Inspection in =
+        DdlTestSupport.inspectDdl(
+            dir,
+            "CREATE TABLE base (id BIGINT PRIMARY KEY, name VARCHAR(10) NOT NULL, note TEXT);"
+                + "CREATE TABLE child (extra INT) INHERITS (base);");
+
+    assertThat(nullables(in, "child"))
+        .containsEntry("name", null)
+        .containsEntry("note", 0.05)
+        .containsEntry("extra", 0.05);
+  }
+
   @Test
   void shouldMarkNorthwindPostgresNullableColumnsOnly() {
     Inspection in = new DdlInspector().inspect(NORTHWIND_PG, NestingOptions.none(), false);
