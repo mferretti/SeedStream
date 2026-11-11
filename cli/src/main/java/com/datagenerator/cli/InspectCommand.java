@@ -255,11 +255,10 @@ public class InspectCommand implements Callable<Integer> {
     switch (outcome.result()) {
       case WRITTEN ->
           log.info(
-              "wrote {} ({} table(s) at a placeholder count) — set real sizes, jobs use"
-                  + " `counts: {}`",
+              "wrote {} ({} table(s) at a placeholder count) — set real sizes; jobs point at it"
+                  + " with `counts:` (relative to the job file)",
               outcome.target(),
-              tables.size(),
-              CountsFileWriter.FILE_NAME);
+              tables.size());
       case SKIPPED_EXISTS ->
           log.warn("{} exists — not overwritten (use --force)", outcome.target());
       case null, default -> {} // NONE: no bare ref, nothing written

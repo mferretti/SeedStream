@@ -50,11 +50,11 @@ class InspectToExecuteE2EIT extends PostgresE2ESupport {
     assertThat(structures.resolve("customers.yaml")).exists();
     assertThat(structures.resolve("orders.yaml")).exists();
 
-    // No post-inspect edit: the inspector emits `serial` for every PK (recordIndex + 1), so the
-    // flat FK `ref[customers.id, 1..count]` lines up with it as long as parent and child jobs run
-    // at the same --count; the join table's composite PK comes out as
-    // `ref[..., 1..count, unique=pk]` on both columns; and CHECK (status IN (...)) becomes an enum
-    // (#214), which the database's own CHECK verifies on load below.
+    // No structure edit: the inspector emits `serial` for every PK (recordIndex + 1) and the FK
+    // `ref[customers.id]`, whose pool comes from the parent's key and its row count in counts.yaml
+    // (#442); the join table's composite PK comes out as `ref[..., unique=pk]` on both columns;
+    // and CHECK (status IN (...)) becomes an enum (#214), which the database's own CHECK verifies
+    // on load below.
     assertThat(structures.resolve("orders.yaml"))
         .content()
         .contains("enum[new,paid,shipped,cancelled]");
@@ -62,10 +62,24 @@ class InspectToExecuteE2EIT extends PostgresE2ESupport {
     runSql("DROP TABLE IF EXISTS order_tags, tags, orders, customers CASCADE");
     runSql(Files.readString(ddl));
 
-    // Parents first; all counts equal ROWS so ref[..., 1..count] stays inside the pool.
-    for (String table : new String[] {"customers", "orders", "tags", "order_tags"}) {
+    // inspect emits bare ref[t.c] plus a counts.yaml skeleton (#442): set the real sizes, as the
+    // skeleton's header says, and point every job at it. Parents first.
+    String[] tables = {"customers", "orders", "tags", "order_tags"};
+    Path countsFile = structures.resolve("counts.yaml");
+    assertThat(countsFile).exists();
+    StringBuilder counts = new StringBuilder();
+    for (String table : tables) {
+      counts.append(table).append(": ").append(ROWS).append('\n');
+    }
+    writeString(countsFile, counts.toString());
+    for (String table : tables) {
       Path job = tmp.resolve(table + "_job.yaml");
-      writeString(job, databaseJob(structures.toString(), table + ".yaml", table, 42));
+      writeString(
+          job,
+          databaseJob(structures.toString(), table + ".yaml", table, 42)
+              + "counts: "
+              + countsFile.toAbsolutePath()
+              + "\n");
       assertThat(execute(job, "--count", Integer.toString(ROWS)))
           .as("execute %s exit code", table)
           .isZero();
