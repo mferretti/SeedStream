@@ -438,16 +438,6 @@ class ParentRefExecuteTest {
   }
 
   @Test
-  void shouldFailWhenStructureReferencesItself() throws Exception {
-    structure("t", "id", "serial", "parent", "ref[t.id]");
-
-    CliTestSupport.Result r = exec(job("t"), 10, 1, OPT_COUNTS, "t=10");
-
-    assertThat(r.exit()).isEqualTo(1);
-    assertThat(r.err()).contains("self-references are not supported yet (#213)");
-  }
-
-  @Test
   void shouldFailBeforeConnectingWhenDatabaseJobHasUnresolvableRef() throws Exception {
     structure("users", "id", "serial");
     structure("orders", "user_id", "ref[users.id]");

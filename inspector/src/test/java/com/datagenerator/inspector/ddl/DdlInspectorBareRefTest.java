@@ -32,8 +32,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * #442: an FK column is emitted as the bare {@code ref[t.c]} form only when the engine can resolve
- * the pool from the parent's key (single-column FK, not a self-reference, a serial / unique parent
- * key, a top-level parent). Everything else keeps the explicit {@code 1..count} pool.
+ * the pool from the parent's key (single-column FK, a serial / unique parent key, a top-level
+ * parent). Everything else keeps the explicit {@code 1..count} pool.
  */
 class DdlInspectorBareRefTest {
 
@@ -182,11 +182,11 @@ class DdlInspectorBareRefTest {
   // ---------------------------------------------------------------- negatives (rules 1, 2, 3)
 
   @Test
-  void shouldKeepExplicitPoolForSelfReference(@TempDir Path dir) {
+  void shouldEmitBareRefForSelfReference(@TempDir Path dir) {
     Inspection in =
         inspectDdl(dir, "CREATE TABLE emp (id INT PRIMARY KEY, boss INT REFERENCES emp(id));\n");
 
-    assertThat(datatypesOf(in, "emp")).containsEntry("boss", "ref[emp.id, 1..count]");
+    assertThat(datatypesOf(in, "emp")).containsEntry("boss", "ref[emp.id]");
   }
 
   @Test

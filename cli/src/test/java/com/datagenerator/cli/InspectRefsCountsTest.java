@@ -162,12 +162,12 @@ class InspectRefsCountsTest {
   }
 
   @Test
-  void shouldNotWriteCountsFileWhenOnlySelfReferencesKeepTheExplicitPool() throws IOException {
+  void shouldNotWriteCountsFileWhenOnlySelfReferencesAreBare() throws IOException {
     String ddl = "CREATE TABLE emp (id INT PRIMARY KEY, boss INT REFERENCES emp(id));";
 
     assertThat(inspect(ddl).exit()).isZero();
 
-    assertThat(Files.readString(outDir().resolve("emp.yaml"))).contains("ref[emp.id, 1..count]");
+    assertThat(Files.readString(outDir().resolve("emp.yaml"))).contains("ref[emp.id]");
     assertThat(outDir().resolve(COUNTS_FILE)).doesNotExist();
   }
 
