@@ -108,7 +108,7 @@ class InspectRefsCountsTest {
     String body = Files.readString(outDir().resolve(COUNTS_FILE));
     assertThat(body).startsWith("#");
     assertThat(body.lines().takeWhile(l -> l.startsWith("#")).toList())
-        .anyMatch(l -> l.contains("counts: counts.yaml"))
+        .anyMatch(l -> l.contains("counts: ../structures/counts.yaml"))
         .anyMatch(l -> l.contains("ref[table.column]"))
         .anyMatch(l -> l.toLowerCase(Locale.ROOT).contains("placeholder"));
   }

@@ -55,9 +55,9 @@ public class CountsFileWriter {
       return new Outcome(Result.SKIPPED_EXISTS, target);
     }
     String body =
-        "# Row counts per table, read by jobs through `counts: counts.yaml` (path relative to the job file)\n"
-            + "# and by bare ref[table.column] fields. Placeholder values: set them to your real table"
-            + " sizes.\n"
+        "# Row counts per table, used by bare ref[table.column] fields. Placeholder values: set them"
+            + " to your real table sizes.\n"
+            + "# Jobs point at this file relative to the job file, e.g. counts: ../structures/counts.yaml\n"
             + tables.stream().map(t -> t + ": " + PLACEHOLDER + "\n").collect(Collectors.joining());
     try {
       Files.createDirectories(outputDir);
