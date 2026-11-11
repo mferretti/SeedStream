@@ -275,6 +275,102 @@ class ExecuteOutputFormatsTest {
         .isNotEqualTo(AvroFile.parse(generate("avro", 6, 1500, 4)).records());
   }
 
+  // ── nullable fields (#492) ──────────────────────────────────────────────────
+
+  /** Rewrites item.yaml with {@code nullable: rate} on one field (JSON of it is the oracle). */
+  private void itemNullable(String field, String rate) throws IOException {
+    String yaml = Files.readString(structDir.resolve("item.yaml"));
+    String marker = "  " + field + ":\n    datatype: ";
+    int at = yaml.indexOf(marker);
+    int eol = yaml.indexOf('\n', at + marker.length());
+    Files.writeString(
+        structDir.resolve("item.yaml"),
+        yaml.substring(0, eol + 1) + "    nullable: " + rate + "\n" + yaml.substring(eol + 1));
+  }
+
+  @Test
+  void shouldDeclareNullLongUnionFromStructureWhenEveryValueIsNull() throws IOException {
+    itemNullable("id", "1");
+
+    AvroFile avro = AvroFile.parse(generate("avro", 9, 25, 1));
+
+    JsonNode idType = null;
+    for (JsonNode f : avro.schema().get("fields")) {
+      if ("id".equals(f.get("name").asText())) {
+        idType = f.get("type");
+      }
+    }
+    assertThat(idType).as("avro type of id").isNotNull();
+    assertThat(MAPPER.writeValueAsString(idType)).isEqualTo("[\"null\",\"long\"]");
+    assertThat(avro.records()).hasSize(25).allSatisfy(r -> assertThat(r.get("id")).isNull());
+  }
+
+  @Test
+  void shouldReadAvroBackWithNullsWhereJsonHasNullAndSameValuesElsewhere() throws IOException {
+    itemNullable("id", "0.3");
+    List<JsonNode> expected = jsonRecords(9, 200);
+
+    AvroFile avro = AvroFile.parse(generate("avro", 9, 200, 4));
+
+    int nulls = 0;
+    for (int i = 0; i < 200; i++) {
+      Map<String, Object> got = avro.records().get(i);
+      JsonNode want = expected.get(i);
+      if (want.get("id").isNull()) {
+        nulls++;
+        assertThat(got.get("id")).as("record %d id", i).isNull();
+      } else {
+        assertThat(got).as("record %d id", i).containsEntry("id", want.get("id").asLong());
+      }
+      assertThat(got).containsEntry("label", want.get("label").asText());
+      assertThat(got).containsEntry("born", want.get("born").asText());
+    }
+    assertThat(nulls).isBetween(20, 100);
+  }
+
+  /**
+   * Protobuf rule chosen by the tester: a null field is simply not on the wire (proto3 unset), and
+   * field numbers stay the structure declaration order (1=id, 2=label, 3=amount, 5=born) even when
+   * a field is null in every record.
+   */
+  @Test
+  void shouldLeaveProtobufFieldUnsetAndKeepNumberingWhenFieldIsNull() throws IOException {
+    itemNullable("label", "0.4");
+    List<JsonNode> expected = jsonRecords(9, 200);
+    List<String> lines = lines(generate("protobuf", 9, 200, 4));
+
+    int nulls = 0;
+    for (int i = 0; i < 200; i++) {
+      Map<Integer, Object> fields = decodeProtobuf(Base64.getDecoder().decode(lines.get(i)));
+      JsonNode want = expected.get(i);
+      assertThat(fields).containsEntry(1, want.get("id").asLong());
+      assertThat((Double) fields.get(3)).isEqualTo(want.get("amount").asDouble());
+      assertThat(fields).containsEntry(5, want.get("born").asText());
+      if (want.get("label").isNull()) {
+        nulls++;
+        assertThat(fields).as("record %d label unset", i).doesNotContainKey(2);
+      } else {
+        assertThat(fields).containsEntry(2, want.get("label").asText());
+      }
+    }
+    assertThat(nulls).isBetween(40, 120);
+  }
+
+  @Test
+  void shouldKeepProtobufNumberingWhenFieldIsNullInEveryRecord() throws IOException {
+    itemNullable("label", "1");
+    List<JsonNode> expected = jsonRecords(9, 20);
+
+    List<String> lines = lines(generate("protobuf", 9, 20, 1));
+
+    for (int i = 0; i < 20; i++) {
+      Map<Integer, Object> fields = decodeProtobuf(Base64.getDecoder().decode(lines.get(i)));
+      assertThat(fields).doesNotContainKey(2);
+      assertThat(fields).containsEntry(1, expected.get(i).get("id").asLong());
+      assertThat(fields).containsEntry(5, expected.get(i).get("born").asText());
+    }
+  }
+
   // ── Minimal binary decoders ─────────────────────────────────────────────────
 
   /** Reads Avro/protobuf style varints and primitives from a byte array. */
