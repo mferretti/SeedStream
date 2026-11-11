@@ -54,6 +54,26 @@ class DdlInspectorBareRefTest {
     loadAll(in, dir);
   }
 
+  /**
+   * {@code ref[parent.c]} is the nested parent-record reference, so a plain FK to a table named
+   * {@code parent} keeps its explicit pool; the unique form is not ambiguous and goes bare.
+   */
+  @Test
+  void shouldKeepExplicitPoolForPlainForeignKeyToTableNamedParent(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            """
+            CREATE TABLE parent (id INT PRIMARY KEY);
+            CREATE TABLE child (id INT PRIMARY KEY, parent_id INT REFERENCES parent(id));
+            CREATE TABLE detail (parent_id INT PRIMARY KEY REFERENCES parent(id));
+            """);
+    loadAll(in, dir);
+
+    assertThat(datatypesOf(in, "child")).containsEntry("parent_id", "ref[parent.id, 1..count]");
+    assertThat(datatypesOf(in, "detail")).containsEntry("parent_id", "ref[parent.id, unique]");
+  }
+
   @Test
   void shouldEmitBareUniqueRefForOneToOneForeignKey(@TempDir Path dir) {
     Inspection in =

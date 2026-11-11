@@ -649,7 +649,7 @@ class DdlInspectorAlterTableTest {
     assertThat(datatypesOf(in, "parent")).containsEntry("id", "serial[1..2147483647]");
     assertThat(datatypesOf(in, "child"))
         .containsEntry("id", "serial[1..2147483647]")
-        .containsEntry("parent_id", "ref[parent.id]");
+        .containsEntry("parent_id", "ref[parent.id, 1..count]");
     assertThat(in.warnings()).isEmpty();
   }
 
@@ -890,7 +890,7 @@ class DdlInspectorAlterTableTest {
                 + target
                 + " (id);\n");
 
-    assertThat(datatypesOf(in, "child")).containsEntry("parent_id", "ref[parent.id]");
+    assertThat(datatypesOf(in, "child")).containsEntry("parent_id", "ref[parent.id, 1..count]");
     assertThat(in.warnings()).as(target).isEmpty();
   }
 

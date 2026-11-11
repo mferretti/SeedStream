@@ -110,7 +110,8 @@ class DdlInspectorColumnlessReferenceTest {
             CREATE TABLE parent (parent_id int, CONSTRAINT parent_pkey PRIMARY KEY (parent_id));
             """);
 
-    assertThat(datatypesOf(in, "child")).containsEntry("parent_ref", "ref[parent.parent_id]");
+    assertThat(datatypesOf(in, "child"))
+        .containsEntry("parent_ref", "ref[parent.parent_id, 1..count]");
   }
 
   @Test

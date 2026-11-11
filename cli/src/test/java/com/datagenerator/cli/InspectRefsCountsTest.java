@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -109,7 +110,7 @@ class InspectRefsCountsTest {
     assertThat(body.lines().takeWhile(l -> l.startsWith("#")).toList())
         .anyMatch(l -> l.contains("counts: counts.yaml"))
         .anyMatch(l -> l.contains("ref[table.column]"))
-        .anyMatch(l -> l.toLowerCase().contains("placeholder"));
+        .anyMatch(l -> l.toLowerCase(Locale.ROOT).contains("placeholder"));
   }
 
   @Test
@@ -253,17 +254,17 @@ class InspectRefsCountsTest {
   void shouldGenerateChildForeignKeysThatExistInTheGeneratedParent() throws IOException {
     String ddl =
         """
-        CREATE TABLE parent (id INT PRIMARY KEY, name VARCHAR(40));
-        CREATE TABLE child (id INT PRIMARY KEY, parent_id INT REFERENCES parent(id));
-        CREATE TABLE detail (parent_id INT PRIMARY KEY REFERENCES parent(id), note VARCHAR(40));
+        CREATE TABLE owner (id INT PRIMARY KEY, name VARCHAR(40));
+        CREATE TABLE child (id INT PRIMARY KEY, owner_id INT REFERENCES owner(id));
+        CREATE TABLE detail (owner_id INT PRIMARY KEY REFERENCES owner(id), note VARCHAR(40));
         """;
     assertThat(inspect(ddl).exit()).isZero();
     assertThat(outDir().resolve(COUNTS_FILE)).exists();
-    assertThat(Files.readString(outDir().resolve("child.yaml"))).contains("ref[parent.id]");
+    assertThat(Files.readString(outDir().resolve("child.yaml"))).contains("ref[owner.id]");
 
-    Set<Long> parentIds = generatedValues("parent", "parent", "id");
-    Set<Long> childFks = generatedValues("child", "child", "parent_id");
-    Set<Long> detailFks = generatedValues("detail", "detail", "parent_id");
+    Set<Long> parentIds = generatedValues("owner", "owner", "id");
+    Set<Long> childFks = generatedValues("child", "child", "owner_id");
+    Set<Long> detailFks = generatedValues("detail", "detail", "owner_id");
 
     assertThat(parentIds).hasSize(100);
     assertThat(childFks).isNotEmpty().isSubsetOf(parentIds);

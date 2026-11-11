@@ -233,7 +233,7 @@ class DdlInspectorIdentityMarkerTest {
                 + ");");
 
     assertThat(datatypesOf(in, "parent")).containsEntry("Id", ID_SERIAL);
-    assertThat(datatypesOf(in, "child")).containsEntry("pid", "ref[parent.id]");
+    assertThat(datatypesOf(in, "child")).containsEntry("pid", "ref[parent.id, 1..count]");
     assertThat(in.warnings())
         .anyMatch(
             w ->
