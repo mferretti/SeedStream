@@ -255,7 +255,7 @@ class InspectRefsCountsTest {
     String ddl =
         """
         CREATE TABLE owner (id INT PRIMARY KEY, name VARCHAR(40));
-        CREATE TABLE child (id INT PRIMARY KEY, owner_id INT REFERENCES owner(id));
+        CREATE TABLE child (id INT PRIMARY KEY, owner_id INT NOT NULL REFERENCES owner(id));
         CREATE TABLE detail (owner_id INT PRIMARY KEY REFERENCES owner(id), note VARCHAR(40));
         """;
     assertThat(inspect(ddl).exit()).isZero();

@@ -142,4 +142,24 @@ class StructureYamlWriterTest {
     assertThat(parsed.at("/data/postal-code/datatype").asText()).isEqualTo("char[1..50]");
     assertThat(parsed.at("/data/@type/datatype").asText()).isEqualTo("enum[A,B]");
   }
+
+  @Test
+  void shouldWriteNullableRightAfterDatatypeAndKeepCommentOnDatatypeLine(@TempDir Path outputDir)
+      throws Exception {
+    Map<String, FieldDefinition> data = new LinkedHashMap<>();
+    data.put("id", new FieldDefinition("int[1..10]", null));
+    data.put("note", new FieldDefinition("char[1..20]", "memo", 0.05));
+    data.put("tag", new FieldDefinition("char[1..9]", null, 0.05));
+    DataStructure structure = new DataStructure("customer", null, data);
+
+    writer.write(structure, outputDir, true, Map.of("tag", "REVIEW tag"));
+
+    List<String> lines = Files.readAllLines(outputDir.resolve("customer.yaml"));
+    assertThat(lines)
+        .containsSubsequence(
+            "    datatype: \"char[1..20]\"", "    nullable: 0.05", "    alias: \"memo\"");
+    assertThat(lines)
+        .containsSubsequence("    datatype: \"char[1..9]\"  # REVIEW tag", "    nullable: 0.05");
+    assertThat(lines).filteredOn(l -> l.contains("nullable:")).hasSize(2);
+  }
 }

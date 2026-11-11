@@ -91,7 +91,10 @@ public class OpenApiInspector {
       if (mapped.reason() == MappedType.Reason.SCHEMA_ERROR) {
         warnings.add("schema '" + name + "' field '" + fieldName + "': " + mapped.comment());
       }
-      data.put(fieldName, new FieldDefinition(mapped.datatype(), null));
+      data.put(
+          fieldName,
+          new FieldDefinition(
+              mapped.datatype(), null, SchemaTypeMapper.nullableRate(property.getValue())));
     }
     if (!fieldComments.isEmpty()) {
       comments.put(name, fieldComments);

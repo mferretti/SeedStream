@@ -840,4 +840,28 @@ class ProtobufInspectorTest {
         .hasMessageContaining("ambiguous")
         .hasMessageContaining("x_a_b");
   }
+
+  @Test
+  void shouldNotEmitNullableForAnyProtobufField() throws IOException {
+    DescriptorProto msg =
+        DescriptorProto.newBuilder()
+            .setName("Person")
+            .addField(optionalField("name", 1, Type.TYPE_STRING))
+            .addField(optionalField("age", 2, Type.TYPE_INT32))
+            .build();
+    FileDescriptorProto fdp =
+        FileDescriptorProto.newBuilder()
+            .setName("person.proto")
+            .setPackage("pkg")
+            .setSyntax("proto3")
+            .addMessageType(msg)
+            .build();
+
+    Inspection inspection = new ProtobufInspector().inspect(buildAndWrite(fdp));
+
+    assertThat(inspection.structures())
+        .flatExtracting(st -> st.getData().values())
+        .isNotEmpty()
+        .allSatisfy(def -> assertThat(def.getNullable()).isNull());
+  }
 }

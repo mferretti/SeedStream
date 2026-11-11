@@ -24,6 +24,7 @@ import com.datagenerator.inspector.ddl.NestingPlanner.ForeignKeyRef;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -147,7 +148,14 @@ final class AlterTableApplier {
     }
   }
 
+  private static final Pattern SET_NOT_NULL =
+      Pattern.compile("(?i)\\bALTER\\s+(?:COLUMN\\s+)?(\\S+)\\s+SET\\s+NOT\\s+NULL\\b");
+
   private void alterColumn(TableModel table, AlterExpression expression, List<String> warnings) {
+    Matcher notNull = SET_NOT_NULL.matcher(expression.toString());
+    if (notNull.find()) {
+      table.notNull.add(unquote(notNull.group(1)).toLowerCase(Locale.ROOT));
+    }
     List<ColumnDataType> columns = expression.getColDataTypeList();
     if (columns == null || columns.isEmpty()) {
       return; // SET / DROP NOT NULL, SET DEFAULT, ...

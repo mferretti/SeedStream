@@ -42,6 +42,9 @@ public final class Defaults {
    */
   public static final String REF_POOL = "1..count";
 
+  /** Null rate emitted for nullable non-key fields (#492). */
+  public static final double NULLABLE_RATE = 0.05;
+
   public static final int ARRAY_MIN = 1;
   public static final int ARRAY_MAX = 10;
 

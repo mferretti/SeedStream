@@ -135,6 +135,9 @@ public class StructureYamlWriter {
   private Map<String, Object> fieldToMap(FieldDefinition def) {
     Map<String, Object> field = new LinkedHashMap<>();
     field.put("datatype", def.getDatatype());
+    if (def.getNullable() != null) {
+      field.put("nullable", def.getNullable());
+    }
     if (def.getAlias() != null) {
       field.put("alias", def.getAlias());
     }
