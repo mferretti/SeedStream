@@ -5,9 +5,9 @@ data:
   product_name:
     datatype: "product_name"  # guessed from column name — verify
   supplier_id:
-    datatype: "ref[suppliers.supplier_id, 1..29]"  # hand edit (#442): static parent row count
+    datatype: "ref[suppliers.supplier_id]"
   category_id:
-    datatype: "ref[categories.category_id, 1..8]"  # hand edit (#442): static parent row count
+    datatype: "ref[categories.category_id]"
   quantity_per_unit:
     datatype: "char[1..20]"
   unit_price:

@@ -5,4 +5,4 @@ data:
   territory_description:
     datatype: "char[1..50]"
   region_id:
-    datatype: "ref[region.region_id, 1..4]"  # hand edit (#442): static parent row count
+    datatype: "ref[region.region_id]"

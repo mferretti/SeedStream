@@ -1,6 +1,6 @@
 name: "employee_territories"
 data:
   employee_id:
-    datatype: "ref[employees.employee_id, 1..9, unique=pk]"  # hand edit (#442): static parent row count
+    datatype: "ref[employees.employee_id, unique=pk]"
   territory_id:
-    datatype: "ref[territories.territory_id, 1..53, unique=pk]"  # hand edit (#442): static parent row count
+    datatype: "ref[territories.territory_id, unique=pk]"
