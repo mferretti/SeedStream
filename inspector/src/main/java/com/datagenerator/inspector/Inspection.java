@@ -40,11 +40,11 @@ public record Inspection(
 
   /** Builds an inspection with no counts skeleton. */
   public Inspection(
-      List<DataStructure> structures,
-      Map<String, Map<String, String>> comments,
-      List<String> warnings,
-      Map<String, String> fakerTypeSuggestions) {
-    this(structures, comments, warnings, fakerTypeSuggestions, List.of());
+      List<DataStructure> structureList,
+      Map<String, Map<String, String>> commentMap,
+      List<String> warningList,
+      Map<String, String> suggestions) {
+    this(structureList, commentMap, warningList, suggestions, List.of());
   }
 
   /** Builds an inspection with no faker-type suggestions (OpenAPI / DDL / Protobuf sources). */
