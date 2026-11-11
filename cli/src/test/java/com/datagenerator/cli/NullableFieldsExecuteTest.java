@@ -74,7 +74,7 @@ class NullableFieldsExecuteTest {
       case "born" -> "date[2020-01-01..2025-12-31]";
       case "flag" -> "boolean";
       case "tag" -> "enum[A,B,C]";
-      default -> throw new IllegalArgumentException(field);
+      case null, default -> throw new IllegalArgumentException(field);
     };
   }
 
