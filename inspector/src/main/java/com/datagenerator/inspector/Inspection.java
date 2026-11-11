@@ -35,7 +35,17 @@ public record Inspection(
     List<DataStructure> structures,
     Map<String, Map<String, String>> comments,
     List<String> warnings,
-    Map<String, String> fakerTypeSuggestions) {
+    Map<String, String> fakerTypeSuggestions,
+    List<String> countsTables) {
+
+  /** Builds an inspection with no counts skeleton. */
+  public Inspection(
+      List<DataStructure> structures,
+      Map<String, Map<String, String>> comments,
+      List<String> warnings,
+      Map<String, String> fakerTypeSuggestions) {
+    this(structures, comments, warnings, fakerTypeSuggestions, List.of());
+  }
 
   /** Builds an inspection with no faker-type suggestions (OpenAPI / DDL / Protobuf sources). */
   public static Inspection of(

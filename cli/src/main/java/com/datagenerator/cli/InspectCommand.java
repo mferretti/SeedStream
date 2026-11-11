@@ -16,6 +16,7 @@
 
 package com.datagenerator.cli;
 
+import com.datagenerator.inspector.CountsFileWriter;
 import com.datagenerator.inspector.FakerTypeSuggestionsWriter;
 import com.datagenerator.inspector.Inspection;
 import com.datagenerator.inspector.InspectorException;
@@ -33,6 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -234,6 +236,7 @@ public class InspectCommand implements Callable<Integer> {
 
       inspection.warnings().forEach(log::warn);
       writeFakerTypeSuggestions(inspection.fakerTypeSuggestions());
+      writeCounts(inspection.countsTables());
 
       log.info(
           "inspect complete: {} written, {} skipped, {} fields flagged for review (commented)",
@@ -244,6 +247,22 @@ public class InspectCommand implements Callable<Integer> {
     } catch (InspectorException e) {
       log.error("inspect failed: {}", e.getMessage());
       return 2;
+    }
+  }
+
+  private void writeCounts(List<String> tables) {
+    CountsFileWriter.Outcome outcome = new CountsFileWriter().write(tables, outputDir, force);
+    switch (outcome.result()) {
+      case WRITTEN ->
+          log.info(
+              "wrote {} ({} table(s) at a placeholder count) — set real sizes, jobs use"
+                  + " `counts: {}`",
+              outcome.target(),
+              tables.size(),
+              CountsFileWriter.FILE_NAME);
+      case SKIPPED_EXISTS ->
+          log.warn("{} exists — not overwritten (use --force)", outcome.target());
+      case null, default -> {} // NONE: no bare ref, nothing written
     }
   }
 
