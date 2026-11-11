@@ -91,6 +91,14 @@ public class AvroSerializer implements FormatSerializer {
 
   private final Object initLock = new Object();
 
+  // Declared types of nullable fields; set once before the first record (see FormatSerializer).
+  private volatile Map<String, Class<?>> nullableTypes = Map.of();
+
+  @Override
+  public void declareNullableFields(Map<String, Class<?>> types) {
+    nullableTypes = Map.copyOf(types);
+  }
+
   // Reused across records on the same worker thread for throughput; never remove()d because the
   // reuse is the point and generation worker threads are short-lived (terminate at job end, like
   // FakerCache). Holds no per-record state beyond the bound stream.
@@ -146,7 +154,11 @@ public class AvroSerializer implements FormatSerializer {
     List<Schema.Field> fields = new ArrayList<>();
     for (Map.Entry<String, Object> entry : data.entrySet()) {
       String fieldName = sanitizeFieldName(entry.getKey());
-      Schema nullable = buildFieldSchema(entry.getValue());
+      Class<?> declared = nullableTypes.get(entry.getKey());
+      Schema nullable =
+          declared != null
+              ? Schema.createUnion(Schema.create(Schema.Type.NULL), inferSchema(declared))
+              : buildFieldSchema(entry.getValue());
       fields.add(new Schema.Field(fieldName, nullable, null, Schema.Field.NULL_DEFAULT_VALUE));
     }
     return Schema.createRecord("Record", null, "com.datagenerator", false, fields);
@@ -172,7 +184,7 @@ public class AvroSerializer implements FormatSerializer {
           Schema.create(Schema.Type.BOOLEAN),
           Schema.create(Schema.Type.STRING));
     }
-    return Schema.createUnion(nullSchema, inferSchema(firstValue));
+    return Schema.createUnion(nullSchema, inferSchema(firstValue.getClass()));
   }
 
   private static String sanitizeFieldName(String name) {
@@ -183,24 +195,25 @@ public class AvroSerializer implements FormatSerializer {
   }
 
   /**
-   * Infers the Avro type for a known, non-null value. Callers must not pass {@code null}; a null
-   * first-record value is handled separately by {@link #buildFieldSchema} since its true type is
-   * unknown (see class javadoc, issue #285).
+   * Infers the Avro type for a known value class. A null first-record value is handled separately
+   * by {@link #buildFieldSchema} since its true type is unknown (see class javadoc, issue #285).
    */
-  private Schema inferSchema(Object value) {
-    if (value instanceof String) return Schema.create(Schema.Type.STRING);
-    if (value instanceof Long) return Schema.create(Schema.Type.LONG);
-    if (value instanceof Integer) return Schema.create(Schema.Type.INT);
-    if (value instanceof Boolean) return Schema.create(Schema.Type.BOOLEAN);
-    if (value instanceof Double || value instanceof Float) return Schema.create(Schema.Type.DOUBLE);
-    if (value instanceof BigDecimal) return Schema.create(Schema.Type.DOUBLE);
-    if (value instanceof LocalDate) {
+  private Schema inferSchema(Class<?> type) {
+    if (String.class.equals(type)) return Schema.create(Schema.Type.STRING);
+    if (Long.class.equals(type)) return Schema.create(Schema.Type.LONG);
+    if (Integer.class.equals(type)) return Schema.create(Schema.Type.INT);
+    if (Boolean.class.equals(type)) return Schema.create(Schema.Type.BOOLEAN);
+    if (Double.class.equals(type) || Float.class.equals(type)) {
+      return Schema.create(Schema.Type.DOUBLE);
+    }
+    if (BigDecimal.class.equals(type)) return Schema.create(Schema.Type.DOUBLE);
+    if (LocalDate.class.equals(type)) {
       return LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT));
     }
-    if (value instanceof Instant) {
+    if (Instant.class.equals(type)) {
       return LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG));
     }
-    if (value instanceof List) {
+    if (List.class.isAssignableFrom(type)) {
       // Elements are nullable: generated lists may carry null entries (#348).
       return Schema.createArray(
           Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)));

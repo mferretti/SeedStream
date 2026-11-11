@@ -116,7 +116,7 @@ public class ObjectGenerator implements DataGenerator {
     // Pass 1: generate all non-nested fields
     for (Map.Entry<String, DataType> entry : fields.entrySet()) {
       DataType fieldType = entry.getValue();
-      if (fieldType instanceof ArrayType || fieldType instanceof ObjectType) continue;
+      if (isNested(fieldType)) continue;
 
       DataGenerator fieldGenerator = GeneratorContext.getFactory().create(fieldType);
       Object fieldValue = fieldGenerator.generate(random, fieldType);
@@ -130,7 +130,7 @@ public class ObjectGenerator implements DataGenerator {
     // Pass 2: generate nested fields, exposing the current partial record to child generators
     for (Map.Entry<String, DataType> entry : fields.entrySet()) {
       DataType fieldType = entry.getValue();
-      if (!(fieldType instanceof ArrayType || fieldType instanceof ObjectType)) continue;
+      if (!isNested(fieldType)) continue;
 
       GeneratorContext.pushParentRecord(result);
       Object fieldValue;
@@ -148,6 +148,12 @@ public class ObjectGenerator implements DataGenerator {
     }
 
     return result;
+  }
+
+  /** Arrays and objects (also when nullable) are generated after the scalars. */
+  private static boolean isNested(DataType fieldType) {
+    DataType base = fieldType.unwrap();
+    return base instanceof ArrayType || base instanceof ObjectType;
   }
 
   /**

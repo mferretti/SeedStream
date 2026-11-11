@@ -18,12 +18,15 @@ package com.datagenerator.schema.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Value;
 
 /**
- * Represents a field definition in a data structure. Contains the datatype specification and
- * optional alias for output.
+ * Represents a field definition in a data structure. Contains the datatype specification, optional
+ * alias for output and optional {@code nullable} rate: the probability in [0, 1] that the field is
+ * null (absent = never).
  */
 @Value
 public class FieldDefinition {
@@ -31,11 +34,33 @@ public class FieldDefinition {
 
   String alias;
 
-  @JsonCreator
-  @SuppressWarnings("checkstyle:HiddenField") // @JsonCreator requires params named after fields
-  public FieldDefinition(
-      @JsonProperty("datatype") String datatype, @JsonProperty("alias") String alias) {
+  @DecimalMin("0.0")
+  @DecimalMax("1.0")
+  Double nullable;
+
+  @SuppressWarnings("checkstyle:HiddenField")
+  public FieldDefinition(String datatype, String alias, Double nullable) {
     this.datatype = datatype;
     this.alias = alias;
+    this.nullable = nullable;
+  }
+
+  @SuppressWarnings("checkstyle:HiddenField")
+  public FieldDefinition(String datatype, String alias) {
+    this(datatype, alias, null);
+  }
+
+  /** Reads {@code nullable} as a raw value so that only a YAML number is accepted. */
+  @JsonCreator
+  static FieldDefinition fromYaml(
+      @JsonProperty("datatype") String datatype,
+      @JsonProperty("alias") String alias,
+      @JsonProperty("nullable") Object nullable) {
+    if (nullable != null && !(nullable instanceof Number)) {
+      throw new IllegalArgumentException(
+          "nullable must be a number between 0 and 1, got: " + nullable);
+    }
+    return new FieldDefinition(
+        datatype, alias, nullable == null ? null : ((Number) nullable).doubleValue());
   }
 }

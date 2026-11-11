@@ -99,6 +99,15 @@ public interface FormatSerializer {
   }
 
   /**
+   * Declares the Java type of fields that may be null ({@code nullable: <rate>}), so a binary
+   * schema is built from the structure instead of from the first record, whose value for such a
+   * field can be null. Called once before the first record; the default ignores it (text formats).
+   *
+   * @param types declared value class per field name
+   */
+  default void declareNullableFields(Map<String, Class<?>> types) {}
+
+  /**
    * Get the format name (e.g., "json", "csv", "protobuf").
    *
    * @return format identifier

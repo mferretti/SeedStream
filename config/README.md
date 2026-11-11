@@ -897,6 +897,28 @@ parent_id:   { datatype: ref[parent_table.id, unique=composite_key] }
 | `ref[t.c, 1..count]` | no (values depend on the bound) |
 | `ref[t.c]` | no — values depend on the parent's count |
 
+### Nullable Fields
+
+Any field can be null some of the time with a `nullable` key next to `datatype` — the probability of null, in `[0, 1]` (#492):
+
+```yaml
+fax:
+  datatype: "char[10..24]"
+  nullable: 0.05     # ~5% of records get null
+ship_region:
+  datatype: "enum[N,S,E,W]"
+  nullable: 0.5
+address:
+  datatype: "object[address]"
+  nullable: 0.1      # the whole nested object is null
+```
+
+- No `nullable` key (or `nullable: 0`) → never null, exactly as before. `nullable: 1` → always null.
+- **Adding `nullable` changes nothing else**: the field's value is still generated and then replaced by null, and the null decision is a hash of (seed, record index, field) rather than a draw from the record's random stream. Every other field, and every non-null value of this one, is byte-identical to the output without the key; thread-count independent and prefix-stable.
+- Outputs write a real null: JSON `null`, an empty CSV cell, an Avro `["null", T]` union (decided from the structure, not the first record), an unset Protobuf field, SQL `NULL` bound with the column's type.
+- Rejected at startup with `nullable` > 0: key types (`serial`, `unique[...]`, `cycle[...]`, `ref[..., unique]`), and a field that a bare `ref[t.c]` uses as parent key.
+- A NOT NULL database column with `nullable` fails at insert: match the rate to the schema.
+
 ### Field Aliases
 
 ```yaml

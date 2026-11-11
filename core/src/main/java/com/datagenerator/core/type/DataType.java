@@ -31,11 +31,17 @@ public sealed interface DataType
         UniqueType,
         SerialType,
         CycleType,
-        CustomDatafakerType {
+        CustomDatafakerType,
+        NullableType {
   /**
    * Returns a human-readable description of this type (e.g., "char[3..15]", "array[int, 5..10]").
    *
    * @return human-readable type description
    */
   String describe();
+
+  /** The type without a {@link NullableType} wrapper; every other type is its own base. */
+  default DataType unwrap() {
+    return this;
+  }
 }
