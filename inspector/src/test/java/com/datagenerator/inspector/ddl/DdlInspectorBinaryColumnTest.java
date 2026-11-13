@@ -27,6 +27,8 @@ import com.datagenerator.schema.model.DataStructure;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -59,7 +61,14 @@ class DdlInspectorBinaryColumnTest {
         Arguments.of("IMAGE", "IMAGE"),
         Arguments.of("LONG RAW", "LONG RAW"),
         // the preprocessor rewrites RAW(n) to VARBINARY(n); either spelling is fine in the warning
-        Arguments.of("RAW(16)", "(RAW|VARBINARY)\\(16\\)"));
+        Arguments.of("RAW(16)", "RAW(16)|VARBINARY(16)"));
+  }
+
+  /** Regex matching any of the {@code |}-separated type spellings literally. */
+  private static String typeRegex(String shown) {
+    return Stream.of(shown.split("\\|"))
+        .map(Pattern::quote)
+        .collect(Collectors.joining("|", "(?:", ")"));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -67,15 +76,17 @@ class DdlInspectorBinaryColumnTest {
   void shouldOmitNullableBinaryColumnAndWarn(String type, String shown, @TempDir Path dir) {
     Inspection in =
         inspectDdl(
-            dir, "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(10), data " + type + ");");
+            dir, "CREATE TABLE t (id INT PRIMARY KEY, code VARCHAR(10), data " + type + ");");
 
-    assertThat(datatypesOf(in, "t")).doesNotContainKey("data").containsEntry("name", "char[1..10]");
+    assertThat(datatypesOf(in, "t")).doesNotContainKey("data").containsEntry("code", "char[1..10]");
     assertThat(in.comments().getOrDefault("t", Map.of())).doesNotContainKey("data");
     assertThat(in.warnings())
         .filteredOn(w -> w.startsWith("t.data: "))
         .singleElement(STRING)
         .matches(
-            "(?is)t\\.data: binary column \\(" + shown + "\\) omitted, stored as NULL \\(#439\\)");
+            "(?is)t\\.data: binary column \\("
+                + typeRegex(shown)
+                + "\\) omitted, stored as NULL \\(#439\\)");
   }
 
   @ParameterizedTest(name = "{0}")
@@ -85,7 +96,7 @@ class DdlInspectorBinaryColumnTest {
     Inspection in =
         inspectDdl(
             dir,
-            "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(10), data " + type + " NOT NULL);");
+            "CREATE TABLE t (id INT PRIMARY KEY, code VARCHAR(10), data " + type + " NOT NULL);");
 
     assertThat(datatypesOf(in, "t")).containsEntry("data", FALLBACK);
     assertThat(in.warnings())
@@ -93,7 +104,7 @@ class DdlInspectorBinaryColumnTest {
         .singleElement(STRING)
         .matches(
             "(?is)t\\.data: binary column \\("
-                + shown
+                + typeRegex(shown)
                 + "\\) is NOT NULL; the generated text will not insert"
                 + " — needs a bytes type \\(#439\\)");
   }
@@ -131,9 +142,9 @@ class DdlInspectorBinaryColumnTest {
 
   @Test
   void shouldKeepBinaryPrimaryKeyAndWarnNotNull(@TempDir Path dir) {
-    Inspection in = inspectDdl(dir, "CREATE TABLE t (k BYTEA PRIMARY KEY, name VARCHAR(10));");
+    Inspection in = inspectDdl(dir, "CREATE TABLE t (k BYTEA PRIMARY KEY, code VARCHAR(10));");
 
-    assertThat(datatypesOf(in, "t")).containsKey("k").containsKey("name");
+    assertThat(datatypesOf(in, "t")).containsKey("k").containsKey("code");
     assertThat(in.warnings())
         .anyMatch(w -> w.startsWith("t.k: ") && w.contains("is NOT NULL") && w.contains("#439"))
         .noneMatch(w -> w.contains("omitted"));
@@ -159,9 +170,9 @@ class DdlInspectorBinaryColumnTest {
       })
   void shouldOmitBinaryColumnWithDefaultAndSayTheDatabaseFillsIt(String column, @TempDir Path dir) {
     Inspection in =
-        inspectDdl(dir, "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(10), " + column + ");");
+        inspectDdl(dir, "CREATE TABLE t (id INT PRIMARY KEY, code VARCHAR(10), " + column + ");");
 
-    assertThat(datatypesOf(in, "t")).doesNotContainKey("data").containsEntry("name", "char[1..10]");
+    assertThat(datatypesOf(in, "t")).doesNotContainKey("data").containsEntry("code", "char[1..10]");
     assertThat(in.warnings())
         .filteredOn(w -> w.startsWith("t.data: "))
         .singleElement(STRING)
@@ -194,7 +205,7 @@ class DdlInspectorBinaryColumnTest {
             """
             CREATE TABLE cat (
               id INT PRIMARY KEY,
-              name VARCHAR(10),
+              code VARCHAR(10),
               picture BYTEA,
               stamp BYTEA DEFAULT '\\x00'
             );
@@ -203,7 +214,7 @@ class DdlInspectorBinaryColumnTest {
 
     Map<String, DataStructure> loaded = loadAll(in, dir);
 
-    assertThat(loaded.get("cat").getData().keySet()).containsExactly("id", "name");
+    assertThat(loaded.get("cat").getData().keySet()).containsExactly("id", "code");
     assertThat(loaded.get("item").getData().keySet()).containsExactly("id", "cat_id");
   }
 
@@ -222,7 +233,7 @@ class DdlInspectorBinaryColumnTest {
   @Test
   void shouldBeNoOpForSchemaWithoutBinaryColumns(@TempDir Path dir) {
     List<String> warnings =
-        inspectDdl(dir, "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(10));").warnings();
+        inspectDdl(dir, "CREATE TABLE t (id INT PRIMARY KEY, code VARCHAR(10));").warnings();
 
     assertThat(warnings).noneMatch(w -> w.contains("#439"));
   }
