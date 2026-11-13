@@ -110,6 +110,7 @@ final class AlterTableApplier {
     switch (expression.getOperation()) {
       case ADD -> add(table, expression, tables, warnings);
       case ALTER -> alterColumn(table, expression, warnings);
+      case MODIFY -> modifyColumn(table, expression);
       case DROP, CHANGE, RENAME, RENAME_TABLE -> warnNotApplied(table, expression, warnings);
       default -> {
         // MODIFY (NOT NULL, AUTO_INCREMENT), OWNER TO, triggers, partitions, ...: no key involved
@@ -150,6 +151,17 @@ final class AlterTableApplier {
 
   private static final Pattern SET_NOT_NULL =
       Pattern.compile("(?i)\\bALTER\\s+(?:COLUMN\\s+)?(\\S+)\\s+SET\\s+NOT\\s+NULL\\b");
+
+  private static final Pattern MODIFY_NOT_NULL =
+      Pattern.compile("(?i)\\bMODIFY\\s+(?:COLUMN\\s+)?\\(?\\s*(\\S+)\\s[^,]*?\\bNOT\\s+NULL\\b");
+
+  /** Oracle {@code MODIFY (c NOT NULL ENABLE)}: the only part of MODIFY that is read. */
+  private void modifyColumn(TableModel table, AlterExpression expression) {
+    Matcher notNull = MODIFY_NOT_NULL.matcher(expression.toString());
+    if (notNull.find()) {
+      table.notNull.add(unquote(notNull.group(1)).toLowerCase(Locale.ROOT));
+    }
+  }
 
   private void alterColumn(TableModel table, AlterExpression expression, List<String> warnings) {
     Matcher notNull = SET_NOT_NULL.matcher(expression.toString());

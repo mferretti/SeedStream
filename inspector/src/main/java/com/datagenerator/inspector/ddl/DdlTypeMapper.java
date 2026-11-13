@@ -182,6 +182,24 @@ public final class DdlTypeMapper {
     };
   }
 
+  private static final Set<String> BINARY_TYPES =
+      Set.of(
+          "BYTEA",
+          "BLOB",
+          "TINYBLOB",
+          "MEDIUMBLOB",
+          "LONGBLOB",
+          "BINARY",
+          "VARBINARY",
+          "IMAGE",
+          "RAW",
+          "LONG RAW");
+
+  /** True for binary SQL types (#439), which have no SeedStream type. */
+  static boolean isBinary(String sqlType) {
+    return BINARY_TYPES.contains(normalize(sqlType));
+  }
+
   /** True for the {@code VARCHAR} / {@code TEXT} families (any length). */
   static boolean isText(String sqlType) {
     String type = SYNONYMS.getOrDefault(normalize(sqlType), normalize(sqlType));

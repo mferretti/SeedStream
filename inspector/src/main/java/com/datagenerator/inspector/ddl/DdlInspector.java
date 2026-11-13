@@ -144,7 +144,11 @@ public class DdlInspector {
       Map<String, Long> ceilings,
       Set<String> dbAssignedColumns,
       Set<String> identityColumns,
-      Map<String, ColumnChecks> checks) {}
+      Map<String, ColumnChecks> checks,
+      Map<String, BinaryColumn> binaryColumns) {}
+
+  /** A binary column (#439): its SQL type as shown in warnings, and whether it must be filled. */
+  private record BinaryColumn(String sqlType, boolean notNull, boolean hasDefault) {}
 
   private final DdlTypeMapper mapper = new DdlTypeMapper();
   private final SqlStatementSplitter splitter = new SqlStatementSplitter();
@@ -584,8 +588,14 @@ public class DdlInspector {
     table.parents.addAll(parents);
     for (ColumnDefinition column : columns) {
       String columnName = unquote(column.getColumnName());
-      table.columns.add(new Column(columnName, column.getColDataType()));
       List<String> specs = column.getColumnSpecs() == null ? List.of() : column.getColumnSpecs();
+      ColDataType colType = column.getColDataType();
+      if ("LONG".equalsIgnoreCase(colType.getDataType())
+          && !specs.isEmpty()
+          && "RAW".equalsIgnoreCase(specs.get(0))) {
+        colType.setDataType("LONG RAW"); // the parser reads Oracle's LONG RAW as LONG + spec RAW
+      }
+      table.columns.add(new Column(columnName, colType));
       String joined = String.join(" ", specs).toUpperCase(Locale.ROOT);
       if (joined.contains("ALWAYS") && joined.contains("IDENTITY")) {
         table.dbAssigned.add(lower(columnName));
@@ -595,6 +605,9 @@ public class DdlInspector {
       }
       if (joined.contains("NOT NULL")) {
         table.notNull.add(lower(columnName));
+      }
+      if (joined.contains("DEFAULT")) {
+        table.defaulted.add(lower(columnName));
       }
       if (specs.stream().anyMatch("PRIMARY"::equalsIgnoreCase)) {
         table.addPrimaryKey(List.of(columnName));
@@ -685,8 +698,20 @@ public class DdlInspector {
     Set<String> uuidColumns = new LinkedHashSet<>();
     Set<String> textColumns = new LinkedHashSet<>();
     Map<String, Long> ceilings = new LinkedHashMap<>();
+    Map<String, BinaryColumn> binaryColumns = new LinkedHashMap<>();
 
     for (Column column : table.columns) {
+      if (DdlTypeMapper.isBinary(baseTypeName(column.type()))) {
+        String key = lower(column.name());
+        List<String> args = typeArguments(column.type());
+        String shown =
+            baseTypeName(column.type()).toUpperCase(Locale.ROOT)
+                + (args.isEmpty() ? "" : "(" + String.join(",", args) + ")");
+        boolean notNull =
+            table.notNull.contains(key)
+                || flatten(table.primary).stream().anyMatch(key::equalsIgnoreCase);
+        binaryColumns.put(key, new BinaryColumn(shown, notNull, table.defaulted.contains(key)));
+      }
       String datatype = foreignKeyTypes.get(lower(column.name()));
       if (datatype == null) {
         ColDataType colType = column.type();
@@ -741,7 +766,8 @@ public class DdlInspector {
             ceilings,
             table.dbAssigned,
             table.identity,
-            checks));
+            checks,
+            binaryColumns));
     return new TableInfo(
         table.name,
         data,
@@ -833,6 +859,48 @@ public class DdlInspector {
     }
     applyKeyChecks(table, keys);
     handleDbAssigned(table, keys, warnings, referenced);
+    handleBinary(table, keys, warnings, referenced);
+  }
+
+  /**
+   * Binary columns (#439) have no SeedStream type and the char fallback cannot be inserted: omit
+   * those the database can fill (nullable or DEFAULT) unless a key depends on them; warn about the
+   * rest.
+   */
+  private void handleBinary(
+      TableInfo table, TableKeys keys, List<String> warnings, Map<String, Set<String>> referenced) {
+    Set<String> fkColumns =
+        table.foreignKeys().stream()
+            .flatMap(fk -> fk.localColumns().stream())
+            .map(this::lower)
+            .collect(Collectors.toSet());
+    keys.binaryColumns()
+        .forEach(
+            (key, bin) -> {
+              String column = actualKey(table, key);
+              if (!table.data().containsKey(column)) {
+                return;
+              }
+              String label =
+                  table.name() + "." + column + ": binary column (" + bin.sqlType() + ")";
+              boolean keyed =
+                  fkColumns.contains(key)
+                      || referenced.containsKey(lower(table.name()) + "." + key);
+              if (keyed || (bin.notNull() && !bin.hasDefault())) {
+                warnings.add(
+                    label
+                        + " is NOT NULL; the generated text will not insert"
+                        + " — needs a bytes type (#439)");
+              } else {
+                warnings.add(
+                    label
+                        + (bin.hasDefault()
+                            ? " omitted, the database fills its DEFAULT (#439)"
+                            : " omitted, stored as NULL (#439)"));
+                table.data().remove(column);
+                table.comments().remove(column);
+              }
+            });
   }
 
   /**
