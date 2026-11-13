@@ -9,29 +9,43 @@ data:
     datatype: "enum[Nancy,Andrew,Janet,Margaret,Steven,Michael,Robert,Laura,Anne]"  # hand edit (#440): `first_name` hint exceeds varchar(10)
   title:
     datatype: "enum[Sales Representative,Sales Manager,Vice President Sales,Inside Sales Coordinator]"  # hand edit (#440): `title` hint exceeds varchar(30)
+    nullable: 0.05
   title_of_courtesy:
     datatype: "char[1..25]"
+    nullable: 0.05
   birth_date:
     datatype: "date[1950-01-01..1990-12-31]"  # realism (optional)
+    nullable: 0.05
   hire_date:
     datatype: "date[1992-01-01..2024-12-31]"  # realism (optional): Northwind-like range
+    nullable: 0.05
   address:
     datatype: "street_name"  # hand edit (#440): `address` hint exceeds varchar(60)
+    nullable: 0.05
   city:
     datatype: "enum[Aachen,Barcelona,Berlin,Bern,Boise,Bruxelles,Buenos Aires,Caracas,Graz,Helsinki,Kobenhavn,Lisboa,London,Lyon,Madrid,Marseille,Montreal,Munchen,Oulu,Paris,Portland,Rio de Janeiro,Salzburg,Sao Paulo,Seattle,Stavern,Torino,Vancouver,Warszawa]"  # hand edit (#440): `city` hint exceeds varchar(15)
+    nullable: 0.05
   region:
     datatype: "char[1..15]"
+    nullable: 0.05
   postal_code:
     datatype: "postal_code"  # guessed from column name — verify
+    nullable: 0.05
   country:
     datatype: "enum[Argentina,Austria,Belgium,Brazil,Canada,Denmark,Finland,France,Germany,Ireland,Italy,Mexico,Norway,Poland,Portugal,Spain,Sweden,Switzerland,UK,USA,Venezuela]"  # hand edit (#440): `country` hint exceeds varchar(15)
+    nullable: 0.05
   home_phone:
     datatype: "phone_number"  # guessed from column name — verify
+    nullable: 0.05
   extension:
     datatype: "char[1..4]"
+    nullable: 0.05
   notes:
     datatype: "char[1..500]"
+    nullable: 0.05
   reports_to:
-    datatype: "ref[employees.employee_id, 1..1]"  # hand edit (#213): self-FK; everyone reports to employee 1, which exists before any row needs it
+    datatype: "ref[employees.employee_id]"  # self-reference (#213): a random earlier employee; the first row is the NULL root
+    nullable: 0.05
   photo_path:
     datatype: "char[1..255]"
+    nullable: 0.05

@@ -4,3 +4,4 @@ data:
     datatype: "serial[1..9999999999]"  # text key generated as numeric strings — max 9999999999 rows
   customer_desc:
     datatype: "char[1..500]"
+    nullable: 0.05

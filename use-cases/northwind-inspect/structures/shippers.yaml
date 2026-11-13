@@ -6,3 +6,4 @@ data:
     datatype: "enum[Speedy Express,United Package,Federal Shipping,Alliance Shippers,UPS,DHL]"  # realism (optional): Northwind shippers
   phone:
     datatype: "phone_number"  # guessed from column name — verify
+    nullable: 0.05
