@@ -885,12 +885,14 @@ public class DdlInspector {
                   table.name() + "." + column + ": binary column (" + bin.sqlType() + ")";
               boolean keyed =
                   fkColumns.contains(key)
+                      || keys.uniques().stream()
+                          .anyMatch(u -> u.stream().anyMatch(key::equalsIgnoreCase))
                       || referenced.containsKey(lower(table.name()) + "." + key);
               if (keyed || (bin.notNull() && !bin.hasDefault())) {
                 warnings.add(
                     label
-                        + " is NOT NULL; the generated text will not insert"
-                        + " — needs a bytes type (#439)");
+                        + (bin.notNull() ? " is NOT NULL" : " is part of a key, so it is kept")
+                        + "; the generated text will not insert — needs a bytes type (#439)");
               } else {
                 warnings.add(
                     label

@@ -152,14 +152,32 @@ final class AlterTableApplier {
   private static final Pattern SET_NOT_NULL =
       Pattern.compile("(?i)\\bALTER\\s+(?:COLUMN\\s+)?(\\S+)\\s+SET\\s+NOT\\s+NULL\\b");
 
-  private static final Pattern MODIFY_NOT_NULL =
-      Pattern.compile("(?i)\\bMODIFY\\s+(?:COLUMN\\s+)?\\(?\\s*(\\S+)\\s[^,]*?\\bNOT\\s+NULL\\b");
+  private static final Pattern MODIFY_ELEMENT =
+      Pattern.compile("(?is)\\s*(?:COLUMN\\s+)?(\\S+)\\s.*\\bNOT\\s+NULL\\b.*");
 
-  /** Oracle {@code MODIFY (c NOT NULL ENABLE)}: the only part of MODIFY that is read. */
+  /** {@code MODIFY (a NOT NULL, b NUMBER(10,2) NOT NULL ENABLE)}: each such column is NOT NULL. */
   private void modifyColumn(TableModel table, AlterExpression expression) {
-    Matcher notNull = MODIFY_NOT_NULL.matcher(expression.toString());
-    if (notNull.find()) {
-      table.notNull.add(unquote(notNull.group(1)).toLowerCase(Locale.ROOT));
+    String text = expression.toString().trim();
+    int start = text.toUpperCase(Locale.ROOT).indexOf("MODIFY");
+    String list = start < 0 ? "" : text.substring(start + "MODIFY".length()).trim();
+    if (list.startsWith("(") && list.endsWith(")")) {
+      list = list.substring(1, list.length() - 1);
+    }
+    int depth = 0;
+    int from = 0;
+    for (int i = 0; i <= list.length(); i++) {
+      char c = i < list.length() ? list.charAt(i) : ',';
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (c == ',' && depth == 0) {
+        Matcher element = MODIFY_ELEMENT.matcher(list.substring(from, i));
+        if (element.matches()) {
+          table.notNull.add(unquote(element.group(1)).toLowerCase(Locale.ROOT));
+        }
+        from = i + 1;
+      }
     }
   }
 
