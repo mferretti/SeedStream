@@ -186,15 +186,16 @@ class DatabaseTruncateSqlServerIT extends IntegrationTest {
         .isInstanceOf(SQLException.class);
 
     // A second job on the same JDBC target must also see enforced FKs
-    try (DatabaseDestination dest = new DatabaseDestination(config("child", false))) {
-      dest.open();
-      assertThatThrownBy(
-              () -> {
-                dest.write(Map.of("id", 2, "parent_id", 54321));
-                dest.flush();
-              })
-          .isInstanceOf(DestinationException.class);
-    }
+    // Not try-with-resources: close() would flush the failed batch again and throw a second time.
+    DatabaseDestination dest = new DatabaseDestination(config("child", false));
+    dest.open();
+    assertThatThrownBy(
+            () -> {
+              dest.write(Map.of("id", 2, "parent_id", 54321));
+              dest.flush();
+            })
+        .isInstanceOf(DestinationException.class);
+    catchThrowable(dest::close);
   }
 
   @Test

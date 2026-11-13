@@ -29,6 +29,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -745,32 +747,44 @@ public class DatabaseDestination extends AbstractDestination {
   }
 
   /**
-   * Empties {@code tableName} with {@code TRUNCATE TABLE ... CASCADE} before its first insert, when
-   * {@code truncate_before_insert} is enabled. Idempotent per run via {@link #truncatedTables}.
+   * Empties {@code tableName} and every table that references it (transitively) before its first
+   * insert, when {@code truncate_before_insert} is enabled. Idempotent per run via {@link
+   * #truncatedTables}. Same meaning on every vendor; the mechanism differs:
    *
-   * <p>CASCADE clears foreign-key dependents in one statement, so truncating a parent before its
-   * children (the insert order) does not violate FK constraints. TRUNCATE participates in the
-   * active transaction on PostgreSQL, so it is committed/rolled back with the surrounding batch.
+   * <ul>
+   *   <li>PostgreSQL / Oracle: {@code TRUNCATE TABLE ... CASCADE}, with {@code restart_identity}
+   *       {@code TRUNCATE TABLE ... RESTART IDENTITY CASCADE} (PostgreSQL only). TRUNCATE
+   *       participates in the active transaction on PostgreSQL.
+   *   <li>MySQL / MariaDB: foreign-key checks are switched off for the duration, the dependents are
+   *       found through {@link DatabaseMetaData#getExportedKeys}, and each table gets {@code
+   *       TRUNCATE TABLE} (with {@code restart_identity}, resetting {@code AUTO_INCREMENT}) or
+   *       {@code DELETE FROM} (keeping it). TRUNCATE is DDL on MySQL: it commits implicitly.
+   *   <li>SQL Server: no CASCADE exists, so the dependents are {@code DELETE}d children first; a
+   *       foreign-key cycle between distinct tables is rejected. With {@code restart_identity} each
+   *       used identity column is reseeded so the next row gets the identity seed.
+   * </ul>
    *
-   * <p>With {@code restart_identity} enabled the statement becomes {@code TRUNCATE TABLE ...
-   * RESTART IDENTITY CASCADE}, so identity/serial columns restart at 1 and a reseeded table
-   * reproduces the same dense key range on every run (PostgreSQL only).
+   * The dependents are discovered at truncate time (first write), not in {@link #open()}.
    */
   @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
   @SuppressFBWarnings(
-      value = {"SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE", "SQL_INJECTION_JDBC"},
-      justification =
-          "Table name goes through quoteTable(): an allowlist of letters, digits and "
-              + "_ $ # @ - space rejects everything else before this point; names are never escaped")
+      value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      justification = IDENTIFIERS_ALLOWLISTED)
   private void truncateIfNeeded(String tableName) {
     if (!config.isTruncateBeforeInsert() || truncatedTables.contains(tableName)) {
       return;
     }
     String safeTable = quoteTable(tableName);
-    String identityClause = config.isRestartIdentity() ? " RESTART IDENTITY" : "";
-    String sql = "TRUNCATE TABLE " + safeTable + identityClause + " CASCADE";
-    try (Statement st = connection.createStatement()) {
-      st.executeUpdate(sql); // nosemgrep
+    String url = config.getJdbcUrl();
+    try {
+      if (isMySql(url)) {
+        truncateMySql(tableName);
+      } else if (isSqlServer(url)) {
+        truncateSqlServer(tableName);
+      } else {
+        String identityClause = config.isRestartIdentity() ? " RESTART IDENTITY" : "";
+        execute("TRUNCATE TABLE " + safeTable + identityClause + " CASCADE");
+      }
       truncatedTables.add(tableName);
       log.warn(
           "Truncated table '{}' before insert (truncate_before_insert=true, restart_identity={})",
@@ -779,6 +793,209 @@ public class DatabaseDestination extends AbstractDestination {
     } catch (SQLException e) {
       throw new DestinationException("Failed to truncate table: " + tableName, e);
     }
+  }
+
+  private static final String IDENTIFIERS_ALLOWLISTED =
+      "Every identifier in the SQL went through quoteTable()/quotePart(): an allowlist of letters, "
+          + "digits and _ $ # @ - space rejects everything else; names are never escaped";
+
+  private static boolean isMySql(String url) {
+    return url != null && (url.startsWith("jdbc:mysql:") || url.startsWith("jdbc:mariadb:"));
+  }
+
+  private static boolean isSqlServer(String url) {
+    return url != null && url.startsWith("jdbc:sqlserver:");
+  }
+
+  /** A table as reported by (or resolved for) JDBC metadata; catalog and schema may be null. */
+  private record TableRef(String catalog, String schema, String name) {}
+
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
+  @SuppressFBWarnings(value = "SQL_INJECTION_JDBC", justification = IDENTIFIERS_ALLOWLISTED)
+  private void execute(String sql) throws SQLException {
+    try (Statement st = connection.createStatement()) {
+      st.executeUpdate(sql); // nosemgrep
+    }
+  }
+
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
+  @SuppressFBWarnings(
+      value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      justification = IDENTIFIERS_ALLOWLISTED)
+  private void truncateMySql(String tableName) throws SQLException {
+    Map<String, TableRef> tables = new LinkedHashMap<>();
+    collectDependents(resolveTable(tableName, true), tables, new HashMap<>(), true);
+    execute("SET FOREIGN_KEY_CHECKS=0");
+    try {
+      for (TableRef t : tables.values()) {
+        String sql = config.isRestartIdentity() ? "TRUNCATE TABLE " : "DELETE FROM ";
+        execute(sql + quoteRef(t, true));
+      }
+    } finally {
+      execute("SET FOREIGN_KEY_CHECKS=1");
+    }
+  }
+
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
+  @SuppressFBWarnings(
+      value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      justification = IDENTIFIERS_ALLOWLISTED)
+  private void truncateSqlServer(String tableName) throws SQLException {
+    Map<String, TableRef> tables = new LinkedHashMap<>();
+    Map<String, Set<String>> children = new HashMap<>();
+    collectDependents(resolveTable(tableName, false), tables, children, false);
+    // Post-order over the dependents graph: every table comes after all tables referencing it.
+    List<String> order = new ArrayList<>();
+    Map<String, Boolean> done = new HashMap<>(); // false = in progress, true = finished
+    for (String key : tables.keySet()) {
+      orderChildrenFirst(key, tables, children, done, new ArrayList<>(), order, tableName);
+    }
+    for (String key : order) {
+      execute("DELETE FROM " + quoteRef(tables.get(key), false));
+    }
+    if (config.isRestartIdentity()) {
+      for (String key : order) {
+        reseedIdentity(quoteRef(tables.get(key), false));
+      }
+    }
+  }
+
+  private void orderChildrenFirst(
+      String key,
+      Map<String, TableRef> tables,
+      Map<String, Set<String>> children,
+      Map<String, Boolean> done,
+      List<String> path,
+      List<String> order,
+      String tableName) {
+    Boolean state = done.get(key);
+    if (Boolean.TRUE.equals(state)) {
+      return;
+    }
+    if (Boolean.FALSE.equals(state)) {
+      String cycle =
+          path.subList(path.indexOf(key), path.size()).stream()
+              .map(k -> tables.get(k).name())
+              .collect(Collectors.joining(", "));
+      throw new DestinationException(
+          "Failed to truncate table: "
+              + tableName
+              + ". Foreign keys form a cycle between tables ["
+              + cycle
+              + "]: SQL Server cannot empty them in one pass. Empty these tables out of band.");
+    }
+    done.put(key, false);
+    path.add(key);
+    for (String child : children.getOrDefault(key, Set.of())) {
+      orderChildrenFirst(child, tables, children, done, path, order, tableName);
+    }
+    path.remove(path.size() - 1);
+    done.put(key, true);
+    order.add(key);
+  }
+
+  /**
+   * Reseeds the identity column of {@code safeTable}, if it has one that was ever used, so the next
+   * row gets the identity seed. {@code RESEED 0} blindly would hand out 0 on a never-used table,
+   * hence the {@code last_value IS NULL} check and {@code seed - increment}.
+   */
+  @SuppressWarnings({"SqlSourceToSinkFlow", "java:S2077"})
+  @SuppressFBWarnings(
+      value = "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      justification = IDENTIFIERS_ALLOWLISTED)
+  private void reseedIdentity(String safeTable) throws SQLException {
+    long reseedTo;
+    try (PreparedStatement ps =
+        connection.prepareStatement(
+            "SELECT CAST(seed_value AS BIGINT) - CAST(increment_value AS BIGINT) "
+                + "FROM sys.identity_columns WHERE object_id = OBJECT_ID(?) "
+                + "AND last_value IS NOT NULL")) {
+      ps.setString(1, safeTable);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          return; // no identity column, or never used: the next row already gets the seed
+        }
+        reseedTo = rs.getLong(1);
+      }
+    }
+    // safeTable is allowlisted and contains no single quote
+    execute("DBCC CHECKIDENT ('" + safeTable + "', RESEED, " + reseedTo + ")");
+  }
+
+  /** Maps a (possibly qualified) table name to catalog/schema/name for the vendor. */
+  private TableRef resolveTable(String tableName, boolean mysql) throws SQLException {
+    String[] p = tableName.split("\\.", -1);
+    if (mysql) {
+      return switch (p.length) {
+        case 1 -> new TableRef(connection.getCatalog(), null, p[0]);
+        case 2 -> new TableRef(p[0], null, p[1]);
+        default -> throw illegal(tableName);
+      };
+    }
+    String defaultSchema = connection.getSchema() == null ? "dbo" : connection.getSchema();
+    return switch (p.length) {
+      case 1 -> new TableRef(connection.getCatalog(), defaultSchema, p[0]);
+      case 2 -> new TableRef(connection.getCatalog(), p[0], p[1]);
+      default -> new TableRef(p[0], p[1], p[2]);
+    };
+  }
+
+  /** Quoted, qualified name; every part goes through the {@link #quotePart} allowlist. */
+  private String quoteRef(TableRef t, boolean mysql) {
+    // MySQL: database.table. SQL Server: database.schema.table, so a table qualified with another
+    // database is never confused with a same-named table in the connection's database.
+    List<String> parts = new ArrayList<>();
+    if (t.catalog() != null) {
+      parts.add(t.catalog());
+    }
+    if (!mysql && t.schema() != null) {
+      parts.add(t.schema());
+    }
+    parts.add(t.name());
+    return parts.stream().map(p -> quotePart(p, t.name())).collect(Collectors.joining("."));
+  }
+
+  /**
+   * Breadth-first walk of {@link DatabaseMetaData#getExportedKeys} from {@code target}: fills
+   * {@code tables} with the target and everything that references it, transitively, and {@code
+   * children} with the referencing tables of each. A self-reference is only a visited table. SQL
+   * Server names are case-insensitive, so its keys are lower-cased.
+   */
+  private void collectDependents(
+      TableRef target,
+      Map<String, TableRef> tables,
+      Map<String, Set<String>> children,
+      boolean mysql)
+      throws SQLException {
+    DatabaseMetaData md = connection.getMetaData();
+    List<TableRef> queue = new ArrayList<>(List.of(target));
+    tables.put(refKey(target, mysql), target);
+    for (int i = 0; i < queue.size(); i++) {
+      TableRef parent = queue.get(i);
+      String parentKey = refKey(parent, mysql);
+      try (ResultSet rs =
+          md.getExportedKeys(parent.catalog(), mysql ? null : parent.schema(), parent.name())) {
+        while (rs.next()) {
+          TableRef child =
+              new TableRef(
+                  rs.getString("FKTABLE_CAT"),
+                  rs.getString("FKTABLE_SCHEM"),
+                  rs.getString("FKTABLE_NAME"));
+          String childKey = refKey(child, mysql);
+          if (!childKey.equals(parentKey)) {
+            children.computeIfAbsent(parentKey, k -> new LinkedHashSet<>()).add(childKey);
+          }
+          if (tables.putIfAbsent(childKey, child) == null) {
+            queue.add(child);
+          }
+        }
+      }
+    }
+  }
+
+  private static String refKey(TableRef t, boolean mysql) {
+    String key = t.catalog() + "." + t.schema() + "." + t.name();
+    return mysql ? key : key.toLowerCase(Locale.ROOT);
   }
 
   private String buildInsertSql(String tableName, List<String> columns) {
@@ -833,11 +1050,11 @@ public class DatabaseDestination extends AbstractDestination {
   }
 
   /**
-   * Fail fast when {@code truncate_before_insert} is requested against a dialect that does not
-   * support the emitted {@code TRUNCATE TABLE ... CASCADE} / {@code RESTART IDENTITY} clauses.
-   * {@link #truncateIfNeeded(String)} always appends {@code CASCADE} (PostgreSQL/Oracle) and, with
-   * {@code restart_identity}, {@code RESTART IDENTITY} (PostgreSQL only). On MySQL or SQL Server
-   * those clauses are syntax errors, so reject them here rather than at first insert.
+   * Fail fast when {@code truncate_before_insert} is requested against a dialect {@link
+   * #truncateIfNeeded(String)} cannot empty: supported are PostgreSQL, Oracle, MySQL/MariaDB and
+   * SQL Server. {@code restart_identity} is rejected on Oracle (no such TRUNCATE clause); on the
+   * others it restarts identity/serial/AUTO_INCREMENT. Rejecting here beats failing at first
+   * insert.
    */
   private void validateTruncateDialect() {
     if (!config.isTruncateBeforeInsert()) {
@@ -847,22 +1064,21 @@ public class DatabaseDestination extends AbstractDestination {
     if (url == null) {
       return; // openConnection() will fail on the missing URL with a clearer message.
     }
-    boolean postgres = url.startsWith("jdbc:postgresql:");
     boolean oracle = url.startsWith("jdbc:oracle:");
-    if (!postgres && !oracle) {
+    if (!oracle && !url.startsWith("jdbc:postgresql:") && !isMySql(url) && !isSqlServer(url)) {
       throw new DestinationException(
-          "truncate_before_insert emits 'TRUNCATE TABLE ... CASCADE', which is only supported on "
-              + "PostgreSQL and Oracle. JDBC URL '"
+          "truncate_before_insert is supported on PostgreSQL, MySQL/MariaDB, SQL Server and Oracle. "
+              + "JDBC URL '"
               + JdbcUrlRedactor.redactJdbcCredentials(url)
               + "' targets an unsupported dialect. Remove truncate_before_insert or truncate the "
               + "table out of band.");
     }
-    if (config.isRestartIdentity() && !postgres) {
+    if (config.isRestartIdentity() && oracle) {
       throw new DestinationException(
-          "restart_identity emits 'TRUNCATE TABLE ... RESTART IDENTITY', which is PostgreSQL only. "
-              + "JDBC URL '"
+          "restart_identity is not supported on Oracle: 'TRUNCATE TABLE ... RESTART IDENTITY' is "
+              + "PostgreSQL only (MySQL and SQL Server restart identity natively). JDBC URL '"
               + JdbcUrlRedactor.redactJdbcCredentials(url)
-              + "' is not PostgreSQL. Disable restart_identity.");
+              + "' is Oracle. Disable restart_identity.");
     }
   }
 

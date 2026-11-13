@@ -1046,10 +1046,14 @@ conf:
 **CI seeding (`truncate_before_insert`)**: Set to `true` to empty each target table with `TRUNCATE TABLE ... CASCADE` before its first insert. Combined with a fixed `seed`, one `execute` gives a clean, deterministic dataset per run — no external teardown script. Defaults to `false`. Notes:
 - ⚠️ **Destructive** — wipes the table (and, via `CASCADE`, its FK dependents). Use only against a disposable/CI database.
 - Tables must already exist (no DDL). CASCADE clears nested child tables in one shot, so FK graphs reseed cleanly.
-- PostgreSQL/Oracle only — `CASCADE` is not valid MySQL/SQL Server `TRUNCATE` syntax.
+- Same meaning on every supported database: the table and every table that references it (transitively) end up empty.
+  - PostgreSQL / Oracle: `TRUNCATE TABLE ... CASCADE`.
+  - MySQL / MariaDB: foreign-key checks off for the job's connection, then `TRUNCATE` (with `restart_identity`) or `DELETE` on each table found through the FK metadata, checks back on. `TRUNCATE` is DDL on MySQL and commits implicitly.
+  - SQL Server: no CASCADE, so `DELETE` children before parents. A foreign-key cycle between distinct tables is rejected — empty those tables out of band. `DELETE` on large tables is slow and grows the log.
+  - Other databases are rejected at startup.
 
-**Dense ids across reseeds (`restart_identity`)**: Plain `TRUNCATE` leaves sequences at their high-water mark, so a reseeded table numbers its rows `N+1..2N`. Set `restart_identity: true` to emit `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` instead, restarting identity/serial columns at 1 on every run. Required whenever child structures reference a parent pool with a static `ref[parent.id, 1..N]` — without it the second run's FK inserts fail. Defaults to `false`. Notes:
-- PostgreSQL only — `RESTART IDENTITY` is not valid Oracle `TRUNCATE` syntax.
+**Dense ids across reseeds (`restart_identity`)**: Plain `TRUNCATE` leaves sequences at their high-water mark, so a reseeded table numbers its rows `N+1..2N`. Set `restart_identity: true` to restart identity/serial/`AUTO_INCREMENT` columns of every emptied table at their start value (normally 1) on every run: PostgreSQL `TRUNCATE TABLE ... RESTART IDENTITY CASCADE`, MySQL `TRUNCATE`, SQL Server `DBCC CHECKIDENT ... RESEED` (needs `ALTER` permission on the table). Required whenever child structures reference a parent pool with a static `ref[parent.id, 1..N]` — without it the second run's FK inserts fail. Defaults to `false`. Notes:
+- Not supported on Oracle — `RESTART IDENTITY` is not valid Oracle `TRUNCATE` syntax.
 - Requires `truncate_before_insert: true`; the job is rejected at startup otherwise rather than silently ignoring the key.
 - Worked example: [`use-cases/ci-pipeline-seeding/`](../use-cases/ci-pipeline-seeding/README.md).
 
