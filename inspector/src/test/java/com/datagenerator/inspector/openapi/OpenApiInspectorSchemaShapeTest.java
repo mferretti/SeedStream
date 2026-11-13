@@ -75,10 +75,22 @@ class OpenApiInspectorSchemaShapeTest {
     // spec §6 Q5 / §8: required/optional is ignored, every field is always emitted
     assertThat(datatypesOf(inspection, "pet"))
         .containsExactly(
-            Map.entry("name", "char[1..20]"),
+            Map.entry("name", "name"),
             Map.entry("age", "int[0..30]"),
             Map.entry("nickname", "char[1..20]"),
             Map.entry("weight", "int[0..30]"));
+    // #440: the hinted field keeps its hint and is capped at maxLength; the unhinted one is not
+    assertThat(
+            inspection.structures().stream()
+                .filter(s -> s.getName().equals("pet"))
+                .findFirst()
+                .orElseThrow()
+                .getData())
+        .satisfies(
+            data -> {
+              assertThat(data.get("name").getMaxLength()).isEqualTo(20);
+              assertThat(data.get("nickname").getMaxLength()).isNull();
+            });
   }
 
   @Test

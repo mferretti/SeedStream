@@ -94,7 +94,11 @@ public class OpenApiInspector {
       data.put(
           fieldName,
           new FieldDefinition(
-              mapped.datatype(), null, SchemaTypeMapper.nullableRate(property.getValue())));
+              mapped.datatype(),
+              null,
+              SchemaTypeMapper.nullableRate(property.getValue()),
+              mapped.maxLength(),
+              false));
     }
     if (!fieldComments.isEmpty()) {
       comments.put(name, fieldComments);

@@ -68,11 +68,11 @@ Resolution order per property:
 | `string` + `format: date` | `date[<dateMin>..<dateMax>]` |
 | `string` + `format: date-time` | `timestamp[now-<window>..now]` |
 | `string` + `format: uuid` | `uuid` — or `char[min..max]` + review comment when `maxLength < 36` or `minLength > 36` (a UUID is always 36 chars) |
-| `string` + `format: email` + `maxLength < 64` or `minLength > 6` | `char[min..max]` + review comment (Datafaker emails: longest of 1M samples was 36 chars; 64 leaves headroom for other locales; see #440 for length caps) |
+| `string` + `format: email` + `maxLength < 64` | `email` + `max_length: maxLength`, no review note (Datafaker emails: longest of 1M samples was 36 chars; 64 leaves headroom for other locales) — unless `minLength > 6`, then `char[min..max]` + review comment (#440, #452) |
 | `string` + `enum:[A,B,C]` | `enum[A,B,C]` (lengths ignored) |
 | `string` + `minLength: m` and/or `maxLength: n` | `char[m..n]`; a missing side defaults to `1` / `max(m, 50)`; `minLength: 0` → `char[0..n]` |
 | `string` + `minLength > maxLength` (schema error) | `char[1..maxLength]` (`char[0..0]` when `maxLength` is 0) + review comment + a warning naming the field |
-| `string` (no format/len) | name-hint → else `char[1..50]`; with `maxLength` the declared length wins over the hint |
+| `string` (no format/len) | name-hint → else `char[1..50]`; name-hinted with `maxLength: m` and `minLength` absent or ≤ 1 → the hint + `max_length: m` (characters, never `length_unit`); with `minLength > 1` or no hint → `char[min..max]`; array items never carry a cap, so they keep `char[..]` |
 | `integer` + min/max | `int[min..max]` |
 | `integer` (no bounds) | `int[<intMin>..<intMax>]` |
 | `number` + min/max | `decimal[min..max]` |
@@ -227,6 +227,15 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   Genuinely opaque types (`JSON`, `JSONB`, `BYTEA`, `GEOMETRY`, …) still fall back to `char[1..50]`
   flagged `UNKNOWN_TYPE`. Oracle `RAW(n)`, which JSQLParser cannot parse, is rewritten to
   `VARBINARY(n)` by the preprocessor and lands on the same flagged fallback.
+- **Name hints keep the column length (#440).** A name-hinted `VARCHAR(n)` / `CHAR(n)` /
+  `NVARCHAR(n)` / `VARCHAR2(n)` emits the hint plus `max_length: n` (hint and review comment as
+  before); without a declared length (`TEXT`, bare `VARCHAR`, `VARCHAR(MAX)`, `CLOB`) the hint is
+  emitted uncapped; `VARCHAR(0)` stays `char[0..0]`; a CHECK-derived type replaces the cap.
+  **Unit rule:** `length_unit: bytes` only for an explicit `n BYTE` and for a bare Oracle
+  `VARCHAR2(n)` (default `NLS_LENGTH_SEMANTICS=BYTE`); everything else counts characters and gets no
+  key, national types (`NVARCHAR`, `NCHAR`, `NVARCHAR2`) included. Caveat: SQL Server `varchar(n)`
+  counts bytes of its code page; with cp1252 and Western European locales that equals characters,
+  other scripts may need `length_unit: bytes` added by hand. Oracle bare `CHAR(n)` also defaults to BYTE semantics but is indistinguishable from ANSI `CHAR(n)`, so it is treated as characters; add `length_unit: bytes` by hand for multi-byte data.
 - **Type spellings.** Quoted type names (`"int"`, `` `int` ``, `[int]` — SQL Server's original
   scripts quote them) map exactly like the bare name. Oracle length semantics are ignored for the
   length: `VARCHAR2(15 BYTE)` / `CHAR(5 CHAR)` → `char[1..15]` / `char[1..5]`. A zero-length

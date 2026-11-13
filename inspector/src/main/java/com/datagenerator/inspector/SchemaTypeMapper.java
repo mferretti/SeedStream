@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.function.Supplier;
 
@@ -53,13 +54,18 @@ public final class SchemaTypeMapper {
   private static final int EMAIL_MIN_LENGTH_CEILING = 6;
 
   public MappedType map(String fieldName, JsonNode schema) {
+    return map(fieldName, schema, true);
+  }
+
+  /** {@code capOk} is false for array items, which have no field of their own to carry a cap. */
+  private MappedType map(String fieldName, JsonNode schema, boolean capOk) {
     if (schema.hasNonNull("$ref")) {
       return MappedType.declared("object[" + refName(schema.get("$ref").asText()) + "]");
     }
 
     String type = typeOf(schema);
     return switch (type) {
-      case "string" -> mapString(fieldName, schema);
+      case "string" -> mapString(fieldName, schema, capOk);
       case "integer" -> mapInteger(schema);
       case "number" -> mapNumber(schema);
       case "boolean" -> MappedType.declared("boolean");
@@ -100,12 +106,20 @@ public final class SchemaTypeMapper {
     return type.asText("");
   }
 
-  private MappedType mapString(String fieldName, JsonNode schema) {
+  private MappedType mapString(String fieldName, JsonNode schema, boolean capOk) {
     String format = schema.path("format").asText("");
     switch (format) {
       case "email":
-        return emailFits(schema)
-            ? fakerOr("email", () -> MappedType.declared(Defaults.STRING))
+        if (emailFits(schema)) {
+          return fakerOr("email", () -> MappedType.declared(Defaults.STRING));
+        }
+        int max = schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE);
+        boolean capFits =
+            capOk && max >= 1 && schema.path(MIN_LENGTH).asInt(0) <= EMAIL_MIN_LENGTH_CEILING;
+        return capFits
+            ? FakerTypes.canonical("email")
+                .map(e -> new MappedType(e, MappedType.Reason.DECLARED, null, max, false))
+                .orElseGet(() -> charRange(schema, emailMisfit(schema)))
             : charRange(schema, emailMisfit(schema));
       case "uuid":
         return uuidFits(schema)
@@ -122,14 +136,18 @@ public final class SchemaTypeMapper {
     if (schema.has(ENUM)) {
       return MappedType.declared(enumType(schema.get(ENUM)));
     }
+    Optional<String> hint =
+        NameHints.forFieldName(fieldName)
+            .flatMap(FakerTypes::canonical)
+            .or(() -> FakerTypes.canonical(Names.toSnakeCase(fieldName)));
+    int maxLength = schema.path(MAX_LENGTH).asInt(0);
+    if (capOk && hint.isPresent() && maxLength >= 1 && schema.path(MIN_LENGTH).asInt(0) <= 1) {
+      return MappedType.nameHint(hint.get(), maxLength, false);
+    }
     if (schema.has(MAX_LENGTH) || schema.has(MIN_LENGTH)) {
       return charRange(schema, null);
     }
-    return NameHints.forFieldName(fieldName)
-        .flatMap(FakerTypes::canonical)
-        .or(() -> FakerTypes.canonical(Names.toSnakeCase(fieldName)))
-        .map(MappedType::nameHint)
-        .orElseGet(() -> MappedType.defaultRange(Defaults.STRING));
+    return hint.map(MappedType::nameHint).orElseGet(() -> MappedType.defaultRange(Defaults.STRING));
   }
 
   private static boolean emailFits(JsonNode schema) {
@@ -139,7 +157,9 @@ public final class SchemaTypeMapper {
 
   private static String emailMisfit(JsonNode schema) {
     return schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE) < EMAIL_MAX_LENGTH_FLOOR
-        ? "email values can exceed maxLength " + schema.get(MAX_LENGTH).asInt() + "; see #440"
+        ? "email values can exceed maxLength "
+            + schema.get(MAX_LENGTH).asInt()
+            + " (array items cannot carry max_length)"
         : "email values can be shorter than minLength " + schema.get(MIN_LENGTH).asInt();
   }
 
@@ -286,7 +306,9 @@ public final class SchemaTypeMapper {
   private MappedType mapArray(String fieldName, JsonNode schema) {
     JsonNode items = schema.path("items");
     MappedType inner =
-        items.isMissingNode() ? MappedType.defaultRange(Defaults.STRING) : map(fieldName, items);
+        items.isMissingNode()
+            ? MappedType.defaultRange(Defaults.STRING)
+            : map(fieldName, items, false);
     boolean bounded = schema.has(MIN_ITEMS) || schema.has(MAX_ITEMS);
     int span = Defaults.ARRAY_MAX - Defaults.ARRAY_MIN;
     Integer declaredMin = schema.has(MIN_ITEMS) ? schema.get(MIN_ITEMS).asInt() : null;

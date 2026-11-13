@@ -81,7 +81,7 @@ class OpenApiInspectorStringLengthTest {
         .containsEntry("note", "char[3..50]")
         .containsEntry("optionalTag", "char[0..5]")
         .containsEntry("token", "char[1..20]")
-        .containsEntry("contact", "char[1..20]")
+        .containsEntry("contact", "email")
         .containsEntry("id", "uuid");
     assertThat(loaded.getData().get("code").getDatatype()).isEqualTo("char[4..6]");
     assertThat(loaded.getData().get("note").getDatatype()).isEqualTo("char[3..50]");
@@ -98,11 +98,12 @@ class OpenApiInspectorStringLengthTest {
     Map<String, String> comments = inspection.comments().getOrDefault("account", Map.of());
 
     assertThat(comments.get("token")).contains("uuid format cannot fit maxLength 20");
-    assertThat(comments.get("contact")).contains("email values can exceed maxLength 20");
+    // #452 phase 2: an email that cannot fit is now email + max_length, no review note
+    assertThat(comments).doesNotContainKey("contact");
     assertThat(comments).doesNotContainKeys("code", "note", "optionalTag", "id");
     assertThat(yamlOf("account", out))
         .contains("char[1..20]\"  # uuid format cannot fit maxLength 20")
-        .contains("char[1..20]\"  # email values can exceed maxLength 20");
+        .doesNotContain("email values can exceed");
   }
 
   @Test
