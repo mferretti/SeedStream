@@ -1,14 +1,16 @@
 name: "employees"
-# hand edit (#439): binary column `photo` removed (nullable, stored as NULL)
 data:
   employee_id:
     datatype: "serial[1..32767]"
   last_name:
     datatype: "last_name"  # guessed from column name — verify
+    max_length: 20
   first_name:
-    datatype: "enum[Nancy,Andrew,Janet,Margaret,Steven,Michael,Robert,Laura,Anne]"  # hand edit (#440): `first_name` hint exceeds varchar(10)
+    datatype: "first_name"  # guessed from column name — verify
+    max_length: 10
   title:
-    datatype: "enum[Sales Representative,Sales Manager,Vice President Sales,Inside Sales Coordinator]"  # hand edit (#440): `title` hint exceeds varchar(30)
+    datatype: "title"  # guessed from column name — verify
+    max_length: 30
     nullable: 0.05
   title_of_courtesy:
     datatype: "char[1..25]"
@@ -20,22 +22,27 @@ data:
     datatype: "date[1992-01-01..2024-12-31]"  # realism (optional): Northwind-like range
     nullable: 0.05
   address:
-    datatype: "street_name"  # hand edit (#440): `address` hint exceeds varchar(60)
+    datatype: "address"  # guessed from column name — verify
+    max_length: 60
     nullable: 0.05
   city:
-    datatype: "enum[Aachen,Barcelona,Berlin,Bern,Boise,Bruxelles,Buenos Aires,Caracas,Graz,Helsinki,Kobenhavn,Lisboa,London,Lyon,Madrid,Marseille,Montreal,Munchen,Oulu,Paris,Portland,Rio de Janeiro,Salzburg,Sao Paulo,Seattle,Stavern,Torino,Vancouver,Warszawa]"  # hand edit (#440): `city` hint exceeds varchar(15)
+    datatype: "city"  # guessed from column name — verify
+    max_length: 15
     nullable: 0.05
   region:
     datatype: "char[1..15]"
     nullable: 0.05
   postal_code:
     datatype: "postal_code"  # guessed from column name — verify
+    max_length: 10
     nullable: 0.05
   country:
-    datatype: "enum[Argentina,Austria,Belgium,Brazil,Canada,Denmark,Finland,France,Germany,Ireland,Italy,Mexico,Norway,Poland,Portugal,Spain,Sweden,Switzerland,UK,USA,Venezuela]"  # hand edit (#440): `country` hint exceeds varchar(15)
+    datatype: "country"  # guessed from column name — verify
+    max_length: 15
     nullable: 0.05
   home_phone:
     datatype: "phone_number"  # guessed from column name — verify
+    max_length: 24
     nullable: 0.05
   extension:
     datatype: "char[1..4]"

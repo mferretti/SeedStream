@@ -4,6 +4,7 @@ data:
     datatype: "serial[1..32767]"
   product_name:
     datatype: "product_name"  # guessed from column name — verify
+    max_length: 40
   supplier_id:
     datatype: "ref[suppliers.supplier_id]"
     nullable: 0.05
@@ -17,13 +18,13 @@ data:
     datatype: "decimal[2.00..265.00]"  # realism (optional): Northwind-like range
     nullable: 0.05
   units_in_stock:
-    datatype: "int[1..32767]"
+    datatype: "int[0..32767]"
     nullable: 0.05
   units_on_order:
-    datatype: "int[1..32767]"
+    datatype: "int[0..32767]"
     nullable: 0.05
   reorder_level:
-    datatype: "int[1..32767]"
+    datatype: "int[0..32767]"
     nullable: 0.05
   discontinued:
     datatype: "boolean"

@@ -1,5 +1,4 @@
 name: "categories"
-# hand edit (#439): binary column `picture` removed (nullable, stored as NULL)
 data:
   category_id:
     datatype: "serial[1..32767]"
