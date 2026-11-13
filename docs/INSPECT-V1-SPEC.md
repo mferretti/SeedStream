@@ -263,6 +263,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   it stay one statement, skipped silently, since in T-SQL what follows belongs to its batch. A chunk that can't be
   split reaches the parser unchanged. `GRANT CREATE TABLE TO u` with a table glued after it is not split, and that
   table is lost.
+- **Binary columns (#439).** `BYTEA`, `BLOB` / `TINYBLOB` / `MEDIUMBLOB` / `LONGBLOB`, `BINARY(n)`, `VARBINARY(n|max)`, `IMAGE`, Oracle `RAW(n)` / `LONG RAW` have no SeedStream type, and the `char[1..50]` fallback cannot be inserted into them. A binary column that is nullable (or has a `DEFAULT`) is **omitted**, so the database stores `NULL` (or its default), with the warning `<table>.<column>: binary column (<TYPE>) omitted, stored as NULL (#439)` (`… omitted, the database fills its DEFAULT (#439)`). A `NOT NULL` one (inline, or by a later `ALTER … SET NOT NULL` / Oracle `MODIFY (c NOT NULL)`), a primary-key column, and a column that takes part in a foreign key are kept as the flagged fallback with the warning `… is NOT NULL; the generated text will not insert — needs a bytes type (#439)`. A nullable binary column kept only because it is part of a key (FK source or target, UNIQUE) says `… is part of a key, so it is kept; the generated text will not insert — needs a bytes type (#439)` instead.
 - **SQL Server `IDENTITY`.** `IDENTITY`, `IDENTITY(seed, increment)` and `… NOT FOR REPLICATION`
   after a column's type mark the column as database-assigned (SQL Server rejects explicit values);
   it then follows the same rules as `GENERATED ALWAYS AS IDENTITY` (see the key mapping in §8).
@@ -274,7 +275,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   export layouts, in any order relative to the table) yields exactly what the same constraint declared
   inline yields; `ALTER COLUMN … ADD GENERATED ALWAYS AS IDENTITY` counts as DB-assigned. A constraint
   declared both ways counts once. Other statements are ignored silently (`OWNER TO`, `CHECK CONSTRAINT`,
-  triggers, `SET STATISTICS`, `NOT NULL` for now). Structure changes (`ADD`/`DROP COLUMN`,
+  triggers, `SET STATISTICS`; `ALTER COLUMN … SET NOT NULL` and Oracle `MODIFY (c NOT NULL)`, one or several columns, mark the column NOT NULL). Structure changes (`ADD`/`DROP COLUMN`,
   `RENAME`, `ALTER COLUMN … TYPE`) are warned about and not applied. An `ALTER` that cannot be parsed, or
   that targets a table not in the script, is a warning and never aborts strict mode; so is a foreign key
   from an `ALTER` to a table not in the script (the column keeps its plain type).

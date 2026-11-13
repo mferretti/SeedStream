@@ -78,6 +78,9 @@ final class TableModel {
   /** Lower-cased names of columns declared inline {@code NOT NULL}. */
   final Set<String> notNull = new LinkedHashSet<>();
 
+  /** Lower-cased names of columns declared inline with a {@code DEFAULT}. */
+  final Set<String> defaulted = new LinkedHashSet<>();
+
   /** Lower-cased names of SQL Server {@code IDENTITY} columns. */
   final Set<String> identity = new LinkedHashSet<>();
 

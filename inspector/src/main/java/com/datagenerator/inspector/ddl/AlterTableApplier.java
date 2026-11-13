@@ -110,6 +110,7 @@ final class AlterTableApplier {
     switch (expression.getOperation()) {
       case ADD -> add(table, expression, tables, warnings);
       case ALTER -> alterColumn(table, expression, warnings);
+      case MODIFY -> modifyColumn(table, expression);
       case DROP, CHANGE, RENAME, RENAME_TABLE -> warnNotApplied(table, expression, warnings);
       default -> {
         // MODIFY (NOT NULL, AUTO_INCREMENT), OWNER TO, triggers, partitions, ...: no key involved
@@ -150,6 +151,35 @@ final class AlterTableApplier {
 
   private static final Pattern SET_NOT_NULL =
       Pattern.compile("(?i)\\bALTER\\s+(?:COLUMN\\s+)?(\\S+)\\s+SET\\s+NOT\\s+NULL\\b");
+
+  private static final Pattern MODIFY_ELEMENT =
+      Pattern.compile("(?is)\\s*(?:COLUMN\\s+)?(\\S+)\\s.*\\bNOT\\s+NULL\\b.*");
+
+  /** {@code MODIFY (a NOT NULL, b NUMBER(10,2) NOT NULL ENABLE)}: each such column is NOT NULL. */
+  private void modifyColumn(TableModel table, AlterExpression expression) {
+    String text = expression.toString().trim();
+    int start = text.toUpperCase(Locale.ROOT).indexOf("MODIFY");
+    String list = start < 0 ? "" : text.substring(start + "MODIFY".length()).trim();
+    if (list.startsWith("(") && list.endsWith(")")) {
+      list = list.substring(1, list.length() - 1);
+    }
+    int depth = 0;
+    int from = 0;
+    for (int i = 0; i <= list.length(); i++) {
+      char c = i < list.length() ? list.charAt(i) : ',';
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (c == ',' && depth == 0) {
+        Matcher element = MODIFY_ELEMENT.matcher(list.substring(from, i));
+        if (element.matches()) {
+          table.notNull.add(unquote(element.group(1)).toLowerCase(Locale.ROOT));
+        }
+        from = i + 1;
+      }
+    }
+  }
 
   private void alterColumn(TableModel table, AlterExpression expression, List<String> warnings) {
     Matcher notNull = SET_NOT_NULL.matcher(expression.toString());
