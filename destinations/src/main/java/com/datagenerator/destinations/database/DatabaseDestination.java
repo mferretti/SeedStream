@@ -169,6 +169,13 @@ public class DatabaseDestination extends AbstractDestination {
    */
   private int nestedRecordCount = 0;
 
+  /**
+   * The failure of a flat-mode batch insert, once one has happened. Later {@link #flush()} and
+   * {@link #close()} calls rethrow it instead of running the failed batch again: with {@code
+   * auto_commit} the batch's good rows are already committed, so a re-run would duplicate them.
+   */
+  private DestinationException batchFailure;
+
   // --- Common state ---
   private long totalInserted = 0;
 
@@ -440,6 +447,13 @@ public class DatabaseDestination extends AbstractDestination {
   }
 
   private void flushBatch() {
+    if (batchFailure != null) {
+      throw new DestinationException(
+          "An earlier batch insert into table "
+              + config.getTableName()
+              + " failed; nothing more is written or committed",
+          batchFailure);
+    }
     if (batch.isEmpty()) {
       return;
     }
@@ -471,8 +485,24 @@ public class DatabaseDestination extends AbstractDestination {
       batch.clear();
 
     } catch (SQLException e) {
-      throw new DestinationException(
-          "Failed to execute batch insert into table: " + config.getTableName(), e);
+      batchFailure =
+          new DestinationException(
+              "Failed to execute batch insert into table: " + config.getTableName(), e);
+      batch.clear();
+      discardFailedBatch();
+      throw batchFailure;
+    }
+  }
+
+  /** Drops the statement's pending batch and rolls back what the failed batch left uncommitted. */
+  private void discardFailedBatch() {
+    try {
+      insertStatement.clearBatch();
+      if (!STRATEGY_AUTO_COMMIT.equals(config.getTransactionStrategy())) {
+        connection.rollback();
+      }
+    } catch (SQLException e) {
+      log.warn("Could not roll back after a failed batch: {}", e.getMessage());
     }
   }
 
