@@ -8,8 +8,9 @@ identical on every run.
 
 This use case is also an honest test of the inspector. It was built by feeding a real `pg_dump` of
 the schema to `inspect` and loading the result, then fixing whatever broke. Every hand edit needed
-to get a working load exposed a gap, and every gap became a GitHub issue. The
-[edit list](#3-hand-edits-17-of-88-fields) and the [issue map](#how-the-edits-produced-the-issues)
+to get a working load exposed a gap, and every gap became a GitHub issue. Of the 17 edits once
+required, 16 are gone: the inspector now produces them itself. The
+[edit list](#3-hand-edits-1-of-88-fields) and the [issue map](#how-the-edits-produced-the-issues)
 below show which edit came from which issue. When those issues are fixed, the edits can go.
 
 ## Quick start
@@ -83,7 +84,9 @@ The file has the usual `pg_dump` layout, with every primary and foreign key decl
 
 ```bash
 seedstream inspect schema.sql -o structures/
-# inspect complete: 13 written, 0 skipped, 30 fields flagged for review (commented)
+# categories.picture: binary column (BYTEA) omitted, stored as NULL (#439)
+# employees.photo: binary column (BYTEA) omitted, stored as NULL (#439)
+# inspect complete: 13 written, 0 skipped, 28 fields flagged for review (commented)
 ```
 
 (Earlier versions needed the dump rewritten first: `cat -s` until
@@ -101,47 +104,42 @@ Out of the box, from 88 columns, the inspector produced:
 - **3 composite keys** (`order_details`, `employee_territories`, `customer_customer_demo`) as
   `ref[…, unique=pk]` pairs, collision-free with no extra configuration.
 - **24 semantic types** from column names (`last_name`, `postal_code`, `phone_number`,
-  `product_name`, …). Ranges are capped to column capacity (`smallint` → `int[1..32767]`), and
-  `boolean` / `numeric` columns map to their types.
+  `product_name`, …), each keeping its column's length as `max_length` (`city` + `max_length: 15`
+  for `varchar(15)`), so a long Datafaker value is regenerated or trimmed instead of overflowing the
+  column ([#440](https://github.com/mferretti/SeedStream/issues/440)). Ranges are capped to column
+  capacity (`smallint` → `int[1..32767]`, `CHECK (x >= 0)` → `int[0..32767]`), and `boolean` /
+  `numeric` columns map to their types.
+- **2 binary columns left out** (`categories.picture`, `employees.photo`): SeedStream has no bytes
+  type yet, and both are nullable, so PostgreSQL stores `NULL`
+  ([#439](https://github.com/mferretti/SeedStream/issues/439)).
 - **Review comments** on every guess, and **warnings** on the 3 text primary keys it couldn't
   enforce.
 
-### 3. Hand edits: 17 of 88 fields
+### 3. Hand edits: 1 of 88 fields
 
-Every edit in [`structures/`](structures/) carries a comment naming its issue: `# hand edit (#NNN)`
+Every edit in [`structures/`](structures/) carries a comment saying why: `# hand edit (…)`
 is required to load the data, and `# realism (optional)` only makes it look more like Northwind.
+`employees.reports_to` also carries a comment, but it is the inspector's own output.
 
 | Edits | Fields | What and why | Issue |
 |---:|---|---|---|
-| 14 | `country`, `city`, `address`, `title`, `first_name` | name-hinted types overflow `varchar(n)` (`country` reaches 51 chars against `varchar(15)`); replaced with Northwind-style enums or a shorter type | [#440](https://github.com/mferretti/SeedStream/issues/440) |
-| 1 | `orders.order_id` | inspected as `serial[1..32767]` (`smallint`); [`scale.sql`](scale.sql) widens the column to `integer`, so the ceiling is raised to `serial[1..2147483647]` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
-| 2 | `categories.picture`, `employees.photo` | `bytea` inspected as `char`, which PostgreSQL rejects; removed (nullable, stored as `NULL`) | [#439](https://github.com/mferretti/SeedStream/issues/439) |
+| 1 | `orders.order_id` | inspected as `serial[1..32767]` (`smallint`); [`scale.sql`](scale.sql) widens the column to `integer`, so the ceiling is raised to `serial[1..2147483647]` | — (`scale.sql`) |
 | 15 | prices, dates, names | *optional realism*: the 8 real category names, `full_name` contacts, Northwind-like price and date ranges, … | — |
 
 <details>
 <summary><b>Full edit list</b>: every field changed after <code>inspect</code>, before and after</summary>
 
-**Required (17).** Without these, the load fails or the FKs don't resolve.
+**Required (1).** Without it, `orders` stops at 32 767 rows.
 
-| Issue | Table | Field | Inspected | Edited to |
-|---|---|---|---|---|
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `customers` | `address` | `address` | `street_name` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `customers` | `city` | `city` | `enum[Aachen,Barcelona,… (29 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `customers` | `country` | `country` | `enum[Argentina,Austria,… (21 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `employees` | `address` | `address` | `street_name` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `employees` | `city` | `city` | `enum[Aachen,Barcelona,… (29 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `employees` | `country` | `country` | `enum[Argentina,Austria,… (21 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `employees` | `first_name` | `first_name` | `enum[Nancy,Andrew,… (9 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `employees` | `title` | `title` | `enum[Sales Representative,Sales Manager,… (4 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `orders` | `ship_address` | `address` | `street_name` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `orders` | `ship_city` | `city` | `enum[Aachen,Barcelona,… (29 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `orders` | `ship_country` | `country` | `enum[Argentina,Austria,… (21 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `suppliers` | `address` | `address` | `street_name` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `suppliers` | `city` | `city` | `enum[Aachen,Barcelona,… (29 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `suppliers` | `country` | `country` | `enum[Argentina,Austria,… (21 values)]` |
-| [#440](https://github.com/mferretti/SeedStream/issues/440) | `orders` | `order_id` | `serial[1..32767]` | `serial[1..2147483647]` |
-| [#439](https://github.com/mferretti/SeedStream/issues/439) | `categories` | `picture` | `char[1..50]` | `*removed*` |
-| [#439](https://github.com/mferretti/SeedStream/issues/439) | `employees` | `photo` | `char[1..50]` | `*removed*` |
+| Table | Field | Inspected | Edited to |
+|---|---|---|---|
+| `orders` | `order_id` | `serial[1..32767]` | `serial[1..2147483647]` |
+
+Earlier versions also needed 14 edits for [#440](https://github.com/mferretti/SeedStream/issues/440)
+(`city`, `country`, `address`, `title` and `first_name` overflowing `varchar(n)`, replaced with
+Northwind enums or `street_name`) and 2 for [#439](https://github.com/mferretti/SeedStream/issues/439)
+(the `bytea` columns, removed by hand). `inspect` now emits `max_length` and leaves the binary
+columns out, so those edits are gone.
 
 **Optional realism (15).** The data loads without these; they make it read like Northwind.
 
@@ -197,8 +195,8 @@ with that issue. The workaround is what you see in this folder; the issue is wha
 | `inspect` | `Failed to parse 12 CREATE TABLE statement(s)` | 2+ consecutive empty lines end a statement in JSQLParser | none needed any more | [#436](https://github.com/mferretti/SeedStream/issues/436) (fixed) |
 | `inspect` | no `serial`, no `ref[]`, no warning | `ALTER TABLE … ADD CONSTRAINT` not applied | none needed any more | [#376](https://github.com/mferretti/SeedStream/issues/376) (fixed) |
 | `execute` | `data structure file not found: config/structures/…` | sibling `../structures` not inferred for a relative job path | none needed any more | [#438](https://github.com/mferretti/SeedStream/issues/438) (fixed) |
-| load | `column "picture" is of type bytea …` | no binary type; `bytea` falls back to `char` | 2 fields removed | [#439](https://github.com/mferretti/SeedStream/issues/439) |
-| load | `value too long for type character varying(15)` | name-hinted types ignore `varchar(n)` | 14 fields edited | [#440](https://github.com/mferretti/SeedStream/issues/440) |
+| load | `column "picture" is of type bytea …` | no binary type; `bytea` falls back to `char` | none needed any more: nullable binary columns are left out | [#439](https://github.com/mferretti/SeedStream/issues/439) (bytes type still open) |
+| load | `value too long for type character varying(15)` | name-hinted types ignore `varchar(n)` | none needed any more: hint + `max_length` | [#440](https://github.com/mferretti/SeedStream/issues/440) (fixed) |
 | load at scale | `smallint out of range` after 32 000 committed rows | `serial` dropped the column's integer capacity; now `serial[1..32767]`, rejected at startup | `scale.sql` widens `order_id`, ceiling raised in `orders.yaml` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | load | duplicate key on `customer_demographics`; FK miss on `orders.customer_id` | text PKs inspected as random `char` | none needed any more | [#441](https://github.com/mferretti/SeedStream/issues/441) (fixed) |
 | load | `new row … violates check constraint` | CHECK constraints ignored | none needed any more | [#449](https://github.com/mferretti/SeedStream/issues/449) (fixed) |
@@ -218,9 +216,13 @@ blocked.
 - **Lookup names are sampled, not enumerated.** `categories.category_name` draws from the 8 real
   names at random, so an 8-row table can repeat one and miss another
   ([#456](https://github.com/mferretti/SeedStream/issues/456)).
-- **Some text stays random.** `company_name` keeps the inspected `char[1..40]`, because the
-  `company` type can exceed `varchar(40)` ([#440](https://github.com/mferretti/SeedStream/issues/440),
-  [#457](https://github.com/mferretti/SeedStream/issues/457)).
+- **Some text stays random.** `company_name` keeps the inspected `char[1..40]`: the inspector has no
+  hint for compound names yet ([#457](https://github.com/mferretti/SeedStream/issues/457)). By hand,
+  `company` with `max_length: 40` fits.
+- **Cities and countries are Datafaker's**, not Northwind's: `city` is "Port Emmetttown", not
+  "Lisboa", and `address` is a US-style street address. A value longer than its column is
+  regenerated up to 8 times and only then
+  trimmed, so a rare value can end mid-word.
 - **Customer ids are numeric strings** (`"562"`, not `"ALFKI"`), see
   [#441](https://github.com/mferretti/SeedStream/issues/441).
 - **One table per job.** 13 JVM start-ups dominate the file-target time; a whole-schema job is

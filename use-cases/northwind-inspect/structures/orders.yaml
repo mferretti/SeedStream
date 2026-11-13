@@ -1,7 +1,7 @@
 name: "orders"
 data:
   order_id:
-    datatype: "serial[1..2147483647]"  # hand edit (#440): inspected as serial[1..32767] (smallint); scale.sql widens order_id to integer
+    datatype: "serial[1..2147483647]"  # hand edit (scale.sql): inspected as serial[1..32767] (smallint); scale.sql widens order_id to integer
   customer_id:
     datatype: "ref[customers.customer_id]"
     nullable: 0.05
@@ -27,17 +27,21 @@ data:
     datatype: "full_name"  # realism (optional): fits varchar(40)
     nullable: 0.05
   ship_address:
-    datatype: "street_name"  # hand edit (#440): `address` hint exceeds varchar(60)
+    datatype: "address"  # guessed from column name — verify
+    max_length: 60
     nullable: 0.05
   ship_city:
-    datatype: "enum[Aachen,Barcelona,Berlin,Bern,Boise,Bruxelles,Buenos Aires,Caracas,Graz,Helsinki,Kobenhavn,Lisboa,London,Lyon,Madrid,Marseille,Montreal,Munchen,Oulu,Paris,Portland,Rio de Janeiro,Salzburg,Sao Paulo,Seattle,Stavern,Torino,Vancouver,Warszawa]"  # hand edit (#440): `city` hint exceeds varchar(15)
+    datatype: "city"  # guessed from column name — verify
+    max_length: 15
     nullable: 0.05
   ship_region:
     datatype: "char[1..15]"
     nullable: 0.05
   ship_postal_code:
     datatype: "postal_code"  # guessed from column name — verify
+    max_length: 10
     nullable: 0.05
   ship_country:
-    datatype: "enum[Argentina,Austria,Belgium,Brazil,Canada,Denmark,Finland,France,Germany,Ireland,Italy,Mexico,Norway,Poland,Portugal,Spain,Sweden,Switzerland,UK,USA,Venezuela]"  # hand edit (#440): `country` hint exceeds varchar(15)
+    datatype: "country"  # guessed from column name — verify
+    max_length: 15
     nullable: 0.05
