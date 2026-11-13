@@ -181,8 +181,23 @@ class DdlInspectorBinaryColumnTest {
                 + " the database fills its DEFAULT \\(#439\\)");
   }
 
+  private static final String KEY_WORDING =
+      "(?is)%s: binary column \\(BYTEA\\) is part of a key, so it is kept;"
+          + " the generated text will not insert — needs a bytes type \\(#439\\)";
+  private static final String NOT_NULL_WORDING =
+      "(?is)%s: binary column \\(BYTEA\\) is NOT NULL; the generated text will not insert"
+          + " — needs a bytes type \\(#439\\)";
+
+  private static void assertWarning(Inspection in, String column, String wording) {
+    assertThat(in.warnings())
+        .filteredOn(w -> w.startsWith(column + ": "))
+        .singleElement(STRING)
+        .matches(wording.formatted(Pattern.quote(column)));
+  }
+
   @Test
-  void shouldKeepBinaryColumnThatIsAForeignKeyTarget(@TempDir Path dir) {
+  void shouldUseKeyWordingForNullableBinaryColumnsThatAreForeignKeyTargetAndSource(
+      @TempDir Path dir) {
     Inspection in =
         inspectDdl(
             dir,
@@ -191,10 +206,60 @@ class DdlInspectorBinaryColumnTest {
 
     assertThat(datatypesOf(in, "p")).containsKey("k");
     assertThat(datatypesOf(in, "c")).containsKey("pk");
-    assertThat(in.warnings())
-        .anyMatch(w -> w.startsWith("p.k: ") && w.contains("is NOT NULL") && w.contains("#439"))
-        .anyMatch(w -> w.startsWith("c.pk: ") && w.contains("is NOT NULL") && w.contains("#439"))
-        .noneMatch(w -> w.contains("binary column") && w.contains("omitted"));
+    assertWarning(in, "p.k", KEY_WORDING);
+    assertWarning(in, "c.pk", KEY_WORDING);
+    assertThat(in.warnings()).noneMatch(w -> w.contains("binary column") && w.contains("omitted"));
+  }
+
+  @Test
+  void shouldUseKeyWordingForNullableForeignKeySourceAndNotNullWordingForItsPkTarget(
+      @TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "CREATE TABLE p (k BYTEA PRIMARY KEY);"
+                + "CREATE TABLE c (id INT PRIMARY KEY, pk BYTEA REFERENCES p (k));");
+
+    assertThat(datatypesOf(in, "c")).containsKey("pk");
+    assertWarning(in, "p.k", NOT_NULL_WORDING);
+    assertWarning(in, "c.pk", KEY_WORDING);
+  }
+
+  @Test
+  void shouldUseNotNullWordingForNotNullBinaryKeyColumns(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "CREATE TABLE p (id INT PRIMARY KEY, k BYTEA NOT NULL UNIQUE);"
+                + "CREATE TABLE c (id INT PRIMARY KEY, pk BYTEA NOT NULL REFERENCES p (k));");
+
+    assertWarning(in, "p.k", NOT_NULL_WORDING);
+    assertWarning(in, "c.pk", NOT_NULL_WORDING);
+  }
+
+  @Test
+  void shouldKeepNullableUniqueBinaryColumnWithKeyWording(@TempDir Path dir) {
+    Inspection in = inspectDdl(dir, "CREATE TABLE t (id INT PRIMARY KEY, k BYTEA UNIQUE);");
+
+    assertThat(datatypesOf(in, "t")).containsKey("k");
+    assertWarning(in, "t.k", KEY_WORDING);
+  }
+
+  @Test
+  void shouldKeepBinaryForeignKeySourceWithDefaultBecauseTheKeyWins(@TempDir Path dir) {
+    Inspection in =
+        inspectDdl(
+            dir,
+            "CREATE TABLE p (k BYTEA PRIMARY KEY);"
+                + "CREATE TABLE c (id INT PRIMARY KEY, pk BYTEA DEFAULT '\\x00' REFERENCES p (k));"
+                + "CREATE TABLE d (id INT PRIMARY KEY,"
+                + " pk BYTEA NOT NULL DEFAULT '\\x00' REFERENCES p (k));");
+
+    assertThat(datatypesOf(in, "c")).containsKey("pk");
+    assertThat(datatypesOf(in, "d")).containsKey("pk");
+    assertWarning(in, "c.pk", KEY_WORDING);
+    assertWarning(in, "d.pk", NOT_NULL_WORDING);
+    assertThat(in.warnings()).noneMatch(w -> w.contains("omitted"));
   }
 
   @Test
