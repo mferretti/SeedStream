@@ -192,4 +192,24 @@ class DdlInspectorMaxLengthTest {
     assertThat(loaded.get("t").getData().get("city").getDatatype()).isEqualTo("enum[Rome,Turin]");
     assertThat(loaded.get("t").getData().get("city").getMaxLength()).isNull();
   }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "CREATE TABLE t (city VARCHAR(15) PRIMARY KEY, n INT); | t | serial[",
+        "CREATE TABLE p (code VARCHAR(15) PRIMARY KEY);"
+            + " CREATE TABLE t (id INT PRIMARY KEY, city VARCHAR(15) REFERENCES p(code)); | t | ref["
+      })
+  void shouldNotLeaveCapOnHintedColumnsTheInspectorRewritesAsKeys(
+      String ddl, String table, String prefix) {
+    Inspection inspection = inspectDdl(dir, ddl);
+
+    Map<String, DataStructure> loaded = loadAll(inspection, dir.resolve("out"));
+
+    FieldDefinition city = loaded.get(table).getData().get("city");
+    assertThat(city.getDatatype()).startsWith(prefix);
+    assertThat(city.getMaxLength()).isNull();
+    assertThat(city.isLengthInBytes()).isFalse();
+  }
 }
