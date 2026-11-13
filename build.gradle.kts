@@ -1,6 +1,15 @@
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 
+// org.json: the OWASP dependency-check plugin (dependency-check-core 13.0.0, latest) pulls
+// org.json:json 20260522 onto the build classpath, flagged by GHSA-ghc9-756g-vrcv (JSONTokener
+// unbounded numeric string DoS, < 20260719). Build tooling only, never shipped; pin the fix.
+buildscript {
+    configurations.classpath {
+        resolutionStrategy.force("org.json:json:20260814")
+    }
+}
+
 plugins {
     java
     alias(libs.plugins.lombok) apply false
@@ -127,7 +136,7 @@ subprojects {
             "org.apache.httpcomponents.client5:httpclient5:5.6.5",
             // lz4-java: kafka-clients 4.3.1 pulls at.yawk.lz4:lz4-java 1.10.2, vulnerable to
             // CVE-2026-59949; 1.11.1 is the fix. Force everywhere.
-            "at.yawk.lz4:lz4-java:1.12.1",
+            "at.yawk.lz4:lz4-java:1.13.0",
             // commons-compress already resolves to 1.28.0 via avro 1.12.2 (patched), but
             // testcontainers requests 1.24.0, which the dependency-submission SBOM reports and
             // Dependabot flags for CVE-2024-25710 / CVE-2024-26308 (both fixed in 1.26.0). Pin the
@@ -136,11 +145,11 @@ subprojects {
             // guava: google-cloud-secretmanager 2.100.0 (:schema/:inspector/:cli) pulls guava
             // 33.6.0-jre, flagged by GHSA-xxph-c9ww-hj94 (vulnerable range <= 33.7.1). Fixed in
             // 33.7.2. Force everywhere so no configuration ships a pre-33.7.2 guava.
-            "com.google.guava:guava:33.7.2-jre",
+            "com.google.guava:guava:33.8.0-jre",
             // snappy-java: kafka-clients 4.4.0 (:cli/:benchmarks) pulls snappy-java 1.1.10.7,
             // vulnerable to GHSA-q233-g92q-qxp6 + GHSA-gwq9-9ffj-mvrv (high) and GHSA-xqrx-qh46-34m7
             // (medium), all <= 1.1.10.8 and fixed in 1.1.10.9. Force everywhere.
-            "org.xerial.snappy:snappy-java:1.1.10.9"
+            "org.xerial.snappy:snappy-java:1.1.10.12"
         )
         // netty ships ~20 coordinated artifacts, all pulled transitively via
         // software.amazon.awssdk:netty-nio-client. 4.1.135.Final was vulnerable to
@@ -191,8 +200,8 @@ subprojects {
             testRuntimeOnly("org.junit.platform:junit-platform-launcher") // For VSCode test runner
 
             // Mockito
-            testImplementation("org.mockito:mockito-core:5.21.0")
-            testImplementation("org.mockito:mockito-junit-jupiter:5.21.0")
+            testImplementation("org.mockito:mockito-core:5.24.0")
+            testImplementation("org.mockito:mockito-junit-jupiter:5.24.0")
 
             // AssertJ
             testImplementation("org.assertj:assertj-core:3.27.7")
