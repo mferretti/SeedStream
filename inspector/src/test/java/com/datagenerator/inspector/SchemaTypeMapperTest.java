@@ -289,12 +289,12 @@ class SchemaTypeMapperTest {
   }
 
   @Test
-  void shouldLetMaxLengthWinOverNameHint() {
-    // spec §3: maxLength (step 2) precedes name hint (step 4)
+  void shouldKeepNameHintAndCapItAtMaxLength() {
+    // #452 phase 2 / #440: the hint now survives maxLength (the cap itself is asserted on the
+    // inspected FieldDefinition in OpenApiInspectorMaxLengthTest); was: char[1..20]
     MappedType mapped = map("email", "{'type':'string','maxLength':20}");
 
-    assertThat(mapped.datatype()).isEqualTo("char[1..20]");
-    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mapped.datatype()).isEqualTo("email");
   }
 
   @Test
@@ -442,15 +442,15 @@ class SchemaTypeMapperTest {
 
   @ParameterizedTest
   @ValueSource(ints = {63, 20, 5})
-  void shouldFallBackToCharRangeWithCommentWhenEmailMaxLengthIsBelowObservedMax(int maxLength) {
+  void shouldKeepEmailWithoutReviewNoteWhenMaxLengthIsBelowObservedMax(int maxLength) {
+    // #452 phase 2: was char[1..n] + review note; now email + max_length n (cap asserted on the
+    // inspected FieldDefinition in OpenApiInspectorMaxLengthTest)
     MappedType mapped =
         map("contact", "{'type':'string','format':'email','maxLength':" + maxLength + "}");
 
-    assertThat(mapped.datatype()).isEqualTo("char[1.." + maxLength + "]");
-    assertThat(mapped.flagged()).isTrue();
-    assertThat(mapped.comment())
-        .contains("email values can exceed maxLength " + maxLength)
-        .contains("#440");
+    assertThat(mapped.datatype()).isEqualTo("email");
+    assertThat(mapped.reason()).isNotEqualTo(Reason.REVIEW);
+    assertThat(mapped.comment()).isNull();
   }
 
   @ParameterizedTest
@@ -499,12 +499,11 @@ class SchemaTypeMapperTest {
   }
 
   @Test
-  void shouldKeepCharRangeFromOneForNameHintedFieldWithOnlyMaxLength() {
-    // guard, passes today: maxLength beats the name hint (current behaviour)
+  void shouldKeepNameHintForHintedFieldWithOnlyMaxLength() {
+    // #452 phase 2: was char[1..12] (maxLength beat the hint); now city + max_length 12
     MappedType mapped = map("city", "{'type':'string','maxLength':12}");
 
-    assertThat(mapped.datatype()).isEqualTo("char[1..12]");
-    assertThat(mapped.reason()).isEqualTo(Reason.DECLARED);
+    assertThat(mapped.datatype()).isEqualTo("city");
   }
 
   @Test

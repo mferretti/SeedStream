@@ -162,4 +162,43 @@ class StructureYamlWriterTest {
         .containsSubsequence("    datatype: \"char[1..9]\"  # REVIEW tag", "    nullable: 0.05");
     assertThat(lines).filteredOn(l -> l.contains("nullable:")).hasSize(2);
   }
+
+  @Test
+  void shouldWriteMaxLengthAndLengthUnitRightAfterDatatypeBeforeNullable(@TempDir Path outputDir)
+      throws Exception {
+    Map<String, FieldDefinition> data = new LinkedHashMap<>();
+    data.put("city", new FieldDefinition("city", null, 0.05, 15, true));
+    data.put("country", new FieldDefinition("country", null, null, 15, false));
+    data.put("plain", new FieldDefinition("char[1..9]", null));
+    writer.write(new DataStructure("t", null, data), outputDir, true, NO_COMMENTS);
+
+    List<String> lines = Files.readAllLines(outputDir.resolve("t.yaml"));
+
+    int city = lines.indexOf("  city:");
+    assertThat(lines.get(city + 1)).startsWith("    datatype:");
+    assertThat(lines.get(city + 2)).isEqualTo("    max_length: 15");
+    assertThat(lines.get(city + 3)).isEqualTo("    length_unit: bytes");
+    assertThat(lines.get(city + 4)).isEqualTo("    nullable: 0.05");
+    int country = lines.indexOf("  country:");
+    assertThat(lines.get(country + 2)).isEqualTo("    max_length: 15");
+    assertThat(lines.get(country + 3)).doesNotContain("length_unit").doesNotContain("nullable");
+    int plain = lines.indexOf("  plain:");
+    assertThat(lines.subList(plain + 1, lines.size()))
+        .noneMatch(l -> l.contains("max_length") || l.contains("length_unit"));
+  }
+
+  @Test
+  void shouldKeepReviewCommentOnDatatypeLineWhenFieldIsCapped(@TempDir Path outputDir)
+      throws Exception {
+    DataStructure structure =
+        new DataStructure(
+            "t", null, Map.of("city", new FieldDefinition("city", null, null, 15, false)));
+
+    writer.write(structure, outputDir, true, Map.of("city", "REVIEW guessed"));
+
+    List<String> lines = Files.readAllLines(outputDir.resolve("t.yaml"));
+    assertThat(lines).filteredOn(l -> l.contains("# REVIEW guessed")).hasSize(1);
+    assertThat(lines.get(lines.indexOf("  city:") + 1)).contains("# REVIEW guessed");
+    assertThat(lines.get(lines.indexOf("  city:") + 2)).isEqualTo("    max_length: 15");
+  }
 }
