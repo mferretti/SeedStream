@@ -6,17 +6,24 @@ data:
     datatype: "product_name"  # guessed from column name — verify
   supplier_id:
     datatype: "ref[suppliers.supplier_id]"
+    nullable: 0.05
   category_id:
     datatype: "ref[categories.category_id]"
+    nullable: 0.05
   quantity_per_unit:
     datatype: "char[1..20]"
+    nullable: 0.05
   unit_price:
     datatype: "decimal[2.00..265.00]"  # realism (optional): Northwind-like range
+    nullable: 0.05
   units_in_stock:
     datatype: "int[1..32767]"
+    nullable: 0.05
   units_on_order:
     datatype: "int[1..32767]"
+    nullable: 0.05
   reorder_level:
     datatype: "int[1..32767]"
+    nullable: 0.05
   discontinued:
     datatype: "boolean"

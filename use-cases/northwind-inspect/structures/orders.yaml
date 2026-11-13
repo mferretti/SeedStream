@@ -4,27 +4,40 @@ data:
     datatype: "serial[1..2147483647]"  # hand edit (#440): inspected as serial[1..32767] (smallint); scale.sql widens order_id to integer
   customer_id:
     datatype: "ref[customers.customer_id]"
+    nullable: 0.05
   employee_id:
     datatype: "ref[employees.employee_id]"
+    nullable: 0.05
   order_date:
     datatype: "date[1996-07-01..2026-06-30]"  # realism (optional): Northwind-like range
+    nullable: 0.05
   required_date:
     datatype: "date[1996-07-01..2026-06-30]"  # realism (optional): Northwind-like range
+    nullable: 0.05
   shipped_date:
     datatype: "date[1996-07-01..2026-06-30]"  # realism (optional): Northwind-like range
+    nullable: 0.05
   ship_via:
     datatype: "ref[shippers.shipper_id]"
+    nullable: 0.05
   freight:
     datatype: "decimal[0.02..1007.64]"  # realism (optional): Northwind-like range
+    nullable: 0.05
   ship_name:
     datatype: "full_name"  # realism (optional): fits varchar(40)
+    nullable: 0.05
   ship_address:
     datatype: "street_name"  # hand edit (#440): `address` hint exceeds varchar(60)
+    nullable: 0.05
   ship_city:
     datatype: "enum[Aachen,Barcelona,Berlin,Bern,Boise,Bruxelles,Buenos Aires,Caracas,Graz,Helsinki,Kobenhavn,Lisboa,London,Lyon,Madrid,Marseille,Montreal,Munchen,Oulu,Paris,Portland,Rio de Janeiro,Salzburg,Sao Paulo,Seattle,Stavern,Torino,Vancouver,Warszawa]"  # hand edit (#440): `city` hint exceeds varchar(15)
+    nullable: 0.05
   ship_region:
     datatype: "char[1..15]"
+    nullable: 0.05
   ship_postal_code:
     datatype: "postal_code"  # guessed from column name — verify
+    nullable: 0.05
   ship_country:
     datatype: "enum[Argentina,Austria,Belgium,Brazil,Canada,Denmark,Finland,France,Germany,Ireland,Italy,Mexico,Norway,Poland,Portugal,Spain,Sweden,Switzerland,UK,USA,Venezuela]"  # hand edit (#440): `country` hint exceeds varchar(15)
+    nullable: 0.05

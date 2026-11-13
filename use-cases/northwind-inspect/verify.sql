@@ -20,10 +20,11 @@ UNION ALL SELECT 'order_details', count(*) FROM order_details;
 \echo '== FK constraints enforced during the load (expect 13)'
 SELECT count(*) AS foreign_keys FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace;
 
-\echo '== Orphan check on the largest edges (expect 0 / 0)'
+\echo '== Orphan check on the largest edges (expect 0 / 0; a NULL customer_id is not an orphan)'
 SELECT
   (SELECT count(*) FROM order_details d LEFT JOIN orders o USING (order_id) WHERE o.order_id IS NULL) AS orphan_details,
-  (SELECT count(*) FROM orders o LEFT JOIN customers c USING (customer_id) WHERE c.customer_id IS NULL) AS orphan_orders;
+  (SELECT count(*) FROM orders o LEFT JOIN customers c USING (customer_id)
+     WHERE o.customer_id IS NOT NULL AND c.customer_id IS NULL) AS orphan_orders;
 
 \echo '== Classic Northwind query: top 5 customers by revenue'
 SELECT c.customer_id, c.company_name, c.country,

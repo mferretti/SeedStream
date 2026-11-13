@@ -7,3 +7,4 @@ data:
     datatype: "enum[Beverages,Condiments,Confections,Dairy Products,Grains/Cereals,Meat/Poultry,Produce,Seafood]"  # realism (optional): the 8 Northwind categories
   description:
     datatype: "char[1..500]"
+    nullable: 0.05

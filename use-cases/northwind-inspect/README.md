@@ -9,7 +9,7 @@ identical on every run.
 This use case is also an honest test of the inspector. It was built by feeding a real `pg_dump` of
 the schema to `inspect` and loading the result, then fixing whatever broke. Every hand edit needed
 to get a working load exposed a gap, and every gap became a GitHub issue. The
-[edit list](#3-hand-edits-32-of-88-fields) and the [issue map](#how-the-edits-produced-the-issues)
+[edit list](#3-hand-edits-17-of-88-fields) and the [issue map](#how-the-edits-produced-the-issues)
 below show which edit came from which issue. When those issues are fixed, the edits can go.
 
 ## Quick start
@@ -45,7 +45,7 @@ Drivers aren't bundled; see [`docs/CONTAINER.md`](../../docs/CONTAINER.md).
 | Table | Rows | Notes |
 |---|---:|---|
 | `categories`, `region`, `shippers`, `suppliers` | 8 / 4 / 6 / 29 | lookup tables, original Northwind sizes |
-| `employees` | 9 | self-referencing `reports_to` |
+| `employees` | 9 | self-referencing `reports_to`: each employee reports to an earlier one, the first is the `NULL` root |
 | `territories`, `employee_territories` | 53 / 49 | M:N employee ↔ territory, composite PK |
 | `products` | 77 | FKs to suppliers and categories |
 | `customer_demographics`, `customer_customer_demo` | 10 / 20 000 | M:N, composite PK |
@@ -93,8 +93,11 @@ seedstream inspect schema.sql -o structures/
 
 Out of the box, from 88 columns, the inspector produced:
 
-- **7 `serial` primary keys** and **13 foreign keys** as `ref[parent.key, …]`, including the
-  self-reference `employees.reports_to`.
+- **7 `serial` primary keys** and **13 foreign keys** as `ref[parent.key]`, including the
+  self-reference `employees.reports_to`, which points at a random earlier employee
+  ([#213](https://github.com/mferretti/SeedStream/issues/213)).
+- **56 nullable columns** marked `nullable: 0.05`, so about 5% of their values are `NULL`, as the
+  schema allows ([#492](https://github.com/mferretti/SeedStream/issues/492)).
 - **3 composite keys** (`order_details`, `employee_territories`, `customer_customer_demo`) as
   `ref[…, unique=pk]` pairs, collision-free with no extra configuration.
 - **24 semantic types** from column names (`last_name`, `postal_code`, `phone_number`,
@@ -103,7 +106,7 @@ Out of the box, from 88 columns, the inspector produced:
 - **Review comments** on every guess, and **warnings** on the 3 text primary keys it couldn't
   enforce.
 
-### 3. Hand edits: 18 of 88 fields
+### 3. Hand edits: 17 of 88 fields
 
 Every edit in [`structures/`](structures/) carries a comment naming its issue: `# hand edit (#NNN)`
 is required to load the data, and `# realism (optional)` only makes it look more like Northwind.
@@ -113,13 +116,12 @@ is required to load the data, and `# realism (optional)` only makes it look more
 | 14 | `country`, `city`, `address`, `title`, `first_name` | name-hinted types overflow `varchar(n)` (`country` reaches 51 chars against `varchar(15)`); replaced with Northwind-style enums or a shorter type | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | 1 | `orders.order_id` | inspected as `serial[1..32767]` (`smallint`); [`scale.sql`](scale.sql) widens the column to `integer`, so the ceiling is raised to `serial[1..2147483647]` | [#440](https://github.com/mferretti/SeedStream/issues/440) |
 | 2 | `categories.picture`, `employees.photo` | `bytea` inspected as `char`, which PostgreSQL rejects; removed (nullable, stored as `NULL`) | [#439](https://github.com/mferretti/SeedStream/issues/439) |
-| 1 | `employees.reports_to` | a self-FK row may reference an id not inserted yet; `1..1` makes everyone report to employee 1 | [#213](https://github.com/mferretti/SeedStream/issues/213) |
 | 15 | prices, dates, names | *optional realism*: the 8 real category names, `full_name` contacts, Northwind-like price and date ranges, … | — |
 
 <details>
 <summary><b>Full edit list</b>: every field changed after <code>inspect</code>, before and after</summary>
 
-**Required (18).** Without these, the load fails or the FKs don't resolve.
+**Required (17).** Without these, the load fails or the FKs don't resolve.
 
 | Issue | Table | Field | Inspected | Edited to |
 |---|---|---|---|---|
@@ -140,7 +142,6 @@ is required to load the data, and `# realism (optional)` only makes it look more
 | [#440](https://github.com/mferretti/SeedStream/issues/440) | `orders` | `order_id` | `serial[1..32767]` | `serial[1..2147483647]` |
 | [#439](https://github.com/mferretti/SeedStream/issues/439) | `categories` | `picture` | `char[1..50]` | `*removed*` |
 | [#439](https://github.com/mferretti/SeedStream/issues/439) | `employees` | `photo` | `char[1..50]` | `*removed*` |
-| [#213](https://github.com/mferretti/SeedStream/issues/213) | `employees` | `reports_to` | `ref[employees.employee_id, 1..count]` | `ref[employees.employee_id, 1..1]` |
 
 **Optional realism (15).** The data loads without these; they make it read like Northwind.
 
@@ -202,7 +203,7 @@ with that issue. The workaround is what you see in this folder; the issue is wha
 | load | duplicate key on `customer_demographics`; FK miss on `orders.customer_id` | text PKs inspected as random `char` | none needed any more | [#441](https://github.com/mferretti/SeedStream/issues/441) (fixed) |
 | load | `new row … violates check constraint` | CHECK constraints ignored | none needed any more | [#449](https://github.com/mferretti/SeedStream/issues/449) (fixed) |
 | load | `Key (category_id)=(43) is not present in table "categories"` | `1..count` used the child's `--count` | none needed any more: bare `ref[t.c]` + `counts.yaml` | [#442](https://github.com/mferretti/SeedStream/issues/442) (fixed) |
-| load | self-FK can reference a row not inserted yet | no ordered or self-referencing generation | `reports_to` → `1..1` | [#213](https://github.com/mferretti/SeedStream/issues/213) |
+| load | self-FK can reference a row not inserted yet | no ordered or self-referencing generation | none needed any more: `ref[employees.employee_id]` inside `employees` | [#213](https://github.com/mferretti/SeedStream/issues/213) (fixed) |
 
 The same exercise on the SQL Server, MySQL and Oracle versions of Northwind, and on hand-written
 PostgreSQL scripts, found more gaps (#437, #443–#450 and others); the inspector's regression
