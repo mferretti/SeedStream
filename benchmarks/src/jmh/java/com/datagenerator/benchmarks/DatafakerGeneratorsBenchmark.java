@@ -18,8 +18,10 @@ package com.datagenerator.benchmarks;
 
 import com.datagenerator.core.structure.StructureRegistry;
 import com.datagenerator.core.type.CustomDatafakerType;
+import com.datagenerator.core.type.MaxLengthType;
 import com.datagenerator.generators.DataGeneratorFactory;
 import com.datagenerator.generators.GeneratorContext;
+import com.datagenerator.generators.composite.MaxLengthGenerator;
 import com.datagenerator.generators.semantic.DatafakerGenerator;
 import java.util.Map;
 import java.util.Random;
@@ -63,6 +65,8 @@ public class DatafakerGeneratorsBenchmark {
   private CustomDatafakerType addressType;
   private CustomDatafakerType cityType;
   private CustomDatafakerType companyType;
+  private MaxLengthType cappedCityType;
+  private MaxLengthGenerator maxLengthGenerator;
 
   @Setup
   public void setup() {
@@ -80,6 +84,8 @@ public class DatafakerGeneratorsBenchmark {
     addressType = new CustomDatafakerType("address");
     cityType = new CustomDatafakerType("city");
     companyType = new CustomDatafakerType("company");
+    cappedCityType = new MaxLengthType(cityType, 15, false);
+    maxLengthGenerator = new MaxLengthGenerator();
 
     // Initialize GeneratorContext with English locale
     GeneratorContext.enter(factory, "en");
@@ -125,5 +131,11 @@ public class DatafakerGeneratorsBenchmark {
   @Benchmark
   public String benchmarkCompanyGeneration() {
     return (String) datafakerGenerator.generate(random, companyType);
+  }
+
+  /** Same as {@link #benchmarkCityGeneration} plus the {@code max_length: 15} cap. */
+  @Benchmark
+  public String benchmarkCityGenerationMaxLength15() {
+    return (String) maxLengthGenerator.generate(random, cappedCityType);
   }
 }

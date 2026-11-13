@@ -43,7 +43,7 @@ public class NullableType implements DataType {
 
   @Override
   public DataType unwrap() {
-    return inner;
+    return inner.unwrap();
   }
 
   @Override

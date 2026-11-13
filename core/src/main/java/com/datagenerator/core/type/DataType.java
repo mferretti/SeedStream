@@ -33,7 +33,8 @@ public sealed interface DataType
         SerialType,
         CycleType,
         CustomDatafakerType,
-        NullableType {
+        NullableType,
+        MaxLengthType {
   /**
    * Returns a human-readable description of this type (e.g., "char[3..15]", "array[int, 5..10]").
    *
@@ -41,7 +42,10 @@ public sealed interface DataType
    */
   String describe();
 
-  /** The type without a {@link NullableType} wrapper; every other type is its own base. */
+  /**
+   * The type without {@link NullableType} / {@link MaxLengthType} wrappers; every other type is its
+   * own base.
+   */
   default DataType unwrap() {
     return this;
   }

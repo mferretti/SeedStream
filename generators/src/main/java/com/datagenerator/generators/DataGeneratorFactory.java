@@ -22,6 +22,7 @@ import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
 import com.datagenerator.core.type.EnumType;
+import com.datagenerator.core.type.MaxLengthType;
 import com.datagenerator.core.type.NullableType;
 import com.datagenerator.core.type.ObjectType;
 import com.datagenerator.core.type.ParentReferenceType;
@@ -31,6 +32,7 @@ import com.datagenerator.core.type.SelfReferenceType;
 import com.datagenerator.core.type.SerialType;
 import com.datagenerator.core.type.UniqueType;
 import com.datagenerator.generators.composite.ArrayGenerator;
+import com.datagenerator.generators.composite.MaxLengthGenerator;
 import com.datagenerator.generators.composite.NullableGenerator;
 import com.datagenerator.generators.composite.ObjectGenerator;
 import com.datagenerator.generators.composite.ParentReferenceGenerator;
@@ -107,6 +109,7 @@ public class DataGeneratorFactory {
     STATELESS_TYPE_MAP.put(SerialType.class, new SerialGenerator());
     STATELESS_TYPE_MAP.put(CycleType.class, new CycleGenerator());
     STATELESS_TYPE_MAP.put(NullableType.class, new NullableGenerator());
+    STATELESS_TYPE_MAP.put(MaxLengthType.class, new MaxLengthGenerator());
     // NOTE: ObjectGenerator is stateful and added per-instance in the constructor
   }
 
@@ -161,6 +164,7 @@ public class DataGeneratorFactory {
       case null -> throw new GeneratorException("Cannot preflight a null type");
       case PrimitiveType p -> create(p).generate(new Random(0), p);
       case NullableType n -> preflight(n.getInner(), visitedStructures);
+      case MaxLengthType m -> preflight(m.getInner(), visitedStructures);
       case ArrayType a -> {
         ArrayGenerator.validateLength(a.getMinLength(), a.getMaxLength());
         preflight(a.getElementType(), visitedStructures);

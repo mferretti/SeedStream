@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -70,6 +71,12 @@ abstract class AbstractYamlParser<T> {
       return result;
     } catch (SchemaParseException e) {
       throw e;
+    } catch (ValueInstantiationException e) {
+      // a rejected field key (nullable, max_length, ...): say which value and where
+      throw new SchemaParseException(
+          "Failed to read %s file: %s: %s (%s)"
+              .formatted(description, filePath, e.getOriginalMessage(), e.getPathReference()),
+          e);
     } catch (IOException e) {
       throw new SchemaParseException(
           "Failed to read " + description + " file: %s".formatted(filePath), e);
