@@ -51,7 +51,7 @@ class DdlInspectorNorthwindTypesTest {
   }
 
   @Test
-  void shouldMapEverySqlServerTypeExceptBinaryImageColumns() {
+  void shouldMapEverySqlServerType() {
     Inspection inspection = inspectBestEffort("sqlserver/instnwnd-schema.sql");
 
     List<String> unrecognized = new ArrayList<>();
@@ -65,8 +65,8 @@ class DdlInspectorNorthwindTypesTest {
                         unrecognized.add(table + "." + field);
                       }
                     }));
-    // image columns are #439, out of scope
-    assertThat(unrecognized).isSubsetOf("employees.Photo", "categories.Picture");
+    // image columns are nullable, so they are omitted (#439) rather than flagged as unrecognized
+    assertThat(unrecognized).isEmpty();
   }
 
   @Test

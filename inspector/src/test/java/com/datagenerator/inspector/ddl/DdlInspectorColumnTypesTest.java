@@ -182,8 +182,7 @@ class DdlInspectorColumnTypesTest {
                 Map.entry("c_ts_no_tz", TS),
                 Map.entry("c_uuid", "uuid"),
                 Map.entry("c_json", STR),
-                Map.entry("c_jsonb", STR),
-                Map.entry("c_bytea", STR)));
+                Map.entry("c_jsonb", STR)));
   }
 
   @Test
@@ -322,12 +321,13 @@ class DdlInspectorColumnTypesTest {
   }
 
   @Test
-  void shouldParseOracleRawColumnAsFlaggedFallback(@TempDir Path dir) throws IOException {
+  void shouldParseOracleRawColumnAndOmitItAsNullableBinary(@TempDir Path dir) throws IOException {
     // RAW(16) is Oracle's idiom for a GUID; strict mode must not abort the whole script on it.
+    // Nullable binary columns are omitted (#439).
     Inspection inspection = inspect(dir, "CREATE TABLE t (id NUMBER(10), guid RAW(16));");
 
-    assertThat(datatypesOf(inspection, "t")).containsEntry("guid", STR);
-    assertThat(inspection.comments().get("t")).containsKey("guid");
+    assertThat(datatypesOf(inspection, "t")).doesNotContainKey("guid").containsKey("id");
+    assertThat(inspection.warnings()).anyMatch(w -> w.startsWith("t.guid: ") && w.contains("#439"));
   }
 
   @Test
@@ -486,6 +486,7 @@ class DdlInspectorColumnTypesTest {
             "CREATE TABLE doc (id NUMBER(10) PRIMARY KEY, guid RAW(16), raw_note VARCHAR2(20));");
 
     Map<String, String> types = datatypesOf(inspection, "doc");
-    assertThat(types).containsEntry("guid", STR).containsEntry("raw_note", "char[1..20]");
+    // nullable binary guid is omitted (#439); the neighbours keep their types
+    assertThat(types).doesNotContainKey("guid").containsEntry("raw_note", "char[1..20]");
   }
 }
