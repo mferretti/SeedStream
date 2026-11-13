@@ -18,8 +18,8 @@ rgxgen = "3.1"
 
 # Validation
 jakarta-validation = "3.1.1"
-hibernate-validator = "9.1.5.Final"
-jakarta-el = "4.0.2"
+hibernate-validator = "9.1.6.Final"
+jakarta-el = "6.0.0"
 
 # Schema inspection
 jsqlparser = "5.4"
@@ -37,12 +37,12 @@ hikaricp = "7.1.0"
 postgresql = "42.7.14"
 mysql-connector = "26.10.0"
 ojdbc = "23.26.4.0.0"
-mssql-jdbc = "13.6.1.jre11"
+mssql-jdbc = "13.6.2.jre11"
 
 # Testing
 junit = "6.1.3"
 h2 = "2.5.252"
-mockito = "5.21.0"
+mockito = "5.24.0"
 assertj = "3.27.7"
 testcontainers = "1.21.4"
 awaitility = "4.3.0"  # Updated from 4.2.2
@@ -51,7 +51,7 @@ awaitility = "4.3.0"  # Updated from 4.2.2
 aws-sdk = "2.57.7"
 azure-keyvault-secrets = "4.12.0"
 azure-identity = "1.18.7"
-gcp-secretmanager = "2.100.0"
+gcp-secretmanager = "2.101.0"
 
 # Security Constraints (for dependency-check)
 log4j = "2.26.1"
@@ -59,7 +59,7 @@ log4j = "2.26.1"
 # Build Plugins
 jmh-plugin = "0.7.4"
 lombok-plugin = "9.8.2"
-spotless-plugin = "8.10.4"
+spotless-plugin = "8.11.0"
 spotbugs-plugin = "6.5.13"
 findsecbugs = "1.14.0"
 dependency-check-plugin = "13.0.0"
@@ -84,7 +84,7 @@ jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-d
 # Validation
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version.ref = "jakarta-validation" }
 hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "hibernate-validator" }
-jakarta-el = { module = "org.glassfish:jakarta.el", version.ref = "jakarta-el" }
+jakarta-el = { module = "org.glassfish.expressly:expressly", version.ref = "jakarta-el" }
 
 # Data Generation
 datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
