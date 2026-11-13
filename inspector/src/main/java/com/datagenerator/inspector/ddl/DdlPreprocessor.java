@@ -70,6 +70,14 @@ public class DdlPreprocessor {
   private static final Pattern ORACLE_RAW = Pattern.compile("(?i)\\bRAW(\\s*\\()");
 
   /**
+   * Oracle {@code CHAR(n BYTE)}: JSQLParser drops the unit from a {@code CHAR} type, and the unit
+   * decides the {@code max_length} unit (#440). Rewritten to {@code VARCHAR2(n BYTE)}, which keeps
+   * it and maps to the same type.
+   */
+  private static final Pattern ORACLE_CHAR_BYTE =
+      Pattern.compile("(?i)\\bCHAR(\\s*\\(\\s*\\d+\\s+BYTE\\s*\\))");
+
+  /**
    * Spec token that replaces an MSSQL {@code IDENTITY} column property, so the inspector can still
    * see which columns SQL Server assigns (#444).
    */
@@ -164,6 +172,9 @@ public class DdlPreprocessor {
 
     // Oracle RAW(n) -> VARBINARY(n) (parseable, still an unknown type)
     s = ORACLE_RAW.matcher(s).replaceAll("VARBINARY$1");
+
+    // Oracle CHAR(n BYTE) -> VARCHAR2(n BYTE): the parser would drop the unit
+    s = ORACLE_CHAR_BYTE.matcher(s).replaceAll("VARCHAR2$1");
 
     // MySQL ENUM("a","b") -> ENUM('a','b'): JSQLParser rejects double-quoted members
     s = singleQuoteEnumMembers(s);

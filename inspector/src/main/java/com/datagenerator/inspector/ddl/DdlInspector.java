@@ -338,7 +338,12 @@ public class DdlInspector {
               .data()
               .put(
                   column.name(),
-                  new FieldDefinition(field.getDatatype(), null, Defaults.NULLABLE_RATE));
+                  new FieldDefinition(
+                      field.getDatatype(),
+                      null,
+                      Defaults.NULLABLE_RATE,
+                      field.getMaxLength(),
+                      field.isLengthInBytes()));
         }
       }
     }
@@ -713,6 +718,8 @@ public class DdlInspector {
         binaryColumns.put(key, new BinaryColumn(shown, notNull, table.defaulted.contains(key)));
       }
       String datatype = foreignKeyTypes.get(lower(column.name()));
+      Integer maxLength = null;
+      boolean lengthInBytes = false;
       if (datatype == null) {
         ColDataType colType = column.type();
         String sqlType = baseTypeName(colType).toUpperCase(Locale.ROOT);
@@ -735,6 +742,8 @@ public class DdlInspector {
           fieldComments.put(column.name(), "array column generated as a scalar — verify");
         }
         datatype = mapped.datatype();
+        maxLength = mapped.maxLength();
+        lengthInBytes = mapped.lengthInBytes();
         ColumnChecks columnChecks = checks.get(lower(column.name()));
         if (columnChecks != null) {
           CheckConstraintMapper.Result applied =
@@ -743,6 +752,8 @@ public class DdlInspector {
                   ColumnType.of(mapped, baseTypeName(colType), typeArguments(colType)));
           if (applied.datatype() != null) {
             datatype = applied.datatype();
+            maxLength = null; // the CHECK-derived type states its own bounds
+            lengthInBytes = false;
             if (mapped.reason() == MappedType.Reason.NAME_HINT) {
               fieldComments.remove(column.name()); // the CHECK settles what the name only guessed
             }
@@ -752,7 +763,7 @@ public class DdlInspector {
               .forEach(note -> fieldComments.merge(column.name(), note, DdlInspector::join));
         }
       }
-      data.put(column.name(), new FieldDefinition(datatype, null));
+      data.put(column.name(), new FieldDefinition(datatype, null, null, maxLength, lengthInBytes));
     }
 
     keys.put(

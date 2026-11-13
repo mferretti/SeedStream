@@ -63,7 +63,9 @@ public class StructureYamlWriter {
     }
     try {
       Files.createDirectories(outputDir);
-      String body = yaml.writeValueAsString(toOrderedMap(structure));
+      String body =
+          yaml.writeValueAsString(toOrderedMap(structure))
+              .replace("length_unit: \"bytes\"", "length_unit: bytes");
       Files.writeString(
           file,
           annotate(body, comments == null ? Map.of() : comments, structure.getData().keySet()));
@@ -135,6 +137,12 @@ public class StructureYamlWriter {
   private Map<String, Object> fieldToMap(FieldDefinition def) {
     Map<String, Object> field = new LinkedHashMap<>();
     field.put("datatype", def.getDatatype());
+    if (def.getMaxLength() != null) {
+      field.put("max_length", def.getMaxLength());
+      if (def.isLengthInBytes()) {
+        field.put("length_unit", "bytes");
+      }
+    }
     if (def.getNullable() != null) {
       field.put("nullable", def.getNullable());
     }

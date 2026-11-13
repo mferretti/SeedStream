@@ -157,7 +157,12 @@ public class JsonSchemaInspector {
       }
       data.put(
           fieldName,
-          new FieldDefinition(mapped.datatype(), null, SchemaTypeMapper.nullableRate(fieldNode)));
+          new FieldDefinition(
+              mapped.datatype(),
+              null,
+              SchemaTypeMapper.nullableRate(fieldNode),
+              mapped.maxLength(),
+              false));
 
       suggestRegex(fieldName, fieldNode, fakerSuggestions, fieldComments);
       if (branchFields.contains(fieldName)) {

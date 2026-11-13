@@ -27,8 +27,15 @@ package com.datagenerator.inspector;
  * @param datatype the SeedStream type string (e.g. {@code int[1..100]})
  * @param reason why this datatype was chosen
  * @param note the review comment for {@link Reason#REVIEW} / {@link Reason#SCHEMA_ERROR}, else null
+ * @param maxLength the {@code max_length} cap the field needs, or null for none (#440)
+ * @param lengthInBytes whether {@code maxLength} counts UTF-8 bytes ({@code length_unit: bytes})
  */
-public record MappedType(String datatype, Reason reason, String note) {
+public record MappedType(
+    String datatype, Reason reason, String note, Integer maxLength, boolean lengthInBytes) {
+
+  public MappedType(String mappedDatatype, Reason mappedReason, String mappedNote) {
+    this(mappedDatatype, mappedReason, mappedNote, null, false);
+  }
 
   public MappedType(String mappedDatatype, Reason mappedReason) {
     this(mappedDatatype, mappedReason, null);
@@ -64,6 +71,11 @@ public record MappedType(String datatype, Reason reason, String note) {
 
   public static MappedType nameHint(String datatype) {
     return new MappedType(datatype, Reason.NAME_HINT);
+  }
+
+  /** A name-hinted type kept as-is but capped at {@code maxLength} (null = no cap). */
+  public static MappedType nameHint(String datatype, Integer maxLength, boolean bytes) {
+    return new MappedType(datatype, Reason.NAME_HINT, null, maxLength, bytes);
   }
 
   public static MappedType unknownType(String datatype) {

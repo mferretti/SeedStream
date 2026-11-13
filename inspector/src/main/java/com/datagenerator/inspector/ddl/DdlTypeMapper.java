@@ -144,9 +144,9 @@ public final class DdlTypeMapper {
         int length = length(args, Defaults.VARCHAR_DEFAULT_LENGTH);
         yield length == 0
             ? MappedType.declared("char[0..0]") // zero-length column: only "" fits
-            : mapString(columnName, length, !hasLength);
+            : mapString(columnName, length, !hasLength, declaredCap(raw, args));
       }
-      case "TEXT" -> mapString(columnName, Defaults.TEXT_MAX_LENGTH, true);
+      case "TEXT" -> mapString(columnName, Defaults.TEXT_MAX_LENGTH, true, null);
       default -> MappedType.unknownType(Defaults.STRING); // unknown — §6 Q2
     };
   }
@@ -359,13 +359,39 @@ public final class DdlTypeMapper {
         .orElseGet(() -> MappedType.declared("char[36..36]"));
   }
 
-  private MappedType mapString(String columnName, int maxLength, boolean lengthInferred) {
+  /**
+   * The declared character capacity of a string column, or null for none ({@code VARCHAR(MAX)},
+   * bare {@code VARCHAR}). The unit is bytes for an explicit {@code n BYTE} and for a bare {@code
+   * VARCHAR2(n)} (Oracle's default semantics); everything else, national types included, counts
+   * characters. See INSPECT-V1-SPEC §7c.
+   */
+  private static DeclaredCap declaredCap(String rawType, List<String> args) {
+    if (args == null || args.isEmpty()) {
+      return null;
+    }
+    String[] tokens = WHITESPACE.split(args.get(0).trim());
+    try {
+      int n = Integer.parseInt(tokens[0]);
+      boolean explicitBytes = tokens.length > 1 && "BYTE".equalsIgnoreCase(tokens[1]);
+      boolean bare = tokens.length == 1;
+      return new DeclaredCap(n, explicitBytes || (bare && "VARCHAR2".equals(rawType)));
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  private record DeclaredCap(int length, boolean bytes) {}
+
+  private MappedType mapString(
+      String columnName, int maxLength, boolean lengthInferred, DeclaredCap cap) {
     Optional<String> hint =
         NameHints.forFieldName(columnName)
             .flatMap(FakerTypes::canonical)
             .or(() -> FakerTypes.canonical(Names.toSnakeCase(columnName)));
     if (hint.isPresent()) {
-      return MappedType.nameHint(hint.get());
+      return cap == null
+          ? MappedType.nameHint(hint.get())
+          : MappedType.nameHint(hint.get(), cap.length(), cap.bytes());
     }
     String datatype = "char[1.." + maxLength + "]";
     return lengthInferred ? MappedType.defaultRange(datatype) : MappedType.declared(datatype);
