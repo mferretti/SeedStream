@@ -242,6 +242,54 @@ class DatabaseDestinationTransactionTest {
     assertThat(visibleIds()).isEmpty();
   }
 
+  @Test
+  void shouldNotReExecuteFailedBatchOnFlushOrCloseWhenAutoCommit() throws SQLException {
+    String noPk = "tx_nopk";
+    try (Statement st = observer.createStatement()) {
+      st.execute("DROP TABLE IF EXISTS " + noPk);
+      st.execute("CREATE TABLE " + noPk + " (id INT, name VARCHAR(50) NOT NULL)");
+    }
+    try {
+      DatabaseDestination dest =
+          new DatabaseDestination(
+              DatabaseDestinationConfig.builder()
+                  .jdbcUrl(JDBC_URL)
+                  .username("sa")
+                  .password("")
+                  .tableName(noPk)
+                  .batchSize(2)
+                  .transactionStrategy(AUTO_COMMIT)
+                  .build());
+      dest.open();
+      dest.write(row(5, "kept"));
+      Map<String, Object> bad = row(6, "ignored");
+      bad.put("name", null);
+      assertThatThrownBy(() -> dest.write(bad)).isInstanceOf(DestinationException.class);
+      long afterFailure = countRows(noPk);
+
+      // flush and close still report the failure, but must not run the failed batch again
+      assertThatThrownBy(dest::flush)
+          .isInstanceOf(DestinationException.class)
+          .hasMessageContaining("earlier batch insert")
+          .hasCauseInstanceOf(DestinationException.class);
+      assertThatThrownBy(dest::close).isInstanceOf(DestinationException.class);
+
+      assertThat(countRows(noPk)).as("no duplicate rows from a re-run").isEqualTo(afterFailure);
+    } finally {
+      try (Statement st = observer.createStatement()) {
+        st.execute("DROP TABLE IF EXISTS " + noPk);
+      }
+    }
+  }
+
+  private long countRows(String table) throws SQLException {
+    try (Statement st = observer.createStatement();
+        ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
+      rs.next();
+      return rs.getLong(1);
+    }
+  }
+
   // --- lifecycle ---
 
   @Test
