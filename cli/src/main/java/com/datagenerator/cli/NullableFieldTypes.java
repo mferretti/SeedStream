@@ -45,7 +45,7 @@ final class NullableFieldTypes {
     fields.forEach(
         (name, type) -> {
           if (type instanceof NullableType n) {
-            Class<?> valueClass = valueClass(n.getInner());
+            Class<?> valueClass = valueClass(n.unwrap());
             if (valueClass != null) {
               out.put(name, valueClass);
             }

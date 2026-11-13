@@ -932,6 +932,21 @@ address:
 - A NOT NULL database column with `nullable` fails at insert: match the rate to the schema.
 - `inspect` emits `nullable: 0.05` on every column the source schema allows to be NULL (except keys); lower it, raise it, or delete the key per field.
 
+### Capped Text Fields
+
+A text field can be capped with `max_length` (integer >= 1) next to `datatype`, counted in `length_unit`: `chars` (Unicode code points, default) or `bytes` (UTF-8, for `VARCHAR2(n BYTE)` / SQL Server `varchar(n)`) (#440):
+
+```yaml
+city:
+  datatype: city
+  max_length: 15
+  length_unit: bytes   # optional; only valid together with max_length
+```
+
+- Only on text types: `char[...]` and Datafaker / custom faker types. Any other type, `length_unit` without `max_length`, an unknown unit, or `char[min..]` with `min` > `max_length` is rejected at startup naming the field.
+- A value that is too long is regenerated (up to 8 attempts in total); the last attempt is cut at a code point boundary and trailing whitespace is stripped (unless that leaves it empty). Combines with `nullable`: the value is capped, then the null decision.
+- **Adding a cap can change the field's other values, and those of later fields, once it triggers**: each regeneration consumes extra draws from the record's random stream. Still deterministic and thread-count independent. A cap that never triggers changes nothing, and structures without `max_length` are byte-identical.
+
 ### Field Aliases
 
 ```yaml

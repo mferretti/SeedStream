@@ -26,10 +26,13 @@ import com.datagenerator.core.seed.SeedConfig;
 import com.datagenerator.core.seed.SeedResolver;
 import com.datagenerator.core.structure.StructureLoader;
 import com.datagenerator.core.structure.StructureRegistry;
+import com.datagenerator.core.type.CustomDatafakerType;
 import com.datagenerator.core.type.CycleType;
 import com.datagenerator.core.type.DataType;
+import com.datagenerator.core.type.MaxLengthType;
 import com.datagenerator.core.type.NullableType;
 import com.datagenerator.core.type.ObjectType;
+import com.datagenerator.core.type.PrimitiveType;
 import com.datagenerator.core.type.SerialType;
 import com.datagenerator.core.type.TypeParser;
 import com.datagenerator.core.type.UniqueType;
@@ -54,6 +57,7 @@ import com.datagenerator.generators.GeneratorContext;
 import com.datagenerator.generators.GeneratorException;
 import com.datagenerator.generators.semantic.FakerCache;
 import com.datagenerator.schema.model.DataStructure;
+import com.datagenerator.schema.model.FieldDefinition;
 import com.datagenerator.schema.model.JobConfig;
 import com.datagenerator.schema.parser.CustomTypeConfigLoader;
 import com.datagenerator.schema.parser.DataStructureParser;
@@ -1036,13 +1040,50 @@ public class ExecuteCommand implements Callable<Integer> {
                             LinkedHashMap::new));
             // bare ref[t.c] forms become explicit ranges here, before unique layouts are computed
             return withNullable(
-                structureName, structure, refResolver.resolve(structureName, parsed));
+                structureName,
+                structure,
+                withMaxLength(
+                    structureName, structure, refResolver.resolve(structureName, parsed)));
           } catch (Exception e) {
             throw new GeneratorException("Failed to load structure: " + structureName, e);
           }
         };
 
     return new StructureRegistry(loader, jobCount);
+  }
+
+  /**
+   * Wraps every field declared with {@code max_length} in a {@link MaxLengthType}. Only text types
+   * (char, Datafaker / custom faker types) can be capped, and a {@code char[min..max]} minimum must
+   * fit the cap.
+   */
+  private static Map<String, DataType> withMaxLength(
+      String structureName, DataStructure structure, Map<String, DataType> types) {
+    Map<String, DataType> out = new LinkedHashMap<>();
+    types.forEach(
+        (field, type) -> {
+          FieldDefinition def = structure.getData().get(field);
+          Integer cap = def.getMaxLength();
+          if (cap == null) {
+            out.put(field, type);
+            return;
+          }
+          boolean text =
+              type instanceof CustomDatafakerType
+                  || (type instanceof PrimitiveType p && p.getKind() == PrimitiveType.Kind.CHAR);
+          if (!text) {
+            throw new IllegalArgumentException(
+                "field '%s' in %s: max_length is only allowed on text types (char, faker), not %s"
+                    .formatted(field, structureName, def.getDatatype()));
+          }
+          if (type instanceof PrimitiveType p && Integer.parseInt(p.getMinValue()) > cap) {
+            throw new IllegalArgumentException(
+                "field '%s' in %s: max_length %d is below the minimum length of %s"
+                    .formatted(field, structureName, cap, def.getDatatype()));
+          }
+          out.put(field, new MaxLengthType(type, cap, def.isLengthInBytes()));
+        });
+    return out;
   }
 
   /**
