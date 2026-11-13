@@ -35,8 +35,8 @@ import lombok.Value;
  *   batch_size: 1000
  *   pool_size: 10
  *   transaction_strategy: per_batch
- *   truncate_before_insert: true # DESTRUCTIVE — empties the table (CASCADE) before seeding
- *   restart_identity: true       # also reset identity/serial sequences (PostgreSQL only)
+ *   truncate_before_insert: true # DESTRUCTIVE — empties the table and its dependents before seeding
+ *   restart_identity: true       # also reset identity/serial/AUTO_INCREMENT (not Oracle)
  * </pre>
  *
  * <p><b>Environment variable substitution:</b> String values matching {@code ${VAR_NAME}} are
@@ -107,21 +107,23 @@ public class DatabaseDestinationConfig {
   @Builder.Default boolean injectParentFk = true;
 
   /**
-   * When {@code true}, each target table is emptied with {@code TRUNCATE TABLE ... CASCADE} before
-   * its first insert. Default: {@code false}.
+   * When {@code true}, each target table, and every table that references it (transitively), is
+   * emptied before its first insert. Default: {@code false}.
    *
    * <p><b>DESTRUCTIVE</b> — intended for CI seeding into a disposable database, where a fixed seed
    * plus a clean table yields a deterministic dataset without an external teardown script. The
-   * table must already exist (no DDL generation). Uses PostgreSQL/Oracle {@code CASCADE} syntax, so
-   * nested foreign-key graphs are cleared in one shot; MySQL/SQL Server are not supported.
+   * table must already exist (no DDL generation). PostgreSQL/Oracle use {@code TRUNCATE TABLE ...
+   * CASCADE}; MySQL/MariaDB and SQL Server walk the foreign keys and delete the dependents (MySQL
+   * with foreign-key checks off for the duration; SQL Server rejects a cycle between distinct
+   * tables). TRUNCATE is DDL on MySQL: it commits implicitly.
    */
   @Builder.Default boolean truncateBeforeInsert = false;
 
   /**
-   * When {@code true}, the truncate emitted by {@link #truncateBeforeInsert} becomes {@code
-   * TRUNCATE TABLE ... RESTART IDENTITY CASCADE}, resetting the sequences owned by identity/serial
-   * columns of the truncated tables. Default: {@code false}. Ignored unless {@code
-   * truncateBeforeInsert} is enabled.
+   * When {@code true}, the identity of every table emptied by {@link #truncateBeforeInsert} is
+   * reset: {@code RESTART IDENTITY} on PostgreSQL, {@code TRUNCATE} (resetting {@code
+   * AUTO_INCREMENT}) on MySQL, {@code DBCC CHECKIDENT ... RESEED} on SQL Server. Default: {@code
+   * false}. Ignored unless {@code truncateBeforeInsert} is enabled.
    *
    * <p>Plain TRUNCATE leaves sequences where they are, so a reseeded table restarts at the previous
    * high-water mark. That breaks reseeding of linked datasets, where children reference parents
@@ -129,7 +131,8 @@ public class DatabaseDestinationConfig {
    * {@code N+1..2N} and the FK inserts fail. Enabling this yields a dense {@code 1..N} identity
    * sequence on every run.
    *
-   * <p>PostgreSQL only — {@code RESTART IDENTITY} is not valid Oracle TRUNCATE syntax.
+   * <p>PostgreSQL, MySQL/MariaDB and SQL Server; rejected on Oracle ({@code RESTART IDENTITY} is
+   * not valid Oracle TRUNCATE syntax).
    */
   @Builder.Default boolean restartIdentity = false;
 

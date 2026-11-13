@@ -13,5 +13,5 @@ Config reference for the two flags involved:
 
 | Key | Effect |
 |---|---|
-| `truncate_before_insert: true` | Empties each target table with `TRUNCATE TABLE ... CASCADE` before its first insert. **DESTRUCTIVE.** PostgreSQL/Oracle only. |
-| `restart_identity: true` | Makes that statement `TRUNCATE ... RESTART IDENTITY CASCADE`, so identity/serial sequences restart at 1 and static `ref[parent.id, 1..N]` ranges stay valid across reseeds. PostgreSQL only; requires `truncate_before_insert`. |
+| `truncate_before_insert: true` | Empties each target table with `TRUNCATE TABLE ... CASCADE` (and every table referencing it) before its first insert. **DESTRUCTIVE.** PostgreSQL/Oracle; MySQL/MariaDB and SQL Server get the same result with FK checks off / child-first `DELETE`s. |
+| `restart_identity: true` | Makes that statement `TRUNCATE ... RESTART IDENTITY CASCADE`, so identity/serial sequences restart at 1 and static `ref[parent.id, 1..N]` ranges stay valid across reseeds. PostgreSQL, MySQL/MariaDB, SQL Server (not Oracle); requires `truncate_before_insert`. |

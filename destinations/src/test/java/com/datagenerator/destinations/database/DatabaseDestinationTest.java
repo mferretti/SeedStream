@@ -39,6 +39,8 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Unit tests for DatabaseDestination using H2 in-memory database.
@@ -566,22 +568,51 @@ class DatabaseDestinationTest {
     verify(mockTruncateStmt).executeUpdate("TRUNCATE TABLE users CASCADE");
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "jdbc:mysql://host:3306/db",
+        "jdbc:mariadb://host:3306/db",
+        "jdbc:sqlserver://host:1433;databaseName=db"
+      })
+  void shouldNotRejectTruncateBeforeInsertWhenDialectIsMySqlOrSqlServer(String url)
+      throws Exception {
+    DataSource mockDs = mock(DataSource.class);
+    when(mockDs.getConnection()).thenReturn(mock(Connection.class));
+
+    for (boolean restartIdentity : new boolean[] {false, true}) {
+      DatabaseDestinationConfig config =
+          DatabaseDestinationConfig.builder()
+              .jdbcUrl(url)
+              .username("u")
+              .password("p")
+              .tableName(TABLE_USERS)
+              .truncateBeforeInsert(true)
+              .restartIdentity(restartIdentity)
+              .build();
+      try (DatabaseDestination dest = new DatabaseDestination(config, mockDs)) {
+        assertThatCode(dest::open).doesNotThrowAnyException();
+      }
+    }
+  }
+
   @Test
-  void shouldRejectTruncateBeforeInsertOnUnsupportedDialect() {
-    DatabaseDestinationConfig mysql =
+  void shouldRejectTruncateBeforeInsertOnUnknownDialect() {
+    DatabaseDestinationConfig h2 =
         DatabaseDestinationConfig.builder()
-            .jdbcUrl("jdbc:mysql://host:3306/db")
+            .jdbcUrl("jdbc:h2:mem:truncreject")
             .username("u")
             .password("p")
             .tableName(TABLE_USERS)
             .truncateBeforeInsert(true)
             .build();
 
-    try (DatabaseDestination dest = new DatabaseDestination(mysql)) {
+    try (DatabaseDestination dest = new DatabaseDestination(h2)) {
       assertThatThrownBy(dest::open)
           .isInstanceOf(DestinationException.class)
-          .hasMessageContaining("CASCADE")
-          .hasMessageContaining("PostgreSQL and Oracle");
+          .hasMessageContaining("unsupported dialect")
+          .hasMessageContaining("jdbc:h2:mem:truncreject")
+          .hasMessageNotContaining("only supported on PostgreSQL and Oracle");
     }
   }
 

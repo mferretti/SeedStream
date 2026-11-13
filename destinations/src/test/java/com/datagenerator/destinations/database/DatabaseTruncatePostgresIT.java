@@ -38,8 +38,8 @@ import org.testcontainers.junit.jupiter.Container;
  * PostgreSQL-only integration tests for {@code truncate_before_insert}.
  *
  * <p>Kept separate from {@link AbstractDatabaseDestinationIT} (which runs across all four DBs)
- * because the feature emits {@code TRUNCATE TABLE ... CASCADE}, which is PostgreSQL/Oracle syntax.
- * MySQL and SQL Server are intentionally out of scope for this feature.
+ * because each vendor empties tables differently. MySQL and SQL Server: {@link
+ * DatabaseTruncateMySqlIT}, {@link DatabaseTruncateSqlServerIT}.
  */
 class DatabaseTruncatePostgresIT extends IntegrationTest {
 
