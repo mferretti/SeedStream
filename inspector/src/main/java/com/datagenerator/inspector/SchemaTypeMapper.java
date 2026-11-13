@@ -113,19 +113,12 @@ public final class SchemaTypeMapper {
         if (emailFits(schema)) {
           return fakerOr("email", () -> MappedType.declared(Defaults.STRING));
         }
-        return capOk
-                && schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE) < EMAIL_MAX_LENGTH_FLOOR
-                && schema.path(MIN_LENGTH).asInt(0) <= EMAIL_MIN_LENGTH_CEILING
-                && schema.path(MAX_LENGTH).asInt() >= 1
+        int max = schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE);
+        boolean capFits =
+            capOk && max >= 1 && schema.path(MIN_LENGTH).asInt(0) <= EMAIL_MIN_LENGTH_CEILING;
+        return capFits
             ? FakerTypes.canonical("email")
-                .map(
-                    e ->
-                        new MappedType(
-                            e,
-                            MappedType.Reason.DECLARED,
-                            null,
-                            schema.get(MAX_LENGTH).asInt(),
-                            false))
+                .map(e -> new MappedType(e, MappedType.Reason.DECLARED, null, max, false))
                 .orElseGet(() -> charRange(schema, emailMisfit(schema)))
             : charRange(schema, emailMisfit(schema));
       case "uuid":
@@ -164,7 +157,9 @@ public final class SchemaTypeMapper {
 
   private static String emailMisfit(JsonNode schema) {
     return schema.path(MAX_LENGTH).asInt(Integer.MAX_VALUE) < EMAIL_MAX_LENGTH_FLOOR
-        ? "email values can exceed maxLength " + schema.get(MAX_LENGTH).asInt() + "; see #440"
+        ? "email values can exceed maxLength "
+            + schema.get(MAX_LENGTH).asInt()
+            + " (array items cannot carry max_length)"
         : "email values can be shorter than minLength " + schema.get(MIN_LENGTH).asInt();
   }
 

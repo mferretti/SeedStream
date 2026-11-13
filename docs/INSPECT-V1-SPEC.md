@@ -235,7 +235,7 @@ YAML parser ignores `#` comments, so annotated files round-trip cleanly.
   `VARCHAR2(n)` (default `NLS_LENGTH_SEMANTICS=BYTE`); everything else counts characters and gets no
   key, national types (`NVARCHAR`, `NCHAR`, `NVARCHAR2`) included. Caveat: SQL Server `varchar(n)`
   counts bytes of its code page; with cp1252 and Western European locales that equals characters,
-  other scripts may need `length_unit: bytes` added by hand.
+  other scripts may need `length_unit: bytes` added by hand. Oracle bare `CHAR(n)` also defaults to BYTE semantics but is indistinguishable from ANSI `CHAR(n)`, so it is treated as characters; add `length_unit: bytes` by hand for multi-byte data.
 - **Type spellings.** Quoted type names (`"int"`, `` `int` ``, `[int]` — SQL Server's original
   scripts quote them) map exactly like the bare name. Oracle length semantics are ignored for the
   length: `VARCHAR2(15 BYTE)` / `CHAR(5 CHAR)` → `char[1..15]` / `char[1..5]`. A zero-length
