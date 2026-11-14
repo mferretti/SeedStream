@@ -112,11 +112,12 @@
         local cryptographic verification path (azure-security-keyvault-keys, fixed &lt; 4.10.6).
         This project depends on azure-security-keyvault-*secrets*, not keys, so the vulnerable
         code path is never present. The finding comes from the umbrella
-        cpe:microsoft:azure_sdk_for_java match flagging azure-core/identity/json by their own
+        cpe:microsoft:azure_sdk_for_java match flagging azure-core/core-http-jdk-httpclient/identity/json by their own
         (unrelated) artifact versions. Fixed artifact azure-security-keyvault-keys 4.10.6
-        (GHSA-97jf-46m3-8953) is absent from the tree. Re-verified 2026-10-11; re-verify
+        (GHSA-97jf-46m3-8953) is absent from the tree. Re-verified 2026-10-11; azure-core-http-jdk-httpclient
+        (replaces azure-core-http-netty) added 2026-11-14. Re-verify
         component + CPE at expiry.</notes>
-        <packageUrl regex="true">^pkg:maven/com\.azure/azure-(core|identity|json)@.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure-(core|core-http-jdk-httpclient|identity|json)@.*$</packageUrl>
         <cve>CVE-2026-33117</cve>
     </suppress>
 
