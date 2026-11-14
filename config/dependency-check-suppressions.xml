@@ -116,7 +116,7 @@
         (unrelated) artifact versions. Fixed artifact azure-security-keyvault-keys 4.10.6
         (GHSA-97jf-46m3-8953) is absent from the tree. Re-verified 2026-10-11; re-verify
         component + CPE at expiry.</notes>
-        <packageUrl regex="true">^pkg:maven/com\.azure/azure-(core|core-http-netty|identity|json)@.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/com\.azure/azure-(core|identity|json)@.*$</packageUrl>
         <cve>CVE-2026-33117</cve>
     </suppress>
 

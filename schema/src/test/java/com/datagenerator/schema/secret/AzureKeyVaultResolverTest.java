@@ -26,6 +26,7 @@ import com.azure.core.http.HttpClient;
 import com.azure.security.keyvault.secrets.SecretClient;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.datagenerator.schema.exception.SecretResolutionException;
+import java.util.Locale;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -202,7 +203,8 @@ class AzureKeyVaultResolverTest {
 
   @Test
   void shouldUseJdkHttpClientByDefault() {
-    assertThat(HttpClient.createDefault().getClass().getName().toLowerCase()).contains("jdk");
+    assertThat(HttpClient.createDefault().getClass().getName().toLowerCase(Locale.ROOT))
+        .contains("jdk");
   }
 
   @Test

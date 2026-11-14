@@ -49,8 +49,9 @@ awaitility = "4.3.0"  # Updated from 4.2.2
 
 # Security
 aws-sdk = "2.57.7"
-azure-keyvault-secrets = "4.12.0"
-azure-identity = "1.18.7"
+azure-keyvault-secrets = "4.13.1"
+azure-identity = "1.19.0"
+azure-core-http-jdk-httpclient = "1.3.0"
 gcp-secretmanager = "2.101.0"
 
 # Security Constraints (for dependency-check)
@@ -153,6 +154,7 @@ aws-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version
 # Azure
 azure-keyvault-secrets = { module = "com.azure:azure-security-keyvault-secrets", version.ref = "azure-keyvault-secrets" }
 azure-identity = { module = "com.azure:azure-identity", version.ref = "azure-identity" }
+azure-core-http-jdk-httpclient = { module = "com.azure:azure-core-http-jdk-httpclient", version.ref = "azure-core-http-jdk-httpclient" }
 gcp-secretmanager = { module = "com.google.cloud:google-cloud-secretmanager", version.ref = "gcp-secretmanager" }
 
 [bundles]
