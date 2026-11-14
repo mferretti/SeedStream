@@ -74,7 +74,9 @@ jobs:
         url="https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1"
         ok=0; rejected=0; throttled=0; other=0
         for i in $(seq 1 10); do
-          code=$(curl -s -o /dev/null --max-time 10 -w '%{http_code}' -H "apiKey: $NVD_API_KEY" "$url")
+          # `|| true`: the step runs under `bash -e`, so a curl timeout (exit 28) would end the job;
+          # -w still prints 000, counted as an NVD-side failure below.
+          code=$(curl -s -o /dev/null --max-time 30 -w '%{http_code}' -H "apiKey: $NVD_API_KEY" "$url" || true)
           case "$code" in
             200) ok=$((ok+1)) ;;
             404) rejected=$((rejected+1)) ;;      # invalid/deactivated key (NVD-documented)
