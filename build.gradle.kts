@@ -151,27 +151,6 @@ subprojects {
             // (medium), all <= 1.1.10.8 and fixed in 1.1.10.9. Force everywhere.
             "org.xerial.snappy:snappy-java:1.1.10.12"
         )
-        // netty ships ~20 coordinated artifacts, all pulled transitively via
-        // software.amazon.awssdk:netty-nio-client. 4.1.135.Final was vulnerable to
-        // CVE-2026-44891, CVE-2026-55831, CVE-2026-55833 (fixed in 4.1.136.Final);
-        // 4.1.136.Final is in turn vulnerable to CVE-2026-62380 (netty-codec-socks SOCKS4/5
-        // client encoder null-byte/CRLF/credential injection, CVSS >7.0), fixed in 4.1.137.Final;
-        // 4.1.137.Final is in turn vulnerable to CVE-2026-89044 (HTTP request smuggling via
-        // improperly validated Transfer-Encoding final coding, CWE-444, affects 4.1.133..4.1.137),
-        // fixed in 4.1.138.Final.
-        // eachDependency force covers every io.netty artifact without listing each coordinate.
-        resolutionStrategy.eachDependency {
-            // tcnative (netty-tcnative*) and netty-bom follow their own versioning, not the
-            // 4.1.x line, and are not in the CVE set — leave them alone.
-            if (requested.group == "io.netty" &&
-                requested.name.startsWith("netty-") &&
-                !requested.name.startsWith("netty-tcnative") &&
-                requested.name != "netty-bom"
-            ) {
-                useVersion("4.1.138.Final")
-                because("CVE-2026-44891/55831/55833/62380/89044 — force patched netty across all configurations")
-            }
-        }
     }
 
     dependencies {

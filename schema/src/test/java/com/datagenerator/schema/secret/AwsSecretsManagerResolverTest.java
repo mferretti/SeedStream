@@ -146,4 +146,9 @@ class AwsSecretsManagerResolverTest {
                 "arn:aws:secretsmanager:us-east-1:123456789012:secret:myapp/db#password"))
         .isEqualTo("arn-secret");
   }
+
+  @Test
+  void shouldBuildPublicResolverWithoutThrowing() {
+    assertThatCode(() -> new AwsSecretsManagerResolver("eu-west-1")).doesNotThrowAnyException();
+  }
 }

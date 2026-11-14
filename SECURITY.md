@@ -33,7 +33,6 @@ We release security updates for the following versions:
 **Forced versions for security** (in `build.gradle.kts`, overriding transitive resolution):
 - httpclient5: 5.6.4 (CVE-2026-71290, CVE-2026-64607)
 - httpcore5-h2: 5.4.4 (CVE-2026-54428, CVE-2026-54399)
-- netty: 4.1.137.Final (CVE-2026-44891, CVE-2026-55831, CVE-2026-55833, CVE-2026-62380)
 
 **Dependency Management**: Centralized in `gradle/libs.versions.toml` ([Gradle Version Catalog](https://docs.gradle.org/current/userguide/platforms.html))
 
