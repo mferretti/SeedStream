@@ -64,7 +64,7 @@ spotless-plugin = "8.11.0"
 spotbugs-plugin = "6.5.13"
 findsecbugs = "1.14.0"
 dependency-check-plugin = "13.0.0"
-sonarqube-plugin = "7.5.0.8588"
+sonarqube-plugin = "7.6.0.18749"
 
 [libraries]
 # SpotBugs plugin: security bug patterns (also run by Codacy)
